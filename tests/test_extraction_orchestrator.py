@@ -33,6 +33,7 @@ def test_primary_success_skips_fallback() -> None:
     assert result.provider_used == "primary-provider"
     assert result.retry_count == 0
     assert result.failure_count == 0
+    assert result.escalation_payload is None
     assert result.data == {"id": "A-1", "status": "primary-ok"}
     assert calls == ["primary"]
 
@@ -61,6 +62,7 @@ def test_primary_failure_retries_once_with_fallback() -> None:
     assert result.provider_used == "fallback-provider"
     assert result.retry_count == 1
     assert result.failure_count == 1
+    assert result.escalation_payload is None
     assert result.data == {"id": "B-2", "status": "fallback-ok"}
     assert [attempt.provider for attempt in result.attempts] == [
         "primary-provider",
@@ -96,3 +98,15 @@ def test_guardrail_blocks_repeated_fallback_attempts() -> None:
     assert result.failure_count == 2
     assert fallback_calls == 1
     assert result.escalation_reason is not None
+    assert result.escalation_payload == {
+        "item_id": "C-3",
+        "input_payload": {"id": "C-3"},
+        "escalation_reason": "fallback-provider: fallback failed",
+        "retry_count": 1,
+        "failure_count": 2,
+        "failed_providers": ["primary-provider", "fallback-provider"],
+        "errors": [
+            "primary-provider: primary failed",
+            "fallback-provider: fallback failed",
+        ],
+    }

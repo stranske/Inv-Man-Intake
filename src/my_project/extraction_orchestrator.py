@@ -41,6 +41,7 @@ class OrchestrationResult:
     retry_count: int
     failure_count: int
     escalation_reason: str | None = None
+    escalation_payload: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -89,7 +90,12 @@ class ExtractionOrchestrator:
         last_error = primary_error
 
         if not self._can_attempt_fallback(attempts=attempts, fallback_attempts=fallback_attempts):
-            return self._escalate(attempts=attempts, retry_count=retry_count, reason=last_error)
+            return self._escalate(
+                payload=payload,
+                attempts=attempts,
+                retry_count=retry_count,
+                reason=last_error,
+            )
 
         fallback_result, fallback_error = self._attempt(self._fallback, payload)
         fallback_attempts += 1
@@ -112,7 +118,12 @@ class ExtractionOrchestrator:
             )
 
         last_error = fallback_error
-        return self._escalate(attempts=attempts, retry_count=retry_count, reason=last_error)
+        return self._escalate(
+            payload=payload,
+            attempts=attempts,
+            retry_count=retry_count,
+            reason=last_error,
+        )
 
     def _can_attempt_fallback(
         self, *, attempts: list[AttemptRecord], fallback_attempts: int
@@ -137,8 +148,13 @@ class ExtractionOrchestrator:
 
     @staticmethod
     def _escalate(
-        *, attempts: list[AttemptRecord], retry_count: int, reason: str | None
+        *,
+        payload: dict[str, Any],
+        attempts: list[AttemptRecord],
+        retry_count: int,
+        reason: str | None,
     ) -> OrchestrationResult:
+        escalation_reason = reason or "extraction-unresolved"
         return OrchestrationResult(
             resolved=False,
             data=None,
@@ -146,5 +162,30 @@ class ExtractionOrchestrator:
             attempts=attempts,
             retry_count=retry_count,
             failure_count=len(attempts),
-            escalation_reason=reason or "extraction-unresolved",
+            escalation_reason=escalation_reason,
+            escalation_payload=ExtractionOrchestrator._build_escalation_payload(
+                payload=payload,
+                attempts=attempts,
+                retry_count=retry_count,
+                escalation_reason=escalation_reason,
+            ),
         )
+
+    @staticmethod
+    def _build_escalation_payload(
+        *,
+        payload: dict[str, Any],
+        attempts: list[AttemptRecord],
+        retry_count: int,
+        escalation_reason: str,
+    ) -> dict[str, Any]:
+        failed_attempts = [attempt for attempt in attempts if not attempt.success]
+        return {
+            "item_id": payload.get("id"),
+            "input_payload": dict(payload),
+            "escalation_reason": escalation_reason,
+            "retry_count": retry_count,
+            "failure_count": len(failed_attempts),
+            "failed_providers": [attempt.provider for attempt in failed_attempts],
+            "errors": [attempt.error for attempt in failed_attempts if attempt.error],
+        }
