@@ -1,1 +1,1 @@
-"""Data access layer for core hierarchy entities."""
+"""Data-layer models, repositories, and migrations."""
