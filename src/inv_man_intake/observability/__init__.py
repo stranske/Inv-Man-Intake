@@ -1,10 +1,10 @@
 """Observability utilities for trace and metric instrumentation."""
 
 from .tracing import (
-    InMemoryTraceSink,
     LANGCHAIN_TRACE_ENABLED_ENV_KEY,
     LANGSMITH_TRACE_ENABLED_ENV_KEY,
     TRACE_ENABLED_ENV_KEY,
+    InMemoryTraceSink,
     TraceContext,
     TraceEvent,
     Tracer,

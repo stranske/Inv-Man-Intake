@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from inv_man_intake.observability.tracing import (
-    InMemoryTraceSink,
     LANGCHAIN_TRACE_ENABLED_ENV_KEY,
     LANGSMITH_TRACE_ENABLED_ENV_KEY,
     TRACE_ENABLED_ENV_KEY,
+    InMemoryTraceSink,
     Tracer,
     child_run_context,
     child_trace_context,
