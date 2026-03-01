@@ -185,6 +185,11 @@ def test_tracing_enabled_from_env_falls_back_to_langchain_toggle() -> None:
     assert tracing_enabled_from_env(env=env) is True
 
 
+def test_tracing_enabled_from_env_falls_back_to_langsmith_toggle() -> None:
+    env = {LANGSMITH_TRACE_ENABLED_ENV_KEY: "on"}
+    assert tracing_enabled_from_env(env=env) is True
+
+
 def test_tracing_enabled_from_env_uses_default_for_invalid_value() -> None:
     env = {TRACE_ENABLED_ENV_KEY: "not-a-bool"}
     assert tracing_enabled_from_env(env=env, default_enabled=True) is True
