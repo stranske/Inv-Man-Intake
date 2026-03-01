@@ -1,6 +1,11 @@
 LICENSE
 README.md
 pyproject.toml
+src/inv_man_intake/__init__.py
+src/inv_man_intake/extraction/__init__.py
+src/inv_man_intake/extraction/providers/__init__.py
+src/inv_man_intake/extraction/providers/base.py
+src/inv_man_intake/extraction/providers/primary.py
 src/my_project/__init__.py
 src/my_project.egg-info/PKG-INFO
 src/my_project.egg-info/SOURCES.txt
