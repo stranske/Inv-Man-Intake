@@ -95,7 +95,9 @@ def validate_intake_payload(payload: dict[str, Any]) -> IntakeValidationResult:
                 message="payload must be an object",
             )
         )
-        return IntakeValidationResult(is_valid=False, errors=tuple(errors), warnings=tuple(warnings))
+        return IntakeValidationResult(
+            is_valid=False, errors=tuple(errors), warnings=tuple(warnings)
+        )
 
     metadata = payload.get("metadata")
     files = payload.get("files")
@@ -151,7 +153,9 @@ def validate_intake_payload(payload: dict[str, Any]) -> IntakeValidationResult:
                 message="files must be a non-empty array",
             )
         )
-        return IntakeValidationResult(is_valid=False, errors=tuple(errors), warnings=tuple(warnings))
+        return IntakeValidationResult(
+            is_valid=False, errors=tuple(errors), warnings=tuple(warnings)
+        )
 
     primary_count = 0
     for index, raw_file in enumerate(files):
