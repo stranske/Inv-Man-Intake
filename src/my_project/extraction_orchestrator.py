@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 Extractor = Callable[[dict[str, Any]], dict[str, Any]]
+MetricsHook = Callable[[dict[str, Any]], None]
 
 
 class ExtractionFailedError(RuntimeError):
@@ -61,10 +62,12 @@ class ExtractionOrchestrator:
         fallback_name: str,
         fallback_extractor: Extractor,
         policy: RetryPolicy | None = None,
+        metrics_hook: MetricsHook | None = None,
     ) -> None:
         self._primary = _Provider(name=primary_name, extractor=primary_extractor)
         self._fallback = _Provider(name=fallback_name, extractor=fallback_extractor)
         self._policy = policy or RetryPolicy()
+        self._metrics_hook = metrics_hook
 
     def run(self, payload: dict[str, Any]) -> OrchestrationResult:
         attempts: list[AttemptRecord] = []
@@ -79,7 +82,7 @@ class ExtractionOrchestrator:
             )
         )
         if primary_result is not None:
-            return OrchestrationResult(
+            result = OrchestrationResult(
                 resolved=True,
                 data=primary_result,
                 provider_used=self._primary.name,
@@ -87,15 +90,19 @@ class ExtractionOrchestrator:
                 retry_count=retry_count,
                 failure_count=0,
             )
+            self._emit_metrics(result)
+            return result
         last_error = primary_error
 
         if not self._can_attempt_fallback(attempts=attempts, fallback_attempts=fallback_attempts):
-            return self._escalate(
+            result = self._escalate(
                 payload=payload,
                 attempts=attempts,
                 retry_count=retry_count,
                 reason=last_error,
             )
+            self._emit_metrics(result)
+            return result
 
         fallback_result, fallback_error = self._attempt(self._fallback, payload)
         fallback_attempts += 1
@@ -108,7 +115,7 @@ class ExtractionOrchestrator:
             )
         )
         if fallback_result is not None:
-            return OrchestrationResult(
+            result = OrchestrationResult(
                 resolved=True,
                 data=fallback_result,
                 provider_used=self._fallback.name,
@@ -116,14 +123,18 @@ class ExtractionOrchestrator:
                 retry_count=retry_count,
                 failure_count=1,
             )
+            self._emit_metrics(result)
+            return result
 
         last_error = fallback_error
-        return self._escalate(
+        result = self._escalate(
             payload=payload,
             attempts=attempts,
             retry_count=retry_count,
             reason=last_error,
         )
+        self._emit_metrics(result)
+        return result
 
     def _can_attempt_fallback(
         self, *, attempts: list[AttemptRecord], fallback_attempts: int
@@ -189,3 +200,15 @@ class ExtractionOrchestrator:
             "failed_providers": [attempt.provider for attempt in failed_attempts],
             "errors": [attempt.error for attempt in failed_attempts if attempt.error],
         }
+
+    def _emit_metrics(self, result: OrchestrationResult) -> None:
+        if self._metrics_hook is None:
+            return
+        self._metrics_hook(
+            {
+                "resolved": result.resolved,
+                "provider_used": result.provider_used,
+                "retry_count": result.retry_count,
+                "failure_count": result.failure_count,
+            }
+        )

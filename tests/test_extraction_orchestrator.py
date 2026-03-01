@@ -11,6 +11,7 @@ from my_project.extraction_orchestrator import (
 
 def test_primary_success_skips_fallback() -> None:
     calls: list[str] = []
+    metrics_events: list[dict[str, object]] = []
 
     def primary(payload: dict[str, object]) -> dict[str, object]:
         calls.append("primary")
@@ -25,6 +26,7 @@ def test_primary_success_skips_fallback() -> None:
         primary_extractor=primary,
         fallback_name="fallback-provider",
         fallback_extractor=fallback,
+        metrics_hook=metrics_events.append,
     )
 
     result = orchestrator.run({"id": "A-1"})
@@ -36,10 +38,19 @@ def test_primary_success_skips_fallback() -> None:
     assert result.escalation_payload is None
     assert result.data == {"id": "A-1", "status": "primary-ok"}
     assert calls == ["primary"]
+    assert metrics_events == [
+        {
+            "resolved": True,
+            "provider_used": "primary-provider",
+            "retry_count": 0,
+            "failure_count": 0,
+        }
+    ]
 
 
 def test_primary_failure_retries_once_with_fallback() -> None:
     calls: list[str] = []
+    metrics_events: list[dict[str, object]] = []
 
     def primary(_: dict[str, object]) -> dict[str, object]:
         calls.append("primary")
@@ -54,6 +65,7 @@ def test_primary_failure_retries_once_with_fallback() -> None:
         primary_extractor=primary,
         fallback_name="fallback-provider",
         fallback_extractor=fallback,
+        metrics_hook=metrics_events.append,
     )
 
     result = orchestrator.run({"id": "B-2"})
@@ -69,10 +81,19 @@ def test_primary_failure_retries_once_with_fallback() -> None:
         "fallback-provider",
     ]
     assert calls == ["primary", "fallback"]
+    assert metrics_events == [
+        {
+            "resolved": True,
+            "provider_used": "fallback-provider",
+            "retry_count": 1,
+            "failure_count": 1,
+        }
+    ]
 
 
 def test_guardrail_blocks_repeated_fallback_attempts() -> None:
     fallback_calls = 0
+    metrics_events: list[dict[str, object]] = []
 
     def primary(_: dict[str, object]) -> dict[str, object]:
         raise ExtractionFailedError("primary failed")
@@ -88,6 +109,7 @@ def test_guardrail_blocks_repeated_fallback_attempts() -> None:
         fallback_name="fallback-provider",
         fallback_extractor=fallback,
         policy=RetryPolicy(max_total_attempts=3, max_fallback_attempts=1),
+        metrics_hook=metrics_events.append,
     )
 
     result = orchestrator.run({"id": "C-3"})
@@ -110,3 +132,11 @@ def test_guardrail_blocks_repeated_fallback_attempts() -> None:
             "fallback-provider: fallback failed",
         ],
     }
+    assert metrics_events == [
+        {
+            "resolved": False,
+            "provider_used": None,
+            "retry_count": 1,
+            "failure_count": 2,
+        }
+    ]
