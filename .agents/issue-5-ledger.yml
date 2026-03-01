@@ -5,10 +5,10 @@ branch: claude/issue-5
 tasks:
   - id: task-01
     title: Create `smoke/claude-smoke.txt`
-    status: doing
+    status: done
     started_at: '2026-03-01T04:53:30Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-01T04:53:39Z'
+    commit: c4bd240efdd35459dec15f6bc8ceec3f656121e6
     notes: []
   - id: task-02
     title: Add the line `claude smoke test` to `smoke/claude-smoke.txt`
