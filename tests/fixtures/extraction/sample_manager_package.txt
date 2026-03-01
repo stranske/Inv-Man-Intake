@@ -1,0 +1,5 @@
+Manager: Alpha Capital
+Strategy: Equity Market Neutral
+Management Fee: 1.50%
+Performance Fee: 15%
+Benchmark: HFRI Equity Market Neutral Index
