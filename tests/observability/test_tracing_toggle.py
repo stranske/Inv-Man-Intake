@@ -132,6 +132,36 @@ def test_cross_stage_propagation_shares_trace_id() -> None:
     assert stage_two.tags["stage"] == "extract"
 
 
+def test_cross_service_propagation_uses_shared_trace_context() -> None:
+    service_a_sink = InMemoryTraceSink()
+    service_b_sink = InMemoryTraceSink()
+    service_a_tracer = Tracer(enabled=True, sink=service_a_sink)
+    service_b_tracer = Tracer(enabled=True, sink=service_b_sink)
+
+    root = new_trace_context(tags={"service": "intake-api", "stage": "ingest"})
+    with service_a_tracer.start_span(name="receive_request", context=root):
+        pass
+    ingress_span = service_a_sink.events[0]
+
+    outbound_headers = inject_trace_context(root, carrier={"x-request-id": "req_42"})
+    inbound_context = extract_trace_context(outbound_headers)
+    assert inbound_context is not None
+    downstream_context = child_trace_context(
+        inbound_context,
+        parent_span_id=ingress_span.span_id,
+        tags={"service": "extract-worker", "stage": "extract"},
+    )
+
+    with service_b_tracer.start_span(name="extract_positions", context=downstream_context):
+        pass
+
+    downstream_start = service_b_sink.events[0]
+    assert downstream_start.trace_id == ingress_span.trace_id
+    assert downstream_start.parent_span_id == ingress_span.span_id
+    assert downstream_context.tags["service"] == "extract-worker"
+    assert downstream_context.tags["stage"] == "extract"
+
+
 def test_tracing_enabled_from_env_defaults_to_disabled() -> None:
     assert tracing_enabled_from_env(env={}) is False
 
