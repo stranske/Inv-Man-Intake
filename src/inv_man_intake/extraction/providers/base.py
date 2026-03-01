@@ -86,6 +86,7 @@ class ExtractedDocumentResult:
     provider_name: str
 
 
+@runtime_checkable
 class ExtractionProvider(Protocol):
     """Provider protocol for all extraction adapters."""
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from inv_man_intake.extraction.providers.base import ExtractedDocumentResult
+from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractionProvider
 from inv_man_intake.extraction.providers.primary import PrimaryRegexExtractionProvider
 
 
@@ -20,6 +20,7 @@ def _fixture_bytes() -> bytes:
 
 def test_primary_provider_returns_canonical_result_shape() -> None:
     provider = PrimaryRegexExtractionProvider()
+    assert isinstance(provider, ExtractionProvider)
     result = provider.extract(source_doc_id="doc_1", content=_fixture_bytes())
 
     assert isinstance(result, ExtractedDocumentResult)

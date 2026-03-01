@@ -12,6 +12,7 @@ from inv_man_intake.extraction.providers.base import (
     ProviderExtractionOutput,
     SourceLocation,
 )
+from inv_man_intake.extraction.providers.normalize import normalize_provider_output
 from inv_man_intake.extraction.providers.primary import PrimaryRegexExtractionProvider
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     "PrimaryRegexExtractionProvider",
     "ProviderExtractionOutput",
     "SourceLocation",
+    "normalize_provider_output",
 ]
