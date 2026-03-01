@@ -1,6 +1,9 @@
 LICENSE
 README.md
 pyproject.toml
+src/inv_man_intake/__init__.py
+src/inv_man_intake/observability/__init__.py
+src/inv_man_intake/observability/tracing.py
 src/my_project/__init__.py
 src/my_project.egg-info/PKG-INFO
 src/my_project.egg-info/SOURCES.txt
