@@ -11,7 +11,9 @@ from inv_man_intake.intake.service import IngestionService
 def _files() -> list[IntakeFile]:
     return [
         IntakeFile(file_name="manager_deck.pdf", role="investment_deck", source_ref="email:msg-1"),
-        IntakeFile(file_name="returns.xlsx", role="performance_track_record", source_ref="email:msg-1"),
+        IntakeFile(
+            file_name="returns.xlsx", role="performance_track_record", source_ref="email:msg-1"
+        ),
     ]
 
 
