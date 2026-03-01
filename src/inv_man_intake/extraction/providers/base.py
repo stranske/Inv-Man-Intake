@@ -86,6 +86,75 @@ class ExtractedDocumentResult:
     provider_name: str
 
 
+def validate_provider_output(output: ProviderExtractionOutput) -> None:
+    """Validate raw multimodal output emitted by an extraction provider."""
+
+    if not output.source_doc_id:
+        raise ValueError("ProviderExtractionOutput.source_doc_id must be non-empty")
+    if not output.provider_name:
+        raise ValueError("ProviderExtractionOutput.provider_name must be non-empty")
+
+    for block in output.text_blocks:
+        _validate_source_location(
+            block.location,
+            expected_source_doc_id=output.source_doc_id,
+            context="text_blocks",
+        )
+
+    for table in output.tables:
+        if table.location is not None:
+            _validate_source_location(
+                table.location,
+                expected_source_doc_id=output.source_doc_id,
+                context="tables",
+            )
+        for cell in table.cells:
+            if cell.confidence is not None and not 0.0 <= cell.confidence <= 1.0:
+                raise ValueError("ExtractedTableCell.confidence must be within [0.0, 1.0]")
+
+    for image in output.images:
+        _validate_source_location(
+            image.location,
+            expected_source_doc_id=output.source_doc_id,
+            context="images",
+        )
+
+
+def validate_extracted_document_result(result: ExtractedDocumentResult) -> None:
+    """Validate canonical extraction output used by orchestration."""
+
+    if not result.source_doc_id:
+        raise ValueError("ExtractedDocumentResult.source_doc_id must be non-empty")
+    if not result.provider_name:
+        raise ValueError("ExtractedDocumentResult.provider_name must be non-empty")
+
+    for field in result.fields:
+        if not field.key:
+            raise ValueError("ExtractedField.key must be non-empty")
+        if not field.value:
+            raise ValueError("ExtractedField.value must be non-empty")
+        if not 0.0 <= field.confidence <= 1.0:
+            raise ValueError("ExtractedField.confidence must be within [0.0, 1.0]")
+        if field.source_doc_id != result.source_doc_id:
+            raise ValueError("ExtractedField.source_doc_id must match ExtractedDocumentResult")
+        if field.source_page < 0:
+            raise ValueError("ExtractedField.source_page must be >= 0")
+
+
+def _validate_source_location(
+    location: SourceLocation,
+    *,
+    expected_source_doc_id: str,
+    context: str,
+) -> None:
+    if not location.source_doc_id:
+        raise ValueError(f"SourceLocation.source_doc_id must be non-empty for {context}")
+    if location.source_doc_id != expected_source_doc_id:
+        raise ValueError(f"SourceLocation.source_doc_id must match provider output for {context}")
+    if location.source_page is not None and location.source_page < 0:
+        raise ValueError("SourceLocation.source_page must be >= 0 when provided")
+
+
 @runtime_checkable
 class ExtractionProvider(Protocol):
     """Provider protocol for all extraction adapters."""

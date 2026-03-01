@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractionProvider
+from inv_man_intake.extraction.providers.base import (
+    ExtractedDocumentResult,
+    ExtractionProvider,
+    validate_extracted_document_result,
+)
 from inv_man_intake.extraction.providers.primary import PrimaryRegexExtractionProvider
 
 
@@ -27,6 +31,7 @@ def test_primary_provider_returns_canonical_result_shape() -> None:
     assert result.source_doc_id == "doc_1"
     assert result.provider_name == "primary-regex"
     assert len(result.fields) >= 3
+    validate_extracted_document_result(result)
 
 
 def test_primary_provider_fields_include_required_metadata() -> None:
