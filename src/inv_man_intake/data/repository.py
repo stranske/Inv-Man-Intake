@@ -15,8 +15,7 @@ class CoreRepository:
         self._connection.execute("PRAGMA foreign_keys = ON")
 
     def ensure_core_schema(self) -> None:
-        self._connection.executescript(
-            """
+        self._connection.executescript("""
             CREATE TABLE IF NOT EXISTS firms (
                 firm_id TEXT PRIMARY KEY,
                 legal_name TEXT NOT NULL,
@@ -45,8 +44,7 @@ class CoreRepository:
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (fund_id) REFERENCES funds (fund_id) ON DELETE CASCADE
             );
-            """
-        )
+            """)
         self._connection.commit()
 
     def create_firm(self, firm: Firm) -> None:
