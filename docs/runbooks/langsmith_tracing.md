@@ -62,10 +62,12 @@ export LANGSMITH_TRACING_ENABLED="true"
 
 1. Confirm env vars are set in the same shell session used to start the app:
    - `env | rg 'LANGSMITH_API_KEY|LANGSMITH_PROJECT|LANGCHAIN_TRACING_V2|INV_MAN_TRACING_ENABLED'`
-2. Run tracing tests:
+2. Run setup validator (fails fast if required values are missing/disabled):
+   - `python -m inv_man_intake.observability.setup_validation --require-project`
+3. Run tracing tests:
    - `pytest tests/observability/test_tracing_toggle.py -m "not slow"`
-3. Validate disabled mode behavior still works by setting:
+4. Validate disabled mode behavior still works by setting:
    - `INV_MAN_TRACING_ENABLED=false`
-4. Validate enabled mode by setting:
+5. Validate enabled mode by setting:
    - `INV_MAN_TRACING_ENABLED=true`
    - `LANGCHAIN_TRACING_V2=true`
