@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Protocol
+from typing import Any, Mapping, MutableMapping, Protocol
 from uuid import uuid4
+
+TRACE_CONTEXT_PREFIX = "x-trace-"
+TRACE_ID_KEY = f"{TRACE_CONTEXT_PREFIX}id"
+RUN_ID_KEY = f"{TRACE_CONTEXT_PREFIX}run-id"
+PARENT_RUN_ID_KEY = f"{TRACE_CONTEXT_PREFIX}parent-run-id"
+PARENT_SPAN_ID_KEY = f"{TRACE_CONTEXT_PREFIX}parent-span-id"
+TAGS_KEY = f"{TRACE_CONTEXT_PREFIX}tags"
 
 
 @dataclass(frozen=True)
@@ -193,6 +201,49 @@ def child_run_context(
         parent_run_id=parent_run_id,
         parent_span_id=parent.parent_span_id,
         tags=merged_tags,
+    )
+
+
+def inject_trace_context(
+    context: TraceContext,
+    carrier: MutableMapping[str, str] | None = None,
+) -> dict[str, str]:
+    """Inject context into a string carrier for cross-service propagation."""
+    target = {} if carrier is None else carrier
+    target[TRACE_ID_KEY] = context.trace_id
+    if context.run_id:
+        target[RUN_ID_KEY] = context.run_id
+    if context.parent_run_id:
+        target[PARENT_RUN_ID_KEY] = context.parent_run_id
+    if context.parent_span_id:
+        target[PARENT_SPAN_ID_KEY] = context.parent_span_id
+    if context.tags:
+        target[TAGS_KEY] = json.dumps(context.tags, sort_keys=True)
+    return dict(target)
+
+
+def extract_trace_context(carrier: Mapping[str, str]) -> TraceContext | None:
+    """Extract context from a string carrier, returning ``None`` if missing."""
+    trace_id = carrier.get(TRACE_ID_KEY)
+    if trace_id is None or trace_id.strip() == "":
+        return None
+
+    raw_tags = carrier.get(TAGS_KEY)
+    tags: dict[str, str] = {}
+    if raw_tags:
+        try:
+            parsed = json.loads(raw_tags)
+            if isinstance(parsed, dict):
+                tags = {str(key): str(value) for key, value in parsed.items()}
+        except json.JSONDecodeError:
+            tags = {}
+
+    return TraceContext(
+        trace_id=trace_id,
+        run_id=carrier.get(RUN_ID_KEY),
+        parent_run_id=carrier.get(PARENT_RUN_ID_KEY),
+        parent_span_id=carrier.get(PARENT_SPAN_ID_KEY),
+        tags=tags,
     )
 
 

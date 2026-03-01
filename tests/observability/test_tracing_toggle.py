@@ -7,6 +7,8 @@ from inv_man_intake.observability.tracing import (
     Tracer,
     child_run_context,
     child_trace_context,
+    extract_trace_context,
+    inject_trace_context,
     new_trace_context,
 )
 
@@ -75,3 +77,52 @@ def test_child_run_context_preserves_trace_and_sets_parent_run() -> None:
     assert child.run_id is not None
     assert child.parent_run_id == "run_parent_1"
     assert child.tags["stage"] == "extract"
+
+
+def test_trace_context_inject_and_extract_round_trip() -> None:
+    context = new_trace_context(tags={"stage": "intake", "asset_class": "credit"})
+    context = child_trace_context(
+        context,
+        parent_span_id="span_parent_7",
+        tags={"stage": "extract"},
+    )
+
+    carrier = inject_trace_context(context)
+    extracted = extract_trace_context(carrier)
+
+    assert extracted is not None
+    assert extracted.trace_id == context.trace_id
+    assert extracted.run_id == context.run_id
+    assert extracted.parent_span_id == "span_parent_7"
+    assert extracted.tags == context.tags
+
+
+def test_extract_trace_context_returns_none_without_trace_id() -> None:
+    assert extract_trace_context({"x-trace-run-id": "run_123"}) is None
+
+
+def test_cross_stage_propagation_shares_trace_id() -> None:
+    sink = InMemoryTraceSink()
+    tracer = Tracer(enabled=True, sink=sink)
+    root = new_trace_context(tags={"stage": "intake"})
+
+    with tracer.start_span(name="intake", context=root):
+        pass
+
+    intake_start = sink.events[0]
+    carrier = inject_trace_context(root)
+    extracted = extract_trace_context(carrier)
+    assert extracted is not None
+    stage_two = child_trace_context(
+        extracted,
+        parent_span_id=intake_start.span_id,
+        tags={"stage": "extract"},
+    )
+
+    with tracer.start_span(name="extract", context=stage_two):
+        pass
+
+    extract_start = sink.events[2]
+    assert extract_start.trace_id == intake_start.trace_id
+    assert extract_start.parent_span_id == intake_start.span_id
+    assert stage_two.tags["stage"] == "extract"

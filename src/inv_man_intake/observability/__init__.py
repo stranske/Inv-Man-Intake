@@ -7,6 +7,8 @@ from .tracing import (
     Tracer,
     child_run_context,
     child_trace_context,
+    extract_trace_context,
+    inject_trace_context,
     new_trace_context,
 )
 
@@ -17,5 +19,7 @@ __all__ = [
     "Tracer",
     "child_run_context",
     "child_trace_context",
+    "extract_trace_context",
+    "inject_trace_context",
     "new_trace_context",
 ]
