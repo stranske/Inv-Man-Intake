@@ -1,9 +1,9 @@
 """Extraction provider implementations."""
 
 from inv_man_intake.extraction.providers.base import (
-    ExtractedImage,
     ExtractedDocumentResult,
     ExtractedField,
+    ExtractedImage,
     ExtractedTable,
     ExtractedTableCell,
     ExtractedTextBlock,
