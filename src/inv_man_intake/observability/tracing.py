@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -15,6 +16,9 @@ RUN_ID_KEY = f"{TRACE_CONTEXT_PREFIX}run-id"
 PARENT_RUN_ID_KEY = f"{TRACE_CONTEXT_PREFIX}parent-run-id"
 PARENT_SPAN_ID_KEY = f"{TRACE_CONTEXT_PREFIX}parent-span-id"
 TAGS_KEY = f"{TRACE_CONTEXT_PREFIX}tags"
+TRACE_ENABLED_ENV_KEY = "INV_MAN_TRACING_ENABLED"
+LANGSMITH_TRACE_ENABLED_ENV_KEY = "LANGSMITH_TRACING_ENABLED"
+LANGCHAIN_TRACE_ENABLED_ENV_KEY = "LANGCHAIN_TRACING_V2"
 
 
 @dataclass(frozen=True)
@@ -115,6 +119,17 @@ class Tracer:
     def __init__(self, enabled: bool, sink: TraceSink | None = None) -> None:
         self._enabled = enabled
         self._sink = sink
+
+    @classmethod
+    def from_env(
+        cls,
+        sink: TraceSink | None = None,
+        env: Mapping[str, str] | None = None,
+        default_enabled: bool = False,
+    ) -> Tracer:
+        """Construct tracer using environment-based enable toggles."""
+        enabled = tracing_enabled_from_env(env=env, default_enabled=default_enabled)
+        return cls(enabled=enabled, sink=sink)
 
     def start_span(
         self,
@@ -254,3 +269,38 @@ def _utc_now_iso() -> str:
 
 def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid4().hex}"
+
+
+def tracing_enabled_from_env(
+    env: Mapping[str, str] | None = None,
+    default_enabled: bool = False,
+) -> bool:
+    """Resolve tracing state from environment variable toggles.
+
+    Precedence order:
+    1. ``INV_MAN_TRACING_ENABLED``
+    2. ``LANGSMITH_TRACING_ENABLED``
+    3. ``LANGCHAIN_TRACING_V2``
+    """
+    source = env if env is not None else os.environ
+    for key in (
+        TRACE_ENABLED_ENV_KEY,
+        LANGSMITH_TRACE_ENABLED_ENV_KEY,
+        LANGCHAIN_TRACE_ENABLED_ENV_KEY,
+    ):
+        value = source.get(key)
+        if value is None:
+            continue
+        parsed = _parse_toggle(value)
+        if parsed is not None:
+            return parsed
+    return default_enabled
+
+
+def _parse_toggle(value: str) -> bool | None:
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "t", "yes", "y", "on"}:
+        return True
+    if normalized in {"0", "false", "f", "no", "n", "off"}:
+        return False
+    return None

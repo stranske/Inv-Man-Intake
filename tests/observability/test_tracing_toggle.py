@@ -4,12 +4,16 @@ from __future__ import annotations
 
 from inv_man_intake.observability.tracing import (
     InMemoryTraceSink,
+    LANGCHAIN_TRACE_ENABLED_ENV_KEY,
+    LANGSMITH_TRACE_ENABLED_ENV_KEY,
+    TRACE_ENABLED_ENV_KEY,
     Tracer,
     child_run_context,
     child_trace_context,
     extract_trace_context,
     inject_trace_context,
     new_trace_context,
+    tracing_enabled_from_env,
 )
 
 
@@ -126,3 +130,42 @@ def test_cross_stage_propagation_shares_trace_id() -> None:
     assert extract_start.trace_id == intake_start.trace_id
     assert extract_start.parent_span_id == intake_start.span_id
     assert stage_two.tags["stage"] == "extract"
+
+
+def test_tracing_enabled_from_env_defaults_to_disabled() -> None:
+    assert tracing_enabled_from_env(env={}) is False
+
+
+def test_tracing_enabled_from_env_honors_primary_toggle() -> None:
+    env = {TRACE_ENABLED_ENV_KEY: "true"}
+    assert tracing_enabled_from_env(env=env) is True
+
+
+def test_tracing_enabled_from_env_primary_toggle_can_disable() -> None:
+    env = {
+        TRACE_ENABLED_ENV_KEY: "false",
+        LANGSMITH_TRACE_ENABLED_ENV_KEY: "true",
+        LANGCHAIN_TRACE_ENABLED_ENV_KEY: "true",
+    }
+    assert tracing_enabled_from_env(env=env, default_enabled=True) is False
+
+
+def test_tracing_enabled_from_env_falls_back_to_langchain_toggle() -> None:
+    env = {LANGCHAIN_TRACE_ENABLED_ENV_KEY: "yes"}
+    assert tracing_enabled_from_env(env=env) is True
+
+
+def test_tracing_enabled_from_env_uses_default_for_invalid_value() -> None:
+    env = {TRACE_ENABLED_ENV_KEY: "not-a-bool"}
+    assert tracing_enabled_from_env(env=env, default_enabled=True) is True
+
+
+def test_tracer_from_env_uses_resolved_toggle() -> None:
+    sink = InMemoryTraceSink()
+    tracer = Tracer.from_env(sink=sink, env={TRACE_ENABLED_ENV_KEY: "1"})
+    context = new_trace_context(tags={"stage": "config"})
+
+    with tracer.start_span(name="parse", context=context):
+        pass
+
+    assert len(sink.events) == 2

@@ -2,6 +2,9 @@
 
 from .tracing import (
     InMemoryTraceSink,
+    LANGCHAIN_TRACE_ENABLED_ENV_KEY,
+    LANGSMITH_TRACE_ENABLED_ENV_KEY,
+    TRACE_ENABLED_ENV_KEY,
     TraceContext,
     TraceEvent,
     Tracer,
@@ -10,10 +13,14 @@ from .tracing import (
     extract_trace_context,
     inject_trace_context,
     new_trace_context,
+    tracing_enabled_from_env,
 )
 
 __all__ = [
     "InMemoryTraceSink",
+    "LANGCHAIN_TRACE_ENABLED_ENV_KEY",
+    "LANGSMITH_TRACE_ENABLED_ENV_KEY",
+    "TRACE_ENABLED_ENV_KEY",
     "TraceContext",
     "TraceEvent",
     "Tracer",
@@ -22,4 +29,5 @@ __all__ = [
     "extract_trace_context",
     "inject_trace_context",
     "new_trace_context",
+    "tracing_enabled_from_env",
 ]
