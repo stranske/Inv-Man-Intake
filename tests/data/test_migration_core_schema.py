@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import sqlite3
 
+import pytest
+
 from inv_man_intake.data.migrations.core_schema import apply_core_schema, rollback_core_schema
 
 
@@ -23,6 +25,11 @@ def _connection() -> sqlite3.Connection:
     return conn
 
 
+def _table_columns(connection: sqlite3.Connection, table_name: str) -> dict[str, tuple[str, int]]:
+    rows = connection.execute(f"PRAGMA table_info('{table_name}')").fetchall()
+    return {row[1]: (row[2], row[3]) for row in rows}
+
+
 def test_apply_core_schema_creates_tables_and_indexes() -> None:
     conn = _connection()
 
@@ -32,6 +39,35 @@ def test_apply_core_schema_creates_tables_and_indexes() -> None:
     assert {"idx_funds_firm_id", "idx_documents_fund_id", "idx_documents_received_at"}.issubset(
         _index_names(conn)
     )
+
+
+def test_apply_core_schema_defines_required_columns() -> None:
+    conn = _connection()
+    apply_core_schema(conn)
+
+    firm_columns = _table_columns(conn, "firms")
+    assert firm_columns["firm_id"] == ("TEXT", 0)
+    assert firm_columns["legal_name"] == ("TEXT", 1)
+    assert firm_columns["aliases_json"] == ("TEXT", 0)
+    assert firm_columns["created_at"] == ("TEXT", 1)
+
+    fund_columns = _table_columns(conn, "funds")
+    assert fund_columns["fund_id"] == ("TEXT", 0)
+    assert fund_columns["firm_id"] == ("TEXT", 1)
+    assert fund_columns["fund_name"] == ("TEXT", 1)
+    assert fund_columns["strategy"] == ("TEXT", 0)
+    assert fund_columns["asset_class"] == ("TEXT", 0)
+    assert fund_columns["created_at"] == ("TEXT", 1)
+
+    document_columns = _table_columns(conn, "documents")
+    assert document_columns["document_id"] == ("TEXT", 0)
+    assert document_columns["fund_id"] == ("TEXT", 1)
+    assert document_columns["file_name"] == ("TEXT", 1)
+    assert document_columns["file_hash"] == ("TEXT", 1)
+    assert document_columns["received_at"] == ("TEXT", 1)
+    assert document_columns["version_date"] == ("TEXT", 1)
+    assert document_columns["source_channel"] == ("TEXT", 1)
+    assert document_columns["created_at"] == ("TEXT", 1)
 
 
 def test_apply_core_schema_enforces_foreign_key_relationships() -> None:
@@ -76,6 +112,17 @@ def test_apply_core_schema_enforces_foreign_key_relationships() -> None:
     count = conn.execute("SELECT COUNT(*) FROM documents").fetchone()
     assert count is not None
     assert count[0] == 1
+
+
+def test_apply_core_schema_rejects_blank_required_identifiers() -> None:
+    conn = _connection()
+    apply_core_schema(conn)
+
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute(
+            "INSERT INTO firms (firm_id, legal_name, aliases_json, created_at) VALUES (?, ?, ?, ?)",
+            ("", "Alpha Capital", None, "2026-03-01T09:00:00Z"),
+        )
 
 
 def test_rollback_core_schema_drops_tables() -> None:
