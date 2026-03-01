@@ -1,1 +1,1 @@
-"""Data-layer models and migrations for Inv-Man-Intake."""
+"""Data access layer for core hierarchy entities."""
