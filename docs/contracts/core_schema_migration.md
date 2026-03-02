@@ -15,6 +15,7 @@ This migration introduces the foundational relational hierarchy for v1:
 ## Constraints
 
 - Every table uses a text primary key (`firm_id`, `fund_id`, `document_id`).
+- Required identifier/name fields are guarded with non-blank `CHECK (length(trim(...)) > 0)` constraints.
 - Documents include date/version fields (`received_at`, `version_date`) to support version history.
 - Document uniqueness across versions uses `(fund_id, file_hash, version_date)`.
 
@@ -28,10 +29,16 @@ These indexes target the primary lookup paths for hierarchy traversal and date-b
 
 ## Rollback Assumptions
 
-Rollback drops tables in reverse dependency order:
+Rollback is SQLite-specific and intentionally disables FK enforcement before drops:
+- `PRAGMA foreign_keys = OFF`
+
+Then it drops tables in reverse dependency order:
 1. `documents`
 2. `funds`
 3. `firms`
+
+Finally, rollback restores FK enforcement:
+- `PRAGMA foreign_keys = ON`
 
 Rollback is intended for test/dev environments or controlled migration reversal events.
 
