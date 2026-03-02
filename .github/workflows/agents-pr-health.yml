@@ -1,34 +1,9 @@
 name: Agents PR Health
 
 on:
-  schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        description: 'Preview mode'
-        required: false
-        default: false
-        type: boolean
-      max_prs:
-        description: 'Maximum PRs to process'
-        required: false
-        default: 10
-        type: number
-
-permissions:
-  contents: write
-  pull-requests: write
-  actions: write
-
-concurrency:
-  group: pr-health-${{ github.repository }}
-  cancel-in-progress: true
+  workflow_dispatch: {}
 
 jobs:
   health:
     uses: stranske/Workflows/.github/workflows/reusable-agents-pr-health.yml@main
-    with:
-      dry_run: ${{ inputs.dry_run || false }}
-      max_prs: ${{ inputs.max_prs || 10 }}
     secrets: inherit
