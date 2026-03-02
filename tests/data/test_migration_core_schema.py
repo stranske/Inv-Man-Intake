@@ -114,6 +114,99 @@ def test_apply_core_schema_enforces_foreign_key_relationships() -> None:
     assert count[0] == 1
 
 
+def test_apply_core_schema_rejects_orphaned_children() -> None:
+    conn = _connection()
+    apply_core_schema(conn)
+
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute(
+            (
+                "INSERT INTO funds (fund_id, firm_id, fund_name, strategy, asset_class, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?)"
+            ),
+            (
+                "fund_orphan",
+                "missing_firm",
+                "Orphan Fund",
+                "long_short",
+                "equity",
+                "2026-03-01T09:00:00Z",
+            ),
+        )
+
+    conn.execute(
+        "INSERT INTO firms (firm_id, legal_name, aliases_json, created_at) VALUES (?, ?, ?, ?)",
+        ("firm_1", "Alpha Capital", None, "2026-03-01T09:00:00Z"),
+    )
+    conn.execute(
+        (
+            "INSERT INTO funds (fund_id, firm_id, fund_name, strategy, asset_class, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)"
+        ),
+        ("fund_1", "firm_1", "Alpha Market Neutral", None, None, "2026-03-01T09:00:00Z"),
+    )
+
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute(
+            (
+                "INSERT INTO documents (document_id, fund_id, file_name, file_hash, received_at, "
+                "version_date, source_channel, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            ),
+            (
+                "doc_orphan",
+                "missing_fund",
+                "orphan.pdf",
+                "hash-orphan",
+                "2026-03-01T09:00:00Z",
+                "2026-03-01",
+                "email",
+                "2026-03-01T09:00:00Z",
+            ),
+        )
+
+
+def test_apply_core_schema_cascades_deletes_down_hierarchy() -> None:
+    conn = _connection()
+    apply_core_schema(conn)
+
+    conn.execute(
+        "INSERT INTO firms (firm_id, legal_name, aliases_json, created_at) VALUES (?, ?, ?, ?)",
+        ("firm_1", "Alpha Capital", None, "2026-03-01T09:00:00Z"),
+    )
+    conn.execute(
+        (
+            "INSERT INTO funds (fund_id, firm_id, fund_name, strategy, asset_class, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)"
+        ),
+        ("fund_1", "firm_1", "Alpha Market Neutral", None, None, "2026-03-01T09:00:00Z"),
+    )
+    conn.execute(
+        (
+            "INSERT INTO documents (document_id, fund_id, file_name, file_hash, received_at, "
+            "version_date, source_channel, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        ),
+        (
+            "doc_1",
+            "fund_1",
+            "alpha_deck.pdf",
+            "hash-1",
+            "2026-03-01T09:00:00Z",
+            "2026-03-01",
+            "email",
+            "2026-03-01T09:00:00Z",
+        ),
+    )
+
+    conn.execute("DELETE FROM firms WHERE firm_id = ?", ("firm_1",))
+
+    fund_count = conn.execute("SELECT COUNT(*) FROM funds").fetchone()
+    document_count = conn.execute("SELECT COUNT(*) FROM documents").fetchone()
+    assert fund_count is not None
+    assert document_count is not None
+    assert fund_count[0] == 0
+    assert document_count[0] == 0
+
+
 def test_apply_core_schema_rejects_blank_required_identifiers() -> None:
     conn = _connection()
     apply_core_schema(conn)
@@ -133,3 +226,18 @@ def test_rollback_core_schema_drops_tables() -> None:
     assert "firms" not in _table_names(conn)
     assert "funds" not in _table_names(conn)
     assert "documents" not in _table_names(conn)
+
+
+def test_rollback_core_schema_allows_clean_reapply() -> None:
+    conn = _connection()
+    apply_core_schema(conn)
+    rollback_core_schema(conn)
+    apply_core_schema(conn)
+
+    conn.execute(
+        "INSERT INTO firms (firm_id, legal_name, aliases_json, created_at) VALUES (?, ?, ?, ?)",
+        ("firm_1", "Alpha Capital", None, "2026-03-01T09:00:00Z"),
+    )
+    count = conn.execute("SELECT COUNT(*) FROM firms").fetchone()
+    assert count is not None
+    assert count[0] == 1
