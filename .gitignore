@@ -1,3 +1,30 @@
+# Python build artifacts
+# These are auto-generated and cause merge conflicts across PRs
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+*.so
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
 # Codex working files (preserved via workflow artifacts, not git)
 # These files are rebuilt each run and would cause merge conflicts
 # if multiple PRs commit them. Historical data is preserved in:
