@@ -23,11 +23,10 @@ class PrimaryRegexExtractionProvider:
 
     def extract(self, source_doc_id: str, content: bytes) -> ExtractedDocumentResult:
         decoded = content.decode("utf-8", errors="ignore")
-        lowered = decoded.lower()
 
         fields: list[ExtractedField] = []
         for key, pattern in self._PATTERNS:
-            match = re.search(pattern, lowered, flags=re.IGNORECASE)
+            match = re.search(pattern, decoded, flags=re.IGNORECASE)
             if not match:
                 continue
             raw_value = match.group(1).strip()

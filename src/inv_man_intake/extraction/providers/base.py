@@ -162,9 +162,11 @@ class ExtractionProvider(Protocol):
     @property
     def name(self) -> str:
         """Stable provider name used in orchestration logs."""
+        ...
 
     def extract(self, source_doc_id: str, content: bytes) -> ExtractedDocumentResult:
         """Extract canonical fields from raw document bytes."""
+        ...
 
 
 @runtime_checkable
@@ -174,6 +176,8 @@ class MultiModalExtractionProvider(Protocol):
     @property
     def name(self) -> str:
         """Stable provider name used in orchestration logs."""
+        ...
 
     def extract_modalities(self, source_doc_id: str, content: bytes) -> ProviderExtractionOutput:
         """Extract text, table, and image outputs from raw document bytes."""
+        ...
