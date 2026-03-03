@@ -36,6 +36,9 @@ dev = [
 Homepage = "https://github.com/stranske/Template"
 Repository = "https://github.com/stranske/Template"
 
+[tool.setuptools.package-data]
+inv_man_intake = ["data/migrations/sql/*.sql"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
