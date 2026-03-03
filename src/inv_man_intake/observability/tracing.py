@@ -93,8 +93,19 @@ class SpanHandle:
         return self
 
     def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
-        self._event.ended_at = _utc_now_iso()
-        self._sink.on_span_end(self._event)
+        end_event = TraceEvent(
+            kind=self._event.kind,
+            span_id=self._event.span_id,
+            trace_id=self._event.trace_id,
+            run_id=self._event.run_id,
+            name=self._event.name,
+            parent_run_id=self._event.parent_run_id,
+            parent_span_id=self._event.parent_span_id,
+            metadata=self._event.metadata,
+            started_at=self._event.started_at,
+            ended_at=_utc_now_iso(),
+        )
+        self._sink.on_span_end(end_event)
 
 
 class RunHandle:
@@ -109,8 +120,19 @@ class RunHandle:
         return self
 
     def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
-        self._event.ended_at = _utc_now_iso()
-        self._sink.on_span_end(self._event)
+        end_event = TraceEvent(
+            kind=self._event.kind,
+            span_id=self._event.span_id,
+            trace_id=self._event.trace_id,
+            run_id=self._event.run_id,
+            name=self._event.name,
+            parent_run_id=self._event.parent_run_id,
+            parent_span_id=self._event.parent_span_id,
+            metadata=self._event.metadata,
+            started_at=self._event.started_at,
+            ended_at=_utc_now_iso(),
+        )
+        self._sink.on_span_end(end_event)
 
 
 class Tracer:

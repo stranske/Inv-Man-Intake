@@ -40,8 +40,9 @@ def test_tracer_enabled_mode_emits_start_and_end_events() -> None:
     start_event, end_event = sink.events
     assert start_event.trace_id == context.trace_id
     assert start_event.name == "store"
-    assert start_event.ended_at is not None
+    assert start_event.ended_at is None
     assert end_event.ended_at is not None
+    assert start_event.span_id == end_event.span_id
 
 
 def test_child_trace_context_preserves_trace_id_and_merges_tags() -> None:
@@ -67,7 +68,7 @@ def test_tracer_start_run_emits_run_event() -> None:
     assert run_start.kind == "run"
     assert run_start.trace_id == context.trace_id
     assert run_start.run_id is not None
-    assert run_start.ended_at is not None
+    assert run_start.ended_at is None
     assert run_end.kind == "run"
     assert run_end.run_id == run_start.run_id
     assert run_end.ended_at is not None
