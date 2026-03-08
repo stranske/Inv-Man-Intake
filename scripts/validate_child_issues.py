@@ -16,6 +16,7 @@ from urllib.request import Request, urlopen
 
 DEFAULT_OWNER = "stranske"
 DEFAULT_REPO = "Inv-Man-Intake"
+DEFAULT_EPIC_ISSUE = 7
 DEFAULT_START_ISSUE = 8
 DEFAULT_END_ISSUE = 15
 REQUIRED_SECTIONS = (
@@ -38,6 +39,16 @@ class IssueValidationResult:
         return not self.missing_sections
 
 
+@dataclass(frozen=True)
+class EpicTaskLinksValidationResult:
+    epic_issue_number: int
+    missing_issue_links: tuple[int, ...]
+
+    @property
+    def is_valid(self) -> bool:
+        return not self.missing_issue_links
+
+
 def _build_section_pattern(section: str) -> re.Pattern[str]:
     return re.compile(rf"^\s*##\s+{re.escape(section)}\s*$", re.MULTILINE)
 
@@ -49,6 +60,49 @@ def validate_issue_body(issue_number: int, issue_body: str) -> IssueValidationRe
         if not _build_section_pattern(section).search(issue_body)
     )
     return IssueValidationResult(issue_number=issue_number, missing_sections=missing)
+
+
+def _extract_tasks_section(markdown_body: str) -> str:
+    match = re.search(r"^\s*##\s+Tasks\s*$", markdown_body, re.MULTILINE)
+    if not match:
+        return ""
+
+    section_start = match.end()
+    section_end_match = re.search(r"^\s*##\s+\S", markdown_body[section_start:], re.MULTILINE)
+    if section_end_match:
+        section_end = section_start + section_end_match.start()
+        return markdown_body[section_start:section_end]
+
+    return markdown_body[section_start:]
+
+
+def _issue_url(owner: str, repo: str, issue_number: int) -> str:
+    return f"https://github.com/{owner}/{repo}/issues/{issue_number}"
+
+
+def _contains_exact_issue_url(body: str, owner: str, repo: str, issue_number: int) -> bool:
+    issue_url = _issue_url(owner, repo, issue_number)
+    return re.search(rf"{re.escape(issue_url)}(?!\d)", body) is not None
+
+
+def validate_epic_task_links(
+    epic_issue_number: int,
+    epic_issue_body: str,
+    owner: str,
+    repo: str,
+    start_issue: int,
+    end_issue: int,
+) -> EpicTaskLinksValidationResult:
+    tasks_section = _extract_tasks_section(epic_issue_body)
+    missing_issue_links = tuple(
+        issue_number
+        for issue_number in range(start_issue, end_issue + 1)
+        if not _contains_exact_issue_url(tasks_section, owner, repo, issue_number)
+    )
+    return EpicTaskLinksValidationResult(
+        epic_issue_number=epic_issue_number,
+        missing_issue_links=missing_issue_links,
+    )
 
 
 def _candidate_local_paths(issues_dir: Path, issue_number: int) -> tuple[Path, ...]:
@@ -131,6 +185,23 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=os.environ.get("GITHUB_TOKEN"),
         help="GitHub token (defaults to GITHUB_TOKEN env var if set).",
     )
+    parser.add_argument(
+        "--epic-issue",
+        type=int,
+        default=DEFAULT_EPIC_ISSUE,
+        help=(
+            "Epic issue number to validate for child issue links in the Tasks section "
+            f"(default: {DEFAULT_EPIC_ISSUE})."
+        ),
+    )
+    parser.add_argument(
+        "--check-epic-task-links",
+        action="store_true",
+        help=(
+            "Validate that the epic issue's ## Tasks section contains links to every child issue "
+            "in the configured issue range."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -173,6 +244,42 @@ def main(argv: list[str] | None = None) -> int:
             missing = ", ".join(failure.missing_sections)
             print(f"- #{failure.issue_number}: {missing}")
         return 1
+
+    if args.check_epic_task_links:
+        try:
+            if args.issues_dir:
+                epic_body = _load_issue_body_from_directory(args.issues_dir, args.epic_issue)
+            else:
+                epic_body = _load_issue_body_from_github(
+                    owner=args.owner,
+                    repo=args.repo,
+                    issue_number=args.epic_issue,
+                    token=args.token,
+                )
+        except (FileNotFoundError, ValueError, HTTPError, URLError) as exc:
+            print(f"ERROR: Unable to load epic issue #{args.epic_issue}: {exc}", file=sys.stderr)
+            return 2
+
+        epic_result = validate_epic_task_links(
+            epic_issue_number=args.epic_issue,
+            epic_issue_body=epic_body,
+            owner=args.owner,
+            repo=args.repo,
+            start_issue=args.start_issue,
+            end_issue=args.end_issue,
+        )
+        if not epic_result.is_valid:
+            missing_links = ", ".join(f"#{issue}" for issue in epic_result.missing_issue_links)
+            print(
+                f"\nEpic issue #{args.epic_issue} is missing child issue links in ## Tasks: "
+                f"{missing_links}"
+            )
+            return 1
+
+        print(
+            f"\nEpic issue #{args.epic_issue} contains child issue links in ## Tasks "
+            f"for #{args.start_issue}-#{args.end_issue}."
+        )
 
     print("\nAll issues contain required sections:")
     for issue_number in issue_numbers:
