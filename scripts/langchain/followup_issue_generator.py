@@ -492,6 +492,7 @@ class VerificationData:
     """Data extracted from verification comments."""
 
     provider_verdicts: dict[str, dict[str, Any]] = field(default_factory=dict)
+    non_pass_output: list[str] = field(default_factory=list)
     concerns: list[str] = field(default_factory=list)
     low_scores: dict[str, int] = field(default_factory=dict)
     iteration_count: int = 0
@@ -561,6 +562,15 @@ def extract_verification_data(comment_body: str) -> VerificationData:
             "verdict": verdict.strip(),
             "confidence": confidence,
         }
+        if verdict.strip().upper() != "PASS":
+            data.non_pass_output.append(
+                "Provider={provider}; Model={model}; Verdict={verdict}; Confidence={confidence}".format(
+                    provider=provider,
+                    model=model or "N/A",
+                    verdict=verdict.strip() or "UNKNOWN",
+                    confidence=confidence_text.strip() or "N/A",
+                )
+            )
 
     # Extract verdicts from provider detail sections as a fallback.
     current_provider = None
@@ -578,6 +588,10 @@ def extract_verification_data(comment_body: str) -> VerificationData:
                 current_provider, {"model": "", "verdict": verdict, "confidence": 0}
             )
             entry["verdict"] = verdict
+            if verdict.upper() != "PASS":
+                data.non_pass_output.append(
+                    f"Provider={current_provider}; Verdict={verdict}; Source=provider-details"
+                )
             continue
         confidence_match = re.search(r"-\s*\*\*Confidence:\*\*\s*([^\n]+)", line)
         if confidence_match:
@@ -687,6 +701,9 @@ def extract_verification_data(comment_body: str) -> VerificationData:
     ):
         data.missing_concerns = True
         data.concerns.append(MISSING_CONCERNS_MESSAGE)
+
+    # Keep evidence stable for issue comments and avoid duplicate entries.
+    data.non_pass_output = list(dict.fromkeys(data.non_pass_output))
 
     # Extract low scores (handle decimal scores like 6.0/10)
     score_pattern = re.compile(r"(\w+):\s*(\d+(?:\.\d+)?)/10", re.IGNORECASE)
@@ -1122,6 +1139,23 @@ def _append_advisory_notes(body: str, advisory_concerns: list[str]) -> str:
     return body.rstrip() + "\n" + "\n".join(notes_lines) + "\n"
 
 
+def _append_non_pass_evidence(body: str, non_pass_output: list[str]) -> str:
+    if not non_pass_output:
+        return body
+    if "## verify:compare Evidence" in body:
+        return body
+    evidence_lines = [
+        "",
+        "## verify:compare Evidence",
+        "<details>",
+        "<summary>Quoted non-PASS output extracted from verification logs</summary>",
+        "",
+    ]
+    evidence_lines.extend(f"- `{line}`" for line in non_pass_output)
+    evidence_lines.extend(["", "</details>"])
+    return body.rstrip() + "\n" + "\n".join(evidence_lines) + "\n"
+
+
 def generate_followup_issue(
     verification_data: VerificationData,
     original_issue: OriginalIssueData,
@@ -1353,6 +1387,7 @@ def _generate_with_llm(
     )
     issue_body = _strip_markdown_fence(issue_body)
     issue_body = _append_advisory_notes(issue_body, advisory_concerns)
+    issue_body = _append_non_pass_evidence(issue_body, verification_data.non_pass_output)
 
     # Append LangSmith trace URLs for observability (as HTML comments)
     trace_info = [
@@ -1532,9 +1567,11 @@ def _generate_without_llm(
     if needs_human:
         labels = ["needs-human"]
 
+    body = _append_non_pass_evidence("\n".join(body_parts), verification_data.non_pass_output)
+
     return FollowupIssue(
         title=title,
-        body="\n".join(body_parts),
+        body=body,
         labels=labels,
     )
 
