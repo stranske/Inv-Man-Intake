@@ -7,6 +7,7 @@ This catalog maps the issue #19 intake fixture corpus to expected registration o
 | Fixture | Input class | Expected outcome | Deterministic errors |
 | --- | --- | --- | --- |
 | `tests/fixtures/intake/pdf_primary_bundle.json` | `parseable_pdf_primary_only` | Accepted (`accepted=true`, `status=received`, `package_id=pkg_pdf_primary_001`, `file_count=1`) | None |
+| `tests/fixtures/intake/pptx_primary_bundle.json` | `parseable_pptx_primary_only` | Accepted (`accepted=true`, `status=received`, `package_id=pkg_pptx_primary_001`, `file_count=1`) | None |
 | `tests/fixtures/intake/pdf_primary_mixed_bundle.json` | `parseable_pdf_primary_mixed_secondary` | Accepted (`accepted=true`, `status=received`, `package_id=pkg_pdf_mixed_001`, `file_count=4`) | None |
 | `tests/fixtures/intake/pptx_primary_mixed_bundle.json` | `parseable_pptx_primary_mixed_secondary` | Accepted (`accepted=true`, `status=received`, `package_id=pkg_pptx_mixed_001`, `file_count=3`) | None |
 | `tests/fixtures/intake/malformed_missing_metadata.json` | `malformed_missing_required_metadata` | Rejected (`accepted=false`, `status=None`, `package_id=pkg_missing_metadata_001`) | `missing_required_metadata` (`metadata.fund_name`, `metadata.received_at`), `invalid_received_at` (`metadata.received_at`) |

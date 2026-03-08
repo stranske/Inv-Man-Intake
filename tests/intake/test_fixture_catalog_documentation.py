@@ -14,6 +14,12 @@ EXPECTED_ROWS: dict[str, tuple[str, ...]] = {
         "package_id=pkg_pdf_primary_001",
         "file_count=1",
     ),
+    "pptx_primary_bundle.json": (
+        "parseable_pptx_primary_only",
+        "accepted=true",
+        "package_id=pkg_pptx_primary_001",
+        "file_count=1",
+    ),
     "pdf_primary_mixed_bundle.json": (
         "parseable_pdf_primary_mixed_secondary",
         "accepted=true",

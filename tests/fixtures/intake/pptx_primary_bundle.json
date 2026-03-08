@@ -1,0 +1,16 @@
+{
+  "package_id": "pkg_pptx_primary_001",
+  "metadata": {
+    "firm_name": "Westhaven Capital",
+    "fund_name": "Westhaven Tactical Opportunities",
+    "received_at": "2026-03-05T14:10:00Z",
+    "source_channel": "portal_upload"
+  },
+  "files": [
+    {
+      "file_name": "westhaven_monthly_strategy.pptx",
+      "role": "investment_deck",
+      "source_ref": "portal:upload-3010"
+    }
+  ]
+}
