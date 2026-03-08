@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from inv_man_intake.observability import InMemoryTraceSink, Tracer
 from my_project.extraction_orchestrator import (
     ExtractionFailedError,
     ExtractionOrchestrator,
@@ -140,3 +141,66 @@ def test_guardrail_blocks_repeated_fallback_attempts() -> None:
             "failure_count": 2,
         }
     ]
+
+
+def test_orchestrator_emits_trace_events_for_primary_success() -> None:
+    sink = InMemoryTraceSink()
+    tracer = Tracer(enabled=True, sink=sink)
+
+    def primary(payload: dict[str, object]) -> dict[str, object]:
+        return {"id": payload["id"], "status": "primary-ok"}
+
+    def fallback(_: dict[str, object]) -> dict[str, object]:
+        return {"status": "fallback-ok"}
+
+    orchestrator = ExtractionOrchestrator(
+        primary_name="primary-provider",
+        primary_extractor=primary,
+        fallback_name="fallback-provider",
+        fallback_extractor=fallback,
+        tracer=tracer,
+    )
+
+    result = orchestrator.run({"id": "TRACE-1"})
+
+    assert result.resolved is True
+    assert [event.name for event in sink.events] == [
+        "extraction_orchestrator.run",
+        "extraction_orchestrator.primary_attempt",
+        "extraction_orchestrator.primary_attempt",
+        "extraction_orchestrator.run",
+    ]
+    assert sink.events[1].metadata["provider"] == "primary-provider"
+
+
+def test_orchestrator_emits_trace_events_for_fallback_attempt() -> None:
+    sink = InMemoryTraceSink()
+    tracer = Tracer(enabled=True, sink=sink)
+
+    def primary(_: dict[str, object]) -> dict[str, object]:
+        raise ExtractionFailedError("primary failed")
+
+    def fallback(payload: dict[str, object]) -> dict[str, object]:
+        return {"id": payload["id"], "status": "fallback-ok"}
+
+    orchestrator = ExtractionOrchestrator(
+        primary_name="primary-provider",
+        primary_extractor=primary,
+        fallback_name="fallback-provider",
+        fallback_extractor=fallback,
+        tracer=tracer,
+    )
+
+    result = orchestrator.run({"id": "TRACE-2"})
+
+    assert result.resolved is True
+    assert [event.name for event in sink.events] == [
+        "extraction_orchestrator.run",
+        "extraction_orchestrator.primary_attempt",
+        "extraction_orchestrator.primary_attempt",
+        "extraction_orchestrator.fallback_attempt",
+        "extraction_orchestrator.fallback_attempt",
+        "extraction_orchestrator.run",
+    ]
+    assert sink.events[1].metadata["provider"] == "primary-provider"
+    assert sink.events[3].metadata["provider"] == "fallback-provider"
