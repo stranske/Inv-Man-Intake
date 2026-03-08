@@ -45,13 +45,25 @@ def load_threshold_config(path: str | Path) -> ThresholdConfig:
         if line == "mandatory_fields:":
             in_mandatory_list = True
             continue
+        if line.startswith("mandatory_fields:"):
+            raise ValueError(
+                "unsupported mandatory_fields format: use block list form with one '- <field>' per line"
+            )
         if in_mandatory_list and line.startswith("-"):
             mandatory_fields.append(line.removeprefix("-").strip().strip('"'))
             continue
         if ":" in line:
             in_mandatory_list = False
             key, value = line.split(":", 1)
-            values[key.strip()] = value.strip().strip('"')
+            normalized_key = key.strip()
+            if normalized_key not in {
+                "field_auto_accept_min",
+                "key_field_confidence_min",
+                "document_key_field_coverage_min",
+                "mandatory_field_min",
+            }:
+                raise ValueError(f"unknown threshold config key: {normalized_key}")
+            values[normalized_key] = value.strip().strip('"')
 
     required = {
         "field_auto_accept_min",
@@ -91,7 +103,7 @@ def evaluate_thresholds(
         for key in key_fields
         if key in field_by_key and field_by_key[key].confidence >= config.key_field_confidence_min
     ]
-    key_field_coverage_ratio = len(eligible_key_fields) / len(key_fields) if key_fields else 1.0
+    key_field_coverage_ratio = len(eligible_key_fields) / len(key_fields) if key_fields else 0.0
     auto_pass_document = key_field_coverage_ratio >= config.document_key_field_coverage_min
 
     for mandatory_field in config.mandatory_fields:

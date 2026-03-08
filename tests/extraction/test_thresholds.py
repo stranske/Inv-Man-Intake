@@ -11,6 +11,8 @@ from inv_man_intake.extraction.confidence import (
 )
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
 
+_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "extraction_thresholds.yaml"
+
 
 def _result(*fields: tuple[str, float]) -> ExtractedDocumentResult:
     return ExtractedDocumentResult(
@@ -30,7 +32,7 @@ def _result(*fields: tuple[str, float]) -> ExtractedDocumentResult:
 
 
 def test_load_threshold_config_reads_policy_values() -> None:
-    config = load_threshold_config(Path("config/extraction_thresholds.yaml"))
+    config = load_threshold_config(_CONFIG_PATH)
 
     assert config.field_auto_accept_min == 0.85
     assert config.key_field_confidence_min == 0.75
@@ -40,7 +42,7 @@ def test_load_threshold_config_reads_policy_values() -> None:
 
 
 def test_evaluate_thresholds_boundary_values_are_deterministic() -> None:
-    config = load_threshold_config(Path("config/extraction_thresholds.yaml"))
+    config = load_threshold_config(_CONFIG_PATH)
     result = _result(
         ("terms.management_fee", 0.85),
         ("performance.net_return_1y", 0.75),
@@ -67,7 +69,7 @@ def test_evaluate_thresholds_boundary_values_are_deterministic() -> None:
 
 
 def test_evaluate_thresholds_escalates_when_mandatory_field_below_floor() -> None:
-    config = load_threshold_config(Path("config/extraction_thresholds.yaml"))
+    config = load_threshold_config(_CONFIG_PATH)
     result = _result(
         ("terms.management_fee", 0.95),
         ("performance.net_return_1y", 0.90),
@@ -90,7 +92,7 @@ def test_evaluate_thresholds_escalates_when_mandatory_field_below_floor() -> Non
 
 
 def test_evaluate_thresholds_escalates_when_mandatory_field_is_missing() -> None:
-    config = load_threshold_config(Path("config/extraction_thresholds.yaml"))
+    config = load_threshold_config(_CONFIG_PATH)
     result = _result(
         ("terms.management_fee", 0.95),
         ("performance.net_return_1y", 0.91),
@@ -110,7 +112,7 @@ def test_evaluate_thresholds_escalates_when_mandatory_field_is_missing() -> None
 
 
 def test_attach_threshold_summary_adds_document_policy_fields() -> None:
-    config = load_threshold_config(Path("config/extraction_thresholds.yaml"))
+    config = load_threshold_config(_CONFIG_PATH)
     result = _result(
         ("terms.management_fee", 0.95),
         ("performance.net_return_1y", 0.91),
@@ -131,3 +133,19 @@ def test_attach_threshold_summary_adds_document_policy_fields() -> None:
 
     assert by_key["confidence.document.auto_pass"].value == "true"
     assert by_key["confidence.document.escalation_reason"].value == "none"
+
+
+def test_evaluate_thresholds_empty_key_fields_forces_escalation() -> None:
+    config = load_threshold_config(_CONFIG_PATH)
+    result = _result(
+        ("terms.management_fee", 0.95),
+        ("performance.net_return_1y", 0.91),
+        ("operations.aum", 0.90),
+    )
+
+    decision = evaluate_thresholds(result=result, key_fields=(), config=config)
+
+    assert decision.key_field_coverage_ratio == 0.0
+    assert decision.auto_pass_document is False
+    assert decision.escalate is True
+    assert decision.escalation_reason == "low_key_field_coverage"

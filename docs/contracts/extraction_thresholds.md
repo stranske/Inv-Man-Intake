@@ -5,6 +5,11 @@ Issue: #22
 ## Config Source
 
 Thresholds are loaded from [`config/extraction_thresholds.yaml`](../../config/extraction_thresholds.yaml) using `load_threshold_config` in `src/inv_man_intake/extraction/confidence.py`.
+The loader intentionally supports a strict subset:
+- scalar numeric keys must be plain `key: value` entries
+- `mandatory_fields` must use block-list syntax (`mandatory_fields:` followed by `- field.key` lines)
+- inline list forms like `mandatory_fields: [a, b]` are rejected
+- unknown keys are rejected
 
 ## Threshold Semantics
 
