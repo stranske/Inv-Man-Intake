@@ -87,6 +87,8 @@ known-first-party = ["inv_man_intake", "my_project", "tools"]
 
 [tool.mypy]
 python_version = "3.11"
+files = ["src", "tests"]
+exclude = ["^scripts/", "^tools/"]
 strict = true
 warn_return_any = true
 warn_unused_configs = true
