@@ -68,13 +68,14 @@ def test_compute_metrics_handles_insufficient_windows_gracefully() -> None:
     metrics = compute_metrics(payload, benchmark_monthly=benchmark)
 
     assert metrics.annualized_volatility is None
-    assert metrics.max_drawdown == pytest.approx(0.0)
+    assert metrics.max_drawdown is None
     assert metrics.sharpe_ratio is None
     assert metrics.sortino_ratio is None
     assert metrics.information_ratio is None
     assert metrics.benchmark_correlation is None
     assert metrics.insufficient_data == (
         "annualized_volatility",
+        "max_drawdown",
         "sharpe_ratio",
         "sortino_ratio",
         "information_ratio",
