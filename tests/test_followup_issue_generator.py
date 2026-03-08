@@ -25,6 +25,9 @@ def test_extract_verification_data_captures_non_pass_rows() -> None:
     assert data.non_pass_output == [
         "Provider=anthropic; Model=claude-3.7; Verdict=CONCERNS; Confidence=74%"
     ]
+    assert data.non_pass_findings == [
+        "Provider=anthropic; Verdict=CONCERNS; Difference=Missing edge case"
+    ]
 
 
 def test_generate_followup_issue_includes_verify_compare_evidence_section() -> None:
@@ -50,5 +53,7 @@ def test_generate_followup_issue_includes_verify_compare_evidence_section() -> N
         use_llm=False,
     )
 
+    assert "## verify:compare Analysis" in followup.body
+    assert "Provider=openai; Verdict=FAIL; Difference=Regression in parsing" in followup.body
     assert "## verify:compare Evidence" in followup.body
     assert "Provider=openai; Model=gpt-5; Verdict=FAIL; Confidence=60%" in followup.body
