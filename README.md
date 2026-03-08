@@ -222,6 +222,7 @@ After 3 failures, keepalive pauses and adds `needs-human`:
 - [LangSmith Tracing](docs/runbooks/langsmith_tracing.md)
 - [Observability Smoke Tests](docs/runbooks/observability_smoke_tests.md)
 - [Data Fixtures and Schema Integrity](docs/runbooks/data_fixtures.md)
+- [Ingestion Lifecycle](docs/runbooks/ingestion_lifecycle.md)
 
 ## License
 
