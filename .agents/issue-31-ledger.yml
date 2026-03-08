@@ -1,0 +1,110 @@
+version: 1
+issue: 31
+base: main
+branch: codex/issue-31
+tasks:
+  - id: task-01
+    title: Create seed fixture files for firm entities under `tests/fixtures/data/firms.json`
+      with at least three representative firms
+    status: doing
+    started_at: '2026-03-08T23:27:30Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Create seed fixture files for fund entities under `tests/fixtures/data/funds.json`
+      with multiple funds linked to the firm fixtures
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Create seed fixture files for document entities under `tests/fixtures/data/documents.json`
+      with documents linked to both firms and funds
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Add test cases that verify foreign-key constraints are enforced when inserting
+      invalid references in `tests/data/test_schema_integrity.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Add test cases that verify orphan records are prevented when parent entities
+      are deleted in `tests/data/test_schema_integrity.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Add correction-history ordering and retrieval test cases in `tests/data/test_schema_integrity.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Add provenance pointer validity-constraint test cases in `tests/data/test_schema_integrity.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Write fixture reset/load runbook documentation in `docs/runbooks/data_fixtures.md`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Fixture data exists under `tests/fixtures/data/` and loads without errors,
+      inserting at least 3 firms, 5 funds, and 10 documents with all foreign-key relationships
+      intact
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: '`tests/data/test_schema_integrity.py` contains at least 5 test cases covering
+      firm-fund, fund-document, and correction-history foreign-key violations, with
+      each test demonstrating failure when constraints are violated'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: '`tests/data/test_schema_integrity.py` contains tests that verify correction
+      histories are retrieved in chronological order and that the most recent correction
+      is identifiable for any given entity'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: '`tests/data/test_schema_integrity.py` contains tests that fail when provenance
+      pointer validity constraints are violated'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: '`docs/runbooks/data_fixtures.md` exists with step-by-step commands to
+      drop/recreate the test database, load all fixture files, and verify successful
+      load with row count queries'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
