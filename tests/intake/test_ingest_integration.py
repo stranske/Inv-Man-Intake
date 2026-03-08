@@ -27,6 +27,19 @@ def test_pdf_primary_bundle_registers_successfully() -> None:
     assert record.file_count == 1
 
 
+def test_pdf_mixed_bundle_registers_successfully() -> None:
+    service = IngestionService()
+
+    result = _register("pdf_primary_mixed_bundle.json", service)
+
+    assert result.accepted is True
+    assert result.package_id == "pkg_pdf_mixed_001"
+    assert result.status == "received"
+    assert result.errors == ()
+    record = service.get_record("pkg_pdf_mixed_001")
+    assert record.file_count == 4
+
+
 def test_pptx_mixed_bundle_registers_successfully() -> None:
     service = IngestionService()
 
