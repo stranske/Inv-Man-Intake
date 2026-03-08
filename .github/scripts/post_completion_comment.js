@@ -121,6 +121,14 @@ function buildCompletionComment(tasks, acceptance, metadata = {}) {
     }
     lines.push('');
   }
+
+  const disposition = String(metadata.disposition || '').trim();
+  if (disposition) {
+    lines.push('## Disposition');
+    lines.push('');
+    lines.push(disposition);
+    lines.push('');
+  }
   
   lines.push('<details>');
   lines.push('<summary>About this comment</summary>');
@@ -192,13 +200,17 @@ async function postCompletionComment({ github, context, core, inputs }) {
   // Extract checked items from Tasks and Acceptance Criteria sections
   const tasksSection = extractSection(content, 'Tasks');
   const acceptanceSection = extractSection(content, 'Acceptance [Cc]riteria');
+  const dispositionSection = extractSection(content, 'Disposition');
   
   const completedTasks = extractCheckedItems(tasksSection);
   const completedAcceptance = extractCheckedItems(acceptanceSection);
+  const hasDisposition = String(dispositionSection || '').trim().length > 0;
   
-  core.info(`Found ${completedTasks.length} completed task(s) and ${completedAcceptance.length} acceptance criteria`);
+  core.info(
+    `Found ${completedTasks.length} completed task(s), ${completedAcceptance.length} acceptance criteria, disposition: ${hasDisposition ? 'yes' : 'no'}`
+  );
 
-  if (completedTasks.length === 0 && completedAcceptance.length === 0) {
+  if (completedTasks.length === 0 && completedAcceptance.length === 0 && !hasDisposition) {
     core.info('No new completions detected, skipping completion comment.');
     return { posted: false, reason: 'no-completions' };
   }
@@ -207,6 +219,7 @@ async function postCompletionComment({ github, context, core, inputs }) {
   const commentBody = buildCompletionComment(completedTasks, completedAcceptance, {
     iteration,
     commitSha,
+    disposition: dispositionSection,
   });
   
   const { owner, repo } = context.repo;
