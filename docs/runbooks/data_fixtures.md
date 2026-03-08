@@ -1,31 +1,106 @@
-# Data Fixture Runbook
+# Data Fixture Reset and Load Runbook
 
-This runbook documents the repeatable fixture workflow for schema integrity tests.
+This runbook resets a local SQLite test database, loads data fixtures, and verifies row counts.
 
-## Fixture Bundle
+## Prerequisites
 
-- Path: `tests/fixtures/data/core_seed_bundle.json`
-- Coverage:
-  - Multiple firms, funds, and documents
-  - Correction history entries tied to provenance pointers
+- Run commands from the repository root.
+- Use Python 3.11+ with project dependencies installed.
 
-## Load + Reset Workflow
+## Fixture Files
 
-1. Apply core schema migration (`apply_core_schema`) on a sqlite connection.
-2. Load fixture JSON with `load_seed_fixture`.
-3. Insert seed rows with `load_core_seed_rows`.
-4. Reset tables with `reset_core_seed_tables` before reloading.
+- `tests/fixtures/data/firms.json`
+- `tests/fixtures/data/funds.json`
+- `tests/fixtures/data/documents.json`
+- `tests/fixtures/data/core_seed_bundle.json`
 
-Reference implementation:
-- `src/inv_man_intake/data/fixtures.py`
-- `tests/data/test_schema_integrity.py::test_seed_fixture_reset_supports_repeatable_loads`
+## 1. Drop/Recreate the Test Database
 
-## Contract Checks
+```bash
+rm -f /tmp/inv_man_fixtures.db
+python - <<'PY'
+import sqlite3
+from inv_man_intake.data.migrations.core_schema import apply_core_schema
+from inv_man_intake.data.migrations.provenance_history import apply_provenance_history_schema
 
-- Foreign-key integrity and orphan prevention:
-  - `tests/data/test_schema_integrity.py::test_integrity_checks_reject_orphaned_rows`
-- Correction history ordering:
-  - `tests/data/test_schema_integrity.py::test_correction_history_returns_ordered_events`
-- Provenance pointer validity:
-  - `tests/data/test_schema_integrity.py::test_provenance_pointer_validation_accepts_known_document_fields`
-  - `tests/data/test_schema_integrity.py::test_provenance_pointer_validation_flags_unknown_targets`
+conn = sqlite3.connect("/tmp/inv_man_fixtures.db")
+conn.execute("PRAGMA foreign_keys = ON")
+apply_core_schema(conn)
+apply_provenance_history_schema(conn)
+conn.close()
+print("database recreated: /tmp/inv_man_fixtures.db")
+PY
+```
+
+## 2. Load All Fixture Files
+
+```bash
+python - <<'PY'
+import json
+import sqlite3
+from pathlib import Path
+from inv_man_intake.data.fixtures import load_core_seed_rows
+
+fixtures_dir = Path("tests/fixtures/data")
+fixture = {
+    "firms": json.loads((fixtures_dir / "firms.json").read_text(encoding="utf-8")),
+    "funds": json.loads((fixtures_dir / "funds.json").read_text(encoding="utf-8")),
+    "documents": json.loads((fixtures_dir / "documents.json").read_text(encoding="utf-8")),
+}
+
+conn = sqlite3.connect("/tmp/inv_man_fixtures.db")
+conn.execute("PRAGMA foreign_keys = ON")
+load_core_seed_rows(conn, fixture)
+conn.close()
+print("fixtures loaded into /tmp/inv_man_fixtures.db")
+PY
+```
+
+## 3. Verify Successful Load with Row Counts
+
+```bash
+python - <<'PY'
+import sqlite3
+
+conn = sqlite3.connect("/tmp/inv_man_fixtures.db")
+counts = {
+    "firms": conn.execute("SELECT COUNT(*) FROM firms").fetchone()[0],
+    "funds": conn.execute("SELECT COUNT(*) FROM funds").fetchone()[0],
+    "documents": conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0],
+}
+conn.close()
+
+for table, count in counts.items():
+    print(f"{table}: {count}")
+
+assert counts["firms"] >= 3
+assert counts["funds"] >= 5
+assert counts["documents"] >= 10
+print("row-count verification passed")
+PY
+```
+
+## 4. Optional: Reset and Reload in Place
+
+```bash
+python - <<'PY'
+import json
+import sqlite3
+from pathlib import Path
+from inv_man_intake.data.fixtures import load_core_seed_rows, reset_core_seed_tables
+
+fixtures_dir = Path("tests/fixtures/data")
+fixture = {
+    "firms": json.loads((fixtures_dir / "firms.json").read_text(encoding="utf-8")),
+    "funds": json.loads((fixtures_dir / "funds.json").read_text(encoding="utf-8")),
+    "documents": json.loads((fixtures_dir / "documents.json").read_text(encoding="utf-8")),
+}
+
+conn = sqlite3.connect("/tmp/inv_man_fixtures.db")
+conn.execute("PRAGMA foreign_keys = ON")
+reset_core_seed_tables(conn)
+load_core_seed_rows(conn, fixture)
+conn.close()
+print("reset + reload complete")
+PY
+```

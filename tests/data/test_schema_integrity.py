@@ -34,9 +34,9 @@ def test_seed_fixtures_load_into_core_schema() -> None:
 
     load_core_seed_rows(conn, fixture)
 
-    assert conn.execute("SELECT COUNT(*) FROM firms").fetchone()[0] == 2
-    assert conn.execute("SELECT COUNT(*) FROM funds").fetchone()[0] == 2
-    assert conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0] == 2
+    assert conn.execute("SELECT COUNT(*) FROM firms").fetchone()[0] == 3
+    assert conn.execute("SELECT COUNT(*) FROM funds").fetchone()[0] == 5
+    assert conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0] == 10
 
 
 def test_seed_fixture_reset_supports_repeatable_loads() -> None:
@@ -48,7 +48,9 @@ def test_seed_fixture_reset_supports_repeatable_loads() -> None:
     reset_core_seed_tables(conn)
     load_core_seed_rows(conn, fixture)
 
-    assert conn.execute("SELECT COUNT(*) FROM firms").fetchone()[0] == 2
+    assert conn.execute("SELECT COUNT(*) FROM firms").fetchone()[0] == 3
+    assert conn.execute("SELECT COUNT(*) FROM funds").fetchone()[0] == 5
+    assert conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0] == 10
 
 
 def test_integrity_checks_reject_orphaned_rows() -> None:

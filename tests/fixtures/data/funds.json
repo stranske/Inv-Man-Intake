@@ -1,0 +1,42 @@
+[
+  {
+    "fund_id": "fund_alpha_ln",
+    "firm_id": "firm_alpha",
+    "fund_name": "Alpha Long/Neutral",
+    "strategy": "long_short_equity",
+    "asset_class": "equity",
+    "created_at": "2026-03-01T09:10:00Z"
+  },
+  {
+    "fund_id": "fund_alpha_mn",
+    "firm_id": "firm_alpha",
+    "fund_name": "Alpha Market Neutral",
+    "strategy": "market_neutral",
+    "asset_class": "equity",
+    "created_at": "2026-03-01T09:11:00Z"
+  },
+  {
+    "fund_id": "fund_bravo_cr",
+    "firm_id": "firm_bravo",
+    "fund_name": "Bravo Credit Relative Value",
+    "strategy": "relative_value",
+    "asset_class": "credit",
+    "created_at": "2026-03-01T09:12:00Z"
+  },
+  {
+    "fund_id": "fund_bravo_di",
+    "firm_id": "firm_bravo",
+    "fund_name": "Bravo Distressed Income",
+    "strategy": "distressed",
+    "asset_class": "credit",
+    "created_at": "2026-03-01T09:13:00Z"
+  },
+  {
+    "fund_id": "fund_charlie_ma",
+    "firm_id": "firm_charlie",
+    "fund_name": "Charlie Macro Absolute",
+    "strategy": "global_macro",
+    "asset_class": "multi_asset",
+    "created_at": "2026-03-01T09:14:00Z"
+  }
+]
