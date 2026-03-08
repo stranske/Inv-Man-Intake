@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
 from .workflow_validation import OwnerRole, ValidationQueueRow, ValidationState
@@ -81,8 +81,8 @@ def build_query_from_params(params: Mapping[str, str]) -> ValidationQueueQuery:
     role_tokens = _split_csv(params.get("owner_role"))
     owner_roles = tuple(_parse_owner_role(token) for token in role_tokens)
 
-    limit = int(params.get("limit", "50"))
-    offset = int(params.get("offset", "0"))
+    limit = _parse_int_param(params, "limit", 50)
+    offset = _parse_int_param(params, "offset", 0)
 
     sort_by = _parse_sort_by(params.get("sort_by", "updated_at"))
     sort_direction = _parse_sort_direction(params.get("sort_direction", "desc"))
@@ -103,6 +103,13 @@ def build_query_from_params(params: Mapping[str, str]) -> ValidationQueueQuery:
 
 
 def _validate_query(query: ValidationQueueQuery) -> None:
+    for state in query.states:
+        _parse_state(state)
+    for owner_role in query.owner_roles:
+        _parse_owner_role(owner_role)
+    _parse_sort_by(query.sort_by)
+    _parse_sort_direction(query.sort_direction)
+
     if query.limit <= 0:
         raise ValueError("limit must be greater than zero")
     if query.limit > 500:
@@ -152,10 +159,26 @@ def _sort_key(row: ValidationQueueRow, sort_by: QueueSortBy) -> tuple[object, ..
 
 
 def _parse_iso(value: str) -> datetime:
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = f"{normalized[:-1]}+00:00"
     try:
-        return datetime.fromisoformat(value)
+        parsed = datetime.fromisoformat(normalized)
     except ValueError as exc:
         raise ValueError(f"Invalid ISO timestamp: {value}") from exc
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _parse_int_param(params: Mapping[str, str], name: str, default: int) -> int:
+    raw = params.get(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer") from exc
 
 
 def _split_csv(value: str | None) -> tuple[str, ...]:

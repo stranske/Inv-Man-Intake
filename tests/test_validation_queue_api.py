@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from inv_man_intake.validation_queue_api import (
@@ -10,6 +12,7 @@ from inv_man_intake.validation_queue_api import (
     list_validation_queue,
 )
 from inv_man_intake.workflow_validation import (
+    ValidationQueueRow,
     claim_for_analyst_triage,
     create_queue_item,
     to_queue_row,
@@ -18,7 +21,7 @@ from inv_man_intake.workflow_validation import (
 )
 
 
-def _sample_rows() -> tuple:
+def _sample_rows() -> tuple[ValidationQueueRow, ...]:
     first = create_queue_item(
         item_id="queue-1",
         package_id="pkg-101",
@@ -103,6 +106,26 @@ def test_pagination_applies_after_sorting() -> None:
     assert page.items[0].item_id in {"queue-2", "queue-3"}
 
 
+def test_timestamp_filters_accept_z_suffix_and_naive_timestamps() -> None:
+    rows = _sample_rows()
+    rows = (
+        replace(rows[0], updated_at="2026-03-07T10:00:00+00:00"),
+        replace(rows[1], updated_at="2026-03-07T11:00:00+00:00"),
+        replace(rows[2], updated_at="2026-03-07T12:00:00+00:00"),
+    )
+
+    page = list_validation_queue(
+        rows,
+        query=ValidationQueueQuery(
+            updated_after="2026-03-07T11:30:00Z",
+            updated_before="2026-03-07T12:30:00",
+        ),
+    )
+
+    assert page.total == 1
+    assert page.items[0].item_id == "queue-3"
+
+
 def test_rejects_invalid_query_limits() -> None:
     rows = _sample_rows()
 
@@ -143,3 +166,21 @@ def test_build_query_from_params_parses_lists_and_paging() -> None:
 def test_build_query_rejects_invalid_state() -> None:
     with pytest.raises(ValueError, match="Invalid state"):
         build_query_from_params({"state": "unknown"})
+
+
+def test_build_query_rejects_non_integer_paging_params() -> None:
+    with pytest.raises(ValueError, match="limit must be an integer"):
+        build_query_from_params({"limit": "five"})
+
+    with pytest.raises(ValueError, match="offset must be an integer"):
+        build_query_from_params({"offset": "start"})
+
+
+def test_direct_query_validation_rejects_invalid_sort_and_state() -> None:
+    rows = _sample_rows()
+
+    with pytest.raises(ValueError, match="Invalid state"):
+        list_validation_queue(rows, query=ValidationQueueQuery(states=("invalid",)))  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="Invalid sort_by"):
+        list_validation_queue(rows, query=ValidationQueueQuery(sort_by="age"))  # type: ignore[arg-type]
