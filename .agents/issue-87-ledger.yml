@@ -1,0 +1,123 @@
+version: 1
+issue: 87
+base: main
+branch: codex/issue-87
+tasks:
+  - id: task-01
+    title: 'Locate the verify:compare non-PASS output from PR #57 and identify the
+      specific concerns raised'
+    status: doing
+    started_at: '2026-03-08T23:44:56Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Create a `## Disposition` section in the PR #57 completion audit record'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Add a link to the relevant verify:compare output or log file in the disposition
+      section
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Analyze the verify:compare output to determine if the concerns indicate
+      actual issues requiring fixes
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: If a fix is required, implement the bounded follow-up change(s) and merge
+      them
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: If a fix is required, add a link to the merged follow-up PR in the disposition
+      note
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Update the verify:compare outcome note to link to the final disposition
+      and/or the follow-up fix location (PR/commit/issue)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: '**[HUMAN DECISION REQUIRED]** Review the verify:compare output analysis
+      and determine if concerns are warranted (disposition path a or b)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: '**[HUMAN INPUT REQUIRED]** If concerns are not warranted, document the
+      rationale in a `### Rationale` subsection with at least 3 sentences explaining
+      why the verify:compare concerns do not require action'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: '**[HUMAN INPUT REQUIRED]** If concerns are warranted, describe the specific
+      bounded follow-up fix to be implemented in the disposition note'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: 'The PR #57 completion audit record contains a `## Disposition` section'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: The disposition section includes a direct link to the verify:compare output
+      file or log entry
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: If a fix was implemented, the disposition note links to the merged follow-up
+      PR
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: If no fix was required, the disposition note contains a `### Rationale`
+      subsection with at least 3 sentences explaining why concerns are not warranted
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: The verify:compare outcome note includes a link to the disposition section
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
