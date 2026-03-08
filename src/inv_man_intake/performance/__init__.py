@@ -7,6 +7,7 @@ from inv_man_intake.performance.contracts import (
     validate_payload,
 )
 from inv_man_intake.performance.ingest import load_document_timeseries, load_xlsx_timeseries
+from inv_man_intake.performance.metrics import PerformanceMetrics, compute_metrics
 from inv_man_intake.performance.normalize import (
     BenchmarkAlignmentPoint,
     CanonicalMonthPoint,
@@ -22,11 +23,13 @@ __all__ = [
     "BenchmarkAlignmentPoint",
     "CanonicalMonthPoint",
     "NormalizedPerformancePayload",
+    "PerformanceMetrics",
     "PerformancePayload",
     "PerformancePoint",
     "PerformanceSeries",
     "build_benchmark_alignment",
     "correlation_inputs",
+    "compute_metrics",
     "detect_missing_months",
     "load_document_timeseries",
     "load_xlsx_timeseries",
