@@ -56,3 +56,14 @@ def test_core_migration_docs_match_rollback_order_and_pragmas() -> None:
     assert "PRAGMA foreign_keys = ON" in down_sql_text
     assert "PRAGMA foreign_keys = OFF" in doc_text
     assert "PRAGMA foreign_keys = ON" in doc_text
+
+
+def test_core_schema_contract_includes_optional_field_extension_notes() -> None:
+    core_schema_doc_text = _read_text(Path("docs/contracts/core_schema.md"))
+
+    assert "Developer Notes: Optional Field Extension Strategy" in core_schema_doc_text
+    assert "ALTER TABLE ... ADD COLUMN" in core_schema_doc_text
+    assert "nullable first" in core_schema_doc_text
+    assert "tolerant of `NULL`" in core_schema_doc_text
+    assert "deterministic ordering" in core_schema_doc_text
+    assert "repository tests" in core_schema_doc_text
