@@ -97,7 +97,10 @@ class IngestionService:
             raise KeyError(f"unknown package_id={package_id}") from exc
 
     def get_events(self, package_id: str) -> tuple[IngestEvent, ...]:
-        return tuple(self._events.get(package_id, []))
+        try:
+            return tuple(self._events[package_id])
+        except KeyError as exc:
+            raise KeyError(f"unknown package_id={package_id}") from exc
 
     def _transition(
         self,

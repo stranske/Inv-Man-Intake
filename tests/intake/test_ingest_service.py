@@ -101,3 +101,29 @@ def test_event_order_is_preserved() -> None:
     assert len(events) == 2
     assert events[0].to_status == "received"
     assert events[1].to_status == "escalated"
+
+
+def test_receive_package_rejects_duplicate_package_id() -> None:
+    service = IngestionService()
+    service.receive_package(
+        package_id="pkg_dup",
+        firm_id="firm_5",
+        fund_id="fund_5",
+        files=_files(),
+        at="2026-03-01T12:30:00Z",
+    )
+
+    with pytest.raises(ValueError, match="already exists"):
+        service.receive_package(
+            package_id="pkg_dup",
+            firm_id="firm_5",
+            fund_id="fund_5",
+            files=_files(),
+            at="2026-03-01T12:31:00Z",
+        )
+
+
+def test_get_events_unknown_package_raises_key_error() -> None:
+    service = IngestionService()
+    with pytest.raises(KeyError, match="unknown package_id=missing"):
+        service.get_events("missing")
