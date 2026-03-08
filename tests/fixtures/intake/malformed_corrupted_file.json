@@ -1,0 +1,15 @@
+{
+  "package_id": "pkg_corrupted_001",
+  "metadata": {
+    "firm_name": "CorruptCo",
+    "fund_name": "Broken Data Fund",
+    "received_at": "2026-03-03T12:45:00Z",
+    "source_channel": "email"
+  },
+  "files": [
+    {
+      "file_name": "broken_file.pdf",
+      "role": "investment_deck",
+      "source_ref": "email:msg-404"
+    }
+  ]

@@ -1,0 +1,26 @@
+{
+  "package_id": "pkg_pptx_mixed_001",
+  "metadata": {
+    "firm_name": "Harborline Partners",
+    "fund_name": "Harborline Fund II",
+    "received_at": "2026-03-01T10:15:00Z",
+    "source_channel": "portal_upload"
+  },
+  "files": [
+    {
+      "file_name": "harborline_strategy_review.pptx",
+      "role": "investment_deck",
+      "source_ref": "portal:upload-2001"
+    },
+    {
+      "file_name": "harborline_performance_snapshot.xlsx",
+      "role": "performance_track_record",
+      "source_ref": "portal:upload-2001"
+    },
+    {
+      "file_name": "manager_cover_note.txt",
+      "role": "manager_note",
+      "source_ref": "portal:upload-2001"
+    }
+  ]
+}

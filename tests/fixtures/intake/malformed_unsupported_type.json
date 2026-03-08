@@ -1,0 +1,16 @@
+{
+  "package_id": "pkg_unsupported_type_001",
+  "metadata": {
+    "firm_name": "Bridgepoint Multi-Strategy",
+    "fund_name": "Bridgepoint Drawdown Sleeve",
+    "received_at": "2026-03-02T11:30:00Z",
+    "source_channel": "data_room"
+  },
+  "files": [
+    {
+      "file_name": "bridgepoint_archive.zip",
+      "role": "supporting_documents",
+      "source_ref": "room:dataset-889"
+    }
+  ]
+}

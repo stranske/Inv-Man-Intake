@@ -1,0 +1,31 @@
+{
+  "package_id": "pkg_pdf_mixed_001",
+  "metadata": {
+    "firm_name": "Summit Arc Advisors",
+    "fund_name": "Summit Arc Special Situations",
+    "received_at": "2026-03-04T08:20:00Z",
+    "source_channel": "internal_forward"
+  },
+  "files": [
+    {
+      "file_name": "summit_arc_investment_update.pdf",
+      "role": "investment_deck",
+      "source_ref": "email:fwd-7421"
+    },
+    {
+      "file_name": "summit_arc_track_record.xlsx",
+      "role": "performance_track_record",
+      "source_ref": "email:fwd-7421"
+    },
+    {
+      "file_name": "summit_arc_due_diligence.docx",
+      "role": "due_diligence_response",
+      "source_ref": "email:fwd-7421"
+    },
+    {
+      "file_name": "summit_arc_manager_note.eml",
+      "role": "manager_note",
+      "source_ref": "email:fwd-7421"
+    }
+  ]
+}
