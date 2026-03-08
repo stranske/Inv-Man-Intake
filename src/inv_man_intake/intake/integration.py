@@ -142,7 +142,7 @@ def register_intake_bundle_file(
                 IntakeValidationIssue(
                     code="bundle_read_error",
                     path=str(bundle_path),
-                    message=str(exc),
+                    message=_stable_read_error_message(exc),
                 ),
             ),
             warnings=(),
@@ -195,3 +195,14 @@ def _stable_identifier(preferred: Any, fallback: Any, prefix: str) -> str:
     fallback_value = _as_non_empty_str(fallback).lower()
     slug = re.sub(r"[^a-z0-9]+", "_", fallback_value).strip("_")
     return f"{prefix}_{slug or 'unknown'}"
+
+
+def _stable_read_error_message(exc: OSError) -> str:
+    """Normalize OSError text for deterministic malformed-bundle output."""
+    if isinstance(exc, FileNotFoundError):
+        return "bundle file not found"
+    if isinstance(exc, PermissionError):
+        return "bundle file is not readable"
+    if isinstance(exc, IsADirectoryError):
+        return "bundle path must reference a file"
+    return "failed to read bundle file"

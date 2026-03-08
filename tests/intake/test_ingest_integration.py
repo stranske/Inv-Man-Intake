@@ -143,7 +143,7 @@ def test_missing_bundle_file_rejected_with_bundle_read_error() -> None:
     assert len(result.errors) == 1
     assert result.errors[0].code == "bundle_read_error"
     assert result.errors[0].path == str(_FIXTURE_ROOT / "missing_bundle.json")
-    assert "No such file or directory" in result.errors[0].message
+    assert result.errors[0].message == "bundle file not found"
 
 
 def test_non_object_bundle_file_rejected_with_invalid_structure(tmp_path: Path) -> None:
