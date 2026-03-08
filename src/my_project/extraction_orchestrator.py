@@ -6,6 +6,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from inv_man_intake.observability import TraceContext, Tracer, new_trace_context
+
 Extractor = Callable[[dict[str, Any]], dict[str, Any]]
 MetricsHook = Callable[[dict[str, Any]], None]
 
@@ -63,38 +65,94 @@ class ExtractionOrchestrator:
         fallback_extractor: Extractor,
         policy: RetryPolicy | None = None,
         metrics_hook: MetricsHook | None = None,
+        tracer: Tracer | None = None,
     ) -> None:
         self._primary = _Provider(name=primary_name, extractor=primary_extractor)
         self._fallback = _Provider(name=fallback_name, extractor=fallback_extractor)
         self._policy = policy or RetryPolicy()
         self._metrics_hook = metrics_hook
+        self._tracer = tracer or Tracer(enabled=False)
 
-    def run(self, payload: dict[str, Any]) -> OrchestrationResult:
+    def run(
+        self, payload: dict[str, Any], trace_context: TraceContext | None = None
+    ) -> OrchestrationResult:
         attempts: list[AttemptRecord] = []
         retry_count = 0
         fallback_attempts = 0
         last_error: str | None = None
+        context = trace_context or new_trace_context(tags={"pipeline_stage": "extract"})
 
-        primary_result, primary_error = self._attempt(self._primary, payload)
-        attempts.append(
-            AttemptRecord(
-                provider=self._primary.name, success=primary_result is not None, error=primary_error
+        with self._tracer.start_run(
+            name="extraction_orchestrator.run",
+            context=context,
+            metadata={"item_id": payload.get("id")},
+        ):
+            with self._tracer.start_span(
+                name="extraction_orchestrator.primary_attempt",
+                context=context,
+                metadata={"provider": self._primary.name},
+            ):
+                primary_result, primary_error = self._attempt(self._primary, payload)
+            attempts.append(
+                AttemptRecord(
+                    provider=self._primary.name,
+                    success=primary_result is not None,
+                    error=primary_error,
+                )
             )
-        )
-        if primary_result is not None:
-            result = OrchestrationResult(
-                resolved=True,
-                data=primary_result,
-                provider_used=self._primary.name,
-                attempts=attempts,
-                retry_count=retry_count,
-                failure_count=0,
-            )
-            self._emit_metrics(result)
-            return result
-        last_error = primary_error
+            if primary_result is not None:
+                result = OrchestrationResult(
+                    resolved=True,
+                    data=primary_result,
+                    provider_used=self._primary.name,
+                    attempts=attempts,
+                    retry_count=retry_count,
+                    failure_count=0,
+                )
+                self._emit_metrics(result)
+                return result
+            last_error = primary_error
 
-        if not self._can_attempt_fallback(attempts=attempts, fallback_attempts=fallback_attempts):
+            if not self._can_attempt_fallback(
+                attempts=attempts, fallback_attempts=fallback_attempts
+            ):
+                result = self._escalate(
+                    payload=payload,
+                    attempts=attempts,
+                    retry_count=retry_count,
+                    reason=last_error,
+                )
+                self._emit_metrics(result)
+                return result
+
+            with self._tracer.start_span(
+                name="extraction_orchestrator.fallback_attempt",
+                context=context,
+                metadata={"provider": self._fallback.name},
+            ):
+                fallback_result, fallback_error = self._attempt(self._fallback, payload)
+            fallback_attempts += 1
+            retry_count += 1
+            attempts.append(
+                AttemptRecord(
+                    provider=self._fallback.name,
+                    success=fallback_result is not None,
+                    error=fallback_error,
+                )
+            )
+            if fallback_result is not None:
+                result = OrchestrationResult(
+                    resolved=True,
+                    data=fallback_result,
+                    provider_used=self._fallback.name,
+                    attempts=attempts,
+                    retry_count=retry_count,
+                    failure_count=1,
+                )
+                self._emit_metrics(result)
+                return result
+
+            last_error = fallback_error
             result = self._escalate(
                 payload=payload,
                 attempts=attempts,
@@ -103,38 +161,6 @@ class ExtractionOrchestrator:
             )
             self._emit_metrics(result)
             return result
-
-        fallback_result, fallback_error = self._attempt(self._fallback, payload)
-        fallback_attempts += 1
-        retry_count += 1
-        attempts.append(
-            AttemptRecord(
-                provider=self._fallback.name,
-                success=fallback_result is not None,
-                error=fallback_error,
-            )
-        )
-        if fallback_result is not None:
-            result = OrchestrationResult(
-                resolved=True,
-                data=fallback_result,
-                provider_used=self._fallback.name,
-                attempts=attempts,
-                retry_count=retry_count,
-                failure_count=1,
-            )
-            self._emit_metrics(result)
-            return result
-
-        last_error = fallback_error
-        result = self._escalate(
-            payload=payload,
-            attempts=attempts,
-            retry_count=retry_count,
-            reason=last_error,
-        )
-        self._emit_metrics(result)
-        return result
 
     def _can_attempt_fallback(
         self, *, attempts: list[AttemptRecord], fallback_attempts: int
