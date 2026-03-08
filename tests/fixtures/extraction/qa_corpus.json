@@ -1,0 +1,37 @@
+{
+  "fixtures": [
+    {
+      "document_id": "qa-doc-dense-table",
+      "scenario": "dense-table-manager-report",
+      "content": "Strategy: Global Multi-Asset Income\nBenchmark: Bloomberg US Aggregate\nManagement Fee: 1.50%\nPerformance Fee: 15%\nTable Snapshot\nYear Return AUM\n2023 8.1 100",
+      "expected_fields": {
+        "strategy.name": "Global Multi-Asset Income",
+        "benchmark.name": "Bloomberg US Aggregate",
+        "terms.management_fee": "1.50%",
+        "terms.performance_fee": "15%"
+      }
+    },
+    {
+      "document_id": "qa-doc-scan-noise",
+      "scenario": "scan-with-ocr-noise",
+      "content": "STRATEGY - Defensive Credit Alpha\nBENCHMARK - ICE BofA US Corp\nmanagement fee : 0.95%\nperfo rmance fee : 12%\n(ocr artifacts and line breaks)",
+      "expected_fields": {
+        "strategy.name": "Defensive Credit Alpha",
+        "benchmark.name": "ICE BofA US Corp",
+        "terms.management_fee": "0.95%",
+        "terms.performance_fee": "12%"
+      }
+    },
+    {
+      "document_id": "qa-doc-mixed-layout-slide",
+      "scenario": "mixed-layout-slide-content",
+      "content": "Fund update slide\nBenchmark: MSCI ACWI\nStrategy: Global Equity Long Short\nManagement Fee-2.00%\nPerformance Fee-20%\nImage callout: portfolio contributors",
+      "expected_fields": {
+        "strategy.name": "Global Equity Long Short",
+        "benchmark.name": "MSCI ACWI",
+        "terms.management_fee": "2.00%",
+        "terms.performance_fee": "20%"
+      }
+    }
+  ]
+}
