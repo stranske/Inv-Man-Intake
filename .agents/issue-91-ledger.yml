@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Review the verify:compare non-PASS output from PR #51 to determine if
       the concerns are warranted'
-    status: doing
+    status: done
     started_at: '2026-03-08T23:43:47Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-08T23:44:00Z'
+    commit: 2baedfaa282dfcb03538e9f6dcb5603acf2a8c14
     notes: []
   - id: task-02
     title: Write a disposition note documenting either the rationale for why concerns
