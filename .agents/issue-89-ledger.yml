@@ -1,0 +1,116 @@
+version: 1
+issue: 89
+base: main
+branch: codex/issue-89
+tasks:
+  - id: task-01
+    title: 'Locate (verify: confirm completion in repo)'
+    status: doing
+    started_at: '2026-03-08T23:21:27Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Locate and document the specific verify:compare non-PASS output from PR
+      #54'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Analyze the verify:compare output to determine if concerns are warranted
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Define scope for: Write a disposition note explaining why the non-PASS
+      output does or does not require fixes (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Implement focused slice for: Write a disposition note explaining why the
+      non-PASS output does or does not require fixes (verify: confirm completion in
+      repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Validate focused slice for: Write a disposition note explaining why the
+      non-PASS output does or does not require fixes (verify: confirm completion in
+      repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Define scope for: Add the disposition note to PR #54 with a link to the
+      relevant output (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'Implement focused slice for: Add the disposition note to PR #54 with a
+      link to the relevant output (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'Validate focused slice for: Add the disposition note to PR #54 with a
+      link to the relevant output (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: 'If needed: Create a follow-up fix (bounded to the verify:compare concerns)
+      in a new PR if the disposition requires code changes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: 'A disposition comment is added to PR #54 that includes: (1) a link to
+      the specific verify:compare output, (2) a clear statement of whether fixes are
+      needed, and (3) justification for the decision (minimum 2 sentences)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: 'Either: (1) A merged PR exists that fixes the verify:compare concerns
+      and is linked from PR #54, OR (2) A comment on PR #54 documents why no fix is
+      needed with a link to the disposition rationale'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: 'Add a verify:compare outcome note that links to either the disposition
+      rationale or the follow-up fix PR (The location where this ''outcome note''
+      should be added is not specified. If it requires modifying workflow files or
+      repository settings, the agent cannot complete it. | Specify the exact file
+      and location where the outcome note should be added (e.g., ''Add to PR #54 description'',
+      ''Add to issue #44 comments'', or ''Add to CHANGELOG.md''). If it requires workflow
+      modifications, mark as AGENT_LIMITATION.)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
