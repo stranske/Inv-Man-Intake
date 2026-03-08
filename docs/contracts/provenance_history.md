@@ -3,6 +3,7 @@
 ## Purpose
 
 Track extracted field values with source-document provenance and preserve an append-only correction history.
+This schema depends on the core `documents` table and must be applied after core schema migration.
 
 ## Tables
 
@@ -37,4 +38,4 @@ The latest effective value is determined by the newest correction timestamp (and
 ## Key Access Patterns
 
 - Fetch latest value for field: prefer newest correction, fallback to original extracted value.
-- Fetch full correction history: ordered by insertion (`correction_id ASC`).
+- Fetch full correction history: ordered by correction timestamp (`corrected_at ASC`) with `correction_id` as tie-breaker.
