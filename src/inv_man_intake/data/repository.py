@@ -5,7 +5,11 @@ from __future__ import annotations
 import sqlite3
 
 from inv_man_intake.data.models import Document, Firm, Fund
-from inv_man_intake.data.provenance import CorrectionRecord, ExtractedFieldRecord
+from inv_man_intake.data.provenance import (
+    CorrectionRecord,
+    ExtractedFieldRecord,
+    VisualArtifactRecord,
+)
 
 
 class CoreRepository:
@@ -323,6 +327,89 @@ class FieldProvenanceRepository:
                 reason=None if row[3] is None else str(row[3]),
                 corrected_by=None if row[4] is None else str(row[4]),
                 corrected_at=str(row[5]),
+            )
+            for row in rows
+        )
+
+
+class VisualArtifactRepository:
+    """Persistence API for extracted visual artifact references and hashes."""
+
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self._connection = connection
+
+    def ensure_schema(self) -> None:
+        self._connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS visual_artifacts (
+                artifact_id TEXT PRIMARY KEY,
+                document_id TEXT NOT NULL,
+                source_type TEXT NOT NULL,
+                source_page INTEGER,
+                source_slide INTEGER,
+                source_ref TEXT,
+                storage_path TEXT NOT NULL,
+                sha256 TEXT NOT NULL,
+                mime_type TEXT NOT NULL,
+                byte_size INTEGER NOT NULL,
+                extracted_at TEXT NOT NULL,
+                FOREIGN KEY (document_id) REFERENCES documents (document_id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_visual_artifacts_document_id
+                ON visual_artifacts (document_id);
+            CREATE INDEX IF NOT EXISTS idx_visual_artifacts_document_sha256
+                ON visual_artifacts (document_id, sha256);
+            """
+        )
+        self._connection.commit()
+
+    def insert_artifact(self, record: VisualArtifactRecord) -> None:
+        self._connection.execute(
+            (
+                "INSERT INTO visual_artifacts (artifact_id, document_id, source_type, source_page, "
+                "source_slide, source_ref, storage_path, sha256, mime_type, byte_size, extracted_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            ),
+            (
+                record.artifact_id,
+                record.document_id,
+                record.source_type,
+                record.source_page,
+                record.source_slide,
+                record.source_ref,
+                record.storage_path,
+                record.sha256,
+                record.mime_type,
+                record.byte_size,
+                record.extracted_at,
+            ),
+        )
+        self._connection.commit()
+
+    def list_artifacts(self, document_id: str) -> tuple[VisualArtifactRecord, ...]:
+        rows = self._connection.execute(
+            (
+                "SELECT artifact_id, document_id, source_type, source_page, source_slide, source_ref, "
+                "storage_path, sha256, mime_type, byte_size, extracted_at "
+                "FROM visual_artifacts WHERE document_id = ? "
+                "ORDER BY COALESCE(source_page, 0), COALESCE(source_slide, 0), artifact_id"
+            ),
+            (document_id,),
+        ).fetchall()
+        return tuple(
+            VisualArtifactRecord(
+                artifact_id=str(row[0]),
+                document_id=str(row[1]),
+                source_type=str(row[2]),
+                source_page=None if row[3] is None else int(row[3]),
+                source_slide=None if row[4] is None else int(row[4]),
+                source_ref=None if row[5] is None else str(row[5]),
+                storage_path=str(row[6]),
+                sha256=str(row[7]),
+                mime_type=str(row[8]),
+                byte_size=int(row[9]),
+                extracted_at=str(row[10]),
             )
             for row in rows
         )

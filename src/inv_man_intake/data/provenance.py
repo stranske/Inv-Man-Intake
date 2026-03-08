@@ -29,3 +29,20 @@ class CorrectionRecord:
     reason: str | None
     corrected_by: str | None
     corrected_at: str
+
+
+@dataclass(frozen=True)
+class VisualArtifactRecord:
+    """Persisted visual artifact metadata for extracted PDF/PPTX images."""
+
+    artifact_id: str
+    document_id: str
+    source_type: str
+    source_page: int | None
+    source_slide: int | None
+    source_ref: str | None
+    storage_path: str
+    sha256: str
+    mime_type: str
+    byte_size: int
+    extracted_at: str
