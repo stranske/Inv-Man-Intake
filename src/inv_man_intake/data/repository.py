@@ -68,11 +68,13 @@ class CoreRepository:
             created_at=str(row[3]),
         )
 
-    def update_firm_aliases(self, firm_id: str, aliases_json: str) -> None:
-        self._connection.execute(
+    def update_firm_aliases(self, firm_id: str, aliases_json: str | None) -> None:
+        cursor = self._connection.execute(
             "UPDATE firms SET aliases_json = ? WHERE firm_id = ?",
             (aliases_json, firm_id),
         )
+        if cursor.rowcount == 0:
+            raise KeyError(f"unknown firm_id={firm_id}")
         self._connection.commit()
 
     def create_fund(self, fund: Fund) -> None:
@@ -110,6 +112,24 @@ class CoreRepository:
             asset_class=None if row[4] is None else str(row[4]),
             created_at=str(row[5]),
         )
+
+    def update_fund(self, fund: Fund) -> None:
+        cursor = self._connection.execute(
+            (
+                "UPDATE funds SET firm_id = ?, fund_name = ?, strategy = ?, asset_class = ? "
+                "WHERE fund_id = ?"
+            ),
+            (
+                fund.firm_id,
+                fund.fund_name,
+                fund.strategy,
+                fund.asset_class,
+                fund.fund_id,
+            ),
+        )
+        if cursor.rowcount == 0:
+            raise KeyError(f"unknown fund_id={fund.fund_id}")
+        self._connection.commit()
 
     def create_document(self, document: Document) -> None:
         self._connection.execute(
@@ -151,12 +171,32 @@ class CoreRepository:
             created_at=str(row[7]),
         )
 
+    def update_document(self, document: Document) -> None:
+        cursor = self._connection.execute(
+            (
+                "UPDATE documents SET fund_id = ?, file_name = ?, file_hash = ?, received_at = ?, "
+                "version_date = ?, source_channel = ? WHERE document_id = ?"
+            ),
+            (
+                document.fund_id,
+                document.file_name,
+                document.file_hash,
+                document.received_at,
+                document.version_date,
+                document.source_channel,
+                document.document_id,
+            ),
+        )
+        if cursor.rowcount == 0:
+            raise KeyError(f"unknown document_id={document.document_id}")
+        self._connection.commit()
+
     def list_document_versions(self, fund_id: str, file_name: str) -> tuple[Document, ...]:
         rows = self._connection.execute(
             (
                 "SELECT document_id, fund_id, file_name, file_hash, received_at, version_date, "
                 "source_channel, created_at FROM documents WHERE fund_id = ? AND file_name = ? "
-                "ORDER BY version_date ASC, received_at ASC"
+                "ORDER BY version_date ASC, received_at ASC, document_id ASC"
             ),
             (fund_id, file_name),
         ).fetchall()
@@ -176,15 +216,18 @@ class CoreRepository:
 
     def list_provenance_rows(self, document_id: str) -> tuple[tuple[str, str, int], ...]:
         """Return provenance rows when extracted_fields table exists, else empty tuple."""
-        try:
-            rows = self._connection.execute(
-                (
-                    "SELECT field_key, value, source_page FROM extracted_fields "
-                    "WHERE document_id = ? ORDER BY field_key"
-                ),
-                (document_id,),
-            ).fetchall()
-        except sqlite3.OperationalError:
+        table_exists = self._connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'extracted_fields'"
+        ).fetchone()
+        if table_exists is None:
             return ()
+
+        rows = self._connection.execute(
+            (
+                "SELECT field_key, value, source_page FROM extracted_fields "
+                "WHERE document_id = ? ORDER BY field_key"
+            ),
+            (document_id,),
+        ).fetchall()
 
         return tuple((str(row[0]), str(row[1]), int(row[2])) for row in rows)
