@@ -43,10 +43,7 @@ def test_invalid_frequency_rejected_with_deterministic_error() -> None:
     with pytest.raises(ValueError) as exc:
         load_xlsx_timeseries(rows)
 
-    assert (
-        str(exc.value)
-        == "xlsx: rows[0].frequency must be one of monthly|quarterly|annual"
-    )
+    assert str(exc.value) == "xlsx: rows[0].frequency must be one of monthly|quarterly|annual"
 
 
 def test_invalid_date_rejected_with_deterministic_error() -> None:

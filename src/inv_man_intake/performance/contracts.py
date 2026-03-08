@@ -49,9 +49,7 @@ def validate_series(series: PerformanceSeries) -> None:
         seen_days.add(point.as_of)
 
         if prev_day is not None and point.as_of <= prev_day:
-            raise ValueError(
-                f"{series.frequency}[{idx}].as_of must be strictly increasing"
-            )
+            raise ValueError(f"{series.frequency}[{idx}].as_of must be strictly increasing")
         prev_day = point.as_of
 
 

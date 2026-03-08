@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import date
+from typing import cast
 
 from inv_man_intake.performance.contracts import (
     Frequency,
@@ -20,7 +21,7 @@ def load_xlsx_timeseries(rows: list[Mapping[str, object]]) -> PerformancePayload
     Expected keys per row:
     - frequency: monthly|quarterly|annual
     - as_of: ISO date string (YYYY-MM-DD)
-    - value: number-like
+    - value: numeric (int or float)
     """
 
     return _load_rows(rows, source="xlsx")
@@ -55,9 +56,7 @@ def _load_rows(rows: list[Mapping[str, object]], *, source: str) -> PerformanceP
             else None
         ),
         annual=(
-            PerformanceSeries("annual", tuple(grouped["annual"]))
-            if grouped["annual"]
-            else None
+            PerformanceSeries("annual", tuple(grouped["annual"])) if grouped["annual"] else None
         ),
     )
     validate_payload(payload)
@@ -70,10 +69,8 @@ def _parse_frequency(value: object, *, source: str, idx: int) -> Frequency:
 
     normalized = value.strip().lower()
     if normalized not in {"monthly", "quarterly", "annual"}:
-        raise ValueError(
-            f"{source}: rows[{idx}].frequency must be one of monthly|quarterly|annual"
-        )
-    return normalized  # type: ignore[return-value]
+        raise ValueError(f"{source}: rows[{idx}].frequency must be one of monthly|quarterly|annual")
+    return cast(Frequency, normalized)
 
 
 def _parse_point(row: Mapping[str, object], *, source: str, idx: int) -> PerformancePoint:
@@ -84,9 +81,7 @@ def _parse_point(row: Mapping[str, object], *, source: str, idx: int) -> Perform
     try:
         as_of = date.fromisoformat(raw_as_of)
     except ValueError as exc:
-        raise ValueError(
-            f"{source}: rows[{idx}].as_of must use YYYY-MM-DD format"
-        ) from exc
+        raise ValueError(f"{source}: rows[{idx}].as_of must use YYYY-MM-DD format") from exc
 
     raw_value = row.get("value")
     if isinstance(raw_value, bool):
