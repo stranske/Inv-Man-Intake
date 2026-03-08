@@ -209,8 +209,8 @@ def validate_intake_payload(payload: dict[str, Any]) -> IntakeValidationResult:
         if extension in PRIMARY_EXTENSIONS:
             primary_count += 1
 
-        source_ref = raw_file.get("source_ref")
-        if source_ref is None:
+        source_ref = _as_str(raw_file.get("source_ref"))
+        if not source_ref:
             warnings.append(
                 IntakeValidationIssue(
                     code="missing_source_ref",

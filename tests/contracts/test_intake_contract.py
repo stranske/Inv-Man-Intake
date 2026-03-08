@@ -72,3 +72,27 @@ def test_validate_intake_payload_rejects_invalid_received_at() -> None:
     result = validate_intake_payload(payload)
     assert result.is_valid is False
     assert any(issue.code == "invalid_received_at" for issue in result.errors)
+
+
+def test_validate_intake_payload_accepts_date_only_received_at() -> None:
+    payload = _valid_payload()
+    metadata = payload["metadata"]
+    assert isinstance(metadata, dict)
+    metadata["received_at"] = "2026-03-01"
+
+    result = validate_intake_payload(payload)
+    assert result.is_valid is True
+    assert not any(issue.code == "invalid_received_at" for issue in result.errors)
+
+
+def test_validate_intake_payload_warns_on_empty_or_non_string_source_ref() -> None:
+    payload = _valid_payload()
+    payload["files"] = [
+        {"file_name": "manager_deck.pdf", "role": "investment_deck", "source_ref": ""},
+        {"file_name": "returns.xlsx", "role": "performance_track_record", "source_ref": 42},
+    ]
+
+    result = validate_intake_payload(payload)
+    assert result.is_valid is True
+    warnings = [issue for issue in result.warnings if issue.code == "missing_source_ref"]
+    assert len(warnings) == 2
