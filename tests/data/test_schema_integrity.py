@@ -60,14 +60,19 @@ def test_integrity_checks_reject_orphaned_rows() -> None:
     with pytest.raises(sqlite3.IntegrityError):
         load_core_seed_rows(conn, broken)
 
+    # Load is transactional; failed insert batch should leave no partial seed rows.
+    assert conn.execute("SELECT COUNT(*) FROM firms").fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM funds").fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0] == 0
+
 
 def test_correction_history_returns_ordered_events() -> None:
     fixture = load_seed_fixture(FIXTURE_PATH)
 
-    history = correction_history_for_pointer(fixture, "documents.doc_alpha_q1.strategy")
+    history = correction_history_for_pointer(fixture, "documents.doc_alpha_q1.source_channel")
 
     assert [row["event_id"] for row in history] == ["evt-001", "evt-003"]
-    assert history[-1]["corrected_value"] == "long_short_equity"
+    assert history[-1]["corrected_value"] == "email"
 
 
 def test_provenance_pointer_validation_accepts_known_document_fields() -> None:
@@ -79,7 +84,7 @@ def test_provenance_pointer_validation_accepts_known_document_fields() -> None:
 def test_provenance_pointer_validation_flags_unknown_targets() -> None:
     fixture = load_seed_fixture(FIXTURE_PATH)
     broken = copy.deepcopy(fixture)
-    broken["corrections"][0]["provenance_pointer"] = "documents.doc_missing.strategy"
+    broken["corrections"][0]["provenance_pointer"] = "documents.doc_missing.source_channel"
     broken["corrections"][1]["provenance_pointer"] = "documents.doc_alpha_q1.unknown_field"
 
     errors = validate_provenance_pointers(broken)

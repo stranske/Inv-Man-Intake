@@ -8,6 +8,18 @@ from pathlib import Path
 from typing import Any
 
 _VALID_POINTER_PREFIX = "documents."
+_DOCUMENT_SCHEMA_FIELDS: frozenset[str] = frozenset(
+    {
+        "document_id",
+        "fund_id",
+        "file_name",
+        "file_hash",
+        "received_at",
+        "version_date",
+        "source_channel",
+        "created_at",
+    }
+)
 
 
 def load_seed_fixture(path: Path | str) -> dict[str, Any]:
@@ -29,47 +41,46 @@ def reset_core_seed_tables(connection: sqlite3.Connection) -> None:
 
 def load_core_seed_rows(connection: sqlite3.Connection, fixture: dict[str, Any]) -> None:
     """Insert core firm/fund/document fixture rows into sqlite."""
-    for firm in fixture.get("firms", []):
-        connection.execute(
-            "INSERT INTO firms (firm_id, legal_name, aliases_json, created_at) VALUES (?, ?, ?, ?)",
-            (firm["firm_id"], firm["legal_name"], firm.get("aliases_json"), firm["created_at"]),
-        )
+    with connection:
+        for firm in fixture.get("firms", []):
+            connection.execute(
+                "INSERT INTO firms (firm_id, legal_name, aliases_json, created_at) VALUES (?, ?, ?, ?)",
+                (firm["firm_id"], firm["legal_name"], firm.get("aliases_json"), firm["created_at"]),
+            )
 
-    for fund in fixture.get("funds", []):
-        connection.execute(
-            (
-                "INSERT INTO funds (fund_id, firm_id, fund_name, strategy, asset_class, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?)"
-            ),
-            (
-                fund["fund_id"],
-                fund["firm_id"],
-                fund["fund_name"],
-                fund.get("strategy"),
-                fund.get("asset_class"),
-                fund["created_at"],
-            ),
-        )
+        for fund in fixture.get("funds", []):
+            connection.execute(
+                (
+                    "INSERT INTO funds (fund_id, firm_id, fund_name, strategy, asset_class, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?)"
+                ),
+                (
+                    fund["fund_id"],
+                    fund["firm_id"],
+                    fund["fund_name"],
+                    fund.get("strategy"),
+                    fund.get("asset_class"),
+                    fund["created_at"],
+                ),
+            )
 
-    for document in fixture.get("documents", []):
-        connection.execute(
-            (
-                "INSERT INTO documents (document_id, fund_id, file_name, file_hash, received_at, "
-                "version_date, source_channel, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-            ),
-            (
-                document["document_id"],
-                document["fund_id"],
-                document["file_name"],
-                document["file_hash"],
-                document["received_at"],
-                document["version_date"],
-                document["source_channel"],
-                document["created_at"],
-            ),
-        )
-
-    connection.commit()
+        for document in fixture.get("documents", []):
+            connection.execute(
+                (
+                    "INSERT INTO documents (document_id, fund_id, file_name, file_hash, received_at, "
+                    "version_date, source_channel, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                ),
+                (
+                    document["document_id"],
+                    document["fund_id"],
+                    document["file_name"],
+                    document["file_hash"],
+                    document["received_at"],
+                    document["version_date"],
+                    document["source_channel"],
+                    document["created_at"],
+                ),
+            )
 
 
 def correction_history_for_pointer(fixture: dict[str, Any], pointer: str) -> list[dict[str, Any]]:
@@ -100,7 +111,7 @@ def validate_provenance_pointers(fixture: dict[str, Any]) -> list[str]:
             errors.append(f"unknown-document:{row.get('event_id', 'unknown')}")
             continue
 
-        if field_name not in document:
+        if field_name not in _DOCUMENT_SCHEMA_FIELDS:
             errors.append(f"unknown-field:{row.get('event_id', 'unknown')}")
 
     return errors
