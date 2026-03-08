@@ -1,5 +1,10 @@
 """Performance ingestion contracts and helpers."""
 
+from inv_man_intake.performance.conflict_resolver import (
+    ConflictAuditEntry,
+    ConflictResolutionResult,
+    resolve_source_conflicts,
+)
 from inv_man_intake.performance.contracts import (
     PerformancePayload,
     PerformancePoint,
@@ -22,6 +27,8 @@ from inv_man_intake.performance.normalize import (
 __all__ = [
     "BenchmarkAlignmentPoint",
     "CanonicalMonthPoint",
+    "ConflictAuditEntry",
+    "ConflictResolutionResult",
     "NormalizedPerformancePayload",
     "PerformanceMetrics",
     "PerformancePayload",
@@ -35,5 +42,6 @@ __all__ = [
     "load_xlsx_timeseries",
     "normalize_payload",
     "normalize_series",
+    "resolve_source_conflicts",
     "validate_payload",
 ]
