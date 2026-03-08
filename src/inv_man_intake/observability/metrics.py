@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 
 FAILURE_COUNT = "pipeline_failure_total"
 FALLBACK_COUNT = "pipeline_fallback_total"
@@ -26,14 +27,22 @@ class InMemoryMetrics:
     def __init__(self) -> None:
         self._points: list[MetricPoint] = []
 
-    def increment(self, name: str, *, by: float = 1.0, tags: Mapping[str, str] | None = None) -> None:
+    def increment(
+        self, name: str, *, by: float = 1.0, tags: Mapping[str, str] | None = None
+    ) -> None:
         self._points.append(
-            MetricPoint(name=name, value=by, tags=dict(tags or {}))
+            MetricPoint(name=name, value=by, tags=MappingProxyType(dict(tags or {})))
         )
 
-    def observe_ms(self, name: str, milliseconds: float, *, tags: Mapping[str, str] | None = None) -> None:
+    def observe_ms(
+        self, name: str, milliseconds: float, *, tags: Mapping[str, str] | None = None
+    ) -> None:
         self._points.append(
-            MetricPoint(name=name, value=milliseconds, tags=dict(tags or {}))
+            MetricPoint(
+                name=name,
+                value=milliseconds,
+                tags=MappingProxyType(dict(tags or {})),
+            )
         )
 
     def record_failure(self, *, stage: str, error_code: str) -> None:
@@ -64,7 +73,13 @@ class InMemoryMetrics:
     def points(self) -> tuple[MetricPoint, ...]:
         return tuple(self._points)
 
-    def count(self, name: str, *, tags: Mapping[str, str] | None = None) -> float:
+    def point_count(self, name: str, *, tags: Mapping[str, str] | None = None) -> int:
+        expected_tags = dict(tags or {})
+        return sum(
+            1 for point in self._points if point.name == name and dict(point.tags) == expected_tags
+        )
+
+    def sum_values(self, name: str, *, tags: Mapping[str, str] | None = None) -> float:
         expected_tags = dict(tags or {})
         return sum(
             point.value
