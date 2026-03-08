@@ -81,7 +81,7 @@ def test_corrections_are_append_only_and_latest_value_comes_from_last_correction
     apply_provenance_history_schema(conn)
     repo = FieldProvenanceRepository(conn)
 
-    repo.insert_extracted_field(
+    repo.write_initial_extraction(
         ExtractedFieldRecord(
             field_id="field_1",
             document_id="doc_1",
@@ -94,14 +94,14 @@ def test_corrections_are_append_only_and_latest_value_comes_from_last_correction
         )
     )
 
-    repo.append_correction(
+    repo.write_correction_append(
         field_id="field_1",
         corrected_value="1.9%",
         corrected_at="2026-03-01T10:00:00Z",
         reason="Analyst correction",
         corrected_by="analyst@example.com",
     )
-    repo.append_correction(
+    repo.write_correction_append(
         field_id="field_1",
         corrected_value="1.85%",
         corrected_at="2026-03-01T11:00:00Z",
@@ -122,7 +122,7 @@ def test_correction_history_orders_by_corrected_at_not_insert_order() -> None:
     apply_provenance_history_schema(conn)
     repo = FieldProvenanceRepository(conn)
 
-    repo.insert_extracted_field(
+    repo.write_initial_extraction(
         ExtractedFieldRecord(
             field_id="field_3",
             document_id="doc_1",
@@ -134,13 +134,13 @@ def test_correction_history_orders_by_corrected_at_not_insert_order() -> None:
             extracted_at="2026-03-01T09:05:00Z",
         )
     )
-    repo.append_correction(
+    repo.write_correction_append(
         field_id="field_3",
         corrected_value="18 months",
         corrected_at="2026-03-03T09:00:00Z",
         reason="later update",
     )
-    repo.append_correction(
+    repo.write_correction_append(
         field_id="field_3",
         corrected_value="15 months",
         corrected_at="2026-03-02T09:00:00Z",
@@ -156,7 +156,7 @@ def test_latest_value_returns_original_when_no_correction_exists() -> None:
     apply_provenance_history_schema(conn)
     repo = FieldProvenanceRepository(conn)
 
-    repo.insert_extracted_field(
+    repo.write_initial_extraction(
         ExtractedFieldRecord(
             field_id="field_2",
             document_id="doc_1",
@@ -170,3 +170,49 @@ def test_latest_value_returns_original_when_no_correction_exists() -> None:
     )
 
     assert repo.get_latest_value("field_2") == "Jane Doe"
+
+
+def test_write_correction_append_keeps_original_extracted_value() -> None:
+    conn = _connection()
+    apply_provenance_history_schema(conn)
+    repo = FieldProvenanceRepository(conn)
+    repo.write_initial_extraction(
+        ExtractedFieldRecord(
+            field_id="field_4",
+            document_id="doc_1",
+            field_key="terms.hurdle_rate",
+            value="8%",
+            confidence=0.88,
+            source_page=5,
+            source_snippet="Hurdle rate: 8%",
+            extracted_at="2026-03-01T09:08:00Z",
+        )
+    )
+
+    repo.write_correction_append(
+        field_id="field_4",
+        corrected_value="7%",
+        corrected_at="2026-03-01T10:08:00Z",
+        reason="Typo in deck",
+    )
+
+    original_row = conn.execute(
+        "SELECT value FROM extracted_fields WHERE field_id = ?",
+        ("field_4",),
+    ).fetchone()
+    assert original_row is not None
+    assert str(original_row[0]) == "8%"
+    assert repo.get_latest_value("field_4") == "7%"
+
+
+def test_write_correction_append_unknown_field_raises_key_error() -> None:
+    conn = _connection()
+    apply_provenance_history_schema(conn)
+    repo = FieldProvenanceRepository(conn)
+
+    with pytest.raises(KeyError, match="field_id=missing_field not found"):
+        repo.write_correction_append(
+            field_id="missing_field",
+            corrected_value="new value",
+            corrected_at="2026-03-01T10:00:00Z",
+        )

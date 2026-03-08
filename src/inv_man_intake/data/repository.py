@@ -240,7 +240,8 @@ class FieldProvenanceRepository:
     def __init__(self, connection: sqlite3.Connection) -> None:
         self._connection = connection
 
-    def insert_extracted_field(self, record: ExtractedFieldRecord) -> None:
+    def write_initial_extraction(self, record: ExtractedFieldRecord) -> ExtractedFieldRecord:
+        """Write the initial extracted value for a field."""
         self._connection.execute(
             (
                 "INSERT INTO extracted_fields (field_id, document_id, field_key, value, confidence, "
@@ -258,8 +259,13 @@ class FieldProvenanceRepository:
             ),
         )
         self._connection.commit()
+        return record
 
-    def append_correction(
+    def insert_extracted_field(self, record: ExtractedFieldRecord) -> None:
+        """Backward-compatible wrapper for older callers."""
+        self.write_initial_extraction(record)
+
+    def write_correction_append(
         self,
         field_id: str,
         corrected_value: str,
@@ -267,6 +273,13 @@ class FieldProvenanceRepository:
         reason: str | None = None,
         corrected_by: str | None = None,
     ) -> CorrectionRecord:
+        field_exists = self._connection.execute(
+            "SELECT 1 FROM extracted_fields WHERE field_id = ?",
+            (field_id,),
+        ).fetchone()
+        if field_exists is None:
+            raise KeyError(f"field_id={field_id} not found")
+
         cursor = self._connection.execute(
             (
                 "INSERT INTO field_corrections (field_id, corrected_value, reason, corrected_by, "
@@ -285,6 +298,23 @@ class FieldProvenanceRepository:
             reason=reason,
             corrected_by=corrected_by,
             corrected_at=corrected_at,
+        )
+
+    def append_correction(
+        self,
+        field_id: str,
+        corrected_value: str,
+        corrected_at: str,
+        reason: str | None = None,
+        corrected_by: str | None = None,
+    ) -> CorrectionRecord:
+        """Backward-compatible wrapper for older callers."""
+        return self.write_correction_append(
+            field_id=field_id,
+            corrected_value=corrected_value,
+            corrected_at=corrected_at,
+            reason=reason,
+            corrected_by=corrected_by,
         )
 
     def get_latest_value(self, field_id: str) -> str:
