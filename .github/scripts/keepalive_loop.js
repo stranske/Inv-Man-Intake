@@ -1344,11 +1344,13 @@ function buildTaskAppendix(sections, checkboxCounts, state = {}, options = {}) {
   }
 
   const attemptedTasks = normaliseAttemptedTasks(state?.attempted_tasks);
-  const candidateSource = sections?.tasks || sections?.acceptance || '';
+  const candidateSource = [sections?.tasks, sections?.acceptance]
+    .filter((value) => String(value || '').trim())
+    .join('\n');
   const taskItems = extractChecklistItems(candidateSource);
   const unchecked = taskItems.filter((item) => !item.checked);
   const attemptedKeys = new Set(attemptedTasks.map((entry) => entry.key));
-  const suggested = unchecked.find((item) => !attemptedKeys.has(normaliseTaskKey(item.text))) || unchecked[0];
+  const suggested = unchecked.find((item) => !attemptedKeys.has(normaliseTaskKey(item.text)));
 
   if (attemptedTasks.length > 0) {
     lines.push('### Recently Attempted Tasks');
