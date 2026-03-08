@@ -13,6 +13,8 @@ from inv_man_intake.observability.tracing import (
     extract_trace_context,
     inject_trace_context,
     new_trace_context,
+    traced_run,
+    traced_span,
     tracing_enabled_from_env,
 )
 
@@ -205,3 +207,44 @@ def test_tracer_from_env_uses_resolved_toggle() -> None:
         pass
 
     assert len(sink.events) == 2
+
+
+def test_traced_span_decorator_wraps_callable_with_span() -> None:
+    sink = InMemoryTraceSink()
+    tracer = Tracer(enabled=True, sink=sink)
+    context = new_trace_context(tags={"stage": "extract"})
+
+    @traced_span(
+        tracer=tracer,
+        name="extract_positions",
+        context=context,
+        metadata={"provider": "primary"},
+    )
+    def _extract(batch_id: str) -> str:
+        return f"ok:{batch_id}"
+
+    assert _extract("b_42") == "ok:b_42"
+    assert len(sink.events) == 2
+    start_event, end_event = sink.events
+    assert start_event.name == "extract_positions"
+    assert start_event.metadata["provider"] == "primary"
+    assert start_event.trace_id == context.trace_id
+    assert end_event.ended_at is not None
+
+
+def test_traced_run_decorator_noop_when_disabled() -> None:
+    sink = InMemoryTraceSink()
+    tracer = Tracer(enabled=False, sink=sink)
+    context = new_trace_context(tags={"stage": "workflow"})
+
+    @traced_run(
+        tracer=tracer,
+        name="ingestion_pipeline",
+        context=context,
+        metadata={"bundle": "pkg_1"},
+    )
+    def _run_pipeline() -> str:
+        return "done"
+
+    assert _run_pipeline() == "done"
+    assert sink.events == []
