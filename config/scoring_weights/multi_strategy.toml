@@ -1,0 +1,9 @@
+asset_class = "multi_strategy"
+version = "v1"
+
+[weights]
+performance_consistency = 0.25
+risk_adjusted_returns = 0.20
+operational_quality = 0.20
+transparency = 0.20
+team_experience = 0.15
