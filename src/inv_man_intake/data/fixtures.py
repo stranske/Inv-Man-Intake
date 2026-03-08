@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 _VALID_POINTER_PREFIX = "documents."
 _DOCUMENT_SCHEMA_FIELDS: frozenset[str] = frozenset(
@@ -28,7 +28,7 @@ def load_seed_fixture(path: Path | str) -> dict[str, Any]:
     data = json.loads(fixture_path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError("Seed fixture root must be a JSON object.")
-    return data
+    return cast(dict[str, Any], data)
 
 
 def reset_core_seed_tables(connection: sqlite3.Connection) -> None:
