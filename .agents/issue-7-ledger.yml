@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Update the epic task list in this issue body to include working links
       to all child issues from #8 through #15 in the Tasks section'
-    status: doing
+    status: done
     started_at: '2026-03-08T23:22:28Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-08T23:22:36Z'
+    commit: 4dc17143a55fb43a19f40c69240cc712b6c5d28a
     notes: []
   - id: task-02
     title: 'Create a validation script at `scripts/validate_child_issues.py` that
