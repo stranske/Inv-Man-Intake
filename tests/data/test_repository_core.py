@@ -209,9 +209,7 @@ def test_update_fund_and_document_round_trip() -> None:
 def test_update_unknown_fund_or_document_raises() -> None:
     repo = _repo()
     with pytest.raises(KeyError, match="unknown fund_id=fund_missing"):
-        repo.update_fund(
-            Fund("fund_missing", "firm_1", "X", None, None, "2026-03-01T09:00:00Z")
-        )
+        repo.update_fund(Fund("fund_missing", "firm_1", "X", None, None, "2026-03-01T09:00:00Z"))
 
     with pytest.raises(KeyError, match="unknown document_id=doc_missing"):
         repo.update_document(
