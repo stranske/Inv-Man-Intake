@@ -85,7 +85,9 @@ def load_core_seed_rows(connection: sqlite3.Connection, fixture: dict[str, Any])
 
 def correction_history_for_pointer(fixture: dict[str, Any], pointer: str) -> list[dict[str, Any]]:
     """Return correction history rows for a pointer sorted by timestamp."""
-    history = [row for row in fixture.get("corrections", []) if row.get("provenance_pointer") == pointer]
+    history = [
+        row for row in fixture.get("corrections", []) if row.get("provenance_pointer") == pointer
+    ]
     return sorted(history, key=lambda row: (row["corrected_at"], row["event_id"]))
 
 
