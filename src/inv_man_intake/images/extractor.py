@@ -77,7 +77,12 @@ def _extract_pdf_artifacts(*, source_doc_id: str, content: bytes) -> tuple[Visua
             )
 
     # Fallback for image objects that could not be linked to page-level XObject refs.
-    linked_refs = {int(artifact.source.source_ref.removeprefix("pdf-object-")) for artifact in artifacts}
+    linked_refs = {
+        int(source_ref.removeprefix("pdf-object-"))
+        for artifact in artifacts
+        for source_ref in [artifact.source.source_ref]
+        if source_ref is not None and source_ref.startswith("pdf-object-")
+    }
     for object_id in sorted(image_streams):
         if object_id in linked_refs:
             continue
