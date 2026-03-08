@@ -1,0 +1,14 @@
+{
+  "package_id": "pkg_missing_metadata_001",
+  "metadata": {
+    "firm_name": "Lakeshore Credit",
+    "source_channel": "email"
+  },
+  "files": [
+    {
+      "file_name": "lakeshore_monthly_report.pdf",
+      "role": "investment_deck",
+      "source_ref": "email:msg-2002"
+    }
+  ]
+}

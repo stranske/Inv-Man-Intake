@@ -1,0 +1,16 @@
+{
+  "package_id": "pkg_pdf_primary_001",
+  "metadata": {
+    "firm_name": "North Ridge Capital",
+    "fund_name": "North Ridge Opportunities I",
+    "received_at": "2026-03-01T09:00:00Z",
+    "source_channel": "email"
+  },
+  "files": [
+    {
+      "file_name": "north_ridge_q1_update.pdf",
+      "role": "investment_deck",
+      "source_ref": "email:msg-1001"
+    }
+  ]
+}
