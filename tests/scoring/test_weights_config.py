@@ -65,15 +65,27 @@ def test_get_weight_set_returns_requested_asset_class() -> None:
     weight_set = get_weight_set("equity")
     assert weight_set.asset_class == "equity"
     assert len(weight_set.ordered_weights()) == len(COMPONENT_NAMES)
+    with pytest.raises(TypeError):
+        weight_set.weights["performance_consistency"] = 0.9
 
 
 def test_load_weight_registry_rejects_missing_launch_asset_class(tmp_path: Path) -> None:
     config_dir = tmp_path / "scoring_weights"
     for asset_class in LAUNCH_ASSET_CLASSES[:-1]:
-        _write_weight_file(config_dir, asset_class=asset_class, weights_block=_valid_weights_block())
+        _write_weight_file(
+            config_dir, asset_class=asset_class, weights_block=_valid_weights_block()
+        )
 
     with pytest.raises(ValueError, match="missing launch asset class config"):
         load_weight_registry(config_dir)
+
+
+def test_load_weight_registry_rejects_path_that_is_not_directory(tmp_path: Path) -> None:
+    not_a_directory = tmp_path / "weights.toml"
+    not_a_directory.write_text("", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="is not a directory"):
+        load_weight_registry(not_a_directory)
 
 
 def test_load_weight_registry_rejects_missing_component_weights(tmp_path: Path) -> None:
@@ -127,4 +139,28 @@ def test_load_weight_registry_rejects_unknown_component_key(tmp_path: Path) -> N
         _write_weight_file(config_dir, asset_class=asset_class, weights_block=unknown_component)
 
     with pytest.raises(ValueError, match="unknown weight"):
+        load_weight_registry(config_dir)
+
+
+def test_load_weight_registry_rejects_asset_class_filename_mismatch(tmp_path: Path) -> None:
+    config_dir = tmp_path / "scoring_weights"
+    for asset_class in LAUNCH_ASSET_CLASSES:
+        _write_weight_file(
+            config_dir, asset_class=asset_class, weights_block=_valid_weights_block()
+        )
+    (config_dir / "equity.toml").write_text(
+        "\n".join(
+            [
+                'asset_class = "credit"',
+                'version = "v1"',
+                "",
+                "[weights]",
+                _valid_weights_block(),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="does not match filename stem"):
         load_weight_registry(config_dir)
