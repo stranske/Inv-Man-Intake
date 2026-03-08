@@ -1,1 +1,1 @@
-"""Intake services and versioning primitives."""
+"""Intake contracts, models, lifecycle services, and versioning primitives."""
