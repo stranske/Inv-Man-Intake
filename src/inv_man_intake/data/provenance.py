@@ -29,3 +29,14 @@ class CorrectionRecord:
     reason: str | None
     corrected_by: str | None
     corrected_at: str
+
+
+@dataclass(frozen=True)
+class FieldValueVersion:
+    """One effective field value in chronological order."""
+
+    field_id: str
+    value: str
+    effective_at: str
+    source: str
+    correction_id: int | None

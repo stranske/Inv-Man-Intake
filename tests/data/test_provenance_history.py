@@ -171,6 +171,11 @@ def test_latest_value_returns_original_when_no_correction_exists() -> None:
 
     assert repo.get_latest_value("field_2") == "Jane Doe"
 
+    history = repo.get_value_history("field_2")
+    assert len(history) == 1
+    assert history[0].source == "extracted"
+    assert history[0].value == "Jane Doe"
+
 
 def test_write_correction_append_keeps_original_extracted_value() -> None:
     conn = _connection()
@@ -203,6 +208,43 @@ def test_write_correction_append_keeps_original_extracted_value() -> None:
     assert original_row is not None
     assert str(original_row[0]) == "8%"
     assert repo.get_latest_value("field_4") == "7%"
+    assert [entry.value for entry in repo.get_value_history("field_4")] == ["8%", "7%"]
+
+
+def test_get_value_history_orders_by_effective_time_and_matches_latest() -> None:
+    conn = _connection()
+    apply_provenance_history_schema(conn)
+    repo = FieldProvenanceRepository(conn)
+    repo.write_initial_extraction(
+        ExtractedFieldRecord(
+            field_id="field_6",
+            document_id="doc_1",
+            field_key="terms.redemption_notice",
+            value="90 days",
+            confidence=0.84,
+            source_page=8,
+            source_snippet="Redemption notice: 90 days",
+            extracted_at="2026-03-01T09:10:00Z",
+        )
+    )
+    repo.write_correction_append(
+        field_id="field_6",
+        corrected_value="75 days",
+        corrected_at="2026-03-03T09:00:00Z",
+        reason="later update",
+    )
+    repo.write_correction_append(
+        field_id="field_6",
+        corrected_value="60 days",
+        corrected_at="2026-03-02T09:00:00Z",
+        reason="backfilled correction",
+    )
+
+    history = repo.get_value_history("field_6")
+    assert [entry.value for entry in history] == ["90 days", "60 days", "75 days"]
+    assert history[0].source == "extracted"
+    assert [entry.source for entry in history[1:]] == ["corrected", "corrected"]
+    assert repo.get_latest_value("field_6") == history[-1].value
 
 
 def test_write_correction_append_unknown_field_raises_key_error() -> None:
@@ -216,6 +258,19 @@ def test_write_correction_append_unknown_field_raises_key_error() -> None:
             corrected_value="new value",
             corrected_at="2026-03-01T10:00:00Z",
         )
+
+
+def test_history_queries_unknown_field_raise_key_error() -> None:
+    conn = _connection()
+    apply_provenance_history_schema(conn)
+    repo = FieldProvenanceRepository(conn)
+
+    with pytest.raises(KeyError, match="field_id=missing_field not found"):
+        repo.get_latest_value("missing_field")
+    with pytest.raises(KeyError, match="field_id=missing_field not found"):
+        repo.get_correction_history("missing_field")
+    with pytest.raises(KeyError, match="field_id=missing_field not found"):
+        repo.get_value_history("missing_field")
 
 
 def test_write_initial_extraction_unknown_document_raises_key_error() -> None:

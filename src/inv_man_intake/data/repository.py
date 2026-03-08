@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlite3
 
 from inv_man_intake.data.models import Document, Firm, Fund
-from inv_man_intake.data.provenance import CorrectionRecord, ExtractedFieldRecord
+from inv_man_intake.data.provenance import CorrectionRecord, ExtractedFieldRecord, FieldValueVersion
 
 
 class CoreRepository:
@@ -240,6 +240,15 @@ class FieldProvenanceRepository:
     def __init__(self, connection: sqlite3.Connection) -> None:
         self._connection = connection
 
+    def _get_extracted_field_row(self, field_id: str) -> tuple[str, str] | None:
+        row = self._connection.execute(
+            "SELECT value, extracted_at FROM extracted_fields WHERE field_id = ?",
+            (field_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        return (str(row[0]), str(row[1]))
+
     def write_initial_extraction(self, record: ExtractedFieldRecord) -> ExtractedFieldRecord:
         """Write the initial extracted value for a field."""
         field_exists = self._connection.execute(
@@ -332,25 +341,47 @@ class FieldProvenanceRepository:
         )
 
     def get_latest_value(self, field_id: str) -> str:
-        correction = self._connection.execute(
+        return self.get_value_history(field_id)[-1].value
+
+    def get_value_history(self, field_id: str) -> tuple[FieldValueVersion, ...]:
+        extracted_row = self._get_extracted_field_row(field_id)
+        if extracted_row is None:
+            raise KeyError(f"field_id={field_id} not found")
+
+        versions: list[FieldValueVersion] = [
+            FieldValueVersion(
+                field_id=field_id,
+                value=extracted_row[0],
+                effective_at=extracted_row[1],
+                source="extracted",
+                correction_id=None,
+            )
+        ]
+
+        correction_rows = self._connection.execute(
             (
-                "SELECT corrected_value FROM field_corrections WHERE field_id = ? "
-                "ORDER BY corrected_at DESC, correction_id DESC LIMIT 1"
+                "SELECT correction_id, corrected_value, corrected_at FROM field_corrections "
+                "WHERE field_id = ? ORDER BY corrected_at ASC, correction_id ASC"
             ),
             (field_id,),
-        ).fetchone()
-        if correction is not None:
-            return str(correction[0])
-
-        original = self._connection.execute(
-            "SELECT value FROM extracted_fields WHERE field_id = ?",
-            (field_id,),
-        ).fetchone()
-        if original is None:
-            raise KeyError(f"field_id={field_id} not found")
-        return str(original[0])
+        ).fetchall()
+        versions.extend(
+            FieldValueVersion(
+                field_id=field_id,
+                value=str(row[1]),
+                effective_at=str(row[2]),
+                source="corrected",
+                correction_id=int(row[0]),
+            )
+            for row in correction_rows
+        )
+        return tuple(versions)
 
     def get_correction_history(self, field_id: str) -> tuple[CorrectionRecord, ...]:
+        extracted_row = self._get_extracted_field_row(field_id)
+        if extracted_row is None:
+            raise KeyError(f"field_id={field_id} not found")
+
         rows = self._connection.execute(
             (
                 "SELECT correction_id, field_id, corrected_value, reason, corrected_by, corrected_at "
