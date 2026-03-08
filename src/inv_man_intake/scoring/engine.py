@@ -84,7 +84,11 @@ def compute_score(
     if not submission.components:
         raise ValueError("components must be non-empty")
 
-    weight_sets = default_weights_by_asset_class() if weights_by_asset_class is None else weights_by_asset_class
+    weight_sets = (
+        default_weights_by_asset_class()
+        if weights_by_asset_class is None
+        else weights_by_asset_class
+    )
     try:
         asset_weights = weight_sets[submission.asset_class]
     except KeyError as exc:
@@ -139,9 +143,7 @@ def _normalize_components(submission: ScoreSubmission) -> dict[str, float]:
     return values
 
 
-def _validate_component_alignment(
-    components: dict[str, float], weights: dict[str, float]
-) -> None:
+def _validate_component_alignment(components: dict[str, float], weights: dict[str, float]) -> None:
     missing = sorted(set(weights) - set(components))
     extra = sorted(set(components) - set(weights))
     if missing:
