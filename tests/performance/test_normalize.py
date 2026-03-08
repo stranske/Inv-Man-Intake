@@ -92,10 +92,7 @@ def test_normalize_series_rejects_duplicate_period_collapses() -> None:
     with pytest.raises(ValueError) as exc:
         normalize_series(monthly)
 
-    assert (
-        str(exc.value)
-        == "monthly[1].as_of normalizes to duplicate period 2025-01-31"
-    )
+    assert str(exc.value) == "monthly[1].as_of normalizes to duplicate period 2025-01-31"
 
 
 def test_benchmark_alignment_hook_reports_missing_months_and_correlation_inputs() -> None:
