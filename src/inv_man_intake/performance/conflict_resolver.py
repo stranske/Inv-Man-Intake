@@ -59,9 +59,7 @@ def resolve_source_conflicts(
     audit_entries = _build_audit_entries(xlsx_series=xlsx_series, other_series=other_series)
     overlap_count = len(audit_entries)
     conflict_count = sum(1 for entry in audit_entries if entry.is_conflict)
-    conflict_percentage = (
-        0.0 if overlap_count == 0 else (conflict_count / overlap_count) * 100.0
-    )
+    conflict_percentage = 0.0 if overlap_count == 0 else (conflict_count / overlap_count) * 100.0
 
     return ConflictResolutionResult(
         resolved_series=resolved_series,
