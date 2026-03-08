@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: Implement date normalization utilities to convert various date formats
       to a canonical representation in `src/inv_man_intake/performance/normalize.py`
-    status: doing
+    status: done
     started_at: '2026-03-08T23:28:25Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-08T23:28:38Z'
+    commit: 84b4dcf278b76a68d445c984943f584225201bd5
     notes: []
   - id: task-02
     title: Implement frequency alignment utilities to convert mixed-frequency data
