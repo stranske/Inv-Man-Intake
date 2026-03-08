@@ -32,3 +32,29 @@ jobs:
       coverage: true
       coverage-min: '80'
     secrets: inherit
+
+  observability-smoke:
+    name: Observability Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install project with dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Validate observability setup syntax
+        env:
+          LANGSMITH_API_KEY: lsv2_pt_ci_smoke_key
+          LANGSMITH_PROJECT: inv-man-intake-ci-smoke
+          LANGCHAIN_TRACING_V2: "true"
+          INV_MAN_TRACING_ENABLED: "true"
+        run: python -m inv_man_intake.observability.setup_validation --require-project
+
+      - name: Run observability smoke test target
+        run: pytest -q tests/observability/test_setup_validation.py tests/observability/test_tracing_toggle.py --no-cov

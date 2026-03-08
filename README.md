@@ -217,6 +217,12 @@ After 3 failures, keepalive pauses and adds `needs-human`:
 - [Keepalive Architecture](https://github.com/stranske/Workflows/blob/main/docs/keepalive/GoalsAndPlumbing.md) - Detailed design
 - [Setup Checklist](docs/keepalive/SETUP_CHECKLIST.md) - Step-by-step configuration
 
+### Runbooks
+
+- [LangSmith Tracing](docs/runbooks/langsmith_tracing.md)
+- [Data Fixtures and Schema Integrity](docs/runbooks/data_fixtures.md)
+- [Ingestion Lifecycle](docs/runbooks/ingestion_lifecycle.md)
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
