@@ -216,3 +216,44 @@ def test_write_correction_append_unknown_field_raises_key_error() -> None:
             corrected_value="new value",
             corrected_at="2026-03-01T10:00:00Z",
         )
+
+
+def test_write_initial_extraction_unknown_document_raises_key_error() -> None:
+    conn = _connection()
+    apply_provenance_history_schema(conn)
+    repo = FieldProvenanceRepository(conn)
+
+    with pytest.raises(KeyError, match="document_id=missing_doc not found"):
+        repo.write_initial_extraction(
+            ExtractedFieldRecord(
+                field_id="field_missing_doc",
+                document_id="missing_doc",
+                field_key="terms.management_fee",
+                value="2%",
+                confidence=0.82,
+                source_page=4,
+                source_snippet="Management fee: 2%",
+                extracted_at="2026-03-01T09:05:00Z",
+            )
+        )
+
+
+def test_write_initial_extraction_duplicate_field_raises_key_error() -> None:
+    conn = _connection()
+    apply_provenance_history_schema(conn)
+    repo = FieldProvenanceRepository(conn)
+
+    record = ExtractedFieldRecord(
+        field_id="field_5",
+        document_id="doc_1",
+        field_key="terms.redemption_notice",
+        value="60 days",
+        confidence=0.84,
+        source_page=8,
+        source_snippet="Redemption notice: 60 days",
+        extracted_at="2026-03-01T09:10:00Z",
+    )
+    repo.write_initial_extraction(record)
+
+    with pytest.raises(KeyError, match="field_id=field_5 already exists"):
+        repo.write_initial_extraction(record)

@@ -242,6 +242,20 @@ class FieldProvenanceRepository:
 
     def write_initial_extraction(self, record: ExtractedFieldRecord) -> ExtractedFieldRecord:
         """Write the initial extracted value for a field."""
+        field_exists = self._connection.execute(
+            "SELECT 1 FROM extracted_fields WHERE field_id = ?",
+            (record.field_id,),
+        ).fetchone()
+        if field_exists is not None:
+            raise KeyError(f"field_id={record.field_id} already exists")
+
+        document_exists = self._connection.execute(
+            "SELECT 1 FROM documents WHERE document_id = ?",
+            (record.document_id,),
+        ).fetchone()
+        if document_exists is None:
+            raise KeyError(f"document_id={record.document_id} not found")
+
         self._connection.execute(
             (
                 "INSERT INTO extracted_fields (field_id, document_id, field_key, value, confidence, "
