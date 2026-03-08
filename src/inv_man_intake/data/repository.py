@@ -310,7 +310,8 @@ class FieldProvenanceRepository:
         rows = self._connection.execute(
             (
                 "SELECT correction_id, field_id, corrected_value, reason, corrected_by, corrected_at "
-                "FROM field_corrections WHERE field_id = ? ORDER BY correction_id ASC"
+                "FROM field_corrections WHERE field_id = ? "
+                "ORDER BY corrected_at ASC, correction_id ASC"
             ),
             (field_id,),
         ).fetchall()
