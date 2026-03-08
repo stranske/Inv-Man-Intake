@@ -207,7 +207,7 @@ def traced_span(
     name: str,
     context: TraceContext,
     metadata: dict[str, Any] | None = None,
-):
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorate a callable so its execution is wrapped in a trace span."""
 
     def _decorate(func: Callable[P, R]) -> Callable[P, R]:
@@ -226,7 +226,7 @@ def traced_run(
     name: str,
     context: TraceContext,
     metadata: dict[str, Any] | None = None,
-):
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorate a callable so its execution is wrapped in a trace run."""
 
     def _decorate(func: Callable[P, R]) -> Callable[P, R]:

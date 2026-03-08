@@ -1,1 +1,1 @@
-"""Scripts package for tooling modules."""
+"""Project automation scripts package."""

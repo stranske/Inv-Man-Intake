@@ -1,1 +1,1 @@
-"""Tools package for shared helper modules."""
+"""Utility modules used by scripts and automation tooling."""
