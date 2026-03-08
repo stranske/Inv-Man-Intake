@@ -49,3 +49,31 @@ Source: https://github.com/stranske/Inv-Man-Intake/pull/54#issuecomment-222
     assert len(findings) == 1
     assert findings[0].pr_number == 54
     assert findings[0].verdict == "FAIL"
+
+
+def test_extract_non_pass_phrase_with_pr_context() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/issues/89
+Source PR: #54
+verify:compare reported non-PASS output without a documented disposition.
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue_context.txt", pr_number=54)
+
+    assert len(findings) == 1
+    finding = findings[0]
+    assert finding.pr_number == 54
+    assert finding.verdict == "NON_PASS"
+    assert finding.source_url == "https://github.com/stranske/Inv-Man-Intake/issues/89"
+    assert "reported non-PASS output" in finding.evidence_line
+
+
+def test_extract_ignores_non_verdict_concerns_wording() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/issues/89
+- [ ] Analyze the verify:compare output to determine if concerns are warranted
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue_context.txt", pr_number=54)
+
+    assert findings == []

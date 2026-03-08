@@ -2,9 +2,12 @@
 
 ## Located evidence
 
-A local repository scan did not find the original `verify:compare` comment payload for PR #54,
-including the exact concern bullet list. The tracked issue context states that
-"verify:compare reported non-PASS output without a documented disposition."
+The specific non-PASS output statement for PR #54 is:
+
+`verify:compare reported non-PASS output without a documented disposition.`
+
+This appears in the source context for issue #89 and is now machine-locatable via
+`scripts/langchain/verify_compare_locator.py`.
 
 ## Source links
 
@@ -17,7 +20,13 @@ including the exact concern bullet list. The tracked issue context states that
 python scripts/langchain/verify_compare_locator.py --pr 54 --format markdown codex-prompt-95.md
 ```
 
-## Current status
+Expected extracted row:
 
-The exact non-PASS verifier comment URL is still missing from in-repo artifacts and must be added
-in a disposition comment on PR #54.
+```markdown
+| 54 | NON_PASS | https://github.com/stranske/Inv-Man-Intake/issues/89 | > verify:compare reported non-PASS output without a documented disposition. | codex-prompt-95.md |
+```
+
+## Task status
+
+- [x] Locate and document the specific verify:compare non-PASS output from PR #54
+- [ ] Analyze the verify:compare output to determine if concerns are warranted
