@@ -1,0 +1,75 @@
+version: 1
+issue: 5
+base: main
+branch: claude/issue-5
+tasks:
+  - id: task-01
+    title: Create `smoke/claude-smoke.txt`
+    status: done
+    started_at: '2026-03-01T04:53:30Z'
+    finished_at: '2026-03-01T04:53:39Z'
+    commit: c4bd240efdd35459dec15f6bc8ceec3f656121e6
+    notes: []
+  - id: task-02
+    title: Add the line `claude smoke test` to `smoke/claude-smoke.txt`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: '`smoke/claude-smoke.txt` exists on the PR branch'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: '`smoke/claude-smoke.txt` content exactly matches `claude smoke test`'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: PR references this issue
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Create `smoke/claude-smoke.txt`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Add a single line: `claude smoke test`'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: '`smoke/claude-smoke.txt` exists on the PR branch'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: File content exactly matches `claude smoke test`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: PR references this issue
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
