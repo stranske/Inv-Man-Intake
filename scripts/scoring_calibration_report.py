@@ -83,9 +83,7 @@ def render_markdown(
     lines: list[str] = []
     lines.append("# Scoring Calibration Report")
     lines.append("")
-    lines.append(
-        f"- Baseline entries: {len(baseline)} | Candidate entries: {len(candidate)}"
-    )
+    lines.append(f"- Baseline entries: {len(baseline)} | Candidate entries: {len(candidate)}")
     lines.append(
         f"- Drift thresholds: score delta <= {max_score_delta:.3f}, "
         f"rank movement <= {max_rank_movement}"
