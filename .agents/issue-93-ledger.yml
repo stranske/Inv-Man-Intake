@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Add a disposition note for the verify:compare non-PASS output to issue
       #16, linking to PR #48'
-    status: doing
+    status: done
     started_at: '2026-03-08T23:44:06Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-08T23:44:16Z'
+    commit: 02c93bae486d209d200b063c65a0ae256af363d1
     notes: []
   - id: task-02
     title: 'Review the verify:compare non-PASS output from PR #48 and determine whether
