@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 
 from inv_man_intake.data.models import Document, Firm, Fund
+from inv_man_intake.data.provenance import CorrectionRecord, ExtractedFieldRecord
 
 
 class CoreRepository:
@@ -231,3 +232,97 @@ class CoreRepository:
         ).fetchall()
 
         return tuple((str(row[0]), str(row[1]), int(row[2])) for row in rows)
+
+
+class FieldProvenanceRepository:
+    """Persistence API for extracted fields and append-only correction history."""
+
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self._connection = connection
+
+    def insert_extracted_field(self, record: ExtractedFieldRecord) -> None:
+        self._connection.execute(
+            (
+                "INSERT INTO extracted_fields (field_id, document_id, field_key, value, confidence, "
+                "source_page, source_snippet, extracted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            ),
+            (
+                record.field_id,
+                record.document_id,
+                record.field_key,
+                record.value,
+                record.confidence,
+                record.source_page,
+                record.source_snippet,
+                record.extracted_at,
+            ),
+        )
+        self._connection.commit()
+
+    def append_correction(
+        self,
+        field_id: str,
+        corrected_value: str,
+        corrected_at: str,
+        reason: str | None = None,
+        corrected_by: str | None = None,
+    ) -> CorrectionRecord:
+        cursor = self._connection.execute(
+            (
+                "INSERT INTO field_corrections (field_id, corrected_value, reason, corrected_by, "
+                "corrected_at) VALUES (?, ?, ?, ?, ?)"
+            ),
+            (field_id, corrected_value, reason, corrected_by, corrected_at),
+        )
+        self._connection.commit()
+
+        correction_id = cursor.lastrowid
+        assert correction_id is not None
+        return CorrectionRecord(
+            correction_id=int(correction_id),
+            field_id=field_id,
+            corrected_value=corrected_value,
+            reason=reason,
+            corrected_by=corrected_by,
+            corrected_at=corrected_at,
+        )
+
+    def get_latest_value(self, field_id: str) -> str:
+        correction = self._connection.execute(
+            (
+                "SELECT corrected_value FROM field_corrections WHERE field_id = ? "
+                "ORDER BY corrected_at DESC, correction_id DESC LIMIT 1"
+            ),
+            (field_id,),
+        ).fetchone()
+        if correction is not None:
+            return str(correction[0])
+
+        original = self._connection.execute(
+            "SELECT value FROM extracted_fields WHERE field_id = ?",
+            (field_id,),
+        ).fetchone()
+        if original is None:
+            raise KeyError(f"field_id={field_id} not found")
+        return str(original[0])
+
+    def get_correction_history(self, field_id: str) -> tuple[CorrectionRecord, ...]:
+        rows = self._connection.execute(
+            (
+                "SELECT correction_id, field_id, corrected_value, reason, corrected_by, corrected_at "
+                "FROM field_corrections WHERE field_id = ? "
+                "ORDER BY corrected_at ASC, correction_id ASC"
+            ),
+            (field_id,),
+        ).fetchall()
+        return tuple(
+            CorrectionRecord(
+                correction_id=int(row[0]),
+                field_id=str(row[1]),
+                corrected_value=str(row[2]),
+                reason=None if row[3] is None else str(row[3]),
+                corrected_by=None if row[4] is None else str(row[4]),
+                corrected_at=str(row[5]),
+            )
+            for row in rows
+        )
