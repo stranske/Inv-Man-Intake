@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: Create seed fixture files for firm entities under `tests/fixtures/data/firms.json`
       with at least three representative firms
-    status: doing
+    status: done
     started_at: '2026-03-08T23:27:30Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-08T23:27:41Z'
+    commit: 6f5e194d42abe741e45089419ada04a4561c787a
     notes: []
   - id: task-02
     title: Create seed fixture files for fund entities under `tests/fixtures/data/funds.json`
