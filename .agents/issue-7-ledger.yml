@@ -1,0 +1,56 @@
+version: 1
+issue: 7
+base: main
+branch: codex/issue-7
+tasks:
+  - id: task-01
+    title: 'Update the epic task list in this issue body to include working links
+      to all child issues from #8 through #15 in the Tasks section'
+    status: doing
+    started_at: '2026-03-08T23:22:28Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Create a validation script at `scripts/validate_child_issues.py` that
+      checks issues #8-#15 for required AGENT_ISSUE_TEMPLATE sections (Why, Scope,
+      Non-Goals, Tasks, Acceptance Criteria, Implementation Notes)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Epic task list contains working links to issues #8-#15 (https://github.com/stranske/Inv-Man-Intake/issues/8
+      through https://github.com/stranske/Inv-Man-Intake/issues/15)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Validation script `scripts/validate_child_issues.py` exists and executes
+      without errors
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Validation script confirms all child issues #8-#15 contain the six required
+      AGENT_ISSUE_TEMPLATE sections'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: '`docs/INV_MAN_INTAKE_PLAN_V1.md` contains a section titled "Dependency
+      Graph" or "Execution Order" with a list or diagram showing which issues block
+      others, using issue numbers #8-#15 (deferred until human provides dependency
+      architecture)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
