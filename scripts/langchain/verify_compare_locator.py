@@ -11,10 +11,15 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable
 
-VERDICT_RE = re.compile(r"\b(pass|concerns|fail)\b", re.IGNORECASE)
+VERDICT_LINE_RE = re.compile(r"\bverdict\b[^a-z0-9]+(pass|concerns|fail)\b", re.IGNORECASE)
+NON_PASS_RE = re.compile(
+    r"\b(?:reported non[- ]pass output|verdict[^a-z0-9]+non[- ]pass)\b", re.IGNORECASE
+)
 PR_LINK_RE = re.compile(
     r"https?://github\.com/[^\s)]+/pull/(\d+)(?:#issuecomment-\d+)?", re.IGNORECASE
 )
+ISSUE_LINK_RE = re.compile(r"https?://github\.com/[^\s)]+/issues/\d+", re.IGNORECASE)
+PR_NUMBER_RE = re.compile(r"\b(?:pr|pull)\s*#?(\d+)\b", re.IGNORECASE)
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\((https?://[^)]+)\)")
 
 
@@ -34,9 +39,20 @@ def _normalize_verdict(token: str) -> str:
     return "CONCERNS" if value.startswith("CONCERN") else value
 
 
+def _extract_verdict(line: str) -> str | None:
+    match = VERDICT_LINE_RE.search(line)
+    if not match:
+        return None
+    verdict = _normalize_verdict(match.group(1))
+    if verdict == "PASS":
+        return None
+    return verdict
+
+
 def _extract_source_links(line: str) -> list[str]:
     links = [match.group(1) for match in MARKDOWN_LINK_RE.finditer(line)]
     links.extend(match.group(0) for match in PR_LINK_RE.finditer(line))
+    links.extend(match.group(0) for match in ISSUE_LINK_RE.finditer(line))
     deduped: list[str] = []
     for url in links:
         if url not in deduped:
@@ -51,12 +67,21 @@ def _extract_pr_number(url: str) -> int | None:
     return int(match.group(1))
 
 
+def _extract_pr_number_from_line(line: str) -> int | None:
+    match = PR_NUMBER_RE.search(line)
+    if not match:
+        return None
+    return int(match.group(1))
+
+
 def extract_non_pass_findings(
     text: str, source_file: str, pr_number: int | None = None
 ) -> list[VerifyCompareFinding]:
     """Extract non-PASS verdict lines and nearby source URLs from verifier output text."""
     findings: list[VerifyCompareFinding] = []
     recent_links: list[str] = []
+    recent_pr: int | None = pr_number
+    seen: set[tuple[int | None, str, str, str | None]] = set()
 
     for raw_line in text.splitlines():
         line = raw_line.strip()
@@ -66,29 +91,54 @@ def extract_non_pass_findings(
         links = _extract_source_links(line)
         if links:
             recent_links = links
+            if recent_pr is None:
+                for link in links:
+                    link_pr = _extract_pr_number(link)
+                    if link_pr is not None:
+                        recent_pr = link_pr
+                        break
 
-        for match in VERDICT_RE.finditer(line):
-            verdict = _normalize_verdict(match.group(1))
-            if verdict == "PASS":
-                continue
+        line_pr = _extract_pr_number_from_line(line)
+        if line_pr is not None:
+            recent_pr = line_pr
 
+        verdict = _extract_verdict(line)
+        if verdict is not None:
             source_url = None
-            candidate_pr = pr_number
+            candidate_pr = pr_number if pr_number is not None else recent_pr
             if recent_links:
                 source_url = recent_links[0]
                 if candidate_pr is None:
                     candidate_pr = _extract_pr_number(source_url)
 
-            findings.append(
-                VerifyCompareFinding(
-                    pr_number=candidate_pr,
-                    verdict=verdict,
-                    source_url=source_url,
-                    evidence_line=line,
-                    source_file=source_file,
+            key = (candidate_pr, verdict, line, source_url)
+            if key not in seen:
+                seen.add(key)
+                findings.append(
+                    VerifyCompareFinding(
+                        pr_number=candidate_pr,
+                        verdict=verdict,
+                        source_url=source_url,
+                        evidence_line=line,
+                        source_file=source_file,
+                    )
                 )
-            )
-            break
+
+        if NON_PASS_RE.search(line):
+            source_url = recent_links[0] if recent_links else None
+            candidate_pr = pr_number if pr_number is not None else recent_pr
+            key = (candidate_pr, "NON_PASS", line, source_url)
+            if key not in seen:
+                seen.add(key)
+                findings.append(
+                    VerifyCompareFinding(
+                        pr_number=candidate_pr,
+                        verdict="NON_PASS",
+                        source_url=source_url,
+                        evidence_line=line,
+                        source_file=source_file,
+                    )
+                )
 
     if pr_number is None:
         return findings
