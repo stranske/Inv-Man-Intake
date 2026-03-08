@@ -1,6 +1,11 @@
 """Tests for document fingerprinting and in-memory version store behavior."""
 
-from inv_man_intake.intake.versioning import build_version_id, compute_sha256, create_fingerprint
+from inv_man_intake.intake.versioning import (
+    build_version_id,
+    compute_sha256,
+    create_fingerprint,
+    normalize_received_at,
+)
 from inv_man_intake.storage.document_store import InMemoryDocumentStore
 
 
@@ -25,6 +30,12 @@ def test_create_fingerprint_normalizes_received_at() -> None:
     fingerprint = create_fingerprint(content=b"abc", received_at="2026-03-01T09:00:00Z")
     assert fingerprint.received_at == "2026-03-01T09:00:00+00:00"
     assert len(fingerprint.sha256) == 64
+
+
+def test_normalize_received_at_converts_offsets_and_naive_values_to_utc() -> None:
+    assert normalize_received_at("2026-03-01T09:00:00-05:00") == "2026-03-01T14:00:00+00:00"
+    assert normalize_received_at("2026-03-01T14:00:00+00:00") == "2026-03-01T14:00:00+00:00"
+    assert normalize_received_at("2026-03-01") == "2026-03-01T00:00:00+00:00"
 
 
 def test_inmemory_store_idempotent_reingest_same_payload_same_timestamp() -> None:
@@ -66,6 +77,26 @@ def test_inmemory_store_appends_new_version_for_changed_content() -> None:
 
     assert first.version_id != second.version_id
     assert len(store.list_versions("fund_1/deck")) == 2
+
+
+def test_inmemory_store_idempotent_reingest_same_payload_different_timestamp() -> None:
+    store = InMemoryDocumentStore()
+
+    first = store.put(
+        document_key="fund_1/deck",
+        file_name="manager_deck.pdf",
+        content=b"same-content",
+        received_at="2026-03-01T09:00:00Z",
+    )
+    second = store.put(
+        document_key="fund_1/deck",
+        file_name="manager_deck.pdf",
+        content=b"same-content",
+        received_at="2026-03-01T10:30:00Z",
+    )
+
+    assert first.version_id == second.version_id
+    assert len(store.list_versions("fund_1/deck")) == 1
 
 
 def test_inmemory_store_get_and_exists_round_trip() -> None:

@@ -31,15 +31,19 @@ class DocumentStore(Protocol):
         received_at: str,
     ) -> DocumentVersionRecord:
         """Store a document payload and return immutable version metadata."""
+        ...
 
     def exists(self, document_key: str, version_id: str) -> bool:
         """Return true if the specified version exists."""
+        ...
 
     def get(self, document_key: str, version_id: str) -> bytes:
         """Return the stored content for a given document version."""
+        ...
 
     def list_versions(self, document_key: str) -> tuple[DocumentVersionRecord, ...]:
         """List all persisted versions for the document key."""
+        ...
 
 
 class InMemoryDocumentStore:
@@ -63,8 +67,8 @@ class InMemoryDocumentStore:
 
         existing_versions = self._versions.setdefault(document_key, [])
         for existing in existing_versions:
-            if existing.version_id == version_id and existing.file_hash == fingerprint.sha256:
-                # Idempotent re-ingest: same payload + timestamp returns prior record.
+            if existing.file_hash == fingerprint.sha256:
+                # Idempotent re-ingest: identical payload returns prior record, regardless of timestamp.
                 return existing
 
         record = DocumentVersionRecord(

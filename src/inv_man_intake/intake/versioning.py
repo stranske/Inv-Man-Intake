@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 @dataclass(frozen=True)
@@ -27,6 +27,7 @@ def normalize_received_at(received_at: str) -> str:
         raise ValueError("received_at must not be empty")
 
     parsed = datetime.fromisoformat(candidate.replace("Z", "+00:00"))
+    parsed = parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed.astimezone(UTC)
     return parsed.isoformat()
 
 
