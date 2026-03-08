@@ -5,10 +5,10 @@ branch: codex/issue-34
 tasks:
   - id: task-01
     title: Implement annualized volatility calculation in `src/inv_man_intake/performance/metrics.py`
-    status: doing
+    status: done
     started_at: '2026-03-08T23:33:31Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-08T23:33:41Z'
+    commit: 8b78890a1d2164fa19d5dbf1f2f1323d6a992578
     notes: []
   - id: task-02
     title: Implement max drawdown calculation in `src/inv_man_intake/performance/metrics.py`
