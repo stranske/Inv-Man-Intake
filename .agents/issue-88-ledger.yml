@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Add a disposition note for verify:compare non-PASS output in PR #55 (e.g.,
       PR description, checklist, or linked tracking issue)'
-    status: doing
+    status: done
     started_at: '2026-03-08T23:34:20Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-08T23:34:33Z'
+    commit: 7782c0f2b245395a15c7d8e0468d40d01cf918da
     notes: []
   - id: task-02
     title: 'Define scope for: Review the verify:compare non-PASS output from PR #55
