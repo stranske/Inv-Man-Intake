@@ -91,9 +91,7 @@ def evaluate_thresholds(
         for key in key_fields
         if key in field_by_key and field_by_key[key].confidence >= config.key_field_confidence_min
     ]
-    key_field_coverage_ratio = (
-        len(eligible_key_fields) / len(key_fields) if key_fields else 1.0
-    )
+    key_field_coverage_ratio = len(eligible_key_fields) / len(key_fields) if key_fields else 1.0
     auto_pass_document = key_field_coverage_ratio >= config.document_key_field_coverage_min
 
     for mandatory_field in config.mandatory_fields:
