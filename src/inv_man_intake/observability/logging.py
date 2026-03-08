@@ -19,6 +19,13 @@ class LogContext:
     status: str
     error_code: str | None = None
 
+    def __post_init__(self) -> None:
+        normalized_status = self.status.strip().lower()
+        if normalized_status != "success" and (
+            self.error_code is None or self.error_code.strip() == ""
+        ):
+            raise ValueError("error_code is required when status is not 'success'")
+
 
 def new_correlation_id() -> str:
     """Generate a stable-format correlation id."""
@@ -65,15 +72,19 @@ def build_log_record(
 ) -> dict[str, str | int | float | None]:
     """Build canonical structured log fields for pipeline observability."""
 
-    record: dict[str, str | int | float | None] = {
-        "timestamp": datetime.now(UTC).isoformat(),
-        "level": level,
-        "message": message,
-        "correlation_id": context.correlation_id,
-        "stage": context.stage,
-        "status": context.status,
-        "error_code": context.error_code,
-    }
+    record: dict[str, str | int | float | None] = {}
     if fields is not None:
         record.update(fields)
+
+    record.update(
+        {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "level": level,
+            "message": message,
+            "correlation_id": context.correlation_id,
+            "stage": context.stage,
+            "status": context.status,
+            "error_code": context.error_code,
+        }
+    )
     return record

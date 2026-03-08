@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from inv_man_intake.observability.logging import (
     LogContext,
     build_log_record,
@@ -50,6 +52,23 @@ def test_build_log_record_contains_required_operational_fields() -> None:
     assert "timestamp" in record
 
 
+def test_build_log_record_does_not_allow_reserved_field_override() -> None:
+    context = LogContext(correlation_id="corr_123", stage="intake", status="success")
+    record = build_log_record(
+        context=context,
+        message="ok",
+        fields={"stage": "wrong", "correlation_id": "bad"},
+    )
+
+    assert record["stage"] == "intake"
+    assert record["correlation_id"] == "corr_123"
+
+
+def test_log_context_requires_error_code_for_non_success_status() -> None:
+    with pytest.raises(ValueError, match="error_code is required"):
+        LogContext(correlation_id="corr_abc123", stage="extraction", status="failed")
+
+
 def test_inmemory_metrics_records_core_counters_and_latency() -> None:
     metrics = InMemoryMetrics()
 
@@ -58,35 +77,53 @@ def test_inmemory_metrics_records_core_counters_and_latency() -> None:
     metrics.record_escalation(stage="scoring", reason="manual_override")
     metrics.record_latency(stage="intake", milliseconds=125.5, status="success")
 
-    assert metrics.count(
-        FAILURE_COUNT,
-        tags={"stage": "intake", "error_code": "parse_error"},
-    ) == 1.0
-    assert metrics.count(
-        FALLBACK_COUNT,
-        tags={"stage": "extraction", "reason": "low_confidence"},
-    ) == 1.0
-    assert metrics.count(
-        ESCALATION_COUNT,
-        tags={"stage": "scoring", "reason": "manual_override"},
-    ) == 1.0
-    assert metrics.count(
-        LATENCY_MS,
-        tags={"stage": "intake", "status": "success"},
-    ) == 125.5
+    assert (
+        metrics.point_count(
+            FAILURE_COUNT,
+            tags={"stage": "intake", "error_code": "parse_error"},
+        )
+        == 1
+    )
+    assert (
+        metrics.point_count(
+            FALLBACK_COUNT,
+            tags={"stage": "extraction", "reason": "low_confidence"},
+        )
+        == 1
+    )
+    assert (
+        metrics.point_count(
+            ESCALATION_COUNT,
+            tags={"stage": "scoring", "reason": "manual_override"},
+        )
+        == 1
+    )
+    assert (
+        metrics.sum_values(
+            LATENCY_MS,
+            tags={"stage": "intake", "status": "success"},
+        )
+        == 125.5
+    )
 
 
-def test_metrics_count_uses_name_and_exact_tags() -> None:
+def test_metrics_queries_use_name_and_exact_tags() -> None:
     metrics = InMemoryMetrics()
 
     metrics.record_failure(stage="intake", error_code="parse_error")
     metrics.record_failure(stage="extraction", error_code="provider_error")
 
-    assert metrics.count(
-        FAILURE_COUNT,
-        tags={"stage": "intake", "error_code": "parse_error"},
-    ) == 1.0
-    assert metrics.count(
-        FAILURE_COUNT,
-        tags={"stage": "ingest", "error_code": "parse_error"},
-    ) == 0.0
+    assert (
+        metrics.point_count(
+            FAILURE_COUNT,
+            tags={"stage": "intake", "error_code": "parse_error"},
+        )
+        == 1
+    )
+    assert (
+        metrics.point_count(
+            FAILURE_COUNT,
+            tags={"stage": "ingest", "error_code": "parse_error"},
+        )
+        == 0
+    )
