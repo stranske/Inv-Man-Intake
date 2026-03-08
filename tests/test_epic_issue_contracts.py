@@ -33,6 +33,37 @@ def test_validation_rejects_mixed_parent_epic_links() -> None:
     assert any("same parent epic" in error for error in errors)
 
 
+def test_validation_rejects_uniform_wrong_parent_epic_link() -> None:
+    contracts = tuple(
+        ChildIssueContract(
+            issue_number=item.issue_number,
+            title=item.title,
+            epic_ref="some-other-epic",
+            sections=item.sections,
+        )
+        for item in child_issue_contracts()
+    )
+    errors = validate_child_issue_contracts(contracts)
+
+    assert any("must link to epic #7" in error for error in errors)
+
+
+def test_validation_rejects_wrong_epic_link_for_single_child_issue() -> None:
+    contracts = list(child_issue_contracts())
+    contracts[3] = ChildIssueContract(
+        issue_number=contracts[3].issue_number,
+        title=contracts[3].title,
+        epic_ref="other-epic-ref",
+        sections=contracts[3].sections,
+    )
+    errors = validate_child_issue_contracts(tuple(contracts))
+
+    assert any(
+        f"Issue #{contracts[3].issue_number} is linked to wrong epic ref" in error
+        for error in errors
+    )
+
+
 def test_validation_rejects_missing_required_issue_sections() -> None:
     contracts = list(child_issue_contracts())
     contracts[0] = ChildIssueContract(

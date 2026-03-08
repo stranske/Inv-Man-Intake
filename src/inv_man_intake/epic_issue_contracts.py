@@ -26,6 +26,7 @@ class ChildIssueContract:
 
 
 _V1_EPIC_REF = "v1-single-execution-container"
+V1_EPIC_ISSUE_NUMBER = 7
 
 
 _CHILD_ISSUE_CONTRACTS: tuple[ChildIssueContract, ...] = (
@@ -109,6 +110,10 @@ def validate_child_issue_contracts(
     epic_refs = {item.epic_ref for item in current_contracts}
     if len(epic_refs) > 1:
         errors.append("All child issues must link to the same parent epic")
+    if epic_refs and epic_refs != {_V1_EPIC_REF}:
+        errors.append(
+            f"All child issues must link to epic #{V1_EPIC_ISSUE_NUMBER} ({_V1_EPIC_REF})"
+        )
 
     for contract in current_contracts:
         expected_issue = expected_by_issue.get(contract.issue_number)
@@ -116,6 +121,11 @@ def validate_child_issue_contracts(
             errors.append(
                 f"Issue #{contract.issue_number} title mismatch: "
                 f"{contract.title!r} != {expected_issue.title!r}"
+            )
+        if contract.epic_ref != _V1_EPIC_REF:
+            errors.append(
+                f"Issue #{contract.issue_number} is linked to wrong epic ref: "
+                f"{contract.epic_ref!r} != {_V1_EPIC_REF!r}"
             )
 
         missing_sections = [
