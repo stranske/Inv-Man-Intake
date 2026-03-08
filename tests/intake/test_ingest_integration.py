@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from inv_man_intake.intake.integration import register_intake_bundle_file
+from inv_man_intake.intake.integration import IntakeRegistrationResult, register_intake_bundle_file
 from inv_man_intake.intake.service import IngestionService
 
 _FIXTURE_ROOT = Path("tests/fixtures/intake")
 
 
-def _register(name: str, service: IngestionService):
+def _register(name: str, service: IngestionService) -> IntakeRegistrationResult:
     return register_intake_bundle_file(_FIXTURE_ROOT / name, service)
 
 
