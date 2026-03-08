@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Literal
 
 from inv_man_intake.performance.contracts import (
@@ -16,6 +16,7 @@ from inv_man_intake.performance.contracts import (
 )
 
 BenchmarkAlignmentStatus = Literal["aligned", "missing_portfolio", "missing_benchmark"]
+DateInput = date | datetime | str
 
 
 @dataclass(frozen=True)
@@ -69,6 +70,21 @@ def normalize_payload(payload: PerformancePayload) -> NormalizedPerformancePaylo
         canonical_months=canonical_months,
         missing_months=missing_months,
     )
+
+
+def normalize_date_input(raw_date: DateInput, *, frequency: str | None = None) -> date:
+    """Parse heterogeneous date values and optionally align to a frequency period end."""
+
+    parsed = _parse_date_value(raw_date)
+    if frequency is None:
+        return parsed
+    return _normalizer_for_frequency(frequency)(parsed)
+
+
+def canonical_date_string(raw_date: DateInput, *, frequency: str | None = None) -> str:
+    """Return canonical YYYY-MM-DD representation for a date-like input."""
+
+    return normalize_date_input(raw_date, frequency=frequency).isoformat()
 
 
 def normalize_series(series: PerformanceSeries) -> PerformanceSeries:
@@ -214,6 +230,33 @@ def _normalizer_for_frequency(frequency: str) -> Callable[[date], date]:
     if frequency == "annual":
         return _year_end
     raise ValueError(f"Unsupported frequency: {frequency}")
+
+
+def _parse_date_value(raw_date: DateInput) -> date:
+    if isinstance(raw_date, datetime):
+        return raw_date.date()
+    if isinstance(raw_date, date):
+        return raw_date
+    if not isinstance(raw_date, str):
+        raise ValueError("Date input must be a date, datetime, or string")
+
+    raw = raw_date.strip()
+    if not raw:
+        raise ValueError("Date input string must not be empty")
+
+    parsers: tuple[Callable[[str], date], ...] = (
+        date.fromisoformat,
+        lambda v: datetime.strptime(v, "%Y/%m/%d").date(),
+        lambda v: datetime.strptime(v, "%m/%d/%Y").date(),
+        lambda v: datetime.strptime(v, "%Y%m%d").date(),
+    )
+    for parser in parsers:
+        try:
+            return parser(raw)
+        except ValueError:
+            continue
+
+    raise ValueError(f"Unsupported date format: {raw_date!r}")
 
 
 def _iter_month_ends(start: date, end: date) -> tuple[date, ...]:

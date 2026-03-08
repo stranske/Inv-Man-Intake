@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 
@@ -13,7 +13,9 @@ from inv_man_intake.performance.contracts import (
 )
 from inv_man_intake.performance.normalize import (
     build_benchmark_alignment,
+    canonical_date_string,
     correlation_inputs,
+    normalize_date_input,
     normalize_payload,
     normalize_series,
 )
@@ -148,3 +150,35 @@ def test_benchmark_alignment_requires_monthly_series() -> None:
         build_benchmark_alignment(normalized, quarterly_benchmark)
 
     assert str(exc.value) == "benchmark alignment requires frequency='monthly'"
+
+
+@pytest.mark.parametrize(
+    ("raw_date", "expected"),
+    (
+        (date(2025, 1, 15), date(2025, 1, 15)),
+        (datetime(2025, 1, 15, 13, 45, 10), date(2025, 1, 15)),
+        ("2025-01-15", date(2025, 1, 15)),
+        ("2025/01/15", date(2025, 1, 15)),
+        ("01/15/2025", date(2025, 1, 15)),
+        ("20250115", date(2025, 1, 15)),
+    ),
+)
+def test_normalize_date_input_supports_common_formats(raw_date: object, expected: date) -> None:
+    assert normalize_date_input(raw_date) == expected
+
+
+def test_normalize_date_input_applies_frequency_period_end_alignment() -> None:
+    assert normalize_date_input("2025-02-01", frequency="monthly") == date(2025, 2, 28)
+    assert normalize_date_input("2025-05-11", frequency="quarterly") == date(2025, 6, 30)
+    assert normalize_date_input("2025-02-01", frequency="annual") == date(2025, 12, 31)
+    assert canonical_date_string("2025-05-11", frequency="quarterly") == "2025-06-30"
+
+
+def test_normalize_date_input_rejects_invalid_types_and_formats() -> None:
+    with pytest.raises(ValueError) as exc:
+        normalize_date_input("15-01-2025")
+    assert str(exc.value) == "Unsupported date format: '15-01-2025'"
+
+    with pytest.raises(ValueError) as exc:
+        normalize_date_input(20250115)  # type: ignore[arg-type]
+    assert str(exc.value) == "Date input must be a date, datetime, or string"
