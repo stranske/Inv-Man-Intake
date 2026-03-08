@@ -55,5 +55,37 @@ def test_generate_followup_issue_includes_verify_compare_evidence_section() -> N
 
     assert "## verify:compare Analysis" in followup.body
     assert "Provider=openai; Verdict=FAIL; Difference=Regression in parsing" in followup.body
+    assert "non-PASS output requires code changes: **yes**" in followup.body
+    assert "requires code changes: **yes**" in followup.body
     assert "## verify:compare Evidence" in followup.body
     assert "Provider=openai; Model=gpt-5; Verdict=FAIL; Confidence=60%" in followup.body
+
+
+def test_generate_followup_issue_marks_advisory_non_pass_as_no_code_change() -> None:
+    comment = """
+## Provider Comparison Report
+
+### Provider Summary
+| Provider | Model | Verdict | Confidence | Summary |
+| --- | --- | --- | --- | --- |
+| openai | gpt-5 | CONCERNS | 64% | Style nit in docs wording |
+"""
+    verification_data = extract_verification_data(comment)
+    original_issue = OriginalIssueData(
+        title="Issue title",
+        number=92,
+        acceptance_criteria=["Disposition comment includes technical justification"],
+    )
+
+    followup = generate_followup_issue(
+        verification_data,
+        original_issue,
+        pr_number=49,
+        use_llm=False,
+    )
+
+    assert (
+        "Provider=openai; Verdict=CONCERNS; Difference=Style nit in docs wording" in followup.body
+    )
+    assert "non-PASS output requires code changes: **no**" in followup.body
+    assert "requires code changes: **no**" in followup.body

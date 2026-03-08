@@ -1173,13 +1173,97 @@ def _append_non_pass_analysis(body: str, non_pass_findings: list[str]) -> str:
         return body
     if "## verify:compare Analysis" in body:
         return body
+
+    analyses = [_analyze_non_pass_finding(finding) for finding in non_pass_findings]
+    requires_code_changes = any(item["requires_code_changes"] for item in analyses)
+    overall = "yes" if requires_code_changes else "no"
+
     analysis_lines = [
         "",
         "## verify:compare Analysis",
         "",
+        f"- Determination: non-PASS output requires code changes: **{overall}**",
+        "",
     ]
-    analysis_lines.extend(f"- {line}" for line in non_pass_findings)
+    for item in analyses:
+        finding = item["finding"]
+        disposition = "yes" if item["requires_code_changes"] else "no"
+        rationale = item["rationale"]
+        analysis_lines.append(f"- {finding}")
+        analysis_lines.append(
+            f"  - requires code changes: **{disposition}**; technical rationale: {rationale}"
+        )
     return body.rstrip() + "\n" + "\n".join(analysis_lines) + "\n"
+
+
+def _analyze_non_pass_finding(finding: str) -> dict[str, str | bool]:
+    """Classify a verify:compare finding as code-change required or advisory."""
+
+    finding_text = (finding or "").strip()
+    difference_match = re.search(r"Difference=(.+)$", finding_text)
+    difference = difference_match.group(1).strip() if difference_match else finding_text
+    verdict_match = re.search(r"Verdict=([^;]+)", finding_text, re.IGNORECASE)
+    verdict = (verdict_match.group(1).strip() if verdict_match else "").lower()
+    difference_lower = difference.lower()
+
+    if _is_advisory_concern(difference):
+        return {
+            "finding": finding_text,
+            "requires_code_changes": False,
+            "rationale": (
+                "Difference is advisory (style/clarity preference) and does not indicate a "
+                "functional regression."
+            ),
+        }
+
+    severe_patterns = [
+        r"\bregression\b",
+        r"\bmissing\b",
+        r"\bfail(?:ed|ure)?\b",
+        r"\berror\b",
+        r"\bbug\b",
+        r"\bcrash\b",
+        r"\bincorrect\b",
+        r"\bsecurity\b",
+        r"\bexception\b",
+        r"\btimeout\b",
+        r"\bnot found\b",
+    ]
+    if any(re.search(pattern, difference_lower) for pattern in severe_patterns):
+        return {
+            "finding": finding_text,
+            "requires_code_changes": True,
+            "rationale": (
+                "Difference describes a functional defect or regression signal that should be "
+                "resolved in code."
+            ),
+        }
+
+    if verdict == "fail":
+        return {
+            "finding": finding_text,
+            "requires_code_changes": True,
+            "rationale": "FAIL verdict is treated as blocking and requires corrective code changes.",
+        }
+
+    if verdict == "concerns":
+        return {
+            "finding": finding_text,
+            "requires_code_changes": True,
+            "rationale": (
+                "CONCERNS verdict is non-PASS and is treated as requiring a concrete remediation "
+                "or explicit technical disposition."
+            ),
+        }
+
+    return {
+        "finding": finding_text,
+        "requires_code_changes": False,
+        "rationale": (
+            "Finding does not contain a concrete functional signal; capture disposition details "
+            "before proposing code changes."
+        ),
+    }
 
 
 def generate_followup_issue(
