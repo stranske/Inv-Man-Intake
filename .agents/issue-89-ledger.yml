@@ -5,10 +5,10 @@ branch: codex/issue-89
 tasks:
   - id: task-01
     title: 'Locate (verify: confirm completion in repo)'
-    status: doing
+    status: done
     started_at: '2026-03-08T23:21:27Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-08T23:21:41Z'
+    commit: efda56008a06991528e82c55ea269c1878f406fe
     notes: []
   - id: task-02
     title: 'Locate and document the specific verify:compare non-PASS output from PR
