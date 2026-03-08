@@ -14,6 +14,16 @@ from .tracing import (
     tracing_enabled_from_env,
 )
 
+__all__ = [
+    "LANGCHAIN_TRACE_ENABLED_ENV_KEY",
+    "LANGSMITH_API_KEY_ENV_KEY",
+    "LANGSMITH_PROJECT_ENV_KEY",
+    "TRACE_ENABLED_ENV_KEY",
+    "SetupValidationResult",
+    "validate_langsmith_setup",
+    "main",
+]
+
 LANGSMITH_API_KEY_ENV_KEY = "LANGSMITH_API_KEY"
 LANGSMITH_PROJECT_ENV_KEY = "LANGSMITH_PROJECT"
 

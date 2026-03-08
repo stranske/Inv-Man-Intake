@@ -13,7 +13,10 @@ _VALID_POINTER_PREFIX = "documents."
 def load_seed_fixture(path: Path | str) -> dict[str, Any]:
     """Load a JSON fixture bundle from disk."""
     fixture_path = Path(path)
-    return json.loads(fixture_path.read_text(encoding="utf-8"))
+    data = json.loads(fixture_path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("Seed fixture root must be a JSON object.")
+    return data
 
 
 def reset_core_seed_tables(connection: sqlite3.Connection) -> None:
