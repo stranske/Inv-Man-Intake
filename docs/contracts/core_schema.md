@@ -60,9 +60,14 @@ This creates deterministic ordering for downstream processing.
 
 This allows repository code to remain forward-compatible while provenance tables are rolled out incrementally.
 
-## Extension and Compatibility Strategy
+## Developer Notes: Optional Field Extension Strategy
 
-- Add optional columns using additive migrations (`ALTER TABLE ... ADD COLUMN`) so older codepaths remain valid.
-- Keep repository read models tolerant of `NULL` for newly introduced optional fields.
-- Version contract docs by section and preserve defaults for omitted optional fields.
-- Prefer deterministic ordering fields in repository query APIs so downstream consumers are stable across schema evolution.
+Use this checklist when introducing optional fields to `firms`, `funds`, or `documents`:
+
+1. Add schema fields via additive migrations only (`ALTER TABLE ... ADD COLUMN`) without rewriting or dropping existing columns.
+2. Make new fields nullable first, then backfill data in a separate migration if needed.
+3. Keep repository readers tolerant of `NULL` and default omitted values at the model boundary.
+4. Preserve deterministic ordering for query helpers (especially version/provenance reads) when adding new filters or sort keys.
+5. Update this contract and repository tests in the same change so behavior and documentation remain aligned.
+
+This approach allows older ingestion and read codepaths to continue working while new optional metadata rolls out incrementally.
