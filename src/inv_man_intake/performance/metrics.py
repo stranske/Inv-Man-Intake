@@ -110,7 +110,7 @@ def _annualized_volatility(returns: list[float]) -> float | None:
 
 
 def _max_drawdown(returns: list[float]) -> float | None:
-    if not returns:
+    if len(returns) < 2:
         return None
 
     equity = 1.0
