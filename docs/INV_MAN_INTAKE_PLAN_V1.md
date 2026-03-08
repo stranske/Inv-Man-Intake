@@ -5,10 +5,10 @@ Status: Updated after stakeholder clarifications
 
 ## 1) Initial Plan From Stakeholder Responses
 
-## Why
+### Why
 Build the first production-capable intake-to-scoring pipeline for investment manager packages, with firm -> fund -> document hierarchy, confidence-aware extraction, and analyst/ops triage support.
 
-## Confirmed Scope (v1)
+### Confirmed Scope (v1)
 - Deliver from document intake through priority scoring.
 - Primary user personas: analysts and ops.
 - Expected starting throughput: 10-15 manager packages per week.
@@ -22,50 +22,50 @@ Build the first production-capable intake-to-scoring pipeline for investment man
   - Credit relative value
   - Activist
 
-## In-Scope Inputs
+### In-Scope Inputs
 - Primary: PDF, PPTX
 - Secondary: XLSX, email notes, Word docs
 
-## Processing and Review Stance
+### Processing and Review Stance
 - Fully automated default path where possible.
 - Human review queue exists for rough edges, exceptions, and conflict resolution.
 - Retry policy: if extraction/parsing fails, retry with alternate tool; escalate to human if still failing.
 
-## Data and Provenance Decisions
+### Data and Provenance Decisions
 - Core hierarchy: firm -> fund -> document.
 - Field completeness policy: do not lock hard mandatory fields yet (except monthly return requirement in performance); converge after real data intake.
 - Provenance requirement for extracted values: source document + page.
 - Versioning policy: date-based versioning for documents and corrected fields.
 
-## Performance and Credibility Decisions
+### Performance and Credibility Decisions
 - Track record source will usually be manager-supplied and must be clearly documented.
 - Required frequencies: monthly, quarterly, annual.
 - Only strict mandatory performance input: monthly returns.
 - High-priority (not mandatory at launch): Sharpe, Sortino, information ratio, volatility, drawdown, and correlation vs key benchmarks.
 - Conflict rule: prefer Excel data over non-Excel documents; escalate to human if conflicting data exceeds 5% of comparable points.
 
-## Enrichment and Scoring Decisions
+### Enrichment and Scoring Decisions
 - No external enrichment signals in v1.
 - Priority scoring must be asset-class-specific.
 - Score explainability is required.
 
-## Platform and Ops Decisions
+### Platform and Ops Decisions
 - One repository (single repo strategy).
 - Interface/spec docs to live under `docs/`.
 - No heavy compliance/security requirements at first.
 - Add LangSmith tracing from the start.
-- CI baseline: use Workflows repo defaults; no additional mandatory gates initially.
+- CI baseline: keep current Workflows default gates (lint, typecheck, tests, >=80% coverage); do not add repo-specific required checks initially.
 
 ## 2) Clarifications Resolved
 
 Stakeholder clarifications received on March 1, 2026:
 
 1. Outcome ranking (highest to lowest)
-- 1) Parsing accuracy
-- 2) Analyst trust
-- 3) Triage quality
-- 4) Cycle time
-- 5) Throughput
+   1. Parsing accuracy
+   2. Analyst trust
+   3. Triage quality
+   4. Cycle time
+   5. Throughput
 
 2. Service target
 - Same business day from intake to scored output.
@@ -85,13 +85,13 @@ Stakeholder clarifications received on March 1, 2026:
 
 This section replaces previous provisional assumptions with confirmed decisions.
 
-## Confirmed Delivery Parameters
+### Confirmed Delivery Parameters
 - Throughput assumption: 10-15 packages per week.
 - Service target: same business day from intake to scored output.
 - Queue ownership: analyst first-touch triage.
 - Extraction thresholds: confirmed and approved as listed in Section 2.
 
-## Workstreams
+### Workstreams
 1. Intake and document registry
 - Land multi-format ingestion (PDF, PPTX, XLSX, DOCX, email notes).
 - Build document versioning with hash + received date.
