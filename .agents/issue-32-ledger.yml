@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: Define the base TimeSeries dataclass with common fields like date, value,
       and frequency type in `src/inv_man_intake/performance/contracts.py`
-    status: doing
+    status: done
     started_at: '2026-03-08T23:21:27Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-08T23:21:36Z'
+    commit: af84bebf0dd6c3ef9e0dc161f3ce0e91159b6850
     notes: []
   - id: task-02
     title: Add separate field definitions for monthly, quarterly, and annual data
