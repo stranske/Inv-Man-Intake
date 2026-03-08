@@ -1,0 +1,146 @@
+version: 1
+issue: 33
+base: main
+branch: codex/issue-33
+tasks:
+  - id: task-01
+    title: Implement date normalization utilities to convert various date formats
+      to a canonical representation in `src/inv_man_intake/performance/normalize.py`
+    status: doing
+    started_at: '2026-03-08T23:28:25Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Implement frequency alignment utilities to convert mixed-frequency data
+      to a common frequency in `src/inv_man_intake/performance/normalize.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Create helper functions to detect the frequency of input time series data
+      in `src/inv_man_intake/performance/normalize.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Implement missing-month detection logic to identify gaps in time series
+      data in `src/inv_man_intake/performance/normalize.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Create deterministic flag output structure to represent missing periods
+      consistently in `src/inv_man_intake/performance/normalize.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Add validation logic to ensure flag outputs are reproducible across runs
+      in `src/inv_man_intake/performance/normalize.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Implement benchmark alignment hooks for later correlation calculations
+      in `src/inv_man_intake/performance/normalize.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Write tests for daily to monthly frequency conversion scenarios in `tests/performance/test_normalize.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Write tests for quarterly to monthly frequency conversion scenarios in
+      `tests/performance/test_normalize.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Write tests for handling mixed frequencies within a single dataset in `tests/performance/test_normalize.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Write tests for single missing period detection and flagging in `tests/performance/test_normalize.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Write tests for multiple consecutive missing periods detection in `tests/performance/test_normalize.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Write tests for irregular gaps at the beginning or end of time series in
+      `tests/performance/test_normalize.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: Create documentation for normalization assumptions and limitations in `docs/contracts/performance_normalization.md`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: Mixed-frequency inputs (daily, monthly, quarterly) normalize to monthly
+      frequency with ISO 8601 date format, as verified by tests in `tests/performance/test_normalize.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: Missing periods are flagged deterministically as verified by tests in `tests/performance/test_normalize.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: Normalization produces identical output (same dates, values, and flags)
+      when run multiple times on the same input, verified by deterministic test fixtures
+      in `tests/performance/test_normalize.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: '`tests/performance/test_normalize.py` includes at least 3 mixed-frequency
+      scenarios (daily-to-monthly, quarterly-to-monthly, mixed within dataset) and
+      3 gap scenarios (single gap, consecutive gaps, boundary gaps) and all tests
+      pass'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
