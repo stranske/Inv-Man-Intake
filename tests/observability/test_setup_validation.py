@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from inv_man_intake.observability.setup_validation import (
     LANGCHAIN_TRACE_ENABLED_ENV_KEY,
     LANGSMITH_API_KEY_ENV_KEY,
@@ -67,7 +69,9 @@ def test_validate_langsmith_setup_errors_when_langchain_toggle_disabled() -> Non
     assert any(LANGCHAIN_TRACE_ENABLED_ENV_KEY in message for message in result.errors)
 
 
-def test_main_returns_failure_when_project_is_required_but_missing(capsys) -> None:
+def test_main_returns_failure_when_project_is_required_but_missing(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     env = {
         LANGSMITH_API_KEY_ENV_KEY: "lsv2_pt_123456",
         TRACE_ENABLED_ENV_KEY: "true",
@@ -82,7 +86,7 @@ def test_main_returns_failure_when_project_is_required_but_missing(capsys) -> No
     assert "LangSmith setup validation failed." in captured.out
 
 
-def test_main_returns_success_for_valid_env(capsys) -> None:
+def test_main_returns_success_for_valid_env(capsys: pytest.CaptureFixture[str]) -> None:
     env = {
         LANGSMITH_API_KEY_ENV_KEY: "lsv2_pt_123456",
         LANGSMITH_PROJECT_ENV_KEY: "inv-man-intake-dev",
