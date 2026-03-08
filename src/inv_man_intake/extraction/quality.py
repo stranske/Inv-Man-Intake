@@ -6,6 +6,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from inv_man_intake.extraction.providers.base import ExtractionProvider
 from inv_man_intake.extraction.providers.primary import PrimaryRegexExtractionProvider
 
 
@@ -38,17 +39,19 @@ def load_corpus(path: Path) -> tuple[CorpusFixture, ...]:
 
 def generate_quality_report(
     corpus_path: Path,
+    *,
+    extractor: ExtractionProvider | None = None,
+    primary_provider_name: str = "primary-regex",
 ) -> dict[str, object]:
     """Evaluate baseline extraction quality against fixture expectations."""
 
-    provider = PrimaryRegexExtractionProvider()
+    provider: ExtractionProvider = extractor or PrimaryRegexExtractionProvider()
     fixtures = load_corpus(corpus_path)
 
     fixture_reports: list[dict[str, object]] = []
     total_expected = 0
     total_correct = 0
     total_extracted_expected_keys = 0
-    total_extracted_correct = 0
     parser_failures = 0
     fallback_uses = 0
 
@@ -73,7 +76,7 @@ def generate_quality_report(
             )
             continue
 
-        if result.provider_name != provider.name:
+        if result.provider_name != primary_provider_name:
             fallback_uses += 1
 
         extracted_by_key = {field.key: field.value for field in result.fields}
@@ -93,7 +96,6 @@ def generate_quality_report(
             if actual_value == expected_value:
                 matched_count += 1
                 total_correct += 1
-                total_extracted_correct += 1
             else:
                 incorrect_values.append(
                     {
@@ -117,7 +119,7 @@ def generate_quality_report(
 
     completeness = (total_correct / total_expected) if total_expected else 0.0
     accuracy = (
-        total_extracted_correct / total_extracted_expected_keys
+        total_correct / total_extracted_expected_keys
         if total_extracted_expected_keys
         else 0.0
     )

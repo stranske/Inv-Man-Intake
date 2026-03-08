@@ -6,9 +6,11 @@ from pathlib import Path
 
 from inv_man_intake.extraction.quality import generate_quality_report
 
+_CORPUS_PATH = Path(__file__).resolve().parent.parent / "fixtures" / "extraction" / "qa_corpus.json"
+
 
 def test_extraction_quality_report_meets_baseline_metrics() -> None:
-    report = generate_quality_report(Path("tests/fixtures/extraction/qa_corpus.json"))
+    report = generate_quality_report(_CORPUS_PATH)
     summary = report["summary"]
 
     assert report["fixture_count"] >= 3
@@ -19,7 +21,7 @@ def test_extraction_quality_report_meets_baseline_metrics() -> None:
 
 
 def test_extraction_quality_report_surfaces_fixture_level_gaps() -> None:
-    report = generate_quality_report(Path("tests/fixtures/extraction/qa_corpus.json"))
+    report = generate_quality_report(_CORPUS_PATH)
 
     fixture_reports = report["fixtures"]
     assert fixture_reports

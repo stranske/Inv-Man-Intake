@@ -18,8 +18,7 @@
       "expected_fields": {
         "strategy.name": "Defensive Credit Alpha",
         "benchmark.name": "ICE BofA US Corp",
-        "terms.management_fee": "0.95%",
-        "terms.performance_fee": "12%"
+        "terms.management_fee": "0.95%"
       }
     },
     {

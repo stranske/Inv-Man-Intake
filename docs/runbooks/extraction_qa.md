@@ -5,10 +5,7 @@ This runbook defines how to execute and interpret extraction QA corpus regressio
 ## QA Corpus
 
 - Fixture corpus path: `tests/fixtures/extraction/qa_corpus.json`
-- Current fixture scenarios:
-- dense table manager report
-- scan-style OCR noise sample
-- mixed layout slide sample
+- Current fixture scenarios: dense table manager report, scan-style OCR noise sample, mixed layout slide sample
 - Expected outputs are stored per fixture in the `expected_fields` map.
 
 ## Generate Baseline Quality Report
@@ -29,7 +26,7 @@ The report includes:
 - `accuracy`: correct extracted values among extracted expected keys
 - `completeness`: correct extracted values among all expected keys
 - `parser_failure_count`: fixtures that raised provider exceptions
-- `fallback_usage_count`: fixtures resolved by non-primary provider
+- `fallback_usage_count`: fixtures resolved by non-primary provider (for the default primary-only run this is expected to be `0`)
 
 ## Regression Test Procedure
 
