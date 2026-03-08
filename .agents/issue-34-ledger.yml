@@ -1,0 +1,149 @@
+version: 1
+issue: 34
+base: main
+branch: codex/issue-34
+tasks:
+  - id: task-01
+    title: Implement annualized volatility calculation in `src/inv_man_intake/performance/metrics.py`
+    status: doing
+    started_at: '2026-03-08T23:33:31Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Implement max drawdown calculation in `src/inv_man_intake/performance/metrics.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Implement Sharpe ratio calculation in `src/inv_man_intake/performance/metrics.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Implement Sortino ratio calculation in `src/inv_man_intake/performance/metrics.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Implement information ratio calculation in `src/inv_man_intake/performance/metrics.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Implement benchmark correlation calculation in `src/inv_man_intake/performance/metrics.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Add deterministic unit tests with known input/output fixtures in `tests/performance/test_metrics.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: '`src/inv_man_intake/performance/metrics.py` returns all prioritized metrics
+      in the canonical schema'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Running the metric computations with identical inputs returns identical
+      outputs across runs
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: '`tests/performance/test_metrics.py` asserts expected numeric outputs for
+      each implemented metric using fixed fixtures'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Metric computations handle insufficient data windows without raising unhandled
+      exceptions (verified by unit tests)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Implement annualized volatility calculation
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Implement max drawdown calculation
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: Implement Sharpe and Sortino ratio calculations
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: Implement information ratio and benchmark correlation calculations
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: Add deterministic unit tests with known input/output fixtures
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: All prioritized metrics are computed and returned in canonical schema
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: Metric calculations are reproducible for identical inputs
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: Tests validate formulas against known expected outputs
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: Metric module handles insufficient data windows gracefully
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
