@@ -1,0 +1,199 @@
+version: 1
+issue: 32
+base: main
+branch: codex/issue-32
+tasks:
+  - id: task-01
+    title: Define the base TimeSeries dataclass with common fields like date, value,
+      and frequency type in `src/inv_man_intake/performance/contracts.py`
+    status: doing
+    started_at: '2026-03-08T23:21:27Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Add separate field definitions for monthly, quarterly, and annual data
+      series in `src/inv_man_intake/performance/contracts.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Document the validation rules and constraints for each frequency type in
+      the schema in `src/inv_man_intake/performance/contracts.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Create type annotations and docstrings explaining the schema contract in
+      `src/inv_man_intake/performance/contracts.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Implement monthly series presence validation function in `src/inv_man_intake/performance/ingest.py`
+      that raises `MissingMonthlyDataError`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Add deterministic validation errors in `src/inv_man_intake/performance/ingest.py`
+      for malformed date/value records following pattern ''Invalid {field} at row
+      {n}: {reason}'''
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Implement XLSX file reading functionality to extract raw performance data
+      in `src/inv_man_intake/performance/ingest.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Create column mapping logic to identify monthly, quarterly, and annual
+      data columns in `src/inv_man_intake/performance/ingest.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Transform extracted XLSX data into the canonical timeseries schema format
+      in `src/inv_man_intake/performance/ingest.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Add error handling for missing columns or malformed XLSX structure in `src/inv_man_intake/performance/ingest.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Implement document parsing functionality to extract performance data from
+      text documents in `src/inv_man_intake/performance/ingest.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Create field mapping logic to identify monthly, quarterly, and annual data
+      in documents in `src/inv_man_intake/performance/ingest.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Transform extracted document data into the canonical timeseries schema
+      format in `src/inv_man_intake/performance/ingest.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: Add error handling for unstructured or malformed document content in `src/inv_man_intake/performance/ingest.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: Write test cases in `tests/performance/test_ingest_contracts.py` that verify
+      monthly data presence is enforced and missing monthly data fails validation
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: Write test cases in `tests/performance/test_ingest_contracts.py` that verify
+      quarterly data is accepted when monthly data is present
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: Write test cases in `tests/performance/test_ingest_contracts.py` that verify
+      annual data is accepted when monthly data is present
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: Write test cases in `tests/performance/test_ingest_contracts.py` that verify
+      combinations of monthly, quarterly, and annual data are handled correctly
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: Validation raises a specific exception type (`MissingMonthlyDataError`)
+      with a consistent error message format when monthly data is absent, and the
+      same input always produces the identical error message
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: Validation passes when monthly data is present and quarterly/annual data
+      is absent
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: Validation passes when monthly data is present and quarterly/annual data
+      is provided
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-22
+    title: 'Records with invalid date formats (non-ISO8601), non-numeric values, or
+      missing required fields raise a `ValidationError` with a message following the
+      pattern ''Invalid {field} at row {n}: {reason}'', and identical malformed inputs
+      produce identical error messages'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-23
+    title: File `tests/performance/test_ingest_contracts.py` exists and all tests
+      pass
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-24
+    title: All tests in `tests/performance/test_ingest_contracts.py` pass for frequency
+      handling rules
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
