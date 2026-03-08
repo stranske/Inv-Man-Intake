@@ -18,6 +18,19 @@ from inv_man_intake.performance.contracts import (
 BenchmarkAlignmentStatus = Literal["aligned", "missing_portfolio", "missing_benchmark"]
 DateInput = date | datetime | str
 
+NORMALIZATION_ASSUMPTIONS: tuple[str, ...] = (
+    "Monthly series is required and drives canonical month range boundaries.",
+    "All canonical output dates use ISO 8601 calendar dates (YYYY-MM-DD).",
+    "Date normalization snaps input points to period-end boundaries by frequency.",
+    "Input series for a frequency must be strictly increasing and deterministic.",
+)
+NORMALIZATION_LIMITATIONS: tuple[str, ...] = (
+    "No source conflict arbitration across competing provider payloads.",
+    "No interpolation or advanced imputation for missing months.",
+    "No correlation or other statistics are computed in normalization stage.",
+    "No support for frequencies outside monthly, quarterly, and annual.",
+)
+
 
 @dataclass(frozen=True)
 class CanonicalMonthPoint:
@@ -49,6 +62,15 @@ class BenchmarkAlignmentPoint:
     portfolio_value: float | None
     benchmark_value: float | None
     status: BenchmarkAlignmentStatus
+
+
+def describe_normalization_contract() -> dict[str, tuple[str, ...]]:
+    """Return deterministic assumptions and known v1 limitations for normalization."""
+
+    return {
+        "assumptions": NORMALIZATION_ASSUMPTIONS,
+        "limitations": NORMALIZATION_LIMITATIONS,
+    }
 
 
 def normalize_payload(payload: PerformancePayload) -> NormalizedPerformancePayload:

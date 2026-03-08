@@ -15,6 +15,7 @@ from inv_man_intake.performance.normalize import (
     build_benchmark_alignment,
     canonical_date_string,
     correlation_inputs,
+    describe_normalization_contract,
     normalize_date_input,
     normalize_payload,
     normalize_series,
@@ -182,3 +183,14 @@ def test_normalize_date_input_rejects_invalid_types_and_formats() -> None:
     with pytest.raises(ValueError) as exc:
         normalize_date_input(20250115)  # type: ignore[arg-type]
     assert str(exc.value) == "Date input must be a date, datetime, or string"
+
+
+def test_describe_normalization_contract_is_stable_and_explicit() -> None:
+    first = describe_normalization_contract()
+    second = describe_normalization_contract()
+
+    assert first == second
+    assert "assumptions" in first
+    assert "limitations" in first
+    assert any("ISO 8601" in item for item in first["assumptions"])
+    assert any("No interpolation" in item for item in first["limitations"])
