@@ -10,7 +10,7 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -200,7 +200,10 @@ def _fetch_issue_json(
         headers["Authorization"] = f"Bearer {token}"
     request = Request(url=url, headers=headers)
     with urlopen(request, timeout=30) as response:  # noqa: S310 - fixed GitHub API URL
-        return json.loads(response.read().decode("utf-8"))
+        payload = json.loads(response.read().decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"Unexpected GitHub API response for issue #{issue_number}")
+    return cast(dict[str, Any], payload)
 
 
 def _load_issue_body_from_github(

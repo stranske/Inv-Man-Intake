@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 from pytest import CaptureFixture
-
 from scripts.validate_child_issues import (
     REQUIRED_SECTIONS,
     ensure_epic_task_links,
