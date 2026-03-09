@@ -234,7 +234,9 @@ def _build_artifact(
     storage_path: str,
 ) -> VisualArtifact:
     digest = hashlib.sha256(content).hexdigest()
-    source_key = f"p{source.page_number}" if source.page_number is not None else f"s{source.slide_number}"
+    source_key = (
+        f"p{source.page_number}" if source.page_number is not None else f"s{source.slide_number}"
+    )
     reference_key = source.source_ref or "none"
     artifact_seed = f"{source.source_doc_id}|{source_key}|{reference_key}|{digest}".encode()
     artifact_id = f"va_{hashlib.sha1(artifact_seed).hexdigest()[:16]}"

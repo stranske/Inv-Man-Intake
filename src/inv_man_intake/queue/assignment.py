@@ -104,7 +104,9 @@ def reassign_to_ops_for_block(
     )
 
 
-def update_sla_breach(record: QueueAssignmentRecord, *, now: datetime | None = None) -> QueueAssignmentRecord:
+def update_sla_breach(
+    record: QueueAssignmentRecord, *, now: datetime | None = None
+) -> QueueAssignmentRecord:
     """Update breached_at when same-day SLA has been violated."""
 
     observed_at = now or _utc_now()

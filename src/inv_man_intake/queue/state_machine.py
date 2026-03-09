@@ -97,7 +97,9 @@ def transition_item(
     if to_state not in allowed:
         raise QueueTransitionError(f"invalid transition: {item.state} -> {to_state}")
 
-    _check_transition_permission(item=item, actor_id=actor_id, actor_role=actor_role, to_state=to_state)
+    _check_transition_permission(
+        item=item, actor_id=actor_id, actor_role=actor_role, to_state=to_state
+    )
     timestamp = _utc_now()
     return replace(item, state=to_state, updated_at=timestamp)
 
