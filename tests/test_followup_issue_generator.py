@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from scripts.langchain.followup_issue_generator import (
     OriginalIssueData,
+    extract_original_issue_data,
     extract_verification_data,
     generate_disposition_comment,
     generate_followup_issue,
@@ -204,3 +205,70 @@ def test_generate_issue_disposition_link_comment_includes_url() -> None:
 
     assert "Disposition documentation for verify:compare is recorded here" in body
     assert "https://github.com/stranske/Inv-Man-Intake/pull/49#issuecomment-123" in body
+
+
+def test_extract_original_issue_data_captures_source_refs_and_repository() -> None:
+    issue_body = """
+## Scope
+Review unresolved threads.
+
+### Related Issues/PRs
+- https://github.com/stranske/Inv-Man-Intake/pull/79
+- https://github.com/stranske/Inv-Man-Intake/issues/38
+
+## Implementation Notes
+- Source issue: #38
+- Source PR: #79
+"""
+
+    data = extract_original_issue_data(issue_body, issue_number=124, title="Follow-up task")
+
+    assert data.repository == "stranske/Inv-Man-Intake"
+    assert data.source_issue_number == 38
+    assert data.source_pr_number == 79
+
+
+def test_generate_followup_issue_source_section_includes_links_and_source_issue_in_title() -> None:
+    comment = """
+## Provider Comparison Report
+
+### Provider Summary
+| Provider | Model | Verdict | Confidence | Summary |
+| --- | --- | --- | --- | --- |
+| openai | gpt-5 | CONCERNS | 74% | Missing edge case |
+"""
+    verification_data = extract_verification_data(comment)
+    original_issue = extract_original_issue_data(
+        """
+## Why
+Need a follow-up.
+
+## Implementation Notes
+- Source issue: #38
+- Source PR: #79
+- Context URL: https://github.com/stranske/Inv-Man-Intake/issues/124
+""",
+        issue_number=124,
+        title="Resolve unresolved review threads",
+    )
+
+    followup = generate_followup_issue(
+        verification_data,
+        original_issue,
+        pr_number=79,
+        use_llm=False,
+    )
+
+    assert "[issue #38]" in followup.title
+    assert (
+        "- Original PR: [PR #79](https://github.com/stranske/Inv-Man-Intake/pull/79)"
+        in followup.body
+    )
+    assert (
+        "- Parent issue: [Issue #124](https://github.com/stranske/Inv-Man-Intake/issues/124)"
+        in followup.body
+    )
+    assert (
+        "- Source issue: [Issue #38](https://github.com/stranske/Inv-Man-Intake/issues/38)"
+        in followup.body
+    )
