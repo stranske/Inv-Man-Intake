@@ -29,4 +29,22 @@ Expected extracted row:
 ## Task status
 
 - [x] Locate and document the specific verify:compare non-PASS output from PR #54
-- [ ] Analyze the verify:compare output to determine if concerns are warranted
+- [x] Analyze the verify:compare output to determine if concerns are warranted
+- [x] Define scope for: Write a disposition note explaining why the non-PASS output does or does not require fixes
+- [ ] Implement focused slice for: Write a disposition note explaining why the non-PASS output does or does not require fixes
+- [ ] Validate focused slice for: Write a disposition note explaining why the non-PASS output does or does not require fixes
+
+## Disposition scope definition
+
+Generated via:
+
+```bash
+python scripts/langchain/verify_compare_locator.py --pr 54 --format scope codex-prompt-95.md
+```
+
+Scope statement:
+
+- Confirm and cite the exact non-PASS evidence line with source link.
+- Decide whether the concern needs a bounded fix PR or documentation-only disposition.
+- Keep follow-up strictly limited to verify:compare concerns.
+- Provide a disposition rationale of at least two sentences.

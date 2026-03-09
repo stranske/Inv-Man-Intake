@@ -164,7 +164,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pr", type=int, default=None, help="Limit results to this PR number")
     parser.add_argument(
         "--format",
-        choices=("json", "markdown"),
+        choices=("json", "markdown", "scope"),
         default="json",
         help="Output format",
     )
@@ -186,12 +186,43 @@ def _as_markdown(findings: list[VerifyCompareFinding]) -> str:
     return "\n".join(lines)
 
 
+def _as_scope(findings: list[VerifyCompareFinding], pr_number: int | None = None) -> str:
+    if not findings:
+        return "No scope can be generated because no non-PASS verify:compare findings were located."
+
+    target = findings[0]
+    if pr_number is not None:
+        for item in findings:
+            if item.pr_number == pr_number:
+                target = item
+                break
+
+    resolved_pr = target.pr_number if target.pr_number is not None else pr_number
+    pr_label = f"PR #{resolved_pr}" if resolved_pr is not None else "target PR"
+    source_text = target.source_url or "(link not available)"
+
+    return "\n".join(
+        [
+            f"## Disposition Scope For {pr_label}",
+            "",
+            "- Confirm the exact non-PASS evidence line and cite its source link.",
+            f"- Evidence link: {source_text}",
+            f"- Evidence line: `{target.evidence_line}`",
+            "- Decide whether the concern requires a bounded fix PR or documentation-only disposition.",
+            "- Keep follow-up limited to verify:compare concerns; do not broaden scope.",
+            "- Produce a 2+ sentence rationale for the final disposition decision.",
+        ]
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     findings = scan_files(args.files, pr_number=args.pr)
 
     if args.format == "markdown":
         print(_as_markdown(findings))
+    elif args.format == "scope":
+        print(_as_scope(findings, pr_number=args.pr))
     else:
         print(json.dumps([asdict(item) for item in findings], indent=2))
     return 0
