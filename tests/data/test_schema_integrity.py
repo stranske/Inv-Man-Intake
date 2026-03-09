@@ -302,6 +302,20 @@ def test_correction_history_exposes_latest_event_for_each_pointer() -> None:
     assert bravo_history[-1]["event_id"] == "evt-002"
 
 
+def test_correction_history_is_chronological_even_when_fixture_events_are_unsorted() -> None:
+    fixture = load_seed_fixture(FIXTURE_PATH)
+    broken_order = copy.deepcopy(fixture)
+    broken_order["corrections"] = list(reversed(broken_order["corrections"]))
+
+    history = correction_history_for_pointer(broken_order, "documents.doc_alpha_q1.source_channel")
+
+    assert [row["corrected_at"] for row in history] == [
+        "2026-03-01T10:00:00Z",
+        "2026-03-01T11:00:00Z",
+    ]
+    assert history[-1]["event_id"] == "evt-003"
+
+
 def test_correction_history_for_document_is_chronological_and_latest_is_identifiable() -> None:
     fixture = load_seed_fixture(FIXTURE_PATH)
     pointers = [
