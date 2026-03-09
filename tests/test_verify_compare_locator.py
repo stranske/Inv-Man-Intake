@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from scripts.langchain.verify_compare_locator import (
+    _as_decision,
     _as_disposition,
     _as_review,
     _as_scope,
@@ -221,3 +222,37 @@ verify:compare reported non-PASS output without a documented disposition.
 def test_review_output_handles_empty_findings() -> None:
     review = _as_review([], pr_number=86)
     assert review == "No non-PASS verify:compare findings located for review."
+
+
+def test_decision_output_marks_not_warranted_for_doc_gap_signal() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/issues/112
+Source PR: #86
+verify:compare reported non-PASS output without a documented disposition.
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue-112.txt", pr_number=86)
+    decision = _as_decision(findings, pr_number=86)
+
+    assert "## verify:compare Concern Determination For PR #86" in decision
+    assert "Concern category: documentation gap" in decision
+    assert "Warranted: no (acceptable documentation-only outcome)." in decision
+
+
+def test_decision_output_marks_warranted_for_fail_signal() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/pull/86#issuecomment-555
+- Verdict: FAIL
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="verification_data.txt", pr_number=86)
+    decision = _as_decision(findings, pr_number=86)
+
+    assert "## verify:compare Concern Determination For PR #86" in decision
+    assert "Concern category: potential fix required" in decision
+    assert "Warranted: yes (bounded follow-up fix required)." in decision
+
+
+def test_decision_output_handles_empty_findings() -> None:
+    decision = _as_decision([], pr_number=86)
+    assert decision == "No non-PASS verify:compare findings located for decision."
