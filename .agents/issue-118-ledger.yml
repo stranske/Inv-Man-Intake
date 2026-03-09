@@ -1,0 +1,79 @@
+version: 1
+issue: 118
+base: main
+branch: codex/issue-118
+tasks:
+  - id: task-01
+    title: 'Review the verify:compare non-PASS output from PR #71 to understand the
+      specific concerns raised'
+    status: doing
+    started_at: '2026-03-09T03:43:59Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Determine whether the verify:compare concerns warrant a code fix or can
+      be documented as not-warranted
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add a comment to PR #71 documenting the disposition decision with clear
+      rationale'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Create a follow-up GitHub issue documenting the decision (not-warranted
+      vs follow-up fix) and link it from the disposition note
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Define the specific scope and boundaries of the follow-up fix based on
+      the verify:compare concerns (only if disposition is "fix needed")
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Implement the code changes required to address the verify:compare non-PASS
+      output (only if disposition is "fix needed")
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Create a new pull request with the fix and link it in the disposition note
+      (only if disposition is "fix needed")
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'A comment exists on PR #71 or in issue #45 that states either ''not-warranted:
+      [reason]'' or ''fix-needed: [reason]'' and includes a link to the tracking issue
+      or follow-up PR'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'If a fix is required, a follow-up PR is merged that causes verify:compare
+      to return PASS status for the same test case; otherwise, issue #[number] exists
+      with a comment explaining why the non-PASS result does not require code changes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
