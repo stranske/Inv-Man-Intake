@@ -49,6 +49,16 @@ class EpicTaskLinksValidationResult:
         return not self.missing_issue_links
 
 
+def render_epic_task_links_checklist(
+    owner: str, repo: str, start_issue: int, end_issue: int
+) -> str:
+    """Render markdown checklist lines for child issue links used in epic Tasks sections."""
+    return "\n".join(
+        f"- [ ] [#{issue_number}]({_issue_url(owner, repo, issue_number)})"
+        for issue_number in range(start_issue, end_issue + 1)
+    )
+
+
 def _build_section_pattern(section: str) -> re.Pattern[str]:
     return re.compile(rf"^\s*##\s+{re.escape(section)}\s*$", re.MULTILINE)
 
@@ -202,6 +212,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "in the configured issue range."
         ),
     )
+    parser.add_argument(
+        "--print-epic-task-links-checklist",
+        action="store_true",
+        help=(
+            "Print a markdown checklist snippet with links for each child issue in the configured "
+            "issue range, then exit."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -210,6 +228,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.start_issue > args.end_issue:
         print("--start-issue must be <= --end-issue", file=sys.stderr)
         return 2
+    if args.print_epic_task_links_checklist:
+        print(
+            render_epic_task_links_checklist(
+                owner=args.owner,
+                repo=args.repo,
+                start_issue=args.start_issue,
+                end_issue=args.end_issue,
+            )
+        )
+        return 0
 
     issue_numbers = range(args.start_issue, args.end_issue + 1)
     validations: list[IssueValidationResult] = []

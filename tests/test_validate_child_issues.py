@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pytest import CaptureFixture
+
 from scripts.validate_child_issues import (
     REQUIRED_SECTIONS,
     main,
+    render_epic_task_links_checklist,
     validate_epic_task_links,
     validate_issue_body,
 )
@@ -112,3 +115,41 @@ def test_main_success_with_epic_task_links_validation(tmp_path: Path) -> None:
     _write_epic_issue(tmp_path, _epic_body_with_task_links())
     exit_code = main(["--issues-dir", str(tmp_path), "--check-epic-task-links"])
     assert exit_code == 0
+
+
+def test_render_epic_task_links_checklist() -> None:
+    output = render_epic_task_links_checklist(
+        owner="stranske",
+        repo="Inv-Man-Intake",
+        start_issue=8,
+        end_issue=10,
+    )
+    assert output == "\n".join(
+        [
+            "- [ ] [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)",
+            "- [ ] [#9](https://github.com/stranske/Inv-Man-Intake/issues/9)",
+            "- [ ] [#10](https://github.com/stranske/Inv-Man-Intake/issues/10)",
+        ]
+    )
+
+
+def test_main_print_epic_task_links_checklist(capsys: CaptureFixture[str]) -> None:
+    exit_code = main(
+        [
+            "--owner",
+            "stranske",
+            "--repo",
+            "Inv-Man-Intake",
+            "--start-issue",
+            "8",
+            "--end-issue",
+            "9",
+            "--print-epic-task-links-checklist",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert (
+        captured.out.strip() == "- [ ] [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)\n"
+        "- [ ] [#9](https://github.com/stranske/Inv-Man-Intake/issues/9)"
+    )
