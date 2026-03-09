@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -20,8 +21,16 @@ def _clean_text(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip(" -:\n\t")
 
 
+def _append_concern(
+    concerns: list[Concern], *, text: str, default_reference: str, min_length: int = 8
+) -> None:
+    cleaned = _clean_text(text)
+    if len(cleaned) >= min_length:
+        concerns.append(Concern(text=cleaned, reference=default_reference))
+
+
 def extract_concerns(report_text: str, default_reference: str) -> list[Concern]:
-    """Extract concern strings from verify:compare markdown-like text."""
+    """Extract concern strings from verify:compare markdown-like or JSON-like text."""
     concerns: list[Concern] = []
 
     heading_match = re.search(
@@ -30,26 +39,64 @@ def extract_concerns(report_text: str, default_reference: str) -> list[Concern]:
     if heading_match:
         for line in heading_match.group(1).splitlines():
             line = line.strip()
-            if line.startswith("- "):
-                text = _clean_text(line[2:])
-                if len(text) >= 8:
-                    concerns.append(Concern(text=text, reference=default_reference))
+            if re.match(r"^[-*]\s+", line):
+                _append_concern(
+                    concerns,
+                    text=re.sub(r"^[-*]\s+", "", line),
+                    default_reference=default_reference,
+                )
+            elif re.match(r"^\d+\.\s+", line):
+                _append_concern(
+                    concerns,
+                    text=re.sub(r"^\d+\.\s+", "", line),
+                    default_reference=default_reference,
+                )
 
     for block in re.findall(r"-\s+\*\*Concerns:\*\*\s*\n((?:\s+-\s+.+\n?)*)", report_text):
         for line in block.splitlines():
             line = line.strip()
             if line.startswith("- "):
-                text = _clean_text(line[2:])
-                if len(text) >= 8:
-                    concerns.append(Concern(text=text, reference=default_reference))
+                _append_concern(concerns, text=line[2:], default_reference=default_reference)
+
+    for match in re.finditer(r"\*\*Concerns:\*\*\s*(.+)", report_text, re.IGNORECASE):
+        _append_concern(concerns, text=match.group(1), default_reference=default_reference)
 
     for line in report_text.splitlines():
         line = line.strip()
         if not line.lower().startswith("- concern:"):
             continue
-        text = _clean_text(line.split(":", 1)[1])
-        if len(text) >= 8:
-            concerns.append(Concern(text=text, reference=default_reference))
+        _append_concern(concerns, text=line.split(":", 1)[1], default_reference=default_reference)
+
+    for match in re.finditer(r'"concerns"\s*:\s*(\[[\s\S]*?\])', report_text, re.IGNORECASE):
+        try:
+            parsed = json.loads(match.group(1))
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(parsed, list):
+            continue
+        for item in parsed:
+            if isinstance(item, str):
+                _append_concern(concerns, text=item, default_reference=default_reference)
+
+    for score_match in re.finditer(
+        r"(?im)^\s*[-*]?\s*([A-Za-z][\w /()-]{1,40}):\s*(\d{1,2})/10\s*$", report_text
+    ):
+        score = int(score_match.group(2))
+        if score < 7:
+            _append_concern(
+                concerns,
+                text=f"{score_match.group(1)} score is {score}/10 (below 7/10 threshold).",
+                default_reference=default_reference,
+            )
+
+    for row in re.finditer(r"(?m)^\|\s*([^|\n]+?)\s*\|\s*(\d{1,2})/10\s*\|", report_text):
+        score = int(row.group(2))
+        if score < 7:
+            _append_concern(
+                concerns,
+                text=f"{row.group(1)} score is {score}/10 (below 7/10 threshold).",
+                default_reference=default_reference,
+            )
 
     unique: list[Concern] = []
     seen: set[str] = set()

@@ -36,6 +36,38 @@ def test_extract_concerns_deduplicates_across_formats() -> None:
     assert concerns[0].text == "Missing idempotency check in retry path."
 
 
+def test_extract_concerns_from_json_array() -> None:
+    report = """
+{
+  "verdict": "CONCERNS",
+  "concerns": [
+    "Missing retry budget cap in failure path.",
+    "Normalization step can drop source timestamp precision."
+  ]
+}
+"""
+    concerns = extract_concerns(report, default_reference="https://example.test/output")
+    assert [c.text for c in concerns] == [
+        "Missing retry budget cap in failure path.",
+        "Normalization step can drop source timestamp precision.",
+    ]
+
+
+def test_extract_concerns_from_low_scores_and_markdown_table() -> None:
+    report = """
+Correctness: 6/10
+Risk: 8/10
+| category | score |
+|---|---|
+| Completeness | 5/10 |
+"""
+    concerns = extract_concerns(report, default_reference="https://example.test/output")
+    assert [c.text for c in concerns] == [
+        "Correctness score is 6/10 (below 7/10 threshold).",
+        "Completeness score is 5/10 (below 7/10 threshold).",
+    ]
+
+
 def test_render_disposition_markdown_contains_required_phrase() -> None:
     concerns = extract_concerns(
         "### Concerns\n- Ingestion ledger does not record retry attempts.",
