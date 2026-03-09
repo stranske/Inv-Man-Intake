@@ -136,3 +136,112 @@ def test_transfer_to_ops_and_dashboard_projection() -> None:
     assert row.owner_role == "ops"
     assert row.state == "ops_review"
     assert row.next_action == "Ops policy decision"
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "error"),
+    [
+        (
+            {
+                "item_id": "",
+                "package_id": "pkg-107",
+                "escalation_reason": "missing_mandatory_field",
+            },
+            "item_id must be non-empty",
+        ),
+        (
+            {
+                "item_id": "queue-7",
+                "package_id": "",
+                "escalation_reason": "missing_mandatory_field",
+            },
+            "package_id must be non-empty",
+        ),
+        (
+            {
+                "item_id": "queue-7",
+                "package_id": "pkg-107",
+                "escalation_reason": "",
+            },
+            "escalation_reason must be non-empty",
+        ),
+    ],
+)
+def test_create_item_rejects_empty_required_fields(kwargs: dict[str, str], error: str) -> None:
+    with pytest.raises(ValidationWorkflowError, match=error):
+        create_queue_item(**kwargs)
+
+
+def test_transfer_owner_rejects_unclaimed_terminal_and_unauthorized_requests() -> None:
+    unclaimed = create_queue_item(
+        item_id="queue-8",
+        package_id="pkg-108",
+        escalation_reason="policy_exception",
+    )
+
+    with pytest.raises(ValidationWorkflowError, match="must be claimed"):
+        transfer_owner(
+            unclaimed,
+            actor_id="analyst-11",
+            actor_role="analyst",
+            new_owner_id="ops-3",
+            new_owner_role="ops",
+        )
+
+    claimed = claim_for_analyst_triage(unclaimed, analyst_id="analyst-11")
+    with pytest.raises(ValidationWorkflowError, match="current owner or ops"):
+        transfer_owner(
+            claimed,
+            actor_id="analyst-12",
+            actor_role="analyst",
+            new_owner_id="ops-3",
+            new_owner_role="ops",
+        )
+
+    completed = transition_state(
+        claimed,
+        actor_id="analyst-11",
+        actor_role="analyst",
+        to_state="completed",
+    )
+    with pytest.raises(ValidationWorkflowError, match="terminal queue items"):
+        transfer_owner(
+            completed,
+            actor_id="ops-3",
+            actor_role="ops",
+            new_owner_id="analyst-13",
+            new_owner_role="analyst",
+        )
+
+
+def test_transition_state_requires_claim_and_permissions_and_supports_noop() -> None:
+    pending = create_queue_item(
+        item_id="queue-9",
+        package_id="pkg-109",
+        escalation_reason="parse_conflict",
+    )
+
+    with pytest.raises(ValidationWorkflowError, match="must be claimed"):
+        transition_state(
+            pending,
+            actor_id="analyst-14",
+            actor_role="analyst",
+            to_state="in_validation",
+        )
+
+    claimed = claim_for_analyst_triage(pending, analyst_id="analyst-14")
+    no_change = transition_state(
+        claimed,
+        actor_id="analyst-14",
+        actor_role="analyst",
+        to_state="in_validation",
+    )
+    assert no_change == claimed
+
+    with pytest.raises(ValidationWorkflowError, match="current owner or ops"):
+        transition_state(
+            claimed,
+            actor_id="analyst-15",
+            actor_role="analyst",
+            to_state="ops_review",
+        )
