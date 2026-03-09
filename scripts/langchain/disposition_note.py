@@ -24,6 +24,13 @@ class ReviewItem:
     summary: str
 
 
+@dataclass(frozen=True)
+class DispositionDecision:
+    path: str
+    why: str
+    follow_up_ref: str | None = None
+
+
 def extract_non_pass_provider_concerns(report: str) -> list[ProviderConcern]:
     """Extract non-PASS provider concerns from a comparison report markdown blob."""
     blocks = re.split(r"^####\s+", report, flags=re.MULTILINE)
@@ -118,6 +125,7 @@ def render_disposition_note(
     issue_number: int,
     source_issue_number: int,
     non_pass: list[ProviderConcern],
+    decision: DispositionDecision | None = None,
 ) -> str:
     """Build markdown for a repository-tracked verify:compare disposition note."""
     lines = [
@@ -149,7 +157,22 @@ def render_disposition_note(
         [
             "",
             "## Disposition Path",
-            "- Pending determination: `not-warranted rationale` or `follow-up fix`.",
+        ]
+    )
+
+    if decision is None:
+        lines.append("- Pending determination: `not-warranted rationale` or `follow-up fix`.")
+    elif decision.path == "not-warranted":
+        lines.append("- Path chosen: `not-warranted rationale`.")
+        lines.append(f"- Why: {decision.why}")
+    else:
+        lines.append("- Path chosen: `follow-up fix`.")
+        lines.append(f"- Why: {decision.why}")
+        if decision.follow_up_ref:
+            lines.append(f"- Follow-up fix reference: {decision.follow_up_ref}")
+
+    lines.extend(
+        [
             "",
             "## Traceability",
             f"- References: #{pr_number}, #{issue_number}, #{source_issue_number}",
@@ -174,7 +197,29 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--output", required=True, help="Path for generated disposition note markdown"
     )
+    parser.add_argument(
+        "--decision-path",
+        choices=("not-warranted", "follow-up-fix"),
+        help="Disposition decision path to record in the note",
+    )
+    parser.add_argument("--decision-why", help="Rationale explaining the chosen disposition path")
+    parser.add_argument(
+        "--follow-up-ref",
+        help="Follow-up PR/commit reference when --decision-path=follow-up-fix",
+    )
     args = parser.parse_args(argv)
+
+    decision: DispositionDecision | None = None
+    if args.decision_path:
+        if not args.decision_why:
+            parser.error("--decision-why is required when --decision-path is provided")
+        if args.decision_path == "follow-up-fix" and not args.follow_up_ref:
+            parser.error("--follow-up-ref is required when --decision-path=follow-up-fix")
+        decision = DispositionDecision(
+            path="not-warranted" if args.decision_path == "not-warranted" else "follow-up-fix",
+            why=args.decision_why.strip(),
+            follow_up_ref=args.follow_up_ref.strip() if args.follow_up_ref else None,
+        )
 
     report = _load_text(args.report_file)
     non_pass = extract_non_pass_provider_concerns(report)
@@ -183,6 +228,7 @@ def main(argv: list[str] | None = None) -> int:
         issue_number=args.issue,
         source_issue_number=args.source_issue,
         non_pass=non_pass,
+        decision=decision,
     )
     Path(args.output).write_text(note, encoding="utf-8")
     return 0

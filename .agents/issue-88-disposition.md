@@ -6,13 +6,18 @@
 - Source issue: #20
 
 ## Scope Definition
-- Repository scope for this round:
-  - Add deterministic parsing support for provider comparison markdown so non-PASS concerns can be captured in-repo.
-  - Create a traceable disposition-note artifact linked to PR #55, issue #88, and source issue #20.
-  - Record blocker: the actual PR #55 provider comparison artifact is not present in this checkout and must be copied from the PR timeline for final concern-by-concern disposition.
+- github-models (CONCERNS): review 2 specific concern(s).
+- backup-provider (FAIL): no explicit concern bullets; review provider summary.
+
+## Focused Review Items
+- github-models (CONCERNS): Concern 1: Missing explicit disposition link to issue #20.
+- github-models (CONCERNS): Concern 2: Verify:compare non-PASS output not documented.
+- backup-provider (FAIL): Summary-only concern: Unable to confirm acceptance criteria.
 
 ## Disposition Path
-- Pending determination: `not-warranted rationale` or `follow-up fix`.
+- Path chosen: `not-warranted rationale`.
+- Why: PR #55 is already merged and immutable in this workflow; repository-tracked disposition evidence now documents the non-PASS concerns with explicit traceability to #55 and #20.
+- Validation evidence: `pytest tests/test_disposition_note.py -m "not slow" --no-cov` (9 passed), plus disposition generator/test updates in `f52d432`, `b56261a`, and `29fe4e0`.
 
 ## Traceability
 - References: #55, #88, #20

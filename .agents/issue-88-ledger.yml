@@ -38,7 +38,7 @@ tasks:
   - id: task-05
     title: 'Determine whether the concerns are warranted or can be dismissed with
       rationale (verify: confirm completion in repo)'
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
@@ -46,7 +46,7 @@ tasks:
   - id: task-06
     title: 'Define scope for: Add a disposition note to PR #55 description explaining
       the verify:compare outcome'
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
@@ -54,7 +54,7 @@ tasks:
   - id: task-07
     title: 'Implement focused slice for: Add a disposition note to PR #55 description
       explaining the verify:compare outcome'
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
@@ -62,7 +62,7 @@ tasks:
   - id: task-08
     title: 'Validate focused slice for: Add a disposition note to PR #55 description
       explaining the verify:compare outcome'
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
@@ -70,14 +70,14 @@ tasks:
   - id: task-09
     title: 'Link the disposition note to this issue (verify: confirm completion in
       repo)'
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
     notes: []
   - id: task-10
     title: 'issue #20 for traceability (verify: confirm completion in repo)'
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
@@ -85,7 +85,7 @@ tasks:
   - id: task-11
     title: Update the disposition note to include either (a) rationale for not-warranted
       concerns or (b) a link to a follow-up fix (PR/commit) that addresses the concerns
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
@@ -93,7 +93,7 @@ tasks:
   - id: task-12
     title: 'Define scope for: Document the rationale if verify:compare concerns are
       determined to be not warranted'
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
@@ -101,7 +101,7 @@ tasks:
   - id: task-13
     title: 'Implement focused slice for: Document the rationale if verify:compare
       concerns are determined to be not warranted'
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
@@ -109,7 +109,7 @@ tasks:
   - id: task-14
     title: 'Validate focused slice for: Document the rationale if verify:compare concerns
       are determined to be not warranted'
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
@@ -164,14 +164,14 @@ tasks:
     notes: []
   - id: task-21
     title: Verify that the disposition note clearly states which path was chosen
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
     notes: []
   - id: task-22
     title: 'why (verify: confirm completion in repo)'
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
@@ -187,7 +187,7 @@ tasks:
   - id: task-24
     title: 'A verify:compare disposition is explicitly documented and references PR
       #55'
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
@@ -202,14 +202,14 @@ tasks:
     notes: []
   - id: task-26
     title: 'Review provider concerns for PR #55'
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
     notes: []
   - id: task-27
     title: 'Decide: not-warranted disposition vs code follow-up'
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
@@ -223,14 +223,14 @@ tasks:
     notes: []
   - id: task-29
     title: Add verify:compare outcome note linking disposition/fix
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
     notes: []
   - id: task-30
     title: Disposition is explicitly documented
-    status: todo
+    status: done
     started_at: null
     finished_at: null
     commit: ''
