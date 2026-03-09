@@ -63,6 +63,19 @@ def extract_unresolved_threads(payload: dict[str, Any]) -> list[UnresolvedThread
     return extracted
 
 
+def validate_required_metadata(threads: list[UnresolvedThread]) -> list[str]:
+    """Return validation failures for required inventory metadata fields."""
+    failures: list[str] = []
+    for index, thread in enumerate(threads, start=1):
+        if not thread.path:
+            failures.append(f"thread[{index}] missing file path: {thread.url}")
+        if thread.line is None:
+            failures.append(f"thread[{index}] missing line number: {thread.url}")
+        if thread.summary == "(no comment body)":
+            failures.append(f"thread[{index}] missing concern summary: {thread.url}")
+    return failures
+
+
 def render_unresolved_threads_comment(*, pr_number: int, threads: list[UnresolvedThread]) -> str:
     """Render markdown suitable for posting as a tracking comment on a PR."""
     lines = [
@@ -105,6 +118,11 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         help="Fail if extracted unresolved thread count does not match this value",
     )
+    parser.add_argument(
+        "--require-metadata",
+        action="store_true",
+        help="Fail if any unresolved thread is missing file path, line number, or summary",
+    )
     args = parser.parse_args(argv)
 
     payload = _load_payload(args.input_file)
@@ -114,6 +132,14 @@ def main(argv: list[str] | None = None) -> int:
             f"expected {args.expected_count} unresolved threads, found {len(threads)}",
         )
         return 1
+
+    if args.require_metadata:
+        failures = validate_required_metadata(threads)
+        if failures:
+            print("metadata validation failed:")
+            for failure in failures:
+                print(f"- {failure}")
+            return 1
 
     rendered = render_unresolved_threads_comment(pr_number=args.pr, threads=threads)
     if args.output:

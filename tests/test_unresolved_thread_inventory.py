@@ -7,6 +7,7 @@ from scripts.langchain.unresolved_thread_inventory import (
     extract_unresolved_threads,
     main,
     render_unresolved_threads_comment,
+    validate_required_metadata,
 )
 
 
@@ -137,3 +138,45 @@ def test_main_writes_output_and_enforces_expected_count(tmp_path: Path, capsys) 
     )
     captured = capsys.readouterr()
     assert "expected 4 unresolved threads, found 2" in captured.out
+
+
+def test_validate_required_metadata_reports_missing_fields() -> None:
+    payload = _sample_payload()
+    payload["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"][0]["path"] = None
+    payload["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"][1]["line"] = None
+    payload["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"][1]["startLine"] = None
+    payload["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"][1]["comments"]["nodes"][
+        0
+    ]["body"] = ""
+    threads = extract_unresolved_threads(payload)
+
+    failures = validate_required_metadata(threads)
+    assert len(failures) == 3
+    assert "missing file path" in failures[0]
+    assert "missing line number" in failures[1]
+    assert "missing concern summary" in failures[2]
+
+
+def test_main_require_metadata_enforces_required_fields(tmp_path: Path, capsys) -> None:
+    payload = _sample_payload()
+    payload["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"][0]["path"] = None
+    payload_path = tmp_path / "payload.json"
+    payload_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert (
+        main(
+            [
+                "--input-file",
+                str(payload_path),
+                "--pr",
+                "71",
+                "--expected-count",
+                "2",
+                "--require-metadata",
+            ]
+        )
+        == 1
+    )
+    captured = capsys.readouterr()
+    assert "metadata validation failed:" in captured.out
+    assert "missing file path" in captured.out
