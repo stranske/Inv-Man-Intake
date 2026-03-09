@@ -119,11 +119,13 @@ def test_guardrail_blocks_repeated_fallback_attempts() -> None:
     assert result.provider_used is None
     assert result.retry_count == 1
     assert result.failure_count == 2
+    assert result.escalation_route == "ops_review"
     assert fallback_calls == 1
     assert result.escalation_reason is not None
     assert result.escalation_payload == {
         "item_id": "C-3",
         "input_payload": {"id": "C-3"},
+        "escalation_route": "ops_review",
         "escalation_reason": "fallback-provider: fallback failed",
         "retry_count": 1,
         "failure_count": 2,
@@ -141,6 +143,39 @@ def test_guardrail_blocks_repeated_fallback_attempts() -> None:
             "failure_count": 2,
         }
     ]
+
+
+def test_primary_failure_routes_to_pending_triage_when_fallback_is_disabled() -> None:
+    def primary(_: dict[str, object]) -> dict[str, object]:
+        raise ExtractionFailedError("primary failed")
+
+    def fallback(_: dict[str, object]) -> dict[str, object]:
+        raise AssertionError("fallback should not run")
+
+    orchestrator = ExtractionOrchestrator(
+        primary_name="primary-provider",
+        primary_extractor=primary,
+        fallback_name="fallback-provider",
+        fallback_extractor=fallback,
+        policy=RetryPolicy(max_total_attempts=1, max_fallback_attempts=0),
+    )
+
+    result = orchestrator.run({"id": "C-4"})
+
+    assert result.resolved is False
+    assert result.retry_count == 0
+    assert result.failure_count == 1
+    assert result.escalation_route == "pending_triage"
+    assert result.escalation_payload == {
+        "item_id": "C-4",
+        "input_payload": {"id": "C-4"},
+        "escalation_route": "pending_triage",
+        "escalation_reason": "primary-provider: primary failed",
+        "retry_count": 0,
+        "failure_count": 1,
+        "failed_providers": ["primary-provider"],
+        "errors": ["primary-provider: primary failed"],
+    }
 
 
 def test_orchestrator_emits_trace_events_for_primary_success() -> None:

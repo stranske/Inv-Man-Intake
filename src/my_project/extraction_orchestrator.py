@@ -43,6 +43,7 @@ class OrchestrationResult:
     attempts: list[AttemptRecord]
     retry_count: int
     failure_count: int
+    escalation_route: str | None = None
     escalation_reason: str | None = None
     escalation_payload: dict[str, Any] | None = None
 
@@ -192,6 +193,7 @@ class ExtractionOrchestrator:
         reason: str | None,
     ) -> OrchestrationResult:
         escalation_reason = reason or "extraction-unresolved"
+        escalation_route = ExtractionOrchestrator._resolve_escalation_route(attempts=attempts)
         return OrchestrationResult(
             resolved=False,
             data=None,
@@ -199,11 +201,13 @@ class ExtractionOrchestrator:
             attempts=attempts,
             retry_count=retry_count,
             failure_count=len(attempts),
+            escalation_route=escalation_route,
             escalation_reason=escalation_reason,
             escalation_payload=ExtractionOrchestrator._build_escalation_payload(
                 payload=payload,
                 attempts=attempts,
                 retry_count=retry_count,
+                escalation_route=escalation_route,
                 escalation_reason=escalation_reason,
             ),
         )
@@ -214,18 +218,29 @@ class ExtractionOrchestrator:
         payload: dict[str, Any],
         attempts: list[AttemptRecord],
         retry_count: int,
+        escalation_route: str,
         escalation_reason: str,
     ) -> dict[str, Any]:
         failed_attempts = [attempt for attempt in attempts if not attempt.success]
         return {
             "item_id": payload.get("id"),
             "input_payload": dict(payload),
+            "escalation_route": escalation_route,
             "escalation_reason": escalation_reason,
             "retry_count": retry_count,
             "failure_count": len(failed_attempts),
             "failed_providers": [attempt.provider for attempt in failed_attempts],
             "errors": [attempt.error for attempt in failed_attempts if attempt.error],
         }
+
+    @staticmethod
+    def _resolve_escalation_route(*, attempts: list[AttemptRecord]) -> str:
+        failed_provider_count = len(
+            {attempt.provider for attempt in attempts if not attempt.success}
+        )
+        if failed_provider_count > 1:
+            return "ops_review"
+        return "pending_triage"
 
     def _emit_metrics(self, result: OrchestrationResult) -> None:
         if self._metrics_hook is None:
