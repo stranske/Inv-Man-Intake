@@ -1,5 +1,22 @@
 """Observability utilities for trace and metric instrumentation."""
 
+from .logging import (
+    CORRELATION_ID_KEY,
+    LogContext,
+    build_log_record,
+    ensure_correlation_id,
+    extract_correlation_id,
+    inject_correlation_id,
+    new_correlation_id,
+)
+from .metrics import (
+    ESCALATION_COUNT,
+    FAILURE_COUNT,
+    FALLBACK_COUNT,
+    LATENCY_MS,
+    InMemoryMetrics,
+    MetricPoint,
+)
 from .tracing import (
     LANGCHAIN_TRACE_ENABLED_ENV_KEY,
     LANGSMITH_TRACE_ENABLED_ENV_KEY,
@@ -19,17 +36,30 @@ from .tracing import (
 )
 
 __all__ = [
+    "CORRELATION_ID_KEY",
+    "ESCALATION_COUNT",
+    "FAILURE_COUNT",
+    "FALLBACK_COUNT",
+    "InMemoryMetrics",
     "InMemoryTraceSink",
     "LANGCHAIN_TRACE_ENABLED_ENV_KEY",
     "LANGSMITH_TRACE_ENABLED_ENV_KEY",
+    "LATENCY_MS",
+    "LogContext",
+    "MetricPoint",
     "TRACE_ENABLED_ENV_KEY",
     "TraceContext",
     "TraceEvent",
     "Tracer",
+    "build_log_record",
     "child_run_context",
     "child_trace_context",
+    "ensure_correlation_id",
+    "extract_correlation_id",
     "extract_trace_context",
+    "inject_correlation_id",
     "inject_trace_context",
+    "new_correlation_id",
     "new_trace_context",
     "traced_run",
     "traced_span",
