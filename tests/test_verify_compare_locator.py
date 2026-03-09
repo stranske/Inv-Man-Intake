@@ -150,6 +150,36 @@ def test_disposition_prefers_finding_with_source_link_when_multiple() -> None:
     assert "Evidence link: https://github.com/stranske/Inv-Man-Intake/issues/89" in disposition
 
 
+def test_disposition_prefers_pr_issuecomment_link_when_available() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/issues/89
+Source: https://github.com/stranske/Inv-Man-Intake/pull/54#issuecomment-999
+Source PR: #54
+verify:compare reported non-PASS output without a documented disposition.
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue_context.txt", pr_number=54)
+    disposition = _as_disposition(findings, pr_number=54)
+
+    assert (
+        "Evidence link: https://github.com/stranske/Inv-Man-Intake/pull/54#issuecomment-999"
+        in disposition
+    )
+
+
+def test_disposition_doc_gap_rationale_uses_selected_pr_label() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/pull/77#issuecomment-123
+Source PR: #77
+verify:compare reported non-PASS output without a documented disposition.
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue_context.txt", pr_number=77)
+    disposition = _as_disposition(findings, pr_number=77)
+
+    assert "Adding a disposition note to PR #77 closes the verification gap" in disposition
+
+
 def test_validation_output_passes_for_doc_gap_disposition() -> None:
     text = """
 Source: https://github.com/stranske/Inv-Man-Intake/issues/89

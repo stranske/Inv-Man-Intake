@@ -225,13 +225,18 @@ def _select_target_finding(
         if pr_matches:
             candidates = pr_matches
 
-    def _score(item: VerifyCompareFinding) -> tuple[int, int]:
+    def _score(item: VerifyCompareFinding) -> tuple[int, int, int]:
         lower = item.evidence_line.lower()
         doc_gap_signal = int(
             "reported non-pass output" in lower and "without a documented disposition" in lower
         )
         has_source = int(item.source_url is not None)
-        return (doc_gap_signal, has_source)
+        source_specificity = 0
+        if item.source_url and "#issuecomment-" in item.source_url and "/pull/" in item.source_url:
+            source_specificity = 2
+        elif item.source_url:
+            source_specificity = 1
+        return (doc_gap_signal, source_specificity, has_source)
 
     return max(candidates, key=_score)
 
@@ -259,9 +264,10 @@ def _as_disposition(findings: list[VerifyCompareFinding], pr_number: int | None 
 
     if doc_gap_only:
         decision = "No code fixes are needed; documentation-only follow-up is required."
+        target_pr_text = pr_label if resolved_pr is not None else "the target PR"
         rationale = (
             "The flagged output identifies a missing disposition record rather than a product or test "
-            "behavior defect. Adding a disposition note to PR #54 closes the verification gap while "
+            f"behavior defect. Adding a disposition note to {target_pr_text} closes the verification gap while "
             "keeping scope bounded to verify:compare documentation requirements."
         )
     else:
