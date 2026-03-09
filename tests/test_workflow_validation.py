@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+from typing import Literal, cast
+
 import pytest
 
 from inv_man_intake.workflow_validation import (
@@ -53,6 +56,18 @@ def test_claim_rejects_already_owned_item() -> None:
 
     with pytest.raises(ValidationWorkflowError, match="already has an owner"):
         claim_for_analyst_triage(claimed, analyst_id="analyst-12")
+
+
+def test_claim_rejects_non_pending_item_even_when_unowned() -> None:
+    pending = create_queue_item(
+        item_id="queue-3b",
+        package_id="pkg-103b",
+        escalation_reason="parse_conflict",
+    )
+    non_pending_unowned = replace(pending, state="in_validation")
+
+    with pytest.raises(ValidationWorkflowError, match="Only pending_triage items can be claimed"):
+        claim_for_analyst_triage(non_pending_unowned, analyst_id="analyst-12")
 
 
 def test_transition_sequence_and_terminal_block() -> None:
@@ -245,3 +260,39 @@ def test_transition_state_requires_claim_and_permissions_and_supports_noop() -> 
             actor_role="analyst",
             to_state="ops_review",
         )
+
+
+@pytest.mark.parametrize(
+    ("state", "expected_action"),
+    [
+        ("pending_triage", "Claim by analyst"),
+        ("in_validation", "Review extracted fields"),
+        ("awaiting_manager_response", "Collect manager clarification"),
+        ("ops_review", "Ops policy decision"),
+        ("completed", "No action"),
+        ("rejected", "No action"),
+    ],
+)
+def test_to_queue_row_next_action_for_all_states(state: str, expected_action: str) -> None:
+    item = create_queue_item(
+        item_id=f"queue-row-{state}",
+        package_id=f"pkg-row-{state}",
+        escalation_reason="policy_exception",
+    )
+    if state != "pending_triage":
+        item = claim_for_analyst_triage(item, analyst_id="analyst-row")
+        typed_state = cast(
+            Literal[
+                "pending_triage",
+                "in_validation",
+                "awaiting_manager_response",
+                "ops_review",
+                "completed",
+                "rejected",
+            ],
+            state,
+        )
+        item = replace(item, state=typed_state)
+
+    row = to_queue_row(item)
+    assert row.next_action == expected_action
