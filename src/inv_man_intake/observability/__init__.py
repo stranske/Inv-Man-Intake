@@ -13,6 +13,8 @@ from .tracing import (
     extract_trace_context,
     inject_trace_context,
     new_trace_context,
+    traced_run,
+    traced_span,
     tracing_enabled_from_env,
 )
 
@@ -29,5 +31,7 @@ __all__ = [
     "extract_trace_context",
     "inject_trace_context",
     "new_trace_context",
+    "traced_run",
+    "traced_span",
     "tracing_enabled_from_env",
 ]

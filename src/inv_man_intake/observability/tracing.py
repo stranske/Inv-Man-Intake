@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 import os
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Callable, Mapping, MutableMapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Protocol
+from functools import wraps
+from typing import Any, ParamSpec, Protocol, TypeVar
 from uuid import uuid4
 
 TRACE_CONTEXT_PREFIX = "x-trace-"
@@ -19,6 +20,8 @@ TAGS_KEY = f"{TRACE_CONTEXT_PREFIX}tags"
 TRACE_ENABLED_ENV_KEY = "INV_MAN_TRACING_ENABLED"
 LANGSMITH_TRACE_ENABLED_ENV_KEY = "LANGSMITH_TRACING_ENABLED"
 LANGCHAIN_TRACE_ENABLED_ENV_KEY = "LANGCHAIN_TRACING_V2"
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 @dataclass(frozen=True)
@@ -197,6 +200,44 @@ class Tracer:
             started_at=_utc_now_iso(),
         )
         return RunHandle(self._sink, event)
+
+
+def traced_span(
+    tracer: Tracer,
+    name: str,
+    context: TraceContext,
+    metadata: dict[str, Any] | None = None,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """Decorate a callable so its execution is wrapped in a trace span."""
+
+    def _decorate(func: Callable[P, R]) -> Callable[P, R]:
+        @wraps(func)
+        def _wrapped(*args: P.args, **kwargs: P.kwargs) -> R:
+            with tracer.start_span(name=name, context=context, metadata=metadata):
+                return func(*args, **kwargs)
+
+        return _wrapped
+
+    return _decorate
+
+
+def traced_run(
+    tracer: Tracer,
+    name: str,
+    context: TraceContext,
+    metadata: dict[str, Any] | None = None,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    """Decorate a callable so its execution is wrapped in a trace run."""
+
+    def _decorate(func: Callable[P, R]) -> Callable[P, R]:
+        @wraps(func)
+        def _wrapped(*args: P.args, **kwargs: P.kwargs) -> R:
+            with tracer.start_run(name=name, context=context, metadata=metadata):
+                return func(*args, **kwargs)
+
+        return _wrapped
+
+    return _decorate
 
 
 def new_trace_context(tags: dict[str, str] | None = None) -> TraceContext:

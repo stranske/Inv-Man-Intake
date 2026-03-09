@@ -29,6 +29,19 @@ with tracer.start_span(name="ingest", context=ctx, metadata={"package_id": "pkg_
     pass
 ```
 
+Decorator-style wrapper (for reusable business-logic functions):
+
+```python
+@traced_span(
+    tracer=tracer,
+    name="extract_positions",
+    context=ctx,
+    metadata={"provider": "primary"},
+)
+def extract_positions(payload: dict[str, object]) -> list[dict[str, object]]:
+    ...
+```
+
 ## Toggle Guidance
 
 - Use `enabled=False` for environments without tracing credentials.
