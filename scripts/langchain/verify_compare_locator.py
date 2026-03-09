@@ -21,6 +21,7 @@ PR_LINK_RE = re.compile(
 ISSUE_LINK_RE = re.compile(r"https?://github\.com/[^\s)]+/issues/\d+", re.IGNORECASE)
 PR_NUMBER_RE = re.compile(r"\b(?:pr|pull)\s*#?(\d+)\b", re.IGNORECASE)
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\((https?://[^)]+)\)")
+SENTENCE_RE = re.compile(r"[^.!?]+[.!?]")
 
 
 @dataclass(frozen=True)
@@ -164,7 +165,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pr", type=int, default=None, help="Limit results to this PR number")
     parser.add_argument(
         "--format",
-        choices=("json", "markdown", "scope", "disposition"),
+        choices=("json", "markdown", "scope", "disposition", "validate"),
         default="json",
         help="Output format",
     )
@@ -282,6 +283,49 @@ def _as_disposition(findings: list[VerifyCompareFinding], pr_number: int | None 
     )
 
 
+def _count_sentences(text: str) -> int:
+    return len(SENTENCE_RE.findall(text))
+
+
+def _validate_disposition_note(note: str) -> tuple[bool, list[str]]:
+    errors: list[str] = []
+    lines = [line.strip() for line in note.splitlines() if line.strip()]
+    lower_note = note.lower()
+
+    if not any(
+        line.startswith("Evidence link: http://") or line.startswith("Evidence link: https://")
+        for line in lines
+    ):
+        errors.append("Missing required evidence link to the specific verify:compare output.")
+
+    if (
+        "no code fixes are needed" not in lower_note
+        and "a bounded follow-up fix is needed" not in lower_note
+    ):
+        errors.append("Missing clear statement on whether fixes are needed.")
+
+    rationale_lines = [
+        line
+        for line in lines
+        if not line.startswith("Disposition note for ")
+        and not line.startswith("Evidence link:")
+        and not line.startswith("Evidence line:")
+    ]
+    rationale_text = " ".join(rationale_lines)
+    if _count_sentences(rationale_text) < 2:
+        errors.append("Justification must be at least 2 sentences.")
+
+    return (not errors, errors)
+
+
+def _as_validation(findings: list[VerifyCompareFinding], pr_number: int | None = None) -> str:
+    note = _as_disposition(findings, pr_number=pr_number)
+    valid, errors = _validate_disposition_note(note)
+    if valid:
+        return "PASS: Disposition note satisfies required acceptance criteria."
+    return "\n".join(["FAIL: Disposition note is missing required criteria."] + errors)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     findings = scan_files(args.files, pr_number=args.pr)
@@ -292,6 +336,8 @@ def main(argv: list[str] | None = None) -> int:
         print(_as_scope(findings, pr_number=args.pr))
     elif args.format == "disposition":
         print(_as_disposition(findings, pr_number=args.pr))
+    elif args.format == "validate":
+        print(_as_validation(findings, pr_number=args.pr))
     else:
         print(json.dumps([asdict(item) for item in findings], indent=2))
     return 0
