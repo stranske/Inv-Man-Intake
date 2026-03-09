@@ -24,6 +24,8 @@ This contract covers package metadata, file bundle metadata, and deterministic v
 | `source_channel` | Yes | string | One of `email`, `portal_upload`, `data_room`, `internal_forward`, `other` |
 | `submitter` | No | string | Optional sender/uploader identity |
 | `external_package_id` | No | string | Optional external tracking ID |
+| `contract_version` | No (recommended) | string | Contract tag understood by downstream services (default `v1` when omitted) |
+| `schema_revision` | No | integer | Optional producer-side revision for non-breaking metadata additions |
 
 ## Files Entry Fields
 
@@ -42,6 +44,22 @@ Each entry in `files`:
 - Secondary: `xlsx`, `docx`, `eml`, `txt`, `md`
 
 Validation requires at least one primary file (`.pdf` or `.pptx`) in the bundle.
+
+## Versioning Touchpoints
+
+Downstream services should treat the following fields as contract/version anchors:
+
+- `metadata.contract_version`: Canonical contract version identifier (`v1` for this document). Breaking schema changes require a new major version and a new contract document.
+- `metadata.schema_revision`: Optional non-breaking producer revision marker. Consumers should ignore unknown optional metadata keys when `contract_version` is unchanged.
+- `metadata.received_at`: Intake/version chronology anchor used for deterministic ordering in core schema version history.
+- `metadata.external_package_id`: Stable cross-system package identity for replay/audit correlation.
+- `files[*].source_ref` and `files[*].received_page_hint`: Provenance placeholders carried forward into extraction and core schema lineage fields.
+
+Change control expectations:
+
+- Additive optional fields may ship under `contract_version = v1`.
+- Required field changes, semantic changes, or validation-breaking changes require a new contract major version (`v2+`) and coordinated downstream updates.
+- Contract updates must land with matching tests and migration notes in downstream contracts/runbooks.
 
 ## Validation Error Schema
 
