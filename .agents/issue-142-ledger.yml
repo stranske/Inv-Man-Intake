@@ -5,10 +5,10 @@ branch: codex/issue-142
 tasks:
   - id: task-01
     title: 'Navigate to PR #74 and identify all unresolved inline review threads'
-    status: doing
+    status: done
     started_at: '2026-03-09T04:19:56Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-09T04:20:10Z'
+    commit: 4186c3e357b7f68d79ed6babcdaa1ef0f10394f6
     notes: []
   - id: task-02
     title: Document each unresolved thread with its location and quoted comment text
