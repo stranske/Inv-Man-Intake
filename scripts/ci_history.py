@@ -163,6 +163,7 @@ def main() -> int:
 
     if classification_flag:
         payload = _build_classification_payload(metrics)
+        classification_out.parent.mkdir(parents=True, exist_ok=True)
         classification_out.write_text(
             json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
