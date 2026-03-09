@@ -1,0 +1,17 @@
+[
+  {"manager_id": "eq_alpha", "asset_class": "equity", "score": 0.84},
+  {"manager_id": "eq_beta", "asset_class": "equity", "score": 0.79},
+  {"manager_id": "eq_gamma", "asset_class": "equity", "score": 0.74},
+  {"manager_id": "cr_alpha", "asset_class": "credit", "score": 0.81},
+  {"manager_id": "cr_beta", "asset_class": "credit", "score": 0.77},
+  {"manager_id": "cr_gamma", "asset_class": "credit", "score": 0.72},
+  {"manager_id": "ma_alpha", "asset_class": "macro", "score": 0.80},
+  {"manager_id": "ma_beta", "asset_class": "macro", "score": 0.76},
+  {"manager_id": "ma_gamma", "asset_class": "macro", "score": 0.71},
+  {"manager_id": "ms_alpha", "asset_class": "multi_strategy", "score": 0.83},
+  {"manager_id": "ms_beta", "asset_class": "multi_strategy", "score": 0.78},
+  {"manager_id": "ms_gamma", "asset_class": "multi_strategy", "score": 0.73},
+  {"manager_id": "ra_alpha", "asset_class": "real_assets", "score": 0.82},
+  {"manager_id": "ra_beta", "asset_class": "real_assets", "score": 0.77},
+  {"manager_id": "ra_gamma", "asset_class": "real_assets", "score": 0.70}
+]
