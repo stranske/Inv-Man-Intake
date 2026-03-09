@@ -10,6 +10,7 @@ import pytest
 
 from inv_man_intake.data.fixtures import (
     correction_history_for_pointer,
+    latest_correction_for_pointer,
     load_core_seed_rows,
     load_seed_fixture,
     reset_core_seed_tables,
@@ -285,9 +286,8 @@ def test_correction_history_returns_ordered_events() -> None:
 def test_correction_history_exposes_most_recent_event_for_pointer() -> None:
     fixture = load_seed_fixture(FIXTURE_PATH)
 
-    history = correction_history_for_pointer(fixture, "documents.doc_alpha_q1.source_channel")
-
-    latest = history[-1]
+    latest = latest_correction_for_pointer(fixture, "documents.doc_alpha_q1.source_channel")
+    assert latest is not None
     assert latest["event_id"] == "evt-003"
     assert latest["corrected_at"] == "2026-03-01T11:00:00Z"
 
@@ -295,11 +295,18 @@ def test_correction_history_exposes_most_recent_event_for_pointer() -> None:
 def test_correction_history_exposes_latest_event_for_each_pointer() -> None:
     fixture = load_seed_fixture(FIXTURE_PATH)
 
-    alpha_history = correction_history_for_pointer(fixture, "documents.doc_alpha_q1.source_channel")
-    bravo_history = correction_history_for_pointer(fixture, "documents.doc_bravo_q1.file_hash")
+    alpha_latest = latest_correction_for_pointer(fixture, "documents.doc_alpha_q1.source_channel")
+    bravo_latest = latest_correction_for_pointer(fixture, "documents.doc_bravo_q1.file_hash")
+    assert alpha_latest is not None
+    assert bravo_latest is not None
+    assert alpha_latest["event_id"] == "evt-003"
+    assert bravo_latest["event_id"] == "evt-002"
 
-    assert alpha_history[-1]["event_id"] == "evt-003"
-    assert bravo_history[-1]["event_id"] == "evt-002"
+
+def test_latest_correction_for_pointer_returns_none_when_no_history_exists() -> None:
+    fixture = load_seed_fixture(FIXTURE_PATH)
+
+    assert latest_correction_for_pointer(fixture, "documents.doc_charlie_q2.file_hash") is None
 
 
 def test_correction_history_is_chronological_even_when_fixture_events_are_unsorted() -> None:
