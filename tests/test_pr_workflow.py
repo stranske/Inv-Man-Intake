@@ -2,10 +2,15 @@ from __future__ import annotations
 
 from typing import Any
 
+from scripts.classify_threads import main as classify_main
 from scripts.classify_threads import classify_threads_document
+from scripts.fetch_pr_threads import main as fetch_main
 from scripts.fetch_pr_threads import build_output_document, fetch_unresolved_threads
+from scripts.generate_classification_report import main as report_main
 from scripts.generate_classification_report import generate_markdown_table
+from scripts.update_pr_comment import main as update_comment_main
 from scripts.update_pr_comment import post_issue_comment
+from scripts.validate_classification_output import main as validate_main
 from scripts.validate_classification_output import find_invalid_threads
 
 
@@ -87,3 +92,96 @@ def test_pr_thread_workflow_end_to_end_with_mocked_github_api(monkeypatch) -> No
     assert comment_id == 999
     assert len(posted_comments) == 1
     assert posted_comments[0]["body"] == report
+
+
+def test_pr_thread_workflow_script_mains_end_to_end(monkeypatch, tmp_path) -> None:
+    posted_comments: list[dict[str, Any]] = []
+    threads_file = tmp_path / "threads.json"
+    classified_file = tmp_path / "classified.json"
+    report_file = tmp_path / "report.md"
+
+    def fake_post(url: str, *args: Any, **kwargs: Any) -> _FakeResponse:
+        if url.endswith("/graphql"):
+            return _FakeResponse(
+                {
+                    "data": {
+                        "repository": {
+                            "pullRequest": {
+                                "reviewThreads": {
+                                    "pageInfo": {"hasNextPage": False, "endCursor": None},
+                                    "nodes": [
+                                        {
+                                            "id": "PRRT_2",
+                                            "isResolved": False,
+                                            "isOutdated": False,
+                                            "path": "src/inv_man_intake/performance/metrics.py",
+                                            "line": 22,
+                                            "startLine": 21,
+                                            "originalLine": 22,
+                                            "originalStartLine": 21,
+                                            "comments": {
+                                                "nodes": [
+                                                    {
+                                                        "id": "PRRC_2",
+                                                        "databaseId": 124,
+                                                        "author": {"login": "reviewer"},
+                                                        "body": "Nit: rename this variable for clarity.",
+                                                        "createdAt": "2026-03-09T00:00:00Z",
+                                                        "url": "https://example.test/comment/2",
+                                                    }
+                                                ]
+                                            },
+                                        }
+                                    ],
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+
+        posted_comments.append(kwargs.get("json", {}))
+        return _FakeResponse({"id": 1001})
+
+    monkeypatch.setattr("scripts.fetch_pr_threads.requests.post", fake_post)
+    monkeypatch.setattr("scripts.update_pr_comment.requests.post", fake_post)
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+
+    assert (
+        fetch_main(
+            [
+                "--owner",
+                "stranske",
+                "--repo",
+                "Inv-Man-Intake",
+                "--pr",
+                "81",
+                "--output",
+                str(threads_file),
+            ]
+        )
+        == 0
+    )
+    assert classify_main(["--input", str(threads_file), "--output", str(classified_file)]) == 0
+    assert validate_main(["--input", str(classified_file)]) == 0
+    assert report_main(["--input", str(classified_file), "--output", str(report_file)]) == 0
+    assert (
+        update_comment_main(
+            [
+                "--owner",
+                "stranske",
+                "--repo",
+                "Inv-Man-Intake",
+                "--pr",
+                "81",
+                "--report",
+                str(report_file),
+            ]
+        )
+        == 0
+    )
+
+    report = report_file.read_text(encoding="utf-8")
+    assert "| PRRT_2 | not-warranted |" in report
+    assert len(posted_comments) == 1
+    assert posted_comments[0]["body"] == report.strip()
