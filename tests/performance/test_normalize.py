@@ -111,6 +111,19 @@ def test_detect_missing_months_normalizes_monthly_series_inputs() -> None:
     assert detect_missing_months(monthly) == (date(2025, 2, 28),)
 
 
+def test_detect_missing_months_avoids_false_positive_for_consecutive_mid_month_inputs() -> None:
+    monthly = PerformanceSeries(
+        "monthly",
+        (
+            PerformancePoint(as_of=date(2025, 1, 10), value=0.1),
+            PerformancePoint(as_of=date(2025, 2, 9), value=0.2),
+            PerformancePoint(as_of=date(2025, 3, 11), value=0.3),
+        ),
+    )
+
+    assert detect_missing_months(monthly) == ()
+
+
 def test_benchmark_alignment_hook_reports_missing_months_and_correlation_inputs() -> None:
     payload = PerformancePayload(
         monthly=PerformanceSeries(
