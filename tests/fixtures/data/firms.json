@@ -1,0 +1,20 @@
+[
+  {
+    "firm_id": "firm_alpha",
+    "legal_name": "Alpha Capital Management",
+    "aliases_json": "[\"Alpha CM\", \"Alpha Capital\"]",
+    "created_at": "2026-03-01T09:00:00Z"
+  },
+  {
+    "firm_id": "firm_bravo",
+    "legal_name": "Bravo Asset Partners",
+    "aliases_json": "[\"Bravo AP\"]",
+    "created_at": "2026-03-01T09:05:00Z"
+  },
+  {
+    "firm_id": "firm_charlie",
+    "legal_name": "Charlie Quant Investments",
+    "aliases_json": null,
+    "created_at": "2026-03-01T09:08:00Z"
+  }
+]

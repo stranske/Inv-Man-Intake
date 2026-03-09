@@ -91,6 +91,14 @@ def correction_history_for_pointer(fixture: dict[str, Any], pointer: str) -> lis
     return sorted(history, key=lambda row: (row["corrected_at"], row["event_id"]))
 
 
+def latest_correction_for_pointer(fixture: dict[str, Any], pointer: str) -> dict[str, Any] | None:
+    """Return the newest correction row for a pointer, if present."""
+    history = correction_history_for_pointer(fixture, pointer)
+    if not history:
+        return None
+    return history[-1]
+
+
 def validate_provenance_pointers(fixture: dict[str, Any]) -> list[str]:
     """Validate that provenance pointers use a known document + field path."""
     errors: list[str] = []
