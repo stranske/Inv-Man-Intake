@@ -175,9 +175,7 @@ class ExtractionOrchestrator:
             return False
         if fallback_attempts >= self._policy.max_fallback_attempts:
             return False
-        if len(attempts) >= self._policy.max_total_attempts:
-            return False
-        return True
+        return len(attempts) < self._policy.max_total_attempts
 
     @staticmethod
     def _attempt(
