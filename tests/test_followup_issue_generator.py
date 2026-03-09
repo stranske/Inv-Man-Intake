@@ -173,6 +173,30 @@ def test_generate_disposition_comment_includes_evidence_decision_and_rationale()
     assert "technical rationale: Difference describes a functional defect" in disposition
 
 
+def test_generate_disposition_comment_includes_source_link_when_provided() -> None:
+    comment = """
+## Provider Comparison Report
+
+### Provider Summary
+| Provider | Model | Verdict | Confidence | Summary |
+| --- | --- | --- | --- | --- |
+| openai | gpt-5 | CONCERNS | 74% | Missing edge case |
+"""
+    verification_data = extract_verification_data(comment)
+
+    disposition = generate_disposition_comment(
+        verification_data,
+        pr_number=49,
+        source_url="https://github.com/stranske/Inv-Man-Intake/pull/49#issuecomment-123",
+    )
+
+    assert "Source: verify:compare non-PASS output from PR #49" in disposition
+    assert (
+        "Source link: https://github.com/stranske/Inv-Man-Intake/pull/49#issuecomment-123"
+        in disposition
+    )
+
+
 def test_generate_issue_disposition_link_comment_includes_url() -> None:
     body = generate_issue_disposition_link_comment(
         disposition_url="https://github.com/stranske/Inv-Man-Intake/pull/49#issuecomment-123"

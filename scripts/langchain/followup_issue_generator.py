@@ -530,6 +530,7 @@ def generate_disposition_comment(
     verification_data: VerificationData,
     *,
     pr_number: int,
+    source_url: str = "",
 ) -> str:
     """Generate a PR disposition comment for verify:compare non-PASS output."""
 
@@ -544,9 +545,11 @@ def generate_disposition_comment(
         "## verify:compare Disposition",
         "",
         "Source: verify:compare non-PASS output from PR #{pr_number}".format(pr_number=pr_number),
-        "",
-        "### Evidence",
     ]
+    cleaned_source_url = source_url.strip()
+    if cleaned_source_url:
+        lines.append(f"Source link: {cleaned_source_url}")
+    lines.extend(["", "### Evidence"])
 
     if verification_data.non_pass_output:
         lines.extend(f"- `{line}`" for line in verification_data.non_pass_output)
@@ -1903,6 +1906,11 @@ def main() -> int:
         type=str,
         help="URL to disposition documentation (required with --issue-link-only).",
     )
+    parser.add_argument(
+        "--source-url",
+        type=str,
+        help="URL to specific verify:compare output for disposition evidence.",
+    )
 
     args = parser.parse_args()
 
@@ -1992,7 +2000,11 @@ def main() -> int:
         return 0
 
     if args.disposition_only:
-        output = generate_disposition_comment(verification_data, pr_number=args.pr_number)
+        output = generate_disposition_comment(
+            verification_data,
+            pr_number=args.pr_number,
+            source_url=args.source_url or "",
+        )
         if args.output:
             Path(args.output).write_text(output)
             print(f"Written to {args.output}", file=sys.stderr)
