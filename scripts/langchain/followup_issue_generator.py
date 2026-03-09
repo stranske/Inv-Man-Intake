@@ -1180,8 +1180,7 @@ def _assess_code_change_requirement(verification_data: VerificationData) -> tupl
     ):
         return (
             "no",
-            "Difference is low-confidence and contradicted by high-confidence PASS "
-            "provider(s).",
+            "Difference is low-confidence and contradicted by high-confidence PASS provider(s).",
         )
 
     findings = verification_data.non_pass_findings or verification_data.concerns
@@ -1245,10 +1244,7 @@ def generate_disposition_comment(
 
 def generate_issue_disposition_link_comment(*, disposition_url: str) -> str:
     """Generate issue comment body that links to a verify:compare disposition note."""
-    return (
-        "Disposition documentation for verify:compare is recorded here: "
-        f"{disposition_url}"
-    )
+    return f"Disposition documentation for verify:compare is recorded here: {disposition_url}"
 
 
 def generate_followup_issue(
@@ -1581,18 +1577,18 @@ def _generate_without_llm(
 
     body_parts.extend(
         [
-        "",
-        "## Source",
-        "",
-        f"- Original PR: #{pr_number}",
-        f"- Parent issue: #{original_issue.number}",
-        "",
-        "## Scope",
-        "",
-        f"Address verification concerns from PR #{pr_number} related to {original_issue.title}.",
-        "",
-        "## Tasks",
-        "",
+            "",
+            "## Source",
+            "",
+            f"- Original PR: #{pr_number}",
+            f"- Parent issue: #{original_issue.number}",
+            "",
+            "## Scope",
+            "",
+            f"Address verification concerns from PR #{pr_number} related to {original_issue.title}.",
+            "",
+            "## Tasks",
+            "",
         ]
     )
 
