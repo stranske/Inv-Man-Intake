@@ -54,6 +54,7 @@ def test_extract_non_pass_provider_concerns_ignores_pass_and_captures_concerns()
     assert second.provider == "backup-provider"
     assert second.verdict == "FAIL"
     assert second.concerns == ()
+    assert second.summary == "Unable to confirm acceptance criteria."
 
 
 def test_render_scope_lines_reports_when_provider_has_no_bullets() -> None:
@@ -84,7 +85,7 @@ def test_render_disposition_note_includes_required_traceability_links() -> None:
         in note
     )
     assert (
-        "- backup-provider (FAIL): No explicit concern bullets; review provider summary text from PR artifact."
+        "- backup-provider (FAIL): Summary-only concern: Unable to confirm acceptance criteria."
         in note
     )
     assert "- References: #55, #88, #20" in note
@@ -99,10 +100,7 @@ def test_build_review_items_emits_per_concern_and_summary_fallback() -> None:
     assert items[0].summary == "Concern 1: Missing explicit disposition link to issue #20."
     assert items[1].summary == "Concern 2: Verify:compare non-PASS output not documented."
     assert items[2].provider == "backup-provider"
-    assert (
-        items[2].summary
-        == "No explicit concern bullets; review provider summary text from PR artifact."
-    )
+    assert items[2].summary == "Summary-only concern: Unable to confirm acceptance criteria."
 
 
 def test_render_review_lines_reports_no_work_when_all_providers_pass() -> None:

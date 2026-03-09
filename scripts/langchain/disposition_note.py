@@ -14,6 +14,7 @@ class ProviderConcern:
     provider: str
     verdict: str
     concerns: tuple[str, ...]
+    summary: str | None = None
 
 
 @dataclass(frozen=True)
@@ -44,7 +45,16 @@ def extract_non_pass_provider_concerns(report: str) -> list[ProviderConcern]:
 
         concern_items = re.findall(r"^\s{2}-\s+(.+?)\s*$", block, flags=re.MULTILINE)
         normalized = tuple(item.strip() for item in concern_items if item.strip())
-        concerns.append(ProviderConcern(provider=provider, verdict=verdict, concerns=normalized))
+        summary_match = re.search(r"- \*\*Summary:\*\*\s*(.+?)\s*$", block, flags=re.MULTILINE)
+        summary = summary_match.group(1).strip() if summary_match else None
+        concerns.append(
+            ProviderConcern(
+                provider=provider,
+                verdict=verdict,
+                concerns=normalized,
+                summary=summary,
+            )
+        )
 
     return concerns
 
@@ -83,7 +93,11 @@ def build_review_items(non_pass: list[ProviderConcern]) -> list[ReviewItem]:
             ReviewItem(
                 provider=concern.provider,
                 verdict=concern.verdict,
-                summary="No explicit concern bullets; review provider summary text from PR artifact.",
+                summary=(
+                    f"Summary-only concern: {concern.summary}"
+                    if concern.summary
+                    else "No explicit concern bullets; review provider summary text from PR artifact."
+                ),
             )
         )
     return items
