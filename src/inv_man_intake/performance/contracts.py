@@ -1,10 +1,21 @@
-"""Canonical performance time series contracts and validation helpers."""
+"""Canonical performance time series contracts and validation helpers.
+
+Validation contract by frequency:
+- `monthly`: required and must contain at least one point.
+- `quarterly`: optional; validated when present.
+- `annual`: optional; validated when present.
+
+For every present series:
+- points must be non-empty
+- `as_of` dates must be unique within the series
+- `as_of` dates must be strictly increasing
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Literal
+from typing import Literal, Mapping
 
 Frequency = Literal["monthly", "quarterly", "annual"]
 
@@ -45,7 +56,13 @@ class SeriesFieldDefinition:
 
 @dataclass(frozen=True)
 class MonthlySeriesFieldDefinition(SeriesFieldDefinition):
-    """Field definition for required monthly data."""
+    """Field definition for required monthly data.
+
+    Constraints:
+    - must be present in `PerformancePayload`
+    - series frequency must be `"monthly"`
+    - series points are validated for non-empty, uniqueness, and ordering
+    """
 
     name: Literal["monthly"] = "monthly"
     frequency: Literal["monthly"] = "monthly"
@@ -54,7 +71,13 @@ class MonthlySeriesFieldDefinition(SeriesFieldDefinition):
 
 @dataclass(frozen=True)
 class QuarterlySeriesFieldDefinition(SeriesFieldDefinition):
-    """Field definition for optional quarterly data."""
+    """Field definition for optional quarterly data.
+
+    Constraints:
+    - may be omitted in `PerformancePayload`
+    - when present, series frequency must be `"quarterly"`
+    - series points are validated for non-empty, uniqueness, and ordering
+    """
 
     name: Literal["quarterly"] = "quarterly"
     frequency: Literal["quarterly"] = "quarterly"
@@ -63,7 +86,13 @@ class QuarterlySeriesFieldDefinition(SeriesFieldDefinition):
 
 @dataclass(frozen=True)
 class AnnualSeriesFieldDefinition(SeriesFieldDefinition):
-    """Field definition for optional annual data."""
+    """Field definition for optional annual data.
+
+    Constraints:
+    - may be omitted in `PerformancePayload`
+    - when present, series frequency must be `"annual"`
+    - series points are validated for non-empty, uniqueness, and ordering
+    """
 
     name: Literal["annual"] = "annual"
     frequency: Literal["annual"] = "annual"
@@ -79,6 +108,12 @@ PERFORMANCE_SERIES_FIELDS: tuple[SeriesFieldDefinition, ...] = (
     QUARTERLY_SERIES_FIELD,
     ANNUAL_SERIES_FIELD,
 )
+
+FREQUENCY_VALIDATION_RULES: Mapping[Frequency, str] = {
+    "monthly": "required; payload.monthly must be present and non-empty",
+    "quarterly": "optional; when present must be non-empty",
+    "annual": "optional; when present must be non-empty",
+}
 
 
 def validate_series(series: PerformanceSeries) -> None:
