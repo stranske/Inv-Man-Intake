@@ -4,11 +4,58 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
-import requests
+_json_module = json
+
+try:
+    import requests  # type: ignore[import-untyped]
+except ModuleNotFoundError:
+    class _SimpleResponse:
+        def __init__(self, payload: Any, status_code: int) -> None:
+            self._payload = payload
+            self.status_code = status_code
+
+        def raise_for_status(self) -> None:
+            if self.status_code >= 400:
+                raise RuntimeError(f"HTTP {self.status_code}")
+
+        def json(self) -> Any:
+            return self._payload
+
+    class _RequestsFallback:
+        @staticmethod
+        def post(
+            url: str,
+            *,
+            headers: dict[str, str] | None = None,
+            json: dict[str, Any] | None = None,  # noqa: A002 - requests API compatibility
+            timeout: int = 30,
+        ) -> _SimpleResponse:
+            data = None
+            req_headers = dict(headers or {})
+            if json is not None:
+                data = _json_module.dumps(json).encode("utf-8")
+                req_headers.setdefault("Content-Type", "application/json")
+            request = Request(url=url, data=data, headers=req_headers, method="POST")
+            try:
+                with urlopen(request, timeout=timeout) as response:
+                    raw = response.read().decode("utf-8")
+                    payload = _json_module.loads(raw) if raw else {}
+                    return _SimpleResponse(payload, int(response.status))
+            except HTTPError as exc:
+                body = exc.read().decode("utf-8", errors="replace")
+                raise RuntimeError(f"HTTP {exc.code}: {body}") from exc
+            except URLError as exc:
+                raise RuntimeError(f"Request failed: {exc.reason}") from exc
+
+    requests = _RequestsFallback()  # type: ignore[assignment]
 
 DEFAULT_OWNER = "stranske"
 DEFAULT_REPO = "Inv-Man-Intake"
