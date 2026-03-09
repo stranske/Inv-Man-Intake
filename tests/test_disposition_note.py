@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from scripts.langchain.disposition_note import (
+    build_review_items,
     extract_non_pass_provider_concerns,
     render_disposition_note,
+    render_review_lines,
     render_scope_lines,
 )
 
@@ -76,4 +78,32 @@ def test_render_disposition_note_includes_required_traceability_links() -> None:
     assert "# Verify:compare Disposition (PR #55)" in note
     assert "- Tracking issue: #88" in note
     assert "- Source issue: #20" in note
+    assert "## Focused Review Items" in note
+    assert (
+        "- github-models (CONCERNS): Concern 1: Missing explicit disposition link to issue #20."
+        in note
+    )
+    assert (
+        "- backup-provider (FAIL): No explicit concern bullets; review provider summary text from PR artifact."
+        in note
+    )
     assert "- References: #55, #88, #20" in note
+
+
+def test_build_review_items_emits_per_concern_and_summary_fallback() -> None:
+    concerns = extract_non_pass_provider_concerns(SAMPLE_REPORT)
+    items = build_review_items(concerns)
+
+    assert len(items) == 3
+    assert items[0].provider == "github-models"
+    assert items[0].summary == "Concern 1: Missing explicit disposition link to issue #20."
+    assert items[1].summary == "Concern 2: Verify:compare non-PASS output not documented."
+    assert items[2].provider == "backup-provider"
+    assert (
+        items[2].summary
+        == "No explicit concern bullets; review provider summary text from PR artifact."
+    )
+
+
+def test_render_review_lines_reports_no_work_when_all_providers_pass() -> None:
+    assert render_review_lines([]) == ["- No non-PASS items to review."]

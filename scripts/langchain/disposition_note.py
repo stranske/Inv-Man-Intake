@@ -16,6 +16,13 @@ class ProviderConcern:
     concerns: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class ReviewItem:
+    provider: str
+    verdict: str
+    summary: str
+
+
 def extract_non_pass_provider_concerns(report: str) -> list[ProviderConcern]:
     """Extract non-PASS provider concerns from a comparison report markdown blob."""
     blocks = re.split(r"^####\s+", report, flags=re.MULTILINE)
@@ -57,6 +64,40 @@ def render_scope_lines(non_pass: list[ProviderConcern]) -> list[str]:
     return lines
 
 
+def build_review_items(non_pass: list[ProviderConcern]) -> list[ReviewItem]:
+    """Build deterministic, concern-by-concern review scope items."""
+    items: list[ReviewItem] = []
+    for concern in non_pass:
+        if concern.concerns:
+            for idx, text in enumerate(concern.concerns, start=1):
+                items.append(
+                    ReviewItem(
+                        provider=concern.provider,
+                        verdict=concern.verdict,
+                        summary=f"Concern {idx}: {text}",
+                    )
+                )
+            continue
+
+        items.append(
+            ReviewItem(
+                provider=concern.provider,
+                verdict=concern.verdict,
+                summary="No explicit concern bullets; review provider summary text from PR artifact.",
+            )
+        )
+    return items
+
+
+def render_review_lines(non_pass: list[ProviderConcern]) -> list[str]:
+    """Render markdown lines for specific review actions."""
+    review_items = build_review_items(non_pass)
+    if not review_items:
+        return ["- No non-PASS items to review."]
+
+    return [f"- {item.provider} ({item.verdict}): {item.summary}" for item in review_items]
+
+
 def render_disposition_note(
     *,
     pr_number: int,
@@ -81,6 +122,14 @@ def render_disposition_note(
         lines.extend(scope)
     else:
         lines.append("- No non-PASS provider output detected in the supplied report.")
+
+    lines.extend(
+        [
+            "",
+            "## Focused Review Items",
+        ]
+    )
+    lines.extend(render_review_lines(non_pass))
 
     lines.extend(
         [
