@@ -123,7 +123,20 @@ function buildDispositionReplyBody(entry) {
   const fixRef = String(entry?.fix_reference || '').trim();
   const rationale = String(entry?.rationale || '').trim();
   const note = String(entry?.note || '').trim();
+  const sourcePr = Number(entry?.source_pr || entry?.sourcePr || 0);
+  const sourceIssue = Number(entry?.source_issue || entry?.sourceIssue || 0);
   const lines = [REVIEW_THREAD_DISPOSITION_MARKER];
+
+  if (sourcePr > 0 || sourceIssue > 0) {
+    const refs = [];
+    if (sourcePr > 0) {
+      refs.push(`PR #${sourcePr}`);
+    }
+    if (sourceIssue > 0) {
+      refs.push(`issue #${sourceIssue}`);
+    }
+    lines.push(`Context: ${refs.join(' and ')}.`);
+  }
 
   if (disposition === 'fix' || disposition === 'warranted-fix') {
     if (!fixRef) {
@@ -157,6 +170,20 @@ function hasDispositionReply(thread) {
   return thread.comments.some((comment) =>
     String(comment?.body || '').includes(REVIEW_THREAD_DISPOSITION_MARKER),
   );
+}
+
+function parseBooleanInput(rawValue) {
+  if (typeof rawValue === 'boolean') {
+    return rawValue;
+  }
+  if (typeof rawValue === 'number') {
+    return rawValue !== 0;
+  }
+  const normalized = String(rawValue || '').trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  return ['1', 'true', 'yes', 'on'].includes(normalized);
 }
 
 function buildReviewThreadChecklistComment({ prNumber, sourceIssueNumber, unresolvedThreads, generatedAt }) {
@@ -296,6 +323,9 @@ async function postReviewThreadDispositionReplies({
   const github = await ensureRateLimitWrapped({ github: rawGithub, core, env: process.env });
   const prNumber = Number(inputs.pr_number || inputs.prNumber || 0);
   const replyEntries = parseDispositionRepliesInput(inputs.thread_replies || inputs.threadReplies);
+  const requireCompleteReplies = parseBooleanInput(
+    inputs.require_complete_replies ?? inputs.requireCompleteReplies,
+  );
 
   if (!prNumber || prNumber <= 0) {
     return { posted: false, reason: 'missing-pr-number' };
@@ -315,11 +345,13 @@ async function postReviewThreadDispositionReplies({
   let postedCount = 0;
   let skippedMissing = 0;
   let skippedAlreadyDispositioned = 0;
+  const missingThreadIds = [];
 
   for (const thread of unresolvedThreads) {
     const entry = resolveDispositionEntry(thread, replyEntries);
     if (!entry) {
       skippedMissing += 1;
+      missingThreadIds.push(thread.id || thread.url || 'unknown-thread');
       continue;
     }
     if (hasDispositionReply(thread)) {
@@ -329,6 +361,7 @@ async function postReviewThreadDispositionReplies({
     const body = buildDispositionReplyBody(entry);
     if (!body) {
       skippedMissing += 1;
+      missingThreadIds.push(thread.id || thread.url || 'unknown-thread');
       continue;
     }
 
@@ -343,12 +376,19 @@ async function postReviewThreadDispositionReplies({
     `Posted review-thread dispositions: posted=${postedCount}, missing=${skippedMissing}, already=${skippedAlreadyDispositioned}`,
   );
 
+  if (requireCompleteReplies && missingThreadIds.length > 0) {
+    throw new Error(
+      `Missing disposition replies for unresolved review threads: ${missingThreadIds.join(', ')}`,
+    );
+  }
+
   return {
     posted: postedCount > 0,
     postedCount,
     unresolvedCount: unresolvedThreads.length,
     skippedMissing,
     skippedAlreadyDispositioned,
+    missingThreadIds,
   };
 }
 
@@ -361,6 +401,7 @@ module.exports = {
   buildReviewThreadChecklistComment,
   findExistingAuditComment,
   parseDispositionRepliesInput,
+  parseBooleanInput,
   resolveDispositionEntry,
   buildDispositionReplyBody,
   hasDispositionReply,

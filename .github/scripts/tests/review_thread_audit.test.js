@@ -10,6 +10,7 @@ const {
   buildReviewThreadChecklistComment,
   findExistingAuditComment,
   parseDispositionRepliesInput,
+  parseBooleanInput,
   buildDispositionReplyBody,
   hasDispositionReply,
   postReviewThreadChecklistComment,
@@ -58,12 +59,26 @@ test('parseDispositionRepliesInput accepts JSON arrays and rejects invalid input
   assert.equal(parseDispositionRepliesInput(null).length, 0);
 });
 
+test('parseBooleanInput supports common truthy and falsy values', () => {
+  assert.equal(parseBooleanInput(true), true);
+  assert.equal(parseBooleanInput('true'), true);
+  assert.equal(parseBooleanInput('YES'), true);
+  assert.equal(parseBooleanInput('1'), true);
+  assert.equal(parseBooleanInput(0), false);
+  assert.equal(parseBooleanInput('false'), false);
+  assert.equal(parseBooleanInput('off'), false);
+  assert.equal(parseBooleanInput(''), false);
+});
+
 test('buildDispositionReplyBody enforces required fields for fix and not-warranted dispositions', () => {
   const fixBody = buildDispositionReplyBody({
     disposition: 'fix',
     fix_reference: 'https://github.com/org/repo/pull/71',
+    source_pr: 70,
+    source_issue: 35,
   });
   assert.match(fixBody, new RegExp(REVIEW_THREAD_DISPOSITION_MARKER));
+  assert.match(fixBody, /Context: PR #70 and issue #35\./);
   assert.match(fixBody, /Follow-up fix reference: https:\/\/github\.com\/org\/repo\/pull\/71\./);
 
   const rationaleBody = buildDispositionReplyBody({
@@ -247,4 +262,61 @@ test('postReviewThreadDispositionReplies posts only unresolved threads with matc
   assert.equal(graphqlCalls.length, 1);
   assert.equal(graphqlCalls[0].variables.threadId, 'T1');
   assert.match(graphqlCalls[0].variables.body, /Follow-up fix reference: https:\/\/github\.com\/org\/repo\/pull\/71\./);
+});
+
+test('postReviewThreadDispositionReplies fails when require_complete_replies is true and unresolved entries are missing', async () => {
+  const github = {
+    __testMock: true,
+    graphql: async (query) => {
+      if (query.includes('query UnresolvedReviewThreads')) {
+        return {
+          repository: {
+            pullRequest: {
+              reviewThreads: {
+                pageInfo: { hasNextPage: false, endCursor: null },
+                nodes: [
+                  {
+                    id: 'T1',
+                    isResolved: false,
+                    comments: {
+                      nodes: [
+                        {
+                          id: 'C1',
+                          url: 'https://github.com/org/repo/pull/70#discussion_r1',
+                          path: 'src/a.py',
+                          line: 12,
+                          body: 'initial comment',
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        };
+      }
+      return { addPullRequestReviewThreadReply: { comment: { id: 'R1', url: 'https://example.com/reply' } } };
+    },
+  };
+
+  await assert.rejects(
+    postReviewThreadDispositionReplies({
+      github,
+      context: { repo: { owner: 'org', repo: 'repo' } },
+      core: { info() {}, warning() {}, debug() {} },
+      inputs: {
+        pr_number: 70,
+        thread_replies: JSON.stringify([
+          {
+            thread_id: 'missing-thread',
+            disposition: 'fix',
+            fix_reference: 'https://github.com/org/repo/pull/71',
+          },
+        ]),
+        require_complete_replies: true,
+      },
+    }),
+    /Missing disposition replies for unresolved review threads: T1/,
+  );
 });
