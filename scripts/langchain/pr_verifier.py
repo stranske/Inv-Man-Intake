@@ -22,6 +22,10 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 from scripts import api_client
+from scripts.langchain.disposition import (
+    format_verify_compare_disposition,
+    format_verify_compare_outcome_note,
+)
 from scripts.langchain.structured_output import (
     build_repair_callback,
     parse_structured_output,
@@ -1057,8 +1061,70 @@ def main() -> None:
         action="store_true",
         help="Run evaluations across multiple providers and output a comparison report.",
     )
+    parser.add_argument(
+        "--format-disposition",
+        action="store_true",
+        help="Emit a standard verify:compare disposition comment and exit.",
+    )
+    parser.add_argument(
+        "--format-outcome-note",
+        action="store_true",
+        help="Emit a verify:compare outcome note linking disposition artifacts and exit.",
+    )
+    parser.add_argument(
+        "--disposition-warranted",
+        action="store_true",
+        help="When formatting disposition, mark concerns as warranted.",
+    )
+    parser.add_argument(
+        "--disposition-rationale",
+        help="Rationale text for 'concerns not warranted' dispositions.",
+    )
+    parser.add_argument(
+        "--followup-number",
+        type=int,
+        help="Follow-up issue/PR number used when concerns are warranted.",
+    )
+    parser.add_argument(
+        "--evidence-url",
+        help="Link to verify:compare output or workflow run.",
+    )
+    parser.add_argument(
+        "--source-issue",
+        type=int,
+        help="Optional source issue number to include in the disposition note.",
+    )
+    parser.add_argument(
+        "--disposition-url",
+        help="URL to the PR #51 disposition comment used in the outcome note.",
+    )
+    parser.add_argument(
+        "--followup-reference",
+        help="Optional follow-up issue/PR reference for the outcome note (for example '#123').",
+    )
     parser.add_argument("--json", action="store_true", help="Emit JSON payload to stdout.")
     args = parser.parse_args()
+
+    if args.format_disposition:
+        disposition = format_verify_compare_disposition(
+            concerns_warranted=args.disposition_warranted,
+            rationale=args.disposition_rationale,
+            followup_number=args.followup_number,
+            evidence_url=args.evidence_url,
+            source_issue=args.source_issue,
+        )
+        print(disposition)
+        return
+    if args.format_outcome_note:
+        if args.source_issue is None:
+            raise ValueError("--source-issue is required with --format-outcome-note")
+        outcome = format_verify_compare_outcome_note(
+            disposition_url=args.disposition_url,
+            followup_reference=args.followup_reference,
+            source_issue=args.source_issue,
+        )
+        print(outcome)
+        return
 
     context = _load_text(args.context_file)
     diff = _load_text(args.diff_file) if args.diff_file else None
