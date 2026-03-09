@@ -66,7 +66,9 @@ def test_reassign_rejects_non_owner_analyst() -> None:
         created_at=datetime(2026, 3, 8, 11, 0, 0, tzinfo=UTC),
     )
 
-    with pytest.raises(QueueAssignmentError, match="only current analyst owner can request ops reassignment"):
+    with pytest.raises(
+        QueueAssignmentError, match="only current analyst owner can request ops reassignment"
+    ):
         reassign_to_ops_for_block(
             record,
             analyst_id="analyst-4",

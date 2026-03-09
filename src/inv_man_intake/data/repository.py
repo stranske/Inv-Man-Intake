@@ -339,8 +339,7 @@ class VisualArtifactRepository:
         self._connection = connection
 
     def ensure_schema(self) -> None:
-        self._connection.executescript(
-            """
+        self._connection.executescript("""
             CREATE TABLE IF NOT EXISTS visual_artifacts (
                 artifact_id TEXT PRIMARY KEY,
                 document_id TEXT NOT NULL,
@@ -360,8 +359,7 @@ class VisualArtifactRepository:
                 ON visual_artifacts (document_id);
             CREATE INDEX IF NOT EXISTS idx_visual_artifacts_document_sha256
                 ON visual_artifacts (document_id, sha256);
-            """
-        )
+            """)
         self._connection.commit()
 
     def insert_artifact(self, record: VisualArtifactRecord) -> None:

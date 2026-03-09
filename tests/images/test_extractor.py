@@ -27,20 +27,20 @@ def _pptx_fixture_bytes() -> bytes:
         archive.writestr(
             "ppt/slides/_rels/slide1.xml.rels",
             (
-                "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
-                "<Relationship Id=\"rId2\" "
-                "Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" "
-                "Target=\"../media/image1.png\"/>"
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                '<Relationship Id="rId2" '
+                'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" '
+                'Target="../media/image1.png"/>'
                 "</Relationships>"
             ),
         )
         archive.writestr(
             "ppt/slides/_rels/slide2.xml.rels",
             (
-                "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
-                "<Relationship Id=\"rId9\" "
-                "Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" "
-                "Target=\"../media/image2.jpg\"/>"
+                '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                '<Relationship Id="rId9" '
+                'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" '
+                'Target="../media/image2.jpg"/>'
                 "</Relationships>"
             ),
         )

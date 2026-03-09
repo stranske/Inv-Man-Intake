@@ -76,15 +76,25 @@ def test_transition_matrix_rejects_invalid_transitions(from_state: str, to_state
     if from_state != "new":
         item = assign_item(item, actor_id="ops-1", actor_role="ops", assignee_id="analyst-1")
     if from_state == "in_review":
-        item = transition_item(item, actor_id="analyst-1", actor_role="analyst", to_state="in_review")
+        item = transition_item(
+            item, actor_id="analyst-1", actor_role="analyst", to_state="in_review"
+        )
     if from_state == "blocked":
-        item = transition_item(item, actor_id="analyst-1", actor_role="analyst", to_state="in_review")
+        item = transition_item(
+            item, actor_id="analyst-1", actor_role="analyst", to_state="in_review"
+        )
         item = transition_item(item, actor_id="analyst-1", actor_role="analyst", to_state="blocked")
     if from_state == "resolved":
-        item = transition_item(item, actor_id="analyst-1", actor_role="analyst", to_state="in_review")
-        item = transition_item(item, actor_id="analyst-1", actor_role="analyst", to_state="resolved")
+        item = transition_item(
+            item, actor_id="analyst-1", actor_role="analyst", to_state="in_review"
+        )
+        item = transition_item(
+            item, actor_id="analyst-1", actor_role="analyst", to_state="resolved"
+        )
 
-    with pytest.raises(QueueTransitionError, match=f"invalid transition: {from_state} -> {to_state}"):
+    with pytest.raises(
+        QueueTransitionError, match=f"invalid transition: {from_state} -> {to_state}"
+    ):
         transition_item(item, actor_id="analyst-1", actor_role="analyst", to_state=to_state)  # type: ignore[arg-type]
 
 
@@ -119,5 +129,7 @@ def test_resolved_state_rejects_reassignment() -> None:
     item = transition_item(item, actor_id="analyst-1", actor_role="analyst", to_state="in_review")
     item = transition_item(item, actor_id="analyst-1", actor_role="analyst", to_state="resolved")
 
-    with pytest.raises(QueueTransitionError, match="cannot assign item from terminal state: resolved"):
+    with pytest.raises(
+        QueueTransitionError, match="cannot assign item from terminal state: resolved"
+    ):
         assign_item(item, actor_id="ops-1", actor_role="ops", assignee_id="analyst-2")

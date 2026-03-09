@@ -119,9 +119,7 @@ def generate_quality_report(
 
     completeness = (total_correct / total_expected) if total_expected else 0.0
     accuracy = (
-        total_correct / total_extracted_expected_keys
-        if total_extracted_expected_keys
-        else 0.0
+        total_correct / total_extracted_expected_keys if total_extracted_expected_keys else 0.0
     )
 
     return {
