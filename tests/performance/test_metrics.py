@@ -228,4 +228,13 @@ def test_compute_metrics_canonical_returns_stable_schema_directly() -> None:
         "benchmark_observation_count",
         "insufficient_data",
     )
+    assert first["annualized_volatility"] == pytest.approx(0.052915026221291815)
+    assert first["max_drawdown"] == pytest.approx(0.010000000000000009)
+    assert first["sharpe_ratio"] == pytest.approx(1.5118578920369083)
+    assert first["sortino_ratio"] == pytest.approx(3.9999999999999987)
+    assert first["information_ratio"] == pytest.approx(1.9999999999999998)
+    assert first["benchmark_correlation"] == pytest.approx(0.9285714285714285)
+    assert first["observation_count"] == 3
+    assert first["benchmark_observation_count"] == 3
+    assert first["insufficient_data"] == ()
     assert first == second
