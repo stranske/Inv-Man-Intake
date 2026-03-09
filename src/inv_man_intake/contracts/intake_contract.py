@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date, datetime
-import re
 from typing import Any
 
 PRIMARY_EXTENSIONS: frozenset[str] = frozenset({"pdf", "pptx"})
