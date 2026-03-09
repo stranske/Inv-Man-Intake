@@ -27,6 +27,12 @@ def _connection() -> sqlite3.Connection:
     return conn
 
 
+def _assert_valid_provenance_pointers(fixture: dict[str, object]) -> None:
+    errors = validate_provenance_pointers(fixture)
+    if errors:
+        raise ValueError(f"invalid provenance pointers: {', '.join(sorted(errors))}")
+
+
 def test_seed_fixtures_load_into_core_schema() -> None:
     conn = _connection()
     apply_core_schema(conn)
@@ -296,6 +302,31 @@ def test_correction_history_exposes_latest_event_for_each_pointer() -> None:
     assert bravo_history[-1]["event_id"] == "evt-002"
 
 
+def test_correction_history_for_document_is_chronological_and_latest_is_identifiable() -> None:
+    fixture = load_seed_fixture(FIXTURE_PATH)
+    pointers = [
+        "documents.doc_alpha_q1.source_channel",
+        "documents.doc_alpha_q1.file_hash",
+        "documents.doc_alpha_q1.received_at",
+    ]
+    document_events = sorted(
+        (
+            row
+            for row in fixture["corrections"]
+            if isinstance(row, dict)
+            and isinstance(row.get("provenance_pointer"), str)
+            and row["provenance_pointer"].split(".", maxsplit=2)[:2]
+            == ["documents", "doc_alpha_q1"]
+        ),
+        key=lambda row: (row["corrected_at"], row["event_id"]),
+    )
+    latest = document_events[-1]
+
+    assert latest["event_id"] == "evt-003"
+    assert latest["corrected_at"] == "2026-03-01T11:00:00Z"
+    assert latest["provenance_pointer"] in pointers
+
+
 def test_provenance_pointer_validation_accepts_known_document_fields() -> None:
     fixture = load_seed_fixture(FIXTURE_PATH)
 
@@ -314,6 +345,15 @@ def test_provenance_pointer_validation_flags_unknown_targets() -> None:
     assert "unknown-field:evt-001" in errors
 
 
+def test_provenance_pointer_validation_fails_on_unknown_targets() -> None:
+    fixture = load_seed_fixture(FIXTURE_PATH)
+    broken = copy.deepcopy(fixture)
+    broken["corrections"][0]["provenance_pointer"] = "documents.doc_missing.source_channel"
+
+    with pytest.raises(ValueError, match="unknown-document:evt-003"):
+        _assert_valid_provenance_pointers(broken)
+
+
 def test_provenance_pointer_validation_flags_invalid_pointer_formats() -> None:
     fixture = load_seed_fixture(FIXTURE_PATH)
     broken = copy.deepcopy(fixture)
@@ -324,3 +364,12 @@ def test_provenance_pointer_validation_flags_invalid_pointer_formats() -> None:
 
     assert "invalid-pointer-format:evt-003" in errors
     assert "invalid-pointer-format:evt-001" in errors
+
+
+def test_provenance_pointer_validation_fails_on_invalid_pointer_format() -> None:
+    fixture = load_seed_fixture(FIXTURE_PATH)
+    broken = copy.deepcopy(fixture)
+    broken["corrections"][0]["provenance_pointer"] = "funds.fund_alpha_ls.fund_name"
+
+    with pytest.raises(ValueError, match="invalid-pointer-format:evt-003"):
+        _assert_valid_provenance_pointers(broken)
