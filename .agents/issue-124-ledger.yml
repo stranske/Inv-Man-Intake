@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Create a list of the 2 unresolved inline review threads on PR #79 (URLs/IDs)
       in a PR #79 comment'
-    status: doing
+    status: done
     started_at: '2026-03-09T03:38:54Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-09T03:39:02Z'
+    commit: 2e49a60e246f709536160542276034732c8d0bc3
     notes: []
   - id: task-02
     title: Create a new branch for the follow-up fixes based on the main branch
