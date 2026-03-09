@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: Create `docs/pr-86-unresolved-threads.md` with a structured template for
       documenting review threads
-    status: doing
+    status: done
     started_at: '2026-03-09T04:20:52Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-09T04:21:05Z'
+    commit: b67edc05b7db4b43f4df7b8fac8993eace0bdb12
     notes: []
   - id: task-02
     title: 'Add thread #1 details to `docs/pr-86-unresolved-threads.md` including:
