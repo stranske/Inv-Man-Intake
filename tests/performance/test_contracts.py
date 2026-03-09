@@ -6,15 +6,15 @@ import pytest
 
 from inv_man_intake.performance.contracts import (
     ANNUAL_SERIES_FIELD,
-    AnnualSeriesFieldDefinition,
     MONTHLY_SERIES_FIELD,
-    MonthlySeriesFieldDefinition,
     PERFORMANCE_SERIES_FIELDS,
     QUARTERLY_SERIES_FIELD,
-    QuarterlySeriesFieldDefinition,
+    AnnualSeriesFieldDefinition,
+    MonthlySeriesFieldDefinition,
     PerformancePayload,
     PerformancePoint,
     PerformanceSeries,
+    QuarterlySeriesFieldDefinition,
     validate_payload,
 )
 
