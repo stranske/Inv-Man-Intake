@@ -38,7 +38,7 @@ def format_verify_compare_disposition(
 
 def format_verify_compare_outcome_note(
     *,
-    disposition_url: str,
+    disposition_url: str | None,
     source_issue: int,
     followup_reference: str | None = None,
 ) -> str:

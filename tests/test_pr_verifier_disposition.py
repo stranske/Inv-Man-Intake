@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from scripts.langchain.disposition import (
     format_verify_compare_disposition,
     format_verify_compare_outcome_note,

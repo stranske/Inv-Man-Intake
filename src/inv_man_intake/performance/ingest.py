@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import date
 from typing import cast
 
@@ -15,7 +15,7 @@ from inv_man_intake.performance.contracts import (
 )
 
 
-def load_xlsx_timeseries(rows: list[Mapping[str, object]]) -> PerformancePayload:
+def load_xlsx_timeseries(rows: Sequence[Mapping[str, object]]) -> PerformancePayload:
     """Load canonical payload from XLSX-derived rows.
 
     Expected keys per row:
@@ -27,13 +27,13 @@ def load_xlsx_timeseries(rows: list[Mapping[str, object]]) -> PerformancePayload
     return _load_rows(rows, source="xlsx")
 
 
-def load_document_timeseries(rows: list[Mapping[str, object]]) -> PerformancePayload:
+def load_document_timeseries(rows: Sequence[Mapping[str, object]]) -> PerformancePayload:
     """Load canonical payload from document-derived extraction rows."""
 
     return _load_rows(rows, source="document")
 
 
-def _load_rows(rows: list[Mapping[str, object]], *, source: str) -> PerformancePayload:
+def _load_rows(rows: Sequence[Mapping[str, object]], *, source: str) -> PerformancePayload:
     grouped: dict[Frequency, list[PerformancePoint]] = {
         "monthly": [],
         "quarterly": [],
