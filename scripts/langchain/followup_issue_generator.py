@@ -544,7 +544,7 @@ def generate_disposition_comment(
     lines = [
         "## verify:compare Disposition",
         "",
-        "Source: verify:compare non-PASS output from PR #{pr_number}".format(pr_number=pr_number),
+        f"Source: verify:compare non-PASS output from PR #{pr_number}",
     ]
     cleaned_source_url = source_url.strip()
     if cleaned_source_url:

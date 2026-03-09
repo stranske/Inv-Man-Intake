@@ -5,8 +5,8 @@ from __future__ import annotations
 from scripts.langchain.followup_issue_generator import (
     OriginalIssueData,
     extract_verification_data,
-    generate_followup_issue,
     generate_disposition_comment,
+    generate_followup_issue,
     generate_issue_disposition_link_comment,
 )
 
