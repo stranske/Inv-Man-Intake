@@ -186,6 +186,59 @@ def _first_reviewer_comment(thread: ReviewThread) -> ReviewComment | None:
     return thread.comments[0] if thread.comments else None
 
 
+def _recommend_disposition(concern_text: str) -> tuple[str, str]:
+    normalized = concern_text.lower()
+    requires_fix_terms = (
+        "bug",
+        "broken",
+        "incorrect",
+        "wrong",
+        "failing",
+        "fails",
+        "regression",
+        "fix",
+        "handle",
+        "edge case",
+        "null",
+        "none",
+        "error",
+        "exception",
+        "missing test",
+    )
+    likely_no_fix_terms = (
+        "nit",
+        "naming",
+        "wording",
+        "comment",
+        "clarify",
+        "docs",
+        "documentation",
+        "readability",
+        "style",
+    )
+
+    matched_fix_terms = [term for term in requires_fix_terms if term in normalized]
+    if matched_fix_terms:
+        keywords = ", ".join(matched_fix_terms[:3])
+        return (
+            "Likely requires follow-up code fix",
+            f"Reviewer concern mentions potential functional risk ({keywords}).",
+        )
+
+    matched_no_fix_terms = [term for term in likely_no_fix_terms if term in normalized]
+    if matched_no_fix_terms:
+        keywords = ", ".join(matched_no_fix_terms[:3])
+        return (
+            "Likely no code change needed (rationale/comment update)",
+            f"Reviewer concern appears editorial or clarity-oriented ({keywords}).",
+        )
+
+    return (
+        "Needs human decision",
+        "Concern does not include enough signal for reliable automatic classification.",
+    )
+
+
 def render_disposition_plan_comment(pr_number: int, unresolved_threads: list[ReviewThread]) -> str:
     lines = [
         f"Proposed disposition plan for unresolved review threads on PR #{pr_number}:",
@@ -202,12 +255,12 @@ def render_disposition_plan_comment(pr_number: int, unresolved_threads: list[Rev
             location = f"{location}:{thread.line}"
         concern_text = _truncate_for_markdown(concern.body if concern else None)
         concern_author = concern.author if concern and concern.author else "unknown reviewer"
+        recommendation, recommendation_reason = _recommend_disposition(concern_text)
         lines.append(f"{index}. Thread: {thread.url or thread.thread_id}")
         lines.append(f"   Location: `{location}`")
         lines.append(f"   Reviewer concern ({concern_author}): {concern_text}")
-        lines.append(
-            "   Proposed disposition: Human review needed to decide whether follow-up code changes are required."
-        )
+        lines.append(f"   Proposed disposition: {recommendation}.")
+        lines.append(f"   Reasoning: {recommendation_reason}")
         lines.append("")
 
     lines.append(

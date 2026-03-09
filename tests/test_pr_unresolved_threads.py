@@ -114,7 +114,31 @@ def test_render_disposition_plan_comment_includes_reviewer_context() -> None:
     comment = render_disposition_plan_comment(78, threads)
     assert "Proposed disposition plan for unresolved review threads on PR #78:" in comment
     assert "Reviewer concern (reviewer1): Please clarify this condition" in comment
-    assert "Proposed disposition: Human review needed" in comment
+    assert "Proposed disposition: Likely requires follow-up code fix." in comment
+    assert "Reasoning: Reviewer concern mentions potential functional risk" in comment
+
+
+def test_render_disposition_plan_comment_classifies_editorial_feedback() -> None:
+    threads = [
+        ReviewThread(
+            thread_id="T1",
+            is_resolved=False,
+            path="src/a.py",
+            line=10,
+            url="https://github.com/org/repo/pull/78#discussion_r1",
+            comments=(
+                ReviewComment(
+                    url="https://github.com/org/repo/pull/78#discussion_r1",
+                    author="reviewer1",
+                    body="Nit: this wording is unclear; please clarify docs and naming.",
+                    created_at="2026-03-01T01:00:00Z",
+                ),
+            ),
+        )
+    ]
+    comment = render_disposition_plan_comment(78, threads)
+    assert "Proposed disposition: Likely no code change needed" in comment
+    assert "Reasoning: Reviewer concern appears editorial or clarity-oriented" in comment
 
 
 def test_render_disposition_plan_comment_handles_empty_threads() -> None:
