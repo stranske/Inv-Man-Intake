@@ -39,6 +39,32 @@ def test_seed_fixtures_load_into_core_schema() -> None:
     assert conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0] == 10
 
 
+def test_seed_fixture_foreign_key_relationships_are_intact() -> None:
+    conn = _connection()
+    apply_core_schema(conn)
+    fixture = load_seed_fixture(FIXTURE_PATH)
+
+    load_core_seed_rows(conn, fixture)
+
+    # Ensure every fund row points to an existing firm row.
+    orphan_funds = conn.execute("""
+        SELECT COUNT(*)
+        FROM funds f
+        LEFT JOIN firms p ON p.firm_id = f.firm_id
+        WHERE p.firm_id IS NULL
+        """).fetchone()[0]
+    # Ensure every document row points to an existing fund row.
+    orphan_documents = conn.execute("""
+        SELECT COUNT(*)
+        FROM documents d
+        LEFT JOIN funds p ON p.fund_id = d.fund_id
+        WHERE p.fund_id IS NULL
+        """).fetchone()[0]
+
+    assert orphan_funds == 0
+    assert orphan_documents == 0
+
+
 def test_seed_fixture_reset_supports_repeatable_loads() -> None:
     conn = _connection()
     apply_core_schema(conn)
@@ -173,6 +199,16 @@ def test_correction_history_returns_ordered_events() -> None:
 
     assert [row["event_id"] for row in history] == ["evt-001", "evt-003"]
     assert history[-1]["corrected_value"] == "email"
+
+
+def test_correction_history_exposes_most_recent_event_for_pointer() -> None:
+    fixture = load_seed_fixture(FIXTURE_PATH)
+
+    history = correction_history_for_pointer(fixture, "documents.doc_alpha_q1.source_channel")
+
+    latest = history[-1]
+    assert latest["event_id"] == "evt-003"
+    assert latest["corrected_at"] == "2026-03-01T11:00:00Z"
 
 
 def test_provenance_pointer_validation_accepts_known_document_fields() -> None:
