@@ -57,6 +57,22 @@ def test_assign_rejects_invalid_actor_role() -> None:
         )
 
 
+@pytest.mark.parametrize("blank_actor_id", ["", " ", "   "])
+def test_assign_rejects_blank_actor_id(blank_actor_id: str) -> None:
+    item = create_queue_item(item_id="queue-3-blank-actor")
+
+    with pytest.raises(QueuePermissionError, match="actor_id must be non-empty"):
+        assign_item(item, actor_id=blank_actor_id, actor_role="analyst", assignee_id="analyst-1")
+
+
+@pytest.mark.parametrize("blank_assignee_id", ["", " ", "   "])
+def test_assign_rejects_blank_assignee_id(blank_assignee_id: str) -> None:
+    item = create_queue_item(item_id="queue-3-blank-assignee")
+
+    with pytest.raises(QueuePermissionError, match="assignee_id must be non-empty"):
+        assign_item(item, actor_id="analyst-1", actor_role="analyst", assignee_id=blank_assignee_id)
+
+
 def test_transition_matrix_accepts_valid_paths() -> None:
     item = create_queue_item(item_id="queue-4")
     item = assign_item(item, actor_id="ops-1", actor_role="ops", assignee_id="analyst-1")
@@ -132,6 +148,15 @@ def test_transition_rejects_invalid_actor_role() -> None:
         transition_item(  # type: ignore[arg-type]
             item, actor_id="mgr-1", actor_role="manager", to_state="in_review"
         )
+
+
+@pytest.mark.parametrize("blank_actor_id", ["", " ", "   "])
+def test_transition_rejects_blank_actor_id(blank_actor_id: str) -> None:
+    item = create_queue_item(item_id="queue-6-blank-transition-actor")
+    item = assign_item(item, actor_id="ops-1", actor_role="ops", assignee_id="analyst-1")
+
+    with pytest.raises(QueuePermissionError, match="actor_id must be non-empty"):
+        transition_item(item, actor_id=blank_actor_id, actor_role="analyst", to_state="in_review")
 
 
 def test_assign_reassignment_requires_ops_for_active_items() -> None:

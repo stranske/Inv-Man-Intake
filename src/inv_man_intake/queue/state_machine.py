@@ -62,11 +62,11 @@ def assign_item(
 ) -> QueueItem:
     """Assign or reassign ownership and move item into `assigned` state."""
 
-    if not actor_id:
+    if not actor_id or not actor_id.strip():
         raise QueuePermissionError("actor_id must be non-empty")
     if actor_role not in _VALID_ACTOR_ROLES:
         raise QueuePermissionError(f"invalid actor_role: {actor_role}")
-    if not assignee_id:
+    if not assignee_id or not assignee_id.strip():
         raise QueuePermissionError("assignee_id must be non-empty")
 
     if item.state == "new":
@@ -91,7 +91,7 @@ def transition_item(
 ) -> QueueItem:
     """Transition to a new state when matrix and permission rules allow it."""
 
-    if not actor_id:
+    if not actor_id or not actor_id.strip():
         raise QueuePermissionError("actor_id must be non-empty")
     if actor_role not in _VALID_ACTOR_ROLES:
         raise QueuePermissionError(f"invalid actor_role: {actor_role}")
