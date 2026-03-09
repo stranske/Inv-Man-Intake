@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from pytest import CaptureFixture
 
 from scripts.validate_child_issues import (
     REQUIRED_SECTIONS,
+    ensure_epic_task_links,
     main,
     render_epic_task_links_checklist,
     validate_epic_task_links,
@@ -100,6 +102,33 @@ def test_validate_epic_task_links_reports_missing_link() -> None:
     assert result.missing_issue_links == (12,)
 
 
+def test_ensure_epic_task_links_adds_missing_link() -> None:
+    body = _epic_body_with_task_links().replace(
+        "https://github.com/stranske/Inv-Man-Intake/issues/12",
+        "https://github.com/stranske/Inv-Man-Intake/issues/1200",
+    )
+    updated, added = ensure_epic_task_links(
+        epic_issue_body=body,
+        owner="stranske",
+        repo="Inv-Man-Intake",
+        start_issue=8,
+        end_issue=15,
+    )
+    assert added == (12,)
+    assert "https://github.com/stranske/Inv-Man-Intake/issues/12" in updated
+
+
+def test_ensure_epic_task_links_requires_tasks_header() -> None:
+    with pytest.raises(ValueError, match="## Tasks"):
+        ensure_epic_task_links(
+            epic_issue_body="## Why\nx",
+            owner="stranske",
+            repo="Inv-Man-Intake",
+            start_issue=8,
+            end_issue=15,
+        )
+
+
 def test_main_failure_when_epic_task_links_missing(tmp_path: Path) -> None:
     _write_issue_files(tmp_path, _issue_body_with_sections())
     _write_epic_issue(
@@ -115,6 +144,26 @@ def test_main_success_with_epic_task_links_validation(tmp_path: Path) -> None:
     _write_epic_issue(tmp_path, _epic_body_with_task_links())
     exit_code = main(["--issues-dir", str(tmp_path), "--check-epic-task-links"])
     assert exit_code == 0
+
+
+def test_main_fix_epic_task_links_requires_issues_dir() -> None:
+    exit_code = main(["--check-epic-task-links", "--fix-epic-task-links"])
+    assert exit_code == 2
+
+
+def test_main_fix_epic_task_links_updates_epic_file(tmp_path: Path) -> None:
+    _write_issue_files(tmp_path, _issue_body_with_sections())
+    _write_epic_issue(
+        tmp_path,
+        "## Tasks\n- [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)\n",
+    )
+    exit_code = main(
+        ["--issues-dir", str(tmp_path), "--check-epic-task-links", "--fix-epic-task-links"]
+    )
+    assert exit_code == 0
+    updated_epic = (tmp_path / "issue-7.md").read_text(encoding="utf-8")
+    for issue in range(8, 16):
+        assert f"https://github.com/stranske/Inv-Man-Intake/issues/{issue}" in updated_epic
 
 
 def test_render_epic_task_links_checklist() -> None:
