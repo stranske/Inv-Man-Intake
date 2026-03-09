@@ -22,6 +22,7 @@ ISSUE_LINK_RE = re.compile(r"https?://github\.com/[^\s)]+/issues/\d+", re.IGNORE
 PR_NUMBER_RE = re.compile(r"\b(?:pr|pull)\s*#?(\d+)\b", re.IGNORECASE)
 MARKDOWN_LINK_RE = re.compile(r"\[[^\]]+\]\((https?://[^)]+)\)")
 SENTENCE_RE = re.compile(r"[^.!?]+[.!?]")
+CODE_BLOCK_RE = re.compile(r"```(?:[a-zA-Z0-9_-]+)?\n(.*?)\n```", re.DOTALL)
 
 
 @dataclass(frozen=True)
@@ -165,7 +166,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pr", type=int, default=None, help="Limit results to this PR number")
     parser.add_argument(
         "--format",
-        choices=("json", "markdown", "scope", "disposition", "validate"),
+        choices=("json", "markdown", "scope", "disposition", "validate", "validate-note"),
         default="json",
         help="Output format",
     )
@@ -332,6 +333,41 @@ def _as_validation(findings: list[VerifyCompareFinding], pr_number: int | None =
     return "\n".join(["FAIL: Disposition note is missing required criteria."] + errors)
 
 
+def _extract_disposition_note(text: str, pr_number: int | None = None) -> str | None:
+    target_prefix = (
+        f"Disposition note for PR #{pr_number}:"
+        if pr_number is not None
+        else "Disposition note for "
+    )
+
+    code_blocks = [match.group(1).strip() for match in CODE_BLOCK_RE.finditer(text)]
+    code_blocks.append(text.strip())
+
+    for block in code_blocks:
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        if not lines:
+            continue
+        if not lines[0].startswith(target_prefix):
+            continue
+        return "\n".join(lines)
+    return None
+
+
+def _as_note_validation(text: str, pr_number: int | None = None) -> str:
+    note = _extract_disposition_note(text, pr_number=pr_number)
+    if note is None:
+        target = f"PR #{pr_number}" if pr_number is not None else "the target PR"
+        return (
+            "FAIL: Disposition note is missing required criteria.\n"
+            f"Missing disposition note block for {target}."
+        )
+
+    valid, errors = _validate_disposition_note(note)
+    if valid:
+        return "PASS: Disposition note satisfies required acceptance criteria."
+    return "\n".join(["FAIL: Disposition note is missing required criteria."] + errors)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     findings = scan_files(args.files, pr_number=args.pr)
@@ -342,6 +378,13 @@ def main(argv: list[str] | None = None) -> int:
         print(_as_scope(findings, pr_number=args.pr))
     elif args.format == "disposition":
         print(_as_disposition(findings, pr_number=args.pr))
+    elif args.format == "validate-note":
+        note_text = "\n".join(
+            path.read_text(encoding="utf-8", errors="replace")
+            for path in args.files
+            if path.exists() and path.is_file()
+        )
+        print(_as_note_validation(note_text, pr_number=args.pr))
     elif args.format == "validate":
         print(_as_validation(findings, pr_number=args.pr))
     else:

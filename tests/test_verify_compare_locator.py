@@ -2,8 +2,10 @@ from pathlib import Path
 
 from scripts.langchain.verify_compare_locator import (
     _as_disposition,
+    _as_note_validation,
     _as_scope,
     _as_validation,
+    _extract_disposition_note,
     extract_non_pass_findings,
     scan_files,
 )
@@ -199,3 +201,59 @@ def test_validation_output_fails_when_no_findings() -> None:
     assert validation.startswith("FAIL: Disposition note is missing required criteria.")
     assert "Missing required evidence link" in validation
     assert "Missing clear statement on whether fixes are needed." in validation
+
+
+def test_extract_disposition_note_from_markdown_code_block() -> None:
+    text = """
+## Implemented disposition note draft
+
+```text
+Disposition note for PR #54:
+Evidence link: https://github.com/stranske/Inv-Man-Intake/issues/89
+Evidence line: `verify:compare reported non-PASS output without a documented disposition.`
+No code fixes are needed; documentation-only follow-up is required.
+The flagged output identifies a missing disposition record rather than a product or test behavior defect.
+Adding a disposition note to PR #54 closes the verification gap while keeping scope bounded to verify:compare documentation requirements.
+```
+""".strip()
+
+    note = _extract_disposition_note(text, pr_number=54)
+
+    assert note is not None
+    assert note.startswith("Disposition note for PR #54:")
+    assert "Evidence link: https://github.com/stranske/Inv-Man-Intake/issues/89" in note
+
+
+def test_note_validation_passes_for_existing_disposition_note_block() -> None:
+    text = """
+```text
+Disposition note for PR #54:
+Evidence link: https://github.com/stranske/Inv-Man-Intake/issues/89
+Evidence line: `verify:compare reported non-PASS output without a documented disposition.`
+No code fixes are needed; documentation-only follow-up is required.
+The flagged output identifies a missing disposition record rather than a product or test behavior defect.
+Adding a disposition note to PR #54 closes the verification gap while keeping scope bounded to verify:compare documentation requirements.
+```
+""".strip()
+
+    validation = _as_note_validation(text, pr_number=54)
+
+    assert validation == "PASS: Disposition note satisfies required acceptance criteria."
+
+
+def test_note_validation_fails_when_target_pr_note_block_missing() -> None:
+    text = """
+```text
+Disposition note for PR #77:
+Evidence link: https://github.com/stranske/Inv-Man-Intake/issues/89
+Evidence line: `verify:compare reported non-PASS output without a documented disposition.`
+No code fixes are needed; documentation-only follow-up is required.
+The flagged output identifies a missing disposition record rather than a product or test behavior defect.
+Adding a disposition note to PR #77 closes the verification gap while keeping scope bounded to verify:compare documentation requirements.
+```
+""".strip()
+
+    validation = _as_note_validation(text, pr_number=54)
+
+    assert validation.startswith("FAIL: Disposition note is missing required criteria.")
+    assert "Missing disposition note block for PR #54." in validation
