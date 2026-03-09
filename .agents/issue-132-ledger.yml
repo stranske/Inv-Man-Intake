@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Identify all unresolved inline review threads on PR #78 by examining the
       pull request conversation tab'
-    status: doing
+    status: done
     started_at: '2026-03-09T03:38:46Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-09T03:38:56Z'
+    commit: 832c6fea00562e9642fde30583ca31042160912f
     notes: []
   - id: task-02
     title: Document each unresolved thread with its direct GitHub link in a comment
