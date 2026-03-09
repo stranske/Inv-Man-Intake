@@ -14,9 +14,9 @@ tasks:
   - id: task-02
     title: Add separate field definitions for monthly, quarterly, and annual data
       series in `src/inv_man_intake/performance/contracts.py`
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-09T00:35:20Z'
+    finished_at: '2026-03-09T00:36:09Z'
     commit: ''
     notes: []
   - id: task-03
@@ -192,8 +192,8 @@ tasks:
   - id: task-24
     title: All tests in `tests/performance/test_ingest_contracts.py` pass for frequency
       handling rules
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-09T00:35:20Z'
+    finished_at: '2026-03-09T00:36:09Z'
     commit: ''
     notes: []

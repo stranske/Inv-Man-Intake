@@ -6,9 +6,12 @@ import pytest
 
 from inv_man_intake.performance.contracts import (
     ANNUAL_SERIES_FIELD,
+    AnnualSeriesFieldDefinition,
     MONTHLY_SERIES_FIELD,
+    MonthlySeriesFieldDefinition,
     PERFORMANCE_SERIES_FIELDS,
     QUARTERLY_SERIES_FIELD,
+    QuarterlySeriesFieldDefinition,
     PerformancePayload,
     PerformancePoint,
     PerformanceSeries,
@@ -17,14 +20,17 @@ from inv_man_intake.performance.contracts import (
 
 
 def test_frequency_field_definitions_are_explicit_and_ordered() -> None:
+    assert isinstance(MONTHLY_SERIES_FIELD, MonthlySeriesFieldDefinition)
     assert MONTHLY_SERIES_FIELD.name == "monthly"
     assert MONTHLY_SERIES_FIELD.frequency == "monthly"
     assert MONTHLY_SERIES_FIELD.required is True
 
+    assert isinstance(QUARTERLY_SERIES_FIELD, QuarterlySeriesFieldDefinition)
     assert QUARTERLY_SERIES_FIELD.name == "quarterly"
     assert QUARTERLY_SERIES_FIELD.frequency == "quarterly"
     assert QUARTERLY_SERIES_FIELD.required is False
 
+    assert isinstance(ANNUAL_SERIES_FIELD, AnnualSeriesFieldDefinition)
     assert ANNUAL_SERIES_FIELD.name == "annual"
     assert ANNUAL_SERIES_FIELD.frequency == "annual"
     assert ANNUAL_SERIES_FIELD.required is False
