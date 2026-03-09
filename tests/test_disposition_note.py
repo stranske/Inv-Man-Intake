@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from scripts.langchain.disposition_note import (
     DispositionDecision,
     build_review_items,
