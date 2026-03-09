@@ -43,6 +43,7 @@ class OrchestrationResult:
     attempts: list[AttemptRecord]
     retry_count: int
     failure_count: int
+    escalation_route: str | None = None
     escalation_reason: str | None = None
     escalation_payload: dict[str, Any] | None = None
 
@@ -54,7 +55,7 @@ class _Provider:
 
 
 class ExtractionOrchestrator:
-    """Run primary extraction with one fallback retry under guardrails."""
+    """Run primary extraction with bounded fallback retries under guardrails."""
 
     def __init__(
         self,
@@ -125,34 +126,38 @@ class ExtractionOrchestrator:
                 self._emit_metrics(result)
                 return result
 
-            with self._tracer.start_span(
-                name="extraction_orchestrator.fallback_attempt",
-                context=context,
-                metadata={"provider": self._fallback.name},
+            while self._can_attempt_fallback(
+                attempts=attempts, fallback_attempts=fallback_attempts
             ):
-                fallback_result, fallback_error = self._attempt(self._fallback, payload)
-            fallback_attempts += 1
-            retry_count += 1
-            attempts.append(
-                AttemptRecord(
-                    provider=self._fallback.name,
-                    success=fallback_result is not None,
-                    error=fallback_error,
+                with self._tracer.start_span(
+                    name="extraction_orchestrator.fallback_attempt",
+                    context=context,
+                    metadata={"provider": self._fallback.name},
+                ):
+                    fallback_result, fallback_error = self._attempt(self._fallback, payload)
+                fallback_attempts += 1
+                retry_count += 1
+                attempts.append(
+                    AttemptRecord(
+                        provider=self._fallback.name,
+                        success=fallback_result is not None,
+                        error=fallback_error,
+                    )
                 )
-            )
-            if fallback_result is not None:
-                result = OrchestrationResult(
-                    resolved=True,
-                    data=fallback_result,
-                    provider_used=self._fallback.name,
-                    attempts=attempts,
-                    retry_count=retry_count,
-                    failure_count=1,
-                )
-                self._emit_metrics(result)
-                return result
+                if fallback_result is not None:
+                    failed_attempts = [attempt for attempt in attempts if not attempt.success]
+                    result = OrchestrationResult(
+                        resolved=True,
+                        data=fallback_result,
+                        provider_used=self._fallback.name,
+                        attempts=attempts,
+                        retry_count=retry_count,
+                        failure_count=len(failed_attempts),
+                    )
+                    self._emit_metrics(result)
+                    return result
+                last_error = fallback_error
 
-            last_error = fallback_error
             result = self._escalate(
                 payload=payload,
                 attempts=attempts,
@@ -165,14 +170,12 @@ class ExtractionOrchestrator:
     def _can_attempt_fallback(
         self, *, attempts: list[AttemptRecord], fallback_attempts: int
     ) -> bool:
+        # Guardrail: if providers are identical, fallback would repeat the same path.
+        if self._primary.name == self._fallback.name:
+            return False
         if fallback_attempts >= self._policy.max_fallback_attempts:
             return False
-        if len(attempts) >= self._policy.max_total_attempts:
-            return False
-
-        # Guardrail: prevent retrying the same provider in a fallback slot.
-        previous_provider = attempts[-1].provider if attempts else None
-        return previous_provider != self._fallback.name
+        return len(attempts) < self._policy.max_total_attempts
 
     @staticmethod
     def _attempt(
@@ -192,6 +195,7 @@ class ExtractionOrchestrator:
         reason: str | None,
     ) -> OrchestrationResult:
         escalation_reason = reason or "extraction-unresolved"
+        escalation_route = ExtractionOrchestrator._resolve_escalation_route(attempts=attempts)
         return OrchestrationResult(
             resolved=False,
             data=None,
@@ -199,11 +203,13 @@ class ExtractionOrchestrator:
             attempts=attempts,
             retry_count=retry_count,
             failure_count=len(attempts),
+            escalation_route=escalation_route,
             escalation_reason=escalation_reason,
             escalation_payload=ExtractionOrchestrator._build_escalation_payload(
                 payload=payload,
                 attempts=attempts,
                 retry_count=retry_count,
+                escalation_route=escalation_route,
                 escalation_reason=escalation_reason,
             ),
         )
@@ -214,18 +220,29 @@ class ExtractionOrchestrator:
         payload: dict[str, Any],
         attempts: list[AttemptRecord],
         retry_count: int,
+        escalation_route: str,
         escalation_reason: str,
     ) -> dict[str, Any]:
         failed_attempts = [attempt for attempt in attempts if not attempt.success]
         return {
             "item_id": payload.get("id"),
             "input_payload": dict(payload),
+            "escalation_route": escalation_route,
             "escalation_reason": escalation_reason,
             "retry_count": retry_count,
             "failure_count": len(failed_attempts),
             "failed_providers": [attempt.provider for attempt in failed_attempts],
             "errors": [attempt.error for attempt in failed_attempts if attempt.error],
         }
+
+    @staticmethod
+    def _resolve_escalation_route(*, attempts: list[AttemptRecord]) -> str:
+        failed_provider_count = len(
+            {attempt.provider for attempt in attempts if not attempt.success}
+        )
+        if failed_provider_count > 1:
+            return "ops_review"
+        return "pending_triage"
 
     def _emit_metrics(self, result: OrchestrationResult) -> None:
         if self._metrics_hook is None:

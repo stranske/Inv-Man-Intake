@@ -121,6 +121,34 @@ function buildCompletionComment(tasks, acceptance, metadata = {}) {
     }
     lines.push('');
   }
+
+  const disposition = String(metadata.disposition || '').trim();
+  const verifyCompareUrl = String(
+    metadata.verifyCompareUrl ||
+    metadata.verifierRunUrl ||
+    ''
+  ).trim();
+  const hasHttpLink = /https?:\/\/\S+/i.test(disposition);
+  const shouldIncludeDisposition = disposition.length > 0 || verifyCompareUrl.length > 0;
+  if (shouldIncludeDisposition) {
+    lines.push('## Disposition');
+    lines.push('');
+    if (disposition) {
+      lines.push(disposition);
+    }
+    if (verifyCompareUrl && (!hasHttpLink || !disposition.includes(verifyCompareUrl))) {
+      lines.push(`- verify:compare output: ${verifyCompareUrl}`);
+    }
+    lines.push('');
+
+    lines.push('### verify:compare Outcome');
+    lines.push('');
+    lines.push('- Disposition note: [Disposition](#disposition)');
+    if (verifyCompareUrl) {
+      lines.push(`- Verification evidence: ${verifyCompareUrl}`);
+    }
+    lines.push('');
+  }
   
   lines.push('<details>');
   lines.push('<summary>About this comment</summary>');
@@ -174,6 +202,13 @@ async function postCompletionComment({ github, context, core, inputs }) {
   }
   const commitSha = inputs.commit_sha || inputs.commitSha || '';
   const iteration = inputs.iteration || '';
+  const verifyCompareUrl = String(
+    inputs.verify_compare_url ||
+    inputs.verifyCompareUrl ||
+    inputs.verifier_run_url ||
+    inputs.verifierRunUrl ||
+    ''
+  ).trim();
   
   // Read the prompt file
   let content;
@@ -192,13 +227,17 @@ async function postCompletionComment({ github, context, core, inputs }) {
   // Extract checked items from Tasks and Acceptance Criteria sections
   const tasksSection = extractSection(content, 'Tasks');
   const acceptanceSection = extractSection(content, 'Acceptance [Cc]riteria');
+  const dispositionSection = extractSection(content, 'Disposition');
   
   const completedTasks = extractCheckedItems(tasksSection);
   const completedAcceptance = extractCheckedItems(acceptanceSection);
+  const hasDisposition = String(dispositionSection || '').trim().length > 0 || verifyCompareUrl.length > 0;
   
-  core.info(`Found ${completedTasks.length} completed task(s) and ${completedAcceptance.length} acceptance criteria`);
+  core.info(
+    `Found ${completedTasks.length} completed task(s), ${completedAcceptance.length} acceptance criteria, disposition: ${hasDisposition ? 'yes' : 'no'}`
+  );
 
-  if (completedTasks.length === 0 && completedAcceptance.length === 0) {
+  if (completedTasks.length === 0 && completedAcceptance.length === 0 && !hasDisposition) {
     core.info('No new completions detected, skipping completion comment.');
     return { posted: false, reason: 'no-completions' };
   }
@@ -207,6 +246,8 @@ async function postCompletionComment({ github, context, core, inputs }) {
   const commentBody = buildCompletionComment(completedTasks, completedAcceptance, {
     iteration,
     commitSha,
+    disposition: dispositionSection,
+    verifyCompareUrl,
   });
   
   const { owner, repo } = context.repo;
