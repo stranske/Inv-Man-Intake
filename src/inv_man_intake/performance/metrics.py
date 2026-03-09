@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from math import sqrt
-from typing import TypedDict
+from typing import TypedDict, cast
 
 from inv_man_intake.performance.contracts import (
     PerformancePayload,
@@ -22,6 +22,17 @@ _PRIORITIZED_METRIC_FIELDS = (
     "sortino_ratio",
     "information_ratio",
     "benchmark_correlation",
+)
+_CANONICAL_SCHEMA_FIELDS = (
+    "annualized_volatility",
+    "max_drawdown",
+    "sharpe_ratio",
+    "sortino_ratio",
+    "information_ratio",
+    "benchmark_correlation",
+    "observation_count",
+    "benchmark_observation_count",
+    "insufficient_data",
 )
 
 
@@ -56,7 +67,7 @@ class PerformanceMetrics:
     def to_canonical_dict(self) -> CanonicalMetricsSchema:
         """Return the canonical, stable key-ordered schema for downstream consumers."""
 
-        return {
+        schema: CanonicalMetricsSchema = {
             "annualized_volatility": self.annualized_volatility,
             "max_drawdown": self.max_drawdown,
             "sharpe_ratio": self.sharpe_ratio,
@@ -67,6 +78,7 @@ class PerformanceMetrics:
             "benchmark_observation_count": self.benchmark_observation_count,
             "insufficient_data": self.insufficient_data,
         }
+        return _canonicalize_schema(schema)
 
 
 def compute_metrics(
@@ -136,6 +148,19 @@ def compute_metrics_canonical(
         benchmark_monthly=benchmark_monthly,
         annual_risk_free_rate=annual_risk_free_rate,
     ).to_canonical_dict()
+
+
+def _canonicalize_schema(schema: CanonicalMetricsSchema) -> CanonicalMetricsSchema:
+    missing = tuple(field for field in _CANONICAL_SCHEMA_FIELDS if field not in schema)
+    unexpected = tuple(field for field in schema if field not in _CANONICAL_SCHEMA_FIELDS)
+    if missing or unexpected:
+        raise RuntimeError(
+            "canonical metrics schema mismatch: " f"missing={missing}, unexpected={unexpected}"
+        )
+
+    return cast(
+        CanonicalMetricsSchema, {field: schema[field] for field in _CANONICAL_SCHEMA_FIELDS}
+    )
 
 
 def _align_monthly_series(
