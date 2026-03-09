@@ -257,3 +257,81 @@ def test_compute_metrics_canonical_returns_fresh_schema_each_call() -> None:
     second = compute_metrics_canonical(payload)
 
     assert second["annualized_volatility"] == pytest.approx(0.052915026221291815)
+
+
+def test_compute_metrics_handles_zero_excess_volatility_without_exceptions() -> None:
+    payload = PerformancePayload(
+        monthly=PerformanceSeries(
+            "monthly",
+            (
+                PerformancePoint(as_of=date(2025, 1, 31), value=0.01),
+                PerformancePoint(as_of=date(2025, 2, 28), value=0.01),
+            ),
+        )
+    )
+
+    metrics = compute_metrics(payload)
+
+    assert metrics.annualized_volatility == pytest.approx(0.0)
+    assert metrics.sharpe_ratio is None
+    assert metrics.sortino_ratio is None
+    assert metrics.insufficient_data == (
+        "sharpe_ratio",
+        "sortino_ratio",
+        "information_ratio",
+        "benchmark_correlation",
+    )
+
+
+def test_compute_metrics_handles_zero_tracking_error_without_exceptions() -> None:
+    payload = PerformancePayload(
+        monthly=PerformanceSeries(
+            "monthly",
+            (
+                PerformancePoint(as_of=date(2025, 1, 31), value=0.02),
+                PerformancePoint(as_of=date(2025, 2, 28), value=0.01),
+                PerformancePoint(as_of=date(2025, 3, 31), value=0.03),
+            ),
+        )
+    )
+    benchmark = PerformanceSeries(
+        "monthly",
+        (
+            PerformancePoint(as_of=date(2025, 1, 31), value=0.01),
+            PerformancePoint(as_of=date(2025, 2, 28), value=0.00),
+            PerformancePoint(as_of=date(2025, 3, 31), value=0.02),
+        ),
+    )
+
+    metrics = compute_metrics(payload, benchmark_monthly=benchmark)
+
+    assert metrics.information_ratio is None
+    assert metrics.benchmark_correlation == pytest.approx(1.0)
+    assert metrics.insufficient_data == ("sortino_ratio", "information_ratio")
+
+
+def test_compute_metrics_handles_zero_benchmark_variance_without_exceptions() -> None:
+    payload = PerformancePayload(
+        monthly=PerformanceSeries(
+            "monthly",
+            (
+                PerformancePoint(as_of=date(2025, 1, 31), value=0.01),
+                PerformancePoint(as_of=date(2025, 2, 28), value=0.02),
+                PerformancePoint(as_of=date(2025, 3, 31), value=-0.01),
+            ),
+        )
+    )
+    flat_benchmark = PerformanceSeries(
+        "monthly",
+        (
+            PerformancePoint(as_of=date(2025, 1, 31), value=0.005),
+            PerformancePoint(as_of=date(2025, 2, 28), value=0.005),
+            PerformancePoint(as_of=date(2025, 3, 31), value=0.005),
+        ),
+    )
+
+    metrics = compute_metrics(payload, benchmark_monthly=flat_benchmark)
+
+    assert metrics.information_ratio == pytest.approx(0.37796447300922725)
+    assert metrics.benchmark_correlation is None
+    assert metrics.insufficient_data == ("benchmark_correlation",)

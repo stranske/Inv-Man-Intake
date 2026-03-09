@@ -14,6 +14,7 @@ from inv_man_intake.performance.contracts import (
 )
 
 _ANNUALIZATION_FACTOR = 12.0
+_ZERO_TOLERANCE = 1e-12
 _PRIORITIZED_METRIC_FIELDS = (
     "annualized_volatility",
     "max_drawdown",
@@ -183,7 +184,7 @@ def _sharpe_ratio(returns: list[float], *, risk_free_monthly: float) -> float | 
 
     excess_returns = [value - risk_free_monthly for value in returns]
     volatility = _sample_std_dev(excess_returns)
-    if volatility == 0.0:
+    if _is_effectively_zero(volatility):
         return None
     return (_mean(excess_returns) / volatility) * sqrt(_ANNUALIZATION_FACTOR)
 
@@ -195,7 +196,7 @@ def _sortino_ratio(returns: list[float], *, risk_free_monthly: float) -> float |
     excess_returns = [value - risk_free_monthly for value in returns]
     downside_squared = [min(0.0, value) ** 2 for value in excess_returns]
     downside_deviation = sqrt(sum(downside_squared) / len(downside_squared))
-    if downside_deviation == 0.0:
+    if _is_effectively_zero(downside_deviation):
         return None
     return (_mean(excess_returns) / downside_deviation) * sqrt(_ANNUALIZATION_FACTOR)
 
@@ -209,7 +210,7 @@ def _information_ratio(portfolio: list[float], benchmark: list[float]) -> float 
         for portfolio_value, benchmark_value in zip(portfolio, benchmark, strict=True)
     ]
     tracking_error = _sample_std_dev(active_returns)
-    if tracking_error == 0.0:
+    if _is_effectively_zero(tracking_error):
         return None
     return (_mean(active_returns) / tracking_error) * sqrt(_ANNUALIZATION_FACTOR)
 
@@ -220,7 +221,7 @@ def _correlation(portfolio: list[float], benchmark: list[float]) -> float | None
 
     std_portfolio = _sample_std_dev(portfolio)
     std_benchmark = _sample_std_dev(benchmark)
-    if std_portfolio == 0.0 or std_benchmark == 0.0:
+    if _is_effectively_zero(std_portfolio) or _is_effectively_zero(std_benchmark):
         return None
 
     portfolio_mean = _mean(portfolio)
@@ -240,3 +241,7 @@ def _sample_std_dev(values: list[float]) -> float:
     average = _mean(values)
     variance = sum((value - average) ** 2 for value in values) / (len(values) - 1)
     return sqrt(variance)
+
+
+def _is_effectively_zero(value: float) -> bool:
+    return abs(value) <= _ZERO_TOLERANCE
