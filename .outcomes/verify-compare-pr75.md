@@ -8,11 +8,14 @@ The reviewed non-PASS output is: `verify:compare reported non-PASS output withou
 
 - [PR #75](https://github.com/stranske/Inv-Man-Intake/pull/75)
 - [Issue #42](https://github.com/stranske/Inv-Man-Intake/issues/42)
+- [Audit follow-up issue #115](https://github.com/stranske/Inv-Man-Intake/issues/115)
 
 ## Disposition
 
 This non-PASS output is **warranted**.
+The verify:compare run identified real delivery gaps (missing action endpoints and API documentation) that were not completed in PR #75.
+Those gaps require follow-up implementation rather than a not-warranted dismissal.
 
 ## Follow-up
 
-Follow-up tracking link: [Issue #42](https://github.com/stranske/Inv-Man-Intake/issues/42)
+Follow-up tracking link: [Issue #14](https://github.com/stranske/Inv-Man-Intake/issues/14)
