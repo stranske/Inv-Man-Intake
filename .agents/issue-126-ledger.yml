@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Write `scripts/list_unresolved_pr_threads.py` to enumerate unresolved
       inline review threads for PR #83 and print their IDs/URLs'
-    status: doing
+    status: done
     started_at: '2026-03-09T03:46:50Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-09T03:47:00Z'
+    commit: 85cb2055893fe19b354277d5e21980c026e469f7
     notes: []
   - id: task-02
     title: 'Add `scripts/classify_unresolved_pr_threads.py` to output a classification
