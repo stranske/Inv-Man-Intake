@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from scripts.langchain.verify_compare_locator import (
+    _as_validation,
     _as_disposition,
     _as_scope,
     extract_non_pass_findings,
@@ -147,3 +148,24 @@ def test_disposition_prefers_finding_with_source_link_when_multiple() -> None:
     disposition = _as_disposition(findings, pr_number=54)
 
     assert "Evidence link: https://github.com/stranske/Inv-Man-Intake/issues/89" in disposition
+
+
+def test_validation_output_passes_for_doc_gap_disposition() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/issues/89
+Source PR: #54
+verify:compare reported non-PASS output without a documented disposition.
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue_context.txt", pr_number=54)
+    validation = _as_validation(findings, pr_number=54)
+
+    assert validation == "PASS: Disposition note satisfies required acceptance criteria."
+
+
+def test_validation_output_fails_when_no_findings() -> None:
+    validation = _as_validation([], pr_number=54)
+
+    assert validation.startswith("FAIL: Disposition note is missing required criteria.")
+    assert "Missing required evidence link" in validation
+    assert "Missing clear statement on whether fixes are needed." in validation
