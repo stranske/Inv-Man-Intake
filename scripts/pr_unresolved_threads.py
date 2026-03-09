@@ -71,6 +71,23 @@ def _run_graphql(*, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         raise RuntimeError("Unable to parse gh api response as JSON") from exc
 
 
+def _post_issue_comment(*, repo: str, issue_number: int, body: str) -> None:
+    cmd = [
+        "gh",
+        "issue",
+        "comment",
+        str(issue_number),
+        "--repo",
+        repo,
+        "--body",
+        body,
+    ]
+    result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    if result.returncode != 0:
+        stderr = result.stderr.strip()
+        raise RuntimeError(stderr or "gh issue comment failed")
+
+
 def _parse_thread(node: dict[str, Any]) -> ReviewThread:
     comment_nodes = node.get("comments", {}).get("nodes", [])
     url = comment_nodes[0].get("url") if comment_nodes else None
@@ -148,11 +165,27 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Optional output path for a markdown issue comment listing thread links.",
     )
+    parser.add_argument(
+        "--issue-number",
+        type=int,
+        help="Issue number to receive the unresolved thread inventory comment.",
+    )
+    parser.add_argument(
+        "--post-issue-comment",
+        action="store_true",
+        help="Post unresolved thread inventory comment to --issue-number using gh issue comment.",
+    )
     return parser
 
 
 def main() -> int:
     args = _build_parser().parse_args()
+    if args.post_issue_comment and args.issue_number is None:
+        print(
+            "Error: --issue-number is required when --post-issue-comment is set.", file=sys.stderr
+        )
+        return 1
+
     try:
         all_threads = fetch_review_threads(args.repo, args.pr_number)
     except (RuntimeError, ValueError) as exc:
@@ -160,6 +193,7 @@ def main() -> int:
         return 1
 
     unresolved_threads = [thread for thread in all_threads if not thread.is_resolved]
+    issue_comment = render_issue_comment(args.pr_number, unresolved_threads)
 
     print(f"PR #{args.pr_number} unresolved inline review threads: {len(unresolved_threads)}")
     for thread in unresolved_threads:
@@ -180,9 +214,14 @@ def main() -> int:
 
     if args.issue_comment_output:
         args.issue_comment_output.parent.mkdir(parents=True, exist_ok=True)
-        args.issue_comment_output.write_text(
-            render_issue_comment(args.pr_number, unresolved_threads), encoding="utf-8"
-        )
+        args.issue_comment_output.write_text(issue_comment, encoding="utf-8")
+
+    if args.post_issue_comment:
+        try:
+            _post_issue_comment(repo=args.repo, issue_number=args.issue_number, body=issue_comment)
+        except RuntimeError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
 
     if args.expected_count is not None and len(unresolved_threads) != args.expected_count:
         print(

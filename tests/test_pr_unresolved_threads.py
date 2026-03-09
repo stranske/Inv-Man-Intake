@@ -180,3 +180,95 @@ def test_main_returns_error_code_on_fetch_failure(monkeypatch) -> None:
         ],
     )
     assert main() == 1
+
+
+def test_main_posts_issue_comment(monkeypatch) -> None:
+    monkeypatch.setattr(
+        pr_unresolved_threads,
+        "fetch_review_threads",
+        lambda repo, pr_number: [
+            ReviewThread(
+                thread_id="T1",
+                is_resolved=False,
+                path="src/a.py",
+                line=10,
+                url="https://github.com/org/repo/pull/78#discussion_r1",
+            )
+        ],
+    )
+    posted: dict[str, object] = {}
+
+    def _fake_post_issue_comment(*, repo: str, issue_number: int, body: str) -> None:
+        posted["repo"] = repo
+        posted["issue_number"] = issue_number
+        posted["body"] = body
+
+    monkeypatch.setattr(pr_unresolved_threads, "_post_issue_comment", _fake_post_issue_comment)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "pr_unresolved_threads.py",
+            "--repo",
+            "stranske/Inv-Man-Intake",
+            "--pr-number",
+            "78",
+            "--issue-number",
+            "41",
+            "--post-issue-comment",
+        ],
+    )
+    assert main() == 0
+    assert posted["repo"] == "stranske/Inv-Man-Intake"
+    assert posted["issue_number"] == 41
+    assert "Unresolved inline review threads for PR #78 (1 total):" in str(posted["body"])
+
+
+def test_main_fails_when_post_issue_comment_missing_issue_number(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "pr_unresolved_threads.py",
+            "--repo",
+            "stranske/Inv-Man-Intake",
+            "--pr-number",
+            "78",
+            "--post-issue-comment",
+        ],
+    )
+    assert main() == 1
+
+
+def test_main_returns_error_when_issue_comment_post_fails(monkeypatch) -> None:
+    monkeypatch.setattr(
+        pr_unresolved_threads,
+        "fetch_review_threads",
+        lambda repo, pr_number: [
+            ReviewThread(
+                thread_id="T1",
+                is_resolved=False,
+                path="src/a.py",
+                line=10,
+                url="https://github.com/org/repo/pull/78#discussion_r1",
+            )
+        ],
+    )
+
+    def _fail_post_issue_comment(*, repo: str, issue_number: int, body: str) -> None:
+        del repo, issue_number, body
+        raise RuntimeError("cannot post issue comment")
+
+    monkeypatch.setattr(pr_unresolved_threads, "_post_issue_comment", _fail_post_issue_comment)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "pr_unresolved_threads.py",
+            "--repo",
+            "stranske/Inv-Man-Intake",
+            "--pr-number",
+            "78",
+            "--issue-number",
+            "41",
+            "--post-issue-comment",
+        ],
+    )
+    assert main() == 1
