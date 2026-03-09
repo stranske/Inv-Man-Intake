@@ -11,6 +11,8 @@ const {
   findExistingAuditComment,
   parseDispositionRepliesInput,
   parseBooleanInput,
+  hasCompleteSentence,
+  isFollowUpFixReference,
   buildDispositionReplyBody,
   hasDispositionReply,
   postReviewThreadChecklistComment,
@@ -70,6 +72,22 @@ test('parseBooleanInput supports common truthy and falsy values', () => {
   assert.equal(parseBooleanInput(''), false);
 });
 
+test('hasCompleteSentence requires at least one complete sentence', () => {
+  assert.equal(hasCompleteSentence('This path is intentionally read-only.'), true);
+  assert.equal(hasCompleteSentence('Two words.'), false);
+  assert.equal(hasCompleteSentence('No punctuation here'), false);
+});
+
+test('isFollowUpFixReference accepts GitHub PR/commit links', () => {
+  assert.equal(isFollowUpFixReference('https://github.com/org/repo/pull/71'), true);
+  assert.equal(
+    isFollowUpFixReference('https://github.com/org/repo/commit/0123456789abcdef0123456789abcdef01234567'),
+    true,
+  );
+  assert.equal(isFollowUpFixReference('PR #71'), false);
+  assert.equal(isFollowUpFixReference('https://example.com/org/repo/pull/71'), false);
+});
+
 test('buildDispositionReplyBody enforces required fields for fix and not-warranted dispositions', () => {
   const fixBody = buildDispositionReplyBody({
     disposition: 'fix',
@@ -93,7 +111,18 @@ test('buildDispositionReplyBody enforces required fields for fix and not-warrant
     '',
   );
   assert.equal(
+    buildDispositionReplyBody({ disposition: 'fix', fix_reference: 'PR #71' }),
+    '',
+  );
+  assert.equal(
     buildDispositionReplyBody({ disposition: 'not-warranted' }),
+    '',
+  );
+  assert.equal(
+    buildDispositionReplyBody({
+      disposition: 'not-warranted',
+      rationale: 'Expected behavior without punctuation',
+    }),
     '',
   );
 });
@@ -312,6 +341,63 @@ test('postReviewThreadDispositionReplies fails when require_complete_replies is 
             thread_id: 'missing-thread',
             disposition: 'fix',
             fix_reference: 'https://github.com/org/repo/pull/71',
+          },
+        ]),
+        require_complete_replies: true,
+      },
+    }),
+    /Missing disposition replies for unresolved review threads: T1/,
+  );
+});
+
+test('postReviewThreadDispositionReplies treats invalid rationale as missing when complete replies are required', async () => {
+  const github = {
+    __testMock: true,
+    graphql: async (query) => {
+      if (query.includes('query UnresolvedReviewThreads')) {
+        return {
+          repository: {
+            pullRequest: {
+              reviewThreads: {
+                pageInfo: { hasNextPage: false, endCursor: null },
+                nodes: [
+                  {
+                    id: 'T1',
+                    isResolved: false,
+                    comments: {
+                      nodes: [
+                        {
+                          id: 'C1',
+                          url: 'https://github.com/org/repo/pull/70#discussion_r1',
+                          path: 'src/a.py',
+                          line: 12,
+                          body: 'initial comment',
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        };
+      }
+      return { addPullRequestReviewThreadReply: { comment: { id: 'R1', url: 'https://example.com/reply' } } };
+    },
+  };
+
+  await assert.rejects(
+    postReviewThreadDispositionReplies({
+      github,
+      context: { repo: { owner: 'org', repo: 'repo' } },
+      core: { info() {}, warning() {}, debug() {} },
+      inputs: {
+        pr_number: 70,
+        thread_replies: JSON.stringify([
+          {
+            thread_id: 'T1',
+            disposition: 'not-warranted',
+            rationale: 'No punctuation',
           },
         ]),
         require_complete_replies: true,

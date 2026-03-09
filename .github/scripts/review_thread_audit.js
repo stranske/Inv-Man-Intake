@@ -118,6 +118,25 @@ function resolveDispositionEntry(thread, entries) {
   );
 }
 
+function hasCompleteSentence(text) {
+  const value = String(text || '').trim();
+  if (!value) {
+    return false;
+  }
+  const sentences = value.match(/[^.!?]+[.!?]/g) || [];
+  return sentences.some((sentence) => sentence.trim().split(/\s+/).filter(Boolean).length >= 3);
+}
+
+function isFollowUpFixReference(value) {
+  const candidate = String(value || '').trim();
+  if (!candidate) {
+    return false;
+  }
+  return /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/(pull\/\d+|commit\/[0-9a-f]{7,40})(?:[^\s]*)?$/i.test(
+    candidate,
+  );
+}
+
 function buildDispositionReplyBody(entry) {
   const disposition = String(entry?.disposition || '').trim().toLowerCase();
   const fixRef = String(entry?.fix_reference || '').trim();
@@ -139,7 +158,7 @@ function buildDispositionReplyBody(entry) {
   }
 
   if (disposition === 'fix' || disposition === 'warranted-fix') {
-    if (!fixRef) {
+    if (!isFollowUpFixReference(fixRef)) {
       return '';
     }
     lines.push(`Follow-up fix reference: ${fixRef}.`);
@@ -150,7 +169,7 @@ function buildDispositionReplyBody(entry) {
   }
 
   if (disposition === 'not-warranted') {
-    if (!rationale) {
+    if (!hasCompleteSentence(rationale)) {
       return '';
     }
     lines.push(`Disposition: not warranted. ${rationale}`);
@@ -403,6 +422,8 @@ module.exports = {
   parseDispositionRepliesInput,
   parseBooleanInput,
   resolveDispositionEntry,
+  hasCompleteSentence,
+  isFollowUpFixReference,
   buildDispositionReplyBody,
   hasDispositionReply,
   fetchAllUnresolvedReviewThreads,
