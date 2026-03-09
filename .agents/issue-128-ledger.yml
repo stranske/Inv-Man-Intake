@@ -14,11 +14,14 @@ tasks:
   - id: task-02
     title: 'Review each of the 5 unresolved inline review threads on PR #72 (verify:
       confirm completion in repo)'
-    status: todo
-    started_at: null
+    status: in_progress
+    started_at: '2026-03-09T04:29:44Z'
     finished_at: null
     commit: ''
-    notes: []
+    notes:
+      - Created local PR #72 thread inventory scaffold at docs/pr-72-unresolved-threads.md.
+      - Live GitHub retrieval blocked in this environment: gh auth status reports
+        invalid GH_TOKEN.
   - id: task-03
     title: 'document their content (verify: confirm completion in repo)'
     status: todo

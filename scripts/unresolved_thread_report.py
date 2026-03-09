@@ -13,6 +13,7 @@ from typing import Any
 
 @dataclass(frozen=True)
 class ReviewThread:
+    thread_id: str | None
     thread_url: str
     comment_url: str | None
     path: str | None
@@ -22,6 +23,8 @@ class ReviewThread:
 
     @property
     def thread_ref(self) -> str:
+        if self.thread_id:
+            return self.thread_id
         match = re.search(r"(discussion_r\d+)", self.thread_url)
         if match:
             return match.group(1)
@@ -53,6 +56,7 @@ def _from_thread_node(node: dict[str, Any]) -> ReviewThread:
         line_value = None
 
     return ReviewThread(
+        thread_id=node.get("id") if isinstance(node.get("id"), str) else None,
         thread_url=thread_url.strip(),
         comment_url=first_comment.get("url") if isinstance(first_comment.get("url"), str) else None,
         path=first_comment.get("path") if isinstance(first_comment.get("path"), str) else None,
