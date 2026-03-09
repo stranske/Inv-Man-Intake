@@ -1,0 +1,103 @@
+version: 1
+issue: 92
+base: main
+branch: codex/issue-92
+tasks:
+  - id: task-01
+    title: 'Locate and review the verify:compare non-PASS output from PR #49 CI logs'
+    status: done
+    started_at: '2026-03-08T23:22:12Z'
+    finished_at: '2026-03-08T23:22:25Z'
+    commit: 09db53448fcc1446e7b2285f182c3901fc72600e
+    notes: []
+  - id: task-02
+    title: Analyze the specific differences or failures reported by verify:compare
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Create a disposition comment in PR #49 that quotes or links to the specific
+      verify:compare non-PASS output'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Add technical justification to the disposition comment stating whether
+      the output indicates a problem requiring code changes
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Add a comment to this issue linking to the disposition documentation in
+      PR #49'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Create a follow-up fix PR (if warranted) that passes verify:compare checks
+      and references this issue
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Add a comment to this issue linking to the follow-up fix PR (if created)
+      or documenting why no code change is required
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: '**[HUMAN DECISION REQUIRED]** Determine whether the verify:compare non-PASS
+      output indicates a genuine problem requiring code changes or is acceptable as-is
+      (requires domain expertise and judgment about acceptable test outcomes)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'A disposition comment exists in PR #49 or this issue that includes: (1)
+      a quote or link to the specific verify:compare non-PASS output, (2) a statement
+      of whether the output indicates a problem requiring code changes, and (3) technical
+      justification for the decision'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: 'Either: (1) A merged PR exists that passes verify:compare checks and references
+      this issue in its description, OR (2) A comment in PR #49 or this issue documents
+      why the verify:compare output does not require code changes with technical justification'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: This issue contains a comment linking to the disposition documentation
+      location
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: If a follow-up PR was created, this issue contains a comment linking to
+      that PR
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
