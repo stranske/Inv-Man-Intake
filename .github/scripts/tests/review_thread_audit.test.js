@@ -11,6 +11,7 @@ const {
   findExistingAuditComment,
   parseDispositionRepliesInput,
   parseBooleanInput,
+  resolveDispositionEntry,
   hasCompleteSentence,
   isFollowUpFixReference,
   buildDispositionReplyBody,
@@ -163,6 +164,22 @@ test('findExistingAuditComment locates marker comment', () => {
   assert.equal(comment?.id, 2);
 });
 
+test('resolveDispositionEntry matches by discussion id when thread_url differs', () => {
+  const entry = resolveDispositionEntry(
+    { id: 'T1', url: 'https://github.com/org/repo/pull/70#discussion_r123' },
+    [
+      {
+        thread_url:
+          'https://github.com/org/repo/pull/70/files#diff-abc123R10#discussion_r123',
+        disposition: 'fix',
+      },
+    ],
+  );
+
+  assert.ok(entry);
+  assert.equal(entry.disposition, 'fix');
+});
+
 test('postReviewThreadChecklistComment creates comment when marker is absent', async () => {
   const created = [];
   const github = {
@@ -291,6 +308,68 @@ test('postReviewThreadDispositionReplies posts only unresolved threads with matc
   assert.equal(graphqlCalls.length, 1);
   assert.equal(graphqlCalls[0].variables.threadId, 'T1');
   assert.match(graphqlCalls[0].variables.body, /Follow-up fix reference: https:\/\/github\.com\/org\/repo\/pull\/71\./);
+});
+
+test('postReviewThreadDispositionReplies matches reply entries by discussion id fragment', async () => {
+  const graphqlCalls = [];
+  const github = {
+    __testMock: true,
+    graphql: async (query, variables) => {
+      if (query.includes('query UnresolvedReviewThreads')) {
+        return {
+          repository: {
+            pullRequest: {
+              reviewThreads: {
+                pageInfo: { hasNextPage: false, endCursor: null },
+                nodes: [
+                  {
+                    id: 'T1',
+                    isResolved: false,
+                    comments: {
+                      nodes: [
+                        {
+                          id: 'C1',
+                          url: 'https://github.com/org/repo/pull/70#discussion_r555',
+                          path: 'src/a.py',
+                          line: 12,
+                          body: 'initial comment',
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        };
+      }
+      graphqlCalls.push({ query, variables });
+      return { addPullRequestReviewThreadReply: { comment: { id: 'R1', url: 'https://example.com/reply' } } };
+    },
+  };
+
+  const result = await postReviewThreadDispositionReplies({
+    github,
+    context: { repo: { owner: 'org', repo: 'repo' } },
+    core: { info() {}, warning() {}, debug() {} },
+    inputs: {
+      pr_number: 70,
+      thread_replies: JSON.stringify([
+        {
+          thread_url:
+            'https://github.com/org/repo/pull/70/files#diff-abc123R10#discussion_r555',
+          disposition: 'fix',
+          fix_reference: 'https://github.com/org/repo/pull/71',
+        },
+      ]),
+      require_complete_replies: true,
+    },
+  });
+
+  assert.equal(result.posted, true);
+  assert.equal(result.postedCount, 1);
+  assert.equal(graphqlCalls.length, 1);
+  assert.equal(graphqlCalls[0].variables.threadId, 'T1');
 });
 
 test('postReviewThreadDispositionReplies fails when require_complete_replies is true and unresolved entries are missing', async () => {

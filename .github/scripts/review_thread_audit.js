@@ -111,11 +111,23 @@ function resolveDispositionEntry(thread, entries) {
   if (!thread || !Array.isArray(entries) || entries.length === 0) {
     return null;
   }
+  const threadDiscussionId = extractDiscussionId(thread.url);
   return (
     entries.find((entry) => String(entry?.thread_id || '') === thread.id) ||
     entries.find((entry) => String(entry?.thread_url || '') === thread.url) ||
+    (threadDiscussionId &&
+      entries.find(
+        (entry) =>
+          String(entry?.thread_discussion_id || '') === threadDiscussionId ||
+          extractDiscussionId(entry?.thread_url) === threadDiscussionId,
+      )) ||
     null
   );
+}
+
+function extractDiscussionId(value) {
+  const match = String(value || '').match(/#(discussion_r\d+)/i);
+  return match ? match[1].toLowerCase() : '';
 }
 
 function hasCompleteSentence(text) {
@@ -422,6 +434,7 @@ module.exports = {
   parseDispositionRepliesInput,
   parseBooleanInput,
   resolveDispositionEntry,
+  extractDiscussionId,
   hasCompleteSentence,
   isFollowUpFixReference,
   buildDispositionReplyBody,
