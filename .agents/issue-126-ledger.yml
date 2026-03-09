@@ -1,0 +1,311 @@
+version: 1
+issue: 126
+base: main
+branch: codex/issue-126
+tasks:
+  - id: task-01
+    title: 'Write `scripts/list_unresolved_pr_threads.py` to enumerate unresolved
+      inline review threads for PR #83 and print their IDs/URLs'
+    status: doing
+    started_at: '2026-03-09T03:46:50Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Add `scripts/classify_unresolved_pr_threads.py` to output a classification
+      for each unresolved thread on PR #83: `warranted-fix` or `not-warranted`, with
+      a short rationale string'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Define scope for: Create the script `scripts/classify_unresolved_pr_threads.py`
+      with a structure to accept thread data (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Implement focused slice for: Create the script `scripts/classify_unresolved_pr_threads.py`
+      with a structure to accept thread data (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Validate focused slice for: Create the script `scripts/classify_unresolved_pr_threads.py`
+      with a structure to accept thread data (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Create the script `scripts/classify_unresolved_pr_threads.py` with output
+      classifications (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Define the classification schema with fields for thread ID (verify: confirm
+      completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'Define the classification schema with classification type (verify: confirm
+      completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'Define the classification schema with and rationale string (verify: confirm
+      completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: 'Define scope for: Implement the output formatting to display each thread''s
+      classification in a readable format (verify: formatter passes)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: 'Implement focused slice for: Implement the output formatting to display
+      each thread''s classification in a readable format (verify: formatter passes)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: 'Validate focused slice for: Implement the output formatting to display
+      each thread''s classification in a readable format (verify: formatter passes)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Implement follow-up code changes for any `warranted-fix` threads in a bounded
+      PR branch (limit changes to items directly referenced by the thread)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: 'Define scope for: Review each thread classified as `warranted-fix` to
+      identify the specific code changes required (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: 'Implement focused slice for: Review each thread classified as `warranted-fix`
+      to identify the specific code changes required (verify: confirm completion in
+      repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: 'Validate focused slice for: Review each thread classified as `warranted-fix`
+      to identify the specific code changes required (verify: confirm completion in
+      repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: 'Create a new branch for implementing follow-up fixes from warranted threads
+      (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: 'Define scope for: Implement code changes addressing each warranted-fix
+      thread within the scope of items directly referenced (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: 'Implement focused slice for: Implement code changes addressing each warranted-fix
+      thread within the scope of items directly referenced (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: 'Validate focused slice for: Implement code changes addressing each warranted-fix
+      thread within the scope of items directly referenced (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: 'Create a pull request with the follow-up fixes (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-22
+    title: 'Create a pull request with link it to PR #83 (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-23
+    title: 'Add a disposition comment (with rationale) for each unresolved thread
+      on PR #83 using a script `scripts/comment_thread_dispositions.py`'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-24
+    title: 'Update `scripts/list_unresolved_pr_threads.py` to assert/exit non-zero
+      if unresolved thread count for PR #83 is not zero after dispositions are posted'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-25
+    title: Running `python scripts/list_unresolved_pr_threads.py --pr 83` reports
+      `0` unresolved inline review threads
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-26
+    title: 'Each previously-unresolved thread on PR #83 has a posted disposition comment
+      containing either `warranted-fix` or `not-warranted` plus rationale'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-27
+    title: 'If any `warranted-fix` items exist, at least one follow-up PR is created
+      and its link is referenced from PR #83 (e.g., in a comment)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-28
+    title: '`scripts/list_unresolved_pr_threads.py --pr 83` exits with status code
+      `0` when no unresolved threads remain, and non-zero otherwise'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-29
+    title: 'Enumerate unresolved review threads on PR #83'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-30
+    title: 'Classify each thread: warranted fix vs not-warranted disposition'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-31
+    title: If warranted, implement bounded follow-up PR(s)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-32
+    title: Post a PR comment documenting disposition for every unresolved thread
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-33
+    title: Confirm thread count is reduced to zero (or explicitly dispositioned)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-34
+    title: All unresolved inline comments are addressed or dispositioned with rationale
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-35
+    title: Follow-up fix PR(s), if any, are linked from the source PR
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-36
+    title: 'Add `scripts/classify_unresolved_pr_threads.py` to output a classification
+      for each unresolved thread on PR #83: `warranted-fix` or `not-warranted`, with
+      a short rationale string (The agent cannot make subjective design decisions
+      about whether a review thread warrants a fix or not. This requires human judgment
+      about code quality, architecture, and project priorities. | Rephrase as: ''Create
+      `scripts/classify_unresolved_pr_threads.py` that accepts manual classification
+      input and outputs formatted results'' OR ''Manually review and classify each
+      unresolved thread, then document classifications in a JSON file for script processing'')'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-37
+    title: 'Add a disposition comment (with rationale) for each unresolved thread
+      on PR #83 using a script `scripts/comment_thread_dispositions.py` (Writing rationale
+      for dispositions requires subjective judgment. The agent can create the script
+      infrastructure but cannot generate the actual rationale content. | Split into:
+      1) ''Create `scripts/comment_thread_dispositions.py` that reads disposition
+      data from a JSON file and posts comments to PR threads'' and 2) ''Manually create
+      a JSON file with disposition rationales for each unresolved thread'')'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
