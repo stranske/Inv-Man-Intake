@@ -3,6 +3,12 @@
 from __future__ import annotations
 
 
+def _normalize_url(url: str | None, field_name: str) -> str:
+    if not url or not url.strip():
+        raise ValueError(f"{field_name} is required")
+    return url.strip()
+
+
 def format_verify_compare_disposition(
     *,
     concerns_warranted: bool,
@@ -27,4 +33,23 @@ def format_verify_compare_disposition(
         lines.append(f"- verify:compare output: {evidence_url}")
     if source_issue is not None:
         lines.append(f"- Source issue: #{source_issue}")
+    return "\n".join(lines).strip() + "\n"
+
+
+def format_verify_compare_outcome_note(
+    *,
+    disposition_url: str,
+    source_issue: int,
+    followup_reference: str | None = None,
+) -> str:
+    """Format a short outcome note linking disposition artifacts for PR/issue threads."""
+    disposition_link = _normalize_url(disposition_url, "disposition_url")
+    lines = [
+        "## verify:compare Outcome",
+        "",
+        f"- Disposition note: {disposition_link}",
+    ]
+    if followup_reference and followup_reference.strip():
+        lines.append(f"- Follow-up artifact: {followup_reference.strip()}")
+    lines.append(f"- Source issue: #{source_issue}")
     return "\n".join(lines).strip() + "\n"
