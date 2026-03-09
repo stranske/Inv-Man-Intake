@@ -4,6 +4,7 @@ from scripts.langchain.verify_compare_locator import (
     _as_disposition,
     _as_scope,
     _as_validation,
+    _validate_disposition_note,
     extract_non_pass_findings,
     scan_files,
 )
@@ -113,7 +114,10 @@ verify:compare reported non-PASS output without a documented disposition.
 
     assert "Disposition note for PR #54" in disposition
     assert "https://github.com/stranske/Inv-Man-Intake/issues/89" in disposition
-    assert "No code fixes are needed; documentation-only follow-up is required." in disposition
+    assert (
+        "not warranted: no code fixes are needed; documentation-only follow-up is required."
+        in disposition
+    )
     assert "missing disposition record" in disposition
 
 
@@ -199,3 +203,22 @@ def test_validation_output_fails_when_no_findings() -> None:
     assert validation.startswith("FAIL: Disposition note is missing required criteria.")
     assert "Missing required evidence link" in validation
     assert "Missing clear statement on whether fixes are needed." in validation
+
+
+def test_validation_requires_not_warranted_for_doc_only_disposition() -> None:
+    note = """
+Disposition note for PR #54:
+Evidence link: https://github.com/stranske/Inv-Man-Intake/issues/89
+Evidence line: `verify:compare reported non-PASS output without a documented disposition.`
+No code fixes are needed; documentation-only follow-up is required.
+The flagged output identifies a missing disposition record rather than a product or test behavior defect.
+Adding a disposition note to PR #54 closes the verification gap while keeping scope bounded to verify:compare documentation requirements.
+""".strip()
+
+    valid, errors = _validate_disposition_note(note)
+
+    assert valid is False
+    assert (
+        "Missing required 'not warranted' disposition text for documentation-only closure."
+        in errors
+    )
