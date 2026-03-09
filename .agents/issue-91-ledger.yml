@@ -1,0 +1,97 @@
+version: 1
+issue: 91
+base: main
+branch: codex/issue-91
+tasks:
+  - id: task-01
+    title: 'Review the verify:compare non-PASS output from PR #51 to determine if
+      the concerns are warranted'
+    status: done
+    started_at: '2026-03-08T23:43:47Z'
+    finished_at: '2026-03-08T23:44:00Z'
+    commit: 2baedfaa282dfcb03538e9f6dcb5603acf2a8c14
+    notes: []
+  - id: task-02
+    title: Write a disposition note documenting either the rationale for why concerns
+      are not warranted or a link to the follow-up fix
+    status: done
+    started_at: '2026-03-09T00:16:00Z'
+    finished_at: '2026-03-09T00:26:11Z'
+    commit: ''
+    notes:
+      - Added tested formatter helpers and CLI support for standard verify:compare
+        disposition note generation.
+  - id: task-03
+    title: 'Add an outcome note to the PR #51 checklist/comments that links the disposition
+      and/or the follow-up fix (reference source issue #29 as applicable)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Verify which artifacts were created from the disposition process including
+      notes and follow-up PRs
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Add links to the disposition note and any follow-up PRs to issue #29 with
+      context'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: '**[HUMAN DECISION REQUIRED]** Determine if verify:compare concerns are
+      warranted based on the technical analysis'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: '**[HUMAN DECISION REQUIRED]** If the disposition analysis determines concerns
+      are warranted, create a follow-up PR with specific code changes defined in the
+      disposition note'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'PR #51 contains a comment labeled ''verify:compare Disposition'' that
+      either states ''concerns not warranted: [rationale]'' or links to a follow-up
+      issue/PR with format ''concerns warranted: see #[number]'''
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'If a fix is required, a merged follow-up PR exists and is linked from
+      PR #51 and issue #29'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: 'If no fix is required, PR #51 contains a disposition comment with: (1)
+      the text ''not warranted'', (2) at least one sentence explaining why, and (3)
+      a link to the verify:compare output or CI run showing the non-PASS result'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: 'Issue #29 contains links to the PR #51 disposition and any follow-up PR/issue(s)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
