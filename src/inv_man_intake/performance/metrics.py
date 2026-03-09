@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from math import sqrt
-from typing import TypedDict, cast
+from typing import TypedDict
 
 from inv_man_intake.performance.contracts import (
     PerformancePayload,
@@ -158,9 +158,17 @@ def _canonicalize_schema(schema: CanonicalMetricsSchema) -> CanonicalMetricsSche
             "canonical metrics schema mismatch: " f"missing={missing}, unexpected={unexpected}"
         )
 
-    return cast(
-        CanonicalMetricsSchema, {field: schema[field] for field in _CANONICAL_SCHEMA_FIELDS}
-    )
+    return {
+        "annualized_volatility": schema["annualized_volatility"],
+        "max_drawdown": schema["max_drawdown"],
+        "sharpe_ratio": schema["sharpe_ratio"],
+        "sortino_ratio": schema["sortino_ratio"],
+        "information_ratio": schema["information_ratio"],
+        "benchmark_correlation": schema["benchmark_correlation"],
+        "observation_count": schema["observation_count"],
+        "benchmark_observation_count": schema["benchmark_observation_count"],
+        "insufficient_data": schema["insufficient_data"],
+    }
 
 
 def _align_monthly_series(
