@@ -1,0 +1,145 @@
+version: 1
+issue: 132
+base: main
+branch: codex/issue-132
+tasks:
+  - id: task-01
+    title: 'Identify all unresolved inline review threads on PR #78 by examining the
+      pull request conversation tab'
+    status: doing
+    started_at: '2026-03-09T03:38:46Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Document each unresolved thread with its direct GitHub link in a comment
+      on this issue
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Verify that exactly 2 unresolved threads are found matching the audit count
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Review each unresolved thread to understand the concern raised by the reviewer
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Draft a proposed disposition for each thread explaining whether a fix is
+      needed
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Add the disposition plan as a comment on this issue for human review
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Create a new branch for follow-up fixes after dispositions are approved
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Implement code changes addressing each thread marked as requiring a fix
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'Open a pull request with title referencing PR #78 and issue #41 in the
+      description'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: 'Add a comment to PR #78 linking to any follow-up pull requests that were
+      created'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Mark each unresolved review thread as resolved after posting the disposition
+      or fix link
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: 'Verify that the PR #78 conversations tab shows zero unresolved threads'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: '**Classify each thread: warranted fix vs not-warranted disposition** -
+      Requires subjective judgment about code quality and design decisions. Human
+      must review the drafted disposition plan and approve which threads require code
+      changes versus rationale-only responses.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: 'PR #78 shows 0 unresolved review threads after dispositions and/or fixes
+      are applied'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: 'Each previously-unresolved thread on PR #78 has a reply of at least 20
+      words explaining the disposition decision and is marked resolved'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: 'Any follow-up fix PR created references PR #78 and issue #41 in the description
+      and is linked from a comment on PR #78'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: This issue contains a comment listing all 2 unresolved threads with direct
+      GitHub links
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: This issue contains a comment with the disposition plan awaiting human
+      approval before implementation
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
