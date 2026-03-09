@@ -175,9 +175,14 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pr", type=int, default=None, help="Limit results to this PR number")
     parser.add_argument(
         "--format",
-        choices=("json", "markdown", "scope", "disposition", "decision", "validate"),
+        choices=("json", "markdown", "scope", "disposition", "decision", "validate", "comment"),
         default="json",
         help="Output format",
+    )
+    parser.add_argument(
+        "--tracking-url",
+        default=None,
+        help="Tracking issue or follow-up PR URL to include in --format comment output.",
     )
     return parser
 
@@ -354,6 +359,44 @@ def _as_validation(findings: list[VerifyCompareFinding], pr_number: int | None =
     return "\n".join(["FAIL: Disposition note is missing required criteria."] + errors)
 
 
+def _as_comment(
+    findings: list[VerifyCompareFinding],
+    pr_number: int | None = None,
+    tracking_url: str | None = None,
+) -> str:
+    """Render a ready-to-post verify:compare disposition comment body."""
+    if not findings:
+        return (
+            "## verify:compare Disposition\n\n"
+            "fix-needed: no non-PASS verify:compare findings were provided; cannot justify a "
+            "not-warranted disposition without evidence."
+        )
+
+    target = _select_target_finding(findings, pr_number=pr_number)
+    resolved_pr = target.pr_number if target.pr_number is not None else pr_number
+    decision = _as_decision(findings, pr_number=pr_number)
+    source_text = target.source_url or "(link not available)"
+    lines = [
+        "## verify:compare Disposition",
+        "",
+        (
+            f"Source: verify:compare non-PASS output from PR #{resolved_pr}"
+            if resolved_pr is not None
+            else "Source: verify:compare non-PASS output"
+        ),
+        f"Evidence: {source_text}",
+        f"Evidence line: `{target.evidence_line}`",
+        "",
+        decision,
+        "",
+    ]
+    if tracking_url:
+        lines.append(f"Tracking: {tracking_url}")
+    else:
+        lines.append("Tracking: [add issue/pr link]")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     findings = scan_files(args.files, pr_number=args.pr)
@@ -368,6 +411,8 @@ def main(argv: list[str] | None = None) -> int:
         print(_as_decision(findings, pr_number=args.pr))
     elif args.format == "validate":
         print(_as_validation(findings, pr_number=args.pr))
+    elif args.format == "comment":
+        print(_as_comment(findings, pr_number=args.pr, tracking_url=args.tracking_url))
     else:
         print(json.dumps([asdict(item) for item in findings], indent=2))
     return 0

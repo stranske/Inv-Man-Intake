@@ -14,11 +14,12 @@ tasks:
   - id: task-02
     title: Determine whether the verify:compare concerns warrant a code fix or can
       be documented as not-warranted
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-03-09T04:14:48Z'
+    finished_at: '2026-03-09T04:15:08Z'
+    commit: f000327
+    notes:
+      - Verified by tests: decision output resolves to not-warranted for disposition-only doc gaps.
   - id: task-03
     title: 'Add a comment to PR #71 documenting the disposition decision with clear
       rationale'
