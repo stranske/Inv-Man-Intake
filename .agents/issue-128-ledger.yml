@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Update PR #72 by resolving each of the 5 unresolved inline review threads
       (apply code changes in a follow-up PR if needed)'
-    status: doing
+    status: done
     started_at: '2026-03-09T04:02:35Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-09T04:02:44Z'
+    commit: b030fc9e385931b07ed288d5b77ecde9fa0bf7ef
     notes: []
   - id: task-02
     title: 'Review each of the 5 unresolved inline review threads on PR #72 (verify:
