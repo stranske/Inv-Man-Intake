@@ -1,0 +1,113 @@
+version: 1
+issue: 124
+base: main
+branch: codex/issue-124
+tasks:
+  - id: task-01
+    title: 'Create a list of the 2 unresolved inline review threads on PR #79 (URLs/IDs)
+      in a PR #79 comment'
+    status: doing
+    started_at: '2026-03-09T03:38:54Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Create a new branch for the follow-up fixes based on the main branch
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Implement code changes for each thread classified as warranted fix
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Write or update tests to cover the implemented fixes
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Create a pull request with title referencing PR #79 and issue #38'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Add links in the new PR description to both PR #79 and issue #38'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Add disposition comments replying to each unresolved thread on PR #79
+      with a brief rationale (and link the follow-up PR if applicable)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'Update the PR #79 summary comment to confirm all threads have disposition
+      comments'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Review each unresolved thread and document the classification decision
+      with rationale (human decision required for subjective assessment of whether
+      review feedback warrants code changes)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: 'All unresolved inline review threads on PR #79 have disposition comments
+      with rationale'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Each disposition comment includes a link to follow-up PR if classified
+      as warranted fix
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: 'For each warranted fix: a follow-up PR exists that links to PR #79 in
+      its description'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: 'For each warranted fix: PR #79 has a comment linking to the follow-up
+      PR'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: 'PR #79 comment contains the complete list of 2 thread URLs/IDs that were
+      addressed'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
