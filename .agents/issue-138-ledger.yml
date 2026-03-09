@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Create a list of the 4 unresolved inline review threads on PR #71 (e.g.,
       in a PR #71 comment or linked follow-up issue)'
-    status: doing
+    status: done
     started_at: '2026-03-09T03:39:42Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-09T03:39:55Z'
+    commit: ac044d516bddace69bd6022635b3722d0deb1b05
     notes: []
   - id: task-02
     title: 'Review PR #71 (verify: confirm completion in repo)'
