@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from math import nan
 from typing import Any, cast
 
 import pytest
@@ -98,6 +99,91 @@ def test_component_validations_enforced() -> None:
                     weight=0.5,
                     score=1.1,
                     rationale="Invalid score",
+                ),
+            )
+        )
+
+
+def test_build_payload_rejects_duplicate_component_identifiers() -> None:
+    with pytest.raises(ValueError, match="component identifiers must be unique"):
+        build_explainability_payload(
+            components=(
+                ScoreComponentInput(
+                    component="alpha_quality",
+                    weight=0.4,
+                    score=0.75,
+                    rationale="Baseline rationale.",
+                ),
+                ScoreComponentInput(
+                    component="alpha_quality",
+                    weight=0.6,
+                    score=0.5,
+                    rationale="Duplicate identifier.",
+                ),
+            )
+        )
+
+
+def test_build_payload_rejects_whitespace_only_component_and_rationale() -> None:
+    with pytest.raises(ValueError, match="component must be non-empty"):
+        build_explainability_payload(
+            components=(
+                ScoreComponentInput(
+                    component="   ",
+                    weight=0.4,
+                    score=0.75,
+                    rationale="valid",
+                ),
+            )
+        )
+
+    with pytest.raises(ValueError, match="alpha_quality.rationale must be non-empty"):
+        build_explainability_payload(
+            components=(
+                ScoreComponentInput(
+                    component="alpha_quality",
+                    weight=0.4,
+                    score=0.75,
+                    rationale="   ",
+                ),
+            )
+        )
+
+
+def test_build_payload_rejects_non_finite_values() -> None:
+    with pytest.raises(ValueError, match="overall_score must be finite"):
+        build_explainability_payload(
+            components=(
+                ScoreComponentInput(
+                    component="alpha_quality",
+                    weight=0.4,
+                    score=0.75,
+                    rationale="valid",
+                ),
+            ),
+            overall_score=nan,
+        )
+
+    with pytest.raises(ValueError, match="alpha_quality.weight must be finite"):
+        build_explainability_payload(
+            components=(
+                ScoreComponentInput(
+                    component="alpha_quality",
+                    weight=nan,
+                    score=0.75,
+                    rationale="valid",
+                ),
+            )
+        )
+
+    with pytest.raises(ValueError, match="alpha_quality.score must be finite"):
+        build_explainability_payload(
+            components=(
+                ScoreComponentInput(
+                    component="alpha_quality",
+                    weight=0.4,
+                    score=nan,
+                    rationale="valid",
                 ),
             )
         )
