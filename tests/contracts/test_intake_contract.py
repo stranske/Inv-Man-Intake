@@ -96,3 +96,101 @@ def test_validate_intake_payload_warns_on_empty_or_non_string_source_ref() -> No
     assert result.is_valid is True
     warnings = [issue for issue in result.warnings if issue.code == "missing_source_ref"]
     assert len(warnings) == 2
+
+
+def test_validate_intake_payload_rejects_non_object_payload() -> None:
+    result = validate_intake_payload(payload="not-a-dict")  # type: ignore[arg-type]
+    assert result.is_valid is False
+    assert len(result.errors) == 1
+    assert result.errors[0].code == "invalid_payload_type"
+
+
+def test_validate_intake_payload_rejects_missing_metadata_object_and_files() -> None:
+    payload = {"metadata": None, "files": []}
+    result = validate_intake_payload(payload)
+
+    assert result.is_valid is False
+    assert any(issue.code == "missing_metadata" for issue in result.errors)
+    assert any(issue.code == "missing_files" for issue in result.errors)
+
+
+def test_validate_intake_payload_rejects_non_object_and_missing_name_file_entries() -> None:
+    payload = _valid_payload()
+    payload["files"] = [
+        "raw-string-entry",
+        {"file_name": "", "role": "investment_deck"},
+    ]
+
+    result = validate_intake_payload(payload)
+    assert result.is_valid is False
+    assert any(issue.code == "invalid_file_entry" for issue in result.errors)
+    assert any(issue.code == "missing_file_name" for issue in result.errors)
+    assert any(issue.code == "missing_primary_document" for issue in result.errors)
+
+
+def test_validate_intake_payload_rejects_missing_role_and_unsupported_extension() -> None:
+    payload = _valid_payload()
+    payload["files"] = [
+        {"file_name": "manager_deck.pdf", "role": ""},
+        {"file_name": "notes", "role": "memo"},
+    ]
+
+    result = validate_intake_payload(payload)
+    assert result.is_valid is False
+    assert any(issue.code == "missing_file_role" for issue in result.errors)
+    assert any(issue.code == "unsupported_file_type" for issue in result.errors)
+
+
+def test_validate_intake_payload_rejects_non_string_or_empty_received_at() -> None:
+    payload = _valid_payload()
+    metadata = payload["metadata"]
+    assert isinstance(metadata, dict)
+    metadata["received_at"] = ""
+
+    result_empty = validate_intake_payload(payload)
+    assert result_empty.is_valid is False
+    assert any(
+        issue.code == "invalid_received_at" and "must not be empty" in issue.message
+        for issue in result_empty.errors
+    )
+
+    metadata["received_at"] = 12345
+    result_non_string = validate_intake_payload(payload)
+    assert result_non_string.is_valid is False
+    assert any(
+        issue.code == "invalid_received_at" and "ISO-8601 string" in issue.message
+        for issue in result_non_string.errors
+    )
+
+
+def test_validate_intake_payload_rejects_non_canonical_received_at_datetime() -> None:
+    payload = _valid_payload()
+    metadata = payload["metadata"]
+    assert isinstance(metadata, dict)
+    metadata["received_at"] = "2026-03-01 09:00:00Z"
+
+    result = validate_intake_payload(payload)
+    assert result.is_valid is False
+    assert any(issue.code == "invalid_received_at" for issue in result.errors)
+
+
+def test_validate_intake_payload_rejects_timezone_less_received_at_datetime() -> None:
+    payload = _valid_payload()
+    metadata = payload["metadata"]
+    assert isinstance(metadata, dict)
+    metadata["received_at"] = "2026-03-01T09:00:00"
+
+    result = validate_intake_payload(payload)
+    assert result.is_valid is False
+    assert any(issue.code == "invalid_received_at" for issue in result.errors)
+
+
+def test_validate_intake_payload_accepts_received_at_datetime_with_offset() -> None:
+    payload = _valid_payload()
+    metadata = payload["metadata"]
+    assert isinstance(metadata, dict)
+    metadata["received_at"] = "2026-03-01T09:00:00+00:00"
+
+    result = validate_intake_payload(payload)
+    assert result.is_valid is True
+    assert not any(issue.code == "invalid_received_at" for issue in result.errors)

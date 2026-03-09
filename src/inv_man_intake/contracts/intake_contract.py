@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 PRIMARY_EXTENSIONS: frozenset[str] = frozenset({"pdf", "pptx"})
@@ -23,6 +24,10 @@ ALLOWED_SOURCE_CHANNELS: frozenset[str] = frozenset(
         "internal_forward",
         "other",
     }
+)
+ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+ISO_DATETIME_WITH_TZ_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})$"
 )
 
 
@@ -57,6 +62,16 @@ def _validate_received_at(raw_value: Any) -> tuple[bool, str]:
     candidate = raw_value.strip()
     if not candidate:
         return False, "received_at must not be empty"
+
+    if ISO_DATE_RE.fullmatch(candidate):
+        try:
+            date.fromisoformat(candidate)
+        except ValueError:
+            return False, "received_at must be a valid ISO-8601 date or datetime"
+        return True, ""
+
+    if not ISO_DATETIME_WITH_TZ_RE.fullmatch(candidate):
+        return False, "received_at must be a valid ISO-8601 date or datetime"
 
     try:
         datetime.fromisoformat(candidate.replace("Z", "+00:00"))
