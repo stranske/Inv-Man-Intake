@@ -159,7 +159,7 @@ def register_intake_bundle_file(
                 IntakeValidationIssue(
                     code="invalid_json_bundle",
                     path=str(bundle_path),
-                    message=(f"malformed JSON at line {exc.lineno}, " f"column {exc.colno}"),
+                    message=(f"malformed JSON at line {exc.lineno}, column {exc.colno}"),
                 ),
             ),
             warnings=(),
