@@ -1,0 +1,210 @@
+version: 1
+issue: 128
+base: main
+branch: codex/issue-128
+tasks:
+  - id: task-01
+    title: 'Update PR #72 by resolving each of the 5 unresolved inline review threads
+      (apply code changes in a follow-up PR if needed)'
+    status: doing
+    started_at: '2026-03-09T04:02:35Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Review each of the 5 unresolved inline review threads on PR #72 (verify:
+      confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'document their content (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Classify each thread as either requiring code changes or requiring disposition
+      only (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Define scope for: Add disposition comments with rationale to threads that
+      do not require code changes (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Implement focused slice for: Add disposition comments with rationale to
+      threads that do not require code changes (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Validate focused slice for: Add disposition comments with rationale to
+      threads that do not require code changes (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'Identify specific code changes needed for threads that warrant fixes (verify:
+      confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'Create a follow-up PR that implements warranted fixes identified from
+      the unresolved threads in PR #72'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: 'Add PR comments on PR #72 documenting the disposition and rationale for
+      each previously-unresolved thread'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: 'Define scope for: Document the disposition decision for each of the 5
+      threads in a single summary comment on PR #72 (verify: confirm completion in
+      repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: 'Implement focused slice for: Document the disposition decision for each
+      of the 5 threads in a single summary comment on PR #72 (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: 'Validate focused slice for: Document the disposition decision for each
+      of the 5 threads in a single summary comment on PR #72 (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: 'Reply to each individual unresolved thread with its specific disposition
+      rationale (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: 'Update PR #72 so the unresolved inline thread count is reduced to 0 (or
+      each is explicitly dispositioned)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: 'PR #72 shows 0 unresolved inline review threads'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: 'Each previously-unresolved thread on PR #72 has a recorded disposition
+      comment with rationale'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: 'Any follow-up fix PR(s) are linked from PR #72'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: 'Enumerate unresolved review threads on PR #72'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: 'Classify each thread: warranted fix vs not-warranted disposition'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: If warranted, implement bounded follow-up PR(s)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-22
+    title: Post a PR comment documenting disposition for every unresolved thread
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-23
+    title: Confirm thread count is reduced to zero (or explicitly dispositioned)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-24
+    title: All unresolved inline comments are addressed or dispositioned with rationale
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-25
+    title: Follow-up fix PR(s), if any, are linked from the source PR
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-26
+    title: 'Update PR #72 so the unresolved inline thread count is reduced to 0 (or
+      each is explicitly dispositioned) (Agent cannot control GitHub''s thread resolution
+      mechanism. Threads are typically resolved by the comment author or through GitHub
+      UI actions, not through API calls or code changes. | Rephrase as: ''Add disposition
+      comments to all 5 unresolved threads on PR #72, enabling manual resolution by
+      the thread authors or maintainers'')'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
