@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from math import sqrt
+from typing import TypedDict
 
 from inv_man_intake.performance.contracts import (
     PerformancePayload,
@@ -13,6 +14,28 @@ from inv_man_intake.performance.contracts import (
 )
 
 _ANNUALIZATION_FACTOR = 12.0
+_PRIORITIZED_METRIC_FIELDS = (
+    "annualized_volatility",
+    "max_drawdown",
+    "sharpe_ratio",
+    "sortino_ratio",
+    "information_ratio",
+    "benchmark_correlation",
+)
+
+
+class CanonicalMetricsSchema(TypedDict):
+    """Stable key-ordered canonical output contract for metric computation."""
+
+    annualized_volatility: float | None
+    max_drawdown: float | None
+    sharpe_ratio: float | None
+    sortino_ratio: float | None
+    information_ratio: float | None
+    benchmark_correlation: float | None
+    observation_count: int
+    benchmark_observation_count: int
+    insufficient_data: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -29,7 +52,7 @@ class PerformanceMetrics:
     benchmark_observation_count: int
     insufficient_data: tuple[str, ...]
 
-    def to_canonical_dict(self) -> dict[str, object]:
+    def to_canonical_dict(self) -> CanonicalMetricsSchema:
         """Return the canonical, stable key-ordered schema for downstream consumers."""
 
         return {
@@ -74,19 +97,17 @@ def compute_metrics(
     information_ratio = _information_ratio(aligned_portfolio, aligned_benchmark)
     benchmark_correlation = _correlation(aligned_portfolio, aligned_benchmark)
 
-    insufficient_data: list[str] = []
-    if annualized_volatility is None:
-        insufficient_data.append("annualized_volatility")
-    if max_drawdown is None:
-        insufficient_data.append("max_drawdown")
-    if sharpe_ratio is None:
-        insufficient_data.append("sharpe_ratio")
-    if sortino_ratio is None:
-        insufficient_data.append("sortino_ratio")
-    if information_ratio is None:
-        insufficient_data.append("information_ratio")
-    if benchmark_correlation is None:
-        insufficient_data.append("benchmark_correlation")
+    prioritized_metrics: dict[str, float | None] = {
+        "annualized_volatility": annualized_volatility,
+        "max_drawdown": max_drawdown,
+        "sharpe_ratio": sharpe_ratio,
+        "sortino_ratio": sortino_ratio,
+        "information_ratio": information_ratio,
+        "benchmark_correlation": benchmark_correlation,
+    }
+    insufficient_data = tuple(
+        key for key in _PRIORITIZED_METRIC_FIELDS if prioritized_metrics[key] is None
+    )
 
     return PerformanceMetrics(
         annualized_volatility=annualized_volatility,
@@ -97,7 +118,7 @@ def compute_metrics(
         benchmark_correlation=benchmark_correlation,
         observation_count=len(monthly_returns),
         benchmark_observation_count=len(aligned_portfolio),
-        insufficient_data=tuple(insufficient_data),
+        insufficient_data=insufficient_data,
     )
 
 
@@ -106,7 +127,7 @@ def compute_metrics_canonical(
     *,
     benchmark_monthly: PerformanceSeries | None = None,
     annual_risk_free_rate: float = 0.0,
-) -> dict[str, object]:
+) -> CanonicalMetricsSchema:
     """Compute metrics and return the canonical schema directly."""
 
     return compute_metrics(

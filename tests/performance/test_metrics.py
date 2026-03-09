@@ -238,3 +238,22 @@ def test_compute_metrics_canonical_returns_stable_schema_directly() -> None:
     assert first["benchmark_observation_count"] == 3
     assert first["insufficient_data"] == ()
     assert first == second
+
+
+def test_compute_metrics_canonical_returns_fresh_schema_each_call() -> None:
+    payload = PerformancePayload(
+        monthly=PerformanceSeries(
+            "monthly",
+            (
+                PerformancePoint(as_of=date(2025, 1, 31), value=0.01),
+                PerformancePoint(as_of=date(2025, 2, 28), value=0.02),
+                PerformancePoint(as_of=date(2025, 3, 31), value=-0.01),
+            ),
+        )
+    )
+
+    first = compute_metrics_canonical(payload)
+    first["annualized_volatility"] = 999.0
+    second = compute_metrics_canonical(payload)
+
+    assert second["annualized_volatility"] == pytest.approx(0.052915026221291815)

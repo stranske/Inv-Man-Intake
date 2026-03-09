@@ -8,6 +8,7 @@ from inv_man_intake.performance.contracts import (
 )
 from inv_man_intake.performance.ingest import load_document_timeseries, load_xlsx_timeseries
 from inv_man_intake.performance.metrics import (
+    CanonicalMetricsSchema,
     PerformanceMetrics,
     compute_metrics,
     compute_metrics_canonical,
@@ -26,6 +27,7 @@ from inv_man_intake.performance.normalize import (
 __all__ = [
     "BenchmarkAlignmentPoint",
     "CanonicalMonthPoint",
+    "CanonicalMetricsSchema",
     "NormalizedPerformancePayload",
     "PerformanceMetrics",
     "PerformancePayload",
