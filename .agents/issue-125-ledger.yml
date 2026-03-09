@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Add a file `docs/pr-80-unresolved-threads.md` enumerating the 4 unresolved
       inline review threads on PR #80 (include direct links/identifiers for each thread).'
-    status: doing
+    status: done
     started_at: '2026-03-09T04:21:44Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-09T04:21:55Z'
+    commit: 889969b9e2a15f32b64c4c980c55dd405175ff34
     notes: []
   - id: task-02
     title: "Update `docs/pr-80-unresolved-threads.md` to classify each thread as either\
