@@ -3,7 +3,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.pr_review_thread_inventory import load_payload, parse_review_threads, render_markdown
+from scripts.pr_review_thread_inventory import (
+    build_parser,
+    load_payload,
+    parse_review_threads,
+    render_markdown,
+    render_structured_list,
+)
 
 
 def _payload() -> dict[str, object]:
@@ -71,6 +77,21 @@ def test_render_markdown_contains_expected_columns() -> None:
     assert "discussion_r2" in markdown
     assert "unresolved" in markdown
     assert "resolved" in markdown
+
+
+def test_render_structured_list_contains_location_and_summary() -> None:
+    structured = render_structured_list(parse_review_threads(_payload()))
+    assert structured.startswith("# Unresolved Review Thread Inventory")
+    assert "Total threads: 1" in structured
+    assert "Thread: https://github.com/stranske/Inv-Man-Intake/pull/85#discussion_r1" in structured
+    assert "Location: `src/inv_man_intake/images/extractor.py:120`" in structured
+    assert "Summary: Please add a guard for empty OCR chunks" in structured
+
+
+def test_cli_parser_supports_structured_list_format() -> None:
+    parser = build_parser()
+    args = parser.parse_args(["--format", "structured-list"])
+    assert args.format == "structured-list"
 
 
 def test_load_payload_reads_local_json(tmp_path: Path) -> None:

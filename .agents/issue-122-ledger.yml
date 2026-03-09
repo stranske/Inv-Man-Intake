@@ -14,11 +14,13 @@ tasks:
   - id: task-02
     title: Create a structured list documenting each thread with its location (file
       path, line number) and summary of the concern
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-09T04:12:00Z'
+    finished_at: '2026-03-09T04:19:29Z'
     commit: ''
-    notes: []
+    notes:
+      - Added structured list output mode to scripts/pr_review_thread_inventory.py
+      - Verified with unit tests and CLI sample run
   - id: task-03
     title: Generate direct GitHub links to each of the 9 unresolved threads
     status: todo

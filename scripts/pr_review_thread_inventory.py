@@ -109,6 +109,23 @@ def render_markdown(records: list[ThreadRecord]) -> str:
     return "\n".join(lines)
 
 
+def render_structured_list(records: list[ThreadRecord]) -> str:
+    lines = [
+        "# Unresolved Review Thread Inventory",
+        "",
+        f"Total threads: {len(records)}",
+        "",
+    ]
+
+    for index, record in enumerate(records, start=1):
+        line_text = str(record.line) if record.line is not None else "unknown"
+        url = record.thread_url if record.thread_url else "(missing-url)"
+        lines.append(f"{index}. Thread: {url}")
+        lines.append(f"   - Location: `{record.path}:{line_text}`")
+        lines.append(f"   - Summary: {record.summary}")
+    return "\n".join(lines)
+
+
 def fetch_graphql_payload(owner: str, repo: str, pr_number: int) -> dict[str, Any]:
     cmd = [
         "gh",
@@ -155,6 +172,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Optional markdown output file path. If omitted, writes to stdout.",
     )
+    parser.add_argument(
+        "--format",
+        choices=("table", "structured-list"),
+        default="table",
+        help="Output format: markdown table or structured list.",
+    )
     return parser
 
 
@@ -169,7 +192,9 @@ def main(argv: list[str] | None = None) -> int:
         pr_number=args.pr_number,
     )
     records = parse_review_threads(payload, unresolved_only=not args.include_resolved)
-    markdown = render_markdown(records)
+    markdown = (
+        render_markdown(records) if args.format == "table" else render_structured_list(records)
+    )
 
     if args.output:
         args.output.write_text(markdown + "\n", encoding="utf-8")
