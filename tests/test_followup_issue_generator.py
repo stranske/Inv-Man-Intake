@@ -6,6 +6,8 @@ from scripts.langchain.followup_issue_generator import (
     OriginalIssueData,
     extract_verification_data,
     generate_followup_issue,
+    generate_disposition_comment,
+    generate_issue_disposition_link_comment,
 )
 
 
@@ -149,3 +151,32 @@ def test_generate_followup_issue_keeps_fail_as_code_change_required() -> None:
         "requires code changes: **yes**; technical rationale: Difference describes a functional "
         "defect or regression signal that should be resolved in code." in followup.body
     )
+
+
+def test_generate_disposition_comment_includes_evidence_decision_and_rationale() -> None:
+    comment = """
+## Provider Comparison Report
+
+### Provider Summary
+| Provider | Model | Verdict | Confidence | Summary |
+| --- | --- | --- | --- | --- |
+| openai | gpt-5 | FAIL | 60% | Regression in parsing |
+"""
+    verification_data = extract_verification_data(comment)
+
+    disposition = generate_disposition_comment(verification_data, pr_number=49)
+
+    assert "## verify:compare Disposition" in disposition
+    assert "Source: verify:compare non-PASS output from PR #49" in disposition
+    assert "`Provider=openai; Model=gpt-5; Verdict=FAIL; Confidence=60%`" in disposition
+    assert "non-PASS output requires code changes: **yes**" in disposition
+    assert "technical rationale: Difference describes a functional defect" in disposition
+
+
+def test_generate_issue_disposition_link_comment_includes_url() -> None:
+    body = generate_issue_disposition_link_comment(
+        disposition_url="https://github.com/stranske/Inv-Man-Intake/pull/49#issuecomment-123"
+    )
+
+    assert "Disposition documentation for verify:compare is recorded here" in body
+    assert "https://github.com/stranske/Inv-Man-Intake/pull/49#issuecomment-123" in body

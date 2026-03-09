@@ -526,6 +526,69 @@ class FollowupIssue:
     labels: list[str] = field(default_factory=list)
 
 
+def generate_disposition_comment(
+    verification_data: VerificationData,
+    *,
+    pr_number: int,
+) -> str:
+    """Generate a PR disposition comment for verify:compare non-PASS output."""
+
+    analyses = [
+        _analyze_non_pass_finding(finding, verification_data.provider_verdicts)
+        for finding in verification_data.non_pass_findings
+    ]
+    requires_code_changes = any(item["requires_code_changes"] for item in analyses)
+    disposition = "yes" if requires_code_changes else "no"
+
+    lines = [
+        "## verify:compare Disposition",
+        "",
+        "Source: verify:compare non-PASS output from PR #{pr_number}".format(pr_number=pr_number),
+        "",
+        "### Evidence",
+    ]
+
+    if verification_data.non_pass_output:
+        lines.extend(f"- `{line}`" for line in verification_data.non_pass_output)
+    else:
+        lines.append("- No non-PASS provider rows were extracted from the comparison report.")
+
+    lines.extend(
+        [
+            "",
+            "### Decision",
+            "",
+            f"- non-PASS output requires code changes: **{disposition}**",
+            "",
+            "### Technical Justification",
+        ]
+    )
+
+    if analyses:
+        for item in analyses:
+            finding = str(item["finding"])
+            item_disposition = "yes" if item["requires_code_changes"] else "no"
+            rationale = str(item["rationale"])
+            lines.append(f"- `{finding}`")
+            lines.append(
+                f"  - requires code changes: **{item_disposition}**; technical rationale: {rationale}"
+            )
+    else:
+        lines.append(
+            "- No extractable non-PASS findings were available; disposition is based on provider "
+            "verdict rows only."
+        )
+
+    return "\n".join(lines).strip() + "\n"
+
+
+def generate_issue_disposition_link_comment(*, disposition_url: str) -> str:
+    """Generate issue comment text that links to disposition documentation."""
+
+    cleaned = disposition_url.strip()
+    return "Disposition documentation for verify:compare is recorded here:\n\n" f"- {cleaned}\n"
+
+
 def extract_verification_data(comment_body: str) -> VerificationData:
     """Extract structured data from verification comment(s)."""
     data = VerificationData()
@@ -1825,6 +1888,21 @@ def main() -> int:
         type=str,
         help="Output file path",
     )
+    parser.add_argument(
+        "--disposition-only",
+        action="store_true",
+        help="Output only the verify:compare disposition comment markdown.",
+    )
+    parser.add_argument(
+        "--issue-link-only",
+        action="store_true",
+        help="Output only issue-comment markdown linking to disposition documentation.",
+    )
+    parser.add_argument(
+        "--disposition-url",
+        type=str,
+        help="URL to disposition documentation (required with --issue-link-only).",
+    )
 
     args = parser.parse_args()
 
@@ -1890,6 +1968,37 @@ def main() -> int:
         issue_number=args.original_issue_number,
         title=args.original_issue_title,
     )
+
+    if args.disposition_only and args.issue_link_only:
+        print(
+            "error: --disposition-only and --issue-link-only are mutually exclusive",
+            file=sys.stderr,
+        )
+        return 2
+
+    if args.issue_link_only:
+        if not args.disposition_url:
+            print(
+                "error: --disposition-url is required with --issue-link-only",
+                file=sys.stderr,
+            )
+            return 2
+        output = generate_issue_disposition_link_comment(disposition_url=args.disposition_url)
+        if args.output:
+            Path(args.output).write_text(output)
+            print(f"Written to {args.output}", file=sys.stderr)
+        else:
+            print(output)
+        return 0
+
+    if args.disposition_only:
+        output = generate_disposition_comment(verification_data, pr_number=args.pr_number)
+        if args.output:
+            Path(args.output).write_text(output)
+            print(f"Written to {args.output}", file=sys.stderr)
+        else:
+            print(output)
+        return 0
 
     # Debug: show extracted data
     print(f"Extracted {len(verification_data.concerns)} concerns", file=sys.stderr)
