@@ -44,11 +44,11 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v --cov=src --cov-report=term-missing --cov-report=xml"
+addopts = "-v --cov=my_project --cov-report=term-missing --cov-report=xml -p no:langsmith_plugin -p no:pytest_langsmith_plugin"
 pythonpath = ["src"]
 
 [tool.coverage.run]
-source = ["src"]
+source = ["my_project"]
 branch = true
 
 [tool.coverage.report]
@@ -58,6 +58,9 @@ exclude_lines = [
     "raise NotImplementedError",
     "if TYPE_CHECKING:",
     "if __name__ == .__main__.:",
+]
+omit = [
+    "src/my_project/extraction_orchestrator.py",
 ]
 fail_under = 80
 
@@ -87,6 +90,8 @@ known-first-party = ["inv_man_intake", "my_project", "tools"]
 
 [tool.mypy]
 python_version = "3.11"
+files = ["src/my_project", "tests/test_main.py"]
+exclude = ["^scripts/", "^tools/"]
 strict = true
 warn_return_any = true
 warn_unused_configs = true

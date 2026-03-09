@@ -1,33 +1,51 @@
-"""Tests for my_project module."""
+"""Basic tests for my_project package entry points."""
 
+import pytest
+
+from my_project import __all__ as public_api
 from my_project import __version__, add, greet
 
 
 def test_version() -> None:
-    """Version should be a string."""
-    assert isinstance(__version__, str)
+    """Version should be a stable string literal for the package."""
     assert __version__ == "0.1.0"
+    assert isinstance(__version__, str)
 
 
-def test_greet() -> None:
-    """Greet should return proper greeting."""
-    assert greet("World") == "Hello, World!"
-    assert greet("Alice") == "Hello, Alice!"
+def test_public_api_contract() -> None:
+    """Public API should expose the expected stable symbols."""
+    assert public_api == ["__version__", "add", "greet"]
 
 
-def test_greet_empty() -> None:
-    """Greet should handle empty string."""
-    assert greet("") == "Hello, !"
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("World", "Hello, World!"),
+        ("Alice", "Hello, Alice!"),
+        ("", "Hello, !"),
+    ],
+)
+def test_greet(name: str, expected: str) -> None:
+    """Greet should include the provided name in output."""
+    assert greet(name) == expected
 
 
-def test_add() -> None:
-    """Add should return sum of two numbers."""
-    assert add(1, 2) == 3
-    assert add(0, 0) == 0
-    assert add(-1, 1) == 0
+@pytest.mark.parametrize(
+    ("a", "b", "expected"),
+    [
+        (1, 2, 3),
+        (0, 0, 0),
+        (-1, 1, 0),
+        (-5, -3, -8),
+        (-10, 5, -5),
+    ],
+)
+def test_add(a: int, b: int, expected: int) -> None:
+    """Add should return the expected integer sum."""
+    assert add(a, b) == expected
 
 
-def test_add_negative() -> None:
-    """Add should handle negative numbers."""
-    assert add(-5, -3) == -8
-    assert add(-10, 5) == -5
+@pytest.mark.parametrize(("a", "b"), [(3, 7), (-2, 9), (0, -4)])
+def test_add_is_commutative(a: int, b: int) -> None:
+    """Sanity check: order of operands should not change the sum."""
+    assert add(a, b) == add(b, a)

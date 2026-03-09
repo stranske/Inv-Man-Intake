@@ -1,7 +1,19 @@
-"""Canonical performance time series contracts and validation helpers."""
+"""Canonical performance time series contracts and validation helpers.
+
+Validation contract by frequency:
+- `monthly`: required and must contain at least one point.
+- `quarterly`: optional; validated when present.
+- `annual`: optional; validated when present.
+
+For every present series:
+- points must be non-empty
+- `as_of` dates must be unique within the series
+- `as_of` dates must be strictly increasing
+"""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 from typing import Literal
@@ -34,6 +46,77 @@ class PerformancePayload:
     annual: PerformanceSeries | None = None
 
 
+@dataclass(frozen=True)
+class SeriesFieldDefinition:
+    """Definition of one frequency field in the canonical payload."""
+
+    name: str
+    frequency: Frequency
+    required: bool
+
+
+@dataclass(frozen=True)
+class MonthlySeriesFieldDefinition(SeriesFieldDefinition):
+    """Field definition for required monthly data.
+
+    Constraints:
+    - must be present in `PerformancePayload`
+    - series frequency must be `"monthly"`
+    - series points are validated for non-empty, uniqueness, and ordering
+    """
+
+    name: Literal["monthly"] = "monthly"
+    frequency: Literal["monthly"] = "monthly"
+    required: Literal[True] = True
+
+
+@dataclass(frozen=True)
+class QuarterlySeriesFieldDefinition(SeriesFieldDefinition):
+    """Field definition for optional quarterly data.
+
+    Constraints:
+    - may be omitted in `PerformancePayload`
+    - when present, series frequency must be `"quarterly"`
+    - series points are validated for non-empty, uniqueness, and ordering
+    """
+
+    name: Literal["quarterly"] = "quarterly"
+    frequency: Literal["quarterly"] = "quarterly"
+    required: Literal[False] = False
+
+
+@dataclass(frozen=True)
+class AnnualSeriesFieldDefinition(SeriesFieldDefinition):
+    """Field definition for optional annual data.
+
+    Constraints:
+    - may be omitted in `PerformancePayload`
+    - when present, series frequency must be `"annual"`
+    - series points are validated for non-empty, uniqueness, and ordering
+    """
+
+    name: Literal["annual"] = "annual"
+    frequency: Literal["annual"] = "annual"
+    required: Literal[False] = False
+
+
+MONTHLY_SERIES_FIELD = MonthlySeriesFieldDefinition()
+QUARTERLY_SERIES_FIELD = QuarterlySeriesFieldDefinition()
+ANNUAL_SERIES_FIELD = AnnualSeriesFieldDefinition()
+
+PERFORMANCE_SERIES_FIELDS: tuple[SeriesFieldDefinition, ...] = (
+    MONTHLY_SERIES_FIELD,
+    QUARTERLY_SERIES_FIELD,
+    ANNUAL_SERIES_FIELD,
+)
+
+FREQUENCY_VALIDATION_RULES: Mapping[Frequency, str] = {
+    "monthly": "required; payload.monthly must be present and non-empty",
+    "quarterly": "optional; when present must be non-empty",
+    "annual": "optional; when present must be non-empty",
+}
+
+
 def validate_series(series: PerformanceSeries) -> None:
     """Validate one frequency series and enforce deterministic ordering constraints."""
 
@@ -56,16 +139,13 @@ def validate_series(series: PerformanceSeries) -> None:
 def validate_payload(payload: PerformancePayload) -> None:
     """Validate the canonical payload shape and frequency handling rules."""
 
-    if payload.monthly.frequency != "monthly":
-        raise ValueError("monthly payload must use frequency='monthly'")
-    validate_series(payload.monthly)
+    for field_def in PERFORMANCE_SERIES_FIELDS:
+        series = getattr(payload, field_def.name)
+        if series is None:
+            if field_def.required:
+                raise ValueError(f"{field_def.name} payload is required")
+            continue
 
-    if payload.quarterly is not None:
-        if payload.quarterly.frequency != "quarterly":
-            raise ValueError("quarterly payload must use frequency='quarterly'")
-        validate_series(payload.quarterly)
-
-    if payload.annual is not None:
-        if payload.annual.frequency != "annual":
-            raise ValueError("annual payload must use frequency='annual'")
-        validate_series(payload.annual)
+        if series.frequency != field_def.frequency:
+            raise ValueError(f"{field_def.name} payload must use frequency='{field_def.frequency}'")
+        validate_series(series)
