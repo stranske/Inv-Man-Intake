@@ -22,6 +22,7 @@ Terminal states:
 
 Escalations include:
 - package/fund/firm identifiers
+- document identifiers bound to the package
 - reason text
 - retry flag
 - fallback tool used (if any)
@@ -29,3 +30,13 @@ Escalations include:
 - event timestamp
 
 This payload is intended for queue handoff and downstream triage.
+
+## Queryability
+
+The ingestion service supports timeline queries by:
+- package ID (`get_events(package_id)`)
+- document ID (`get_events_by_document(document_id)`)
+
+Record lookups are also available by:
+- package ID (`get_record(package_id)`)
+- document ID (`get_record_by_document(document_id)`)
