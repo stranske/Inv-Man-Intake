@@ -158,6 +158,8 @@ def _canonicalize_schema(schema: CanonicalMetricsSchema) -> CanonicalMetricsSche
             "canonical metrics schema mismatch: " f"missing={missing}, unexpected={unexpected}"
         )
 
+    _validate_canonical_schema_values(schema)
+
     return {
         "annualized_volatility": schema["annualized_volatility"],
         "max_drawdown": schema["max_drawdown"],
@@ -169,6 +171,35 @@ def _canonicalize_schema(schema: CanonicalMetricsSchema) -> CanonicalMetricsSche
         "benchmark_observation_count": schema["benchmark_observation_count"],
         "insufficient_data": schema["insufficient_data"],
     }
+
+
+def _validate_canonical_schema_values(schema: CanonicalMetricsSchema) -> None:
+    if schema["observation_count"] < 0:
+        raise RuntimeError(
+            "canonical metrics schema mismatch: observation_count cannot be negative"
+        )
+    if schema["benchmark_observation_count"] < 0:
+        raise RuntimeError(
+            "canonical metrics schema mismatch: benchmark_observation_count cannot be negative"
+        )
+
+    invalid_fields = tuple(
+        field for field in schema["insufficient_data"] if field not in _PRIORITIZED_METRIC_FIELDS
+    )
+    if invalid_fields:
+        raise RuntimeError(
+            "canonical metrics schema mismatch: "
+            f"insufficient_data contains unknown fields={invalid_fields}"
+        )
+
+    ordered_fields = tuple(
+        field for field in _PRIORITIZED_METRIC_FIELDS if field in schema["insufficient_data"]
+    )
+    if ordered_fields != schema["insufficient_data"]:
+        raise RuntimeError(
+            "canonical metrics schema mismatch: "
+            "insufficient_data must follow prioritized metric order"
+        )
 
 
 def _align_monthly_series(
