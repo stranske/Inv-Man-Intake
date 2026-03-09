@@ -1,0 +1,128 @@
+version: 1
+issue: 90
+base: main
+branch: codex/issue-90
+tasks:
+  - id: task-01
+    title: 'Review the verify:compare non-PASS output from PR #53 (https://github.com/[org]/[repo]/pull/53)
+      to identify specific concerns and list them in a comment on this issue'
+    status: done
+    started_at: '2026-03-09T00:02:33Z'
+    finished_at: '2026-03-09T00:02:43Z'
+    commit: 431d2f87150b48d5dbb756b027d5c9ada604314d
+    notes: []
+  - id: task-02
+    title: Create a summary document at `docs/dispositions/pr-53-verify-compare.md`
+      listing each identified concern with its verify:compare output reference
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: '**[HUMAN REQUIRED]** Review the concerns listed in `docs/dispositions/pr-53-verify-compare.md`
+      and decide for each: "not warranted" or "requires follow-up"'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: '**[HUMAN REQUIRED]** For any "requires follow-up" concerns, specify the
+      exact code changes needed in the disposition document'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Update the disposition document `docs/dispositions/pr-53-verify-compare.md`
+      with the human decisions from the deferred tasks section
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Add a comment to PR #53 (https://github.com/[org]/[repo]/pull/53) description
+      linking to `docs/dispositions/pr-53-verify-compare.md` with summary: "verify:compare
+      disposition: [X concerns not warranted, Y require follow-up]"'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'If disposition indicates code changes needed: Create a follow-up PR implementing
+      the specific changes documented in `docs/dispositions/pr-53-verify-compare.md`,
+      referencing PR #53 and issue #18 in the PR description'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'If disposition indicates code changes needed: Add a comment to issue #18
+      (https://github.com/[org]/[repo]/issues/18) linking to the follow-up PR'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'If disposition indicates no code changes needed: Add label `disposition:no-action-needed`
+      to this issue and add a comment to issue #18 linking to the disposition document'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: File `docs/dispositions/pr-53-verify-compare.md` exists and contains a
+      list of all verify:compare concerns with direct links to the tool output
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: File `docs/dispositions/pr-53-verify-compare.md` contains a disposition
+      decision for each concern stating either "not warranted because [reason]" or
+      "requires follow-up to address [specific change]"
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: 'PR #53 description or comments section contains a link to `docs/dispositions/pr-53-verify-compare.md`'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: 'If disposition document indicates code changes are needed: A follow-up
+      PR exists, is merged, and is linked from this issue via comment'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: 'If disposition document indicates no code changes are needed: This issue
+      has label `disposition:no-action-needed` and issue #18 has a comment linking
+      to the disposition document'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: 'Issue #18 has a comment linking to either the follow-up PR (if code changes
+      made) or the disposition document (if no changes needed)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
