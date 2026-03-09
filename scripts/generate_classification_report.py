@@ -5,8 +5,9 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 DEFAULT_INPUT = Path("data/pr81_threads_classified.json")
 DEFAULT_OUTPUT = Path("data/pr81_threads_report.md")

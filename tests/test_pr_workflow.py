@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from scripts.classify_threads import main as classify_main
 from scripts.classify_threads import classify_threads_document
-from scripts.fetch_pr_threads import main as fetch_main
+from scripts.classify_threads import main as classify_main
 from scripts.fetch_pr_threads import build_output_document, fetch_unresolved_threads
-from scripts.generate_classification_report import main as report_main
+from scripts.fetch_pr_threads import main as fetch_main
 from scripts.generate_classification_report import generate_markdown_table
+from scripts.generate_classification_report import main as report_main
 from scripts.update_pr_comment import main as update_comment_main
 from scripts.update_pr_comment import post_issue_comment
-from scripts.validate_classification_output import main as validate_main
 from scripts.validate_classification_output import find_invalid_threads
+from scripts.validate_classification_output import main as validate_main
 
 
 class _FakeResponse:
