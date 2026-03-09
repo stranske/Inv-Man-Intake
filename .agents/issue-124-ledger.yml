@@ -27,11 +27,12 @@ tasks:
     notes: []
   - id: task-04
     title: Write or update tests to cover the implemented fixes
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-09T04:29:40Z'
+    finished_at: '2026-03-09T04:29:40Z'
     commit: ''
-    notes: []
+    notes:
+      - Added explainability validation tests for empty components, negative weights, and trimmed duplicate IDs.
   - id: task-05
     title: 'Create a pull request with title referencing PR #79 and issue #38'
     status: todo

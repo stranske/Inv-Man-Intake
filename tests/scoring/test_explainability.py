@@ -124,6 +124,31 @@ def test_build_payload_rejects_duplicate_component_identifiers() -> None:
         )
 
 
+def test_build_payload_rejects_duplicate_component_identifiers_after_trimming() -> None:
+    with pytest.raises(ValueError, match="component identifiers must be unique"):
+        build_explainability_payload(
+            components=(
+                ScoreComponentInput(
+                    component=" alpha_quality ",
+                    weight=0.4,
+                    score=0.75,
+                    rationale="Baseline rationale.",
+                ),
+                ScoreComponentInput(
+                    component="alpha_quality",
+                    weight=0.6,
+                    score=0.5,
+                    rationale="Duplicate identifier.",
+                ),
+            )
+        )
+
+
+def test_build_payload_rejects_empty_components() -> None:
+    with pytest.raises(ValueError, match="at least one component"):
+        build_explainability_payload(components=())
+
+
 def test_build_payload_rejects_whitespace_only_component_and_rationale() -> None:
     with pytest.raises(ValueError, match="component must be non-empty"):
         build_explainability_payload(
@@ -145,6 +170,20 @@ def test_build_payload_rejects_whitespace_only_component_and_rationale() -> None
                     weight=0.4,
                     score=0.75,
                     rationale="   ",
+                ),
+            )
+        )
+
+
+def test_build_payload_rejects_negative_weight() -> None:
+    with pytest.raises(ValueError, match="alpha_quality.weight must be >= 0"):
+        build_explainability_payload(
+            components=(
+                ScoreComponentInput(
+                    component="alpha_quality",
+                    weight=-0.01,
+                    score=0.75,
+                    rationale="valid",
                 ),
             )
         )
