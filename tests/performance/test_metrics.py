@@ -11,7 +11,11 @@ from inv_man_intake.performance.contracts import (
     PerformancePoint,
     PerformanceSeries,
 )
-from inv_man_intake.performance.metrics import compute_metrics, compute_metrics_canonical
+from inv_man_intake.performance.metrics import (
+    PerformanceMetrics,
+    compute_metrics,
+    compute_metrics_canonical,
+)
 
 
 def test_compute_metrics_returns_expected_values_for_known_fixture() -> None:
@@ -361,3 +365,41 @@ def test_compute_metrics_handles_zero_benchmark_variance_without_exceptions() ->
     assert metrics.information_ratio == pytest.approx(0.37796447300922725)
     assert metrics.benchmark_correlation is None
     assert metrics.insufficient_data == ("benchmark_correlation",)
+
+
+def test_to_canonical_dict_rejects_invalid_insufficient_data_order() -> None:
+    metrics = PerformanceMetrics(
+        annualized_volatility=0.1,
+        max_drawdown=0.2,
+        sharpe_ratio=0.3,
+        sortino_ratio=0.4,
+        information_ratio=None,
+        benchmark_correlation=None,
+        observation_count=3,
+        benchmark_observation_count=3,
+        insufficient_data=("benchmark_correlation", "information_ratio"),
+    )
+
+    with pytest.raises(RuntimeError) as exc:
+        metrics.to_canonical_dict()
+
+    assert "insufficient_data must follow prioritized metric order" in str(exc.value)
+
+
+def test_to_canonical_dict_rejects_negative_counts() -> None:
+    metrics = PerformanceMetrics(
+        annualized_volatility=0.1,
+        max_drawdown=0.2,
+        sharpe_ratio=0.3,
+        sortino_ratio=0.4,
+        information_ratio=0.5,
+        benchmark_correlation=0.6,
+        observation_count=-1,
+        benchmark_observation_count=1,
+        insufficient_data=(),
+    )
+
+    with pytest.raises(RuntimeError) as exc:
+        metrics.to_canonical_dict()
+
+    assert "observation_count cannot be negative" in str(exc.value)
