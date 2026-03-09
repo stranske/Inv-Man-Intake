@@ -34,6 +34,38 @@ class PerformancePayload:
     annual: PerformanceSeries | None = None
 
 
+@dataclass(frozen=True)
+class SeriesFieldDefinition:
+    """Definition of one frequency field in the canonical payload."""
+
+    name: str
+    frequency: Frequency
+    required: bool
+
+
+MONTHLY_SERIES_FIELD = SeriesFieldDefinition(
+    name="monthly",
+    frequency="monthly",
+    required=True,
+)
+QUARTERLY_SERIES_FIELD = SeriesFieldDefinition(
+    name="quarterly",
+    frequency="quarterly",
+    required=False,
+)
+ANNUAL_SERIES_FIELD = SeriesFieldDefinition(
+    name="annual",
+    frequency="annual",
+    required=False,
+)
+
+PERFORMANCE_SERIES_FIELDS: tuple[SeriesFieldDefinition, ...] = (
+    MONTHLY_SERIES_FIELD,
+    QUARTERLY_SERIES_FIELD,
+    ANNUAL_SERIES_FIELD,
+)
+
+
 def validate_series(series: PerformanceSeries) -> None:
     """Validate one frequency series and enforce deterministic ordering constraints."""
 
@@ -56,16 +88,13 @@ def validate_series(series: PerformanceSeries) -> None:
 def validate_payload(payload: PerformancePayload) -> None:
     """Validate the canonical payload shape and frequency handling rules."""
 
-    if payload.monthly.frequency != "monthly":
-        raise ValueError("monthly payload must use frequency='monthly'")
-    validate_series(payload.monthly)
+    for field_def in PERFORMANCE_SERIES_FIELDS:
+        series = getattr(payload, field_def.name)
+        if series is None:
+            if field_def.required:
+                raise ValueError(f"{field_def.name} payload is required")
+            continue
 
-    if payload.quarterly is not None:
-        if payload.quarterly.frequency != "quarterly":
-            raise ValueError("quarterly payload must use frequency='quarterly'")
-        validate_series(payload.quarterly)
-
-    if payload.annual is not None:
-        if payload.annual.frequency != "annual":
-            raise ValueError("annual payload must use frequency='annual'")
-        validate_series(payload.annual)
+        if series.frequency != field_def.frequency:
+            raise ValueError(f"{field_def.name} payload must use frequency='{field_def.frequency}'")
+        validate_series(series)
