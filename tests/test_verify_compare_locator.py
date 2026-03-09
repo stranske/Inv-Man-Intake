@@ -1,6 +1,10 @@
 from pathlib import Path
 
-from scripts.langchain.verify_compare_locator import extract_non_pass_findings, scan_files
+from scripts.langchain.verify_compare_locator import (
+    _as_scope,
+    extract_non_pass_findings,
+    scan_files,
+)
 
 
 def test_extract_non_pass_finding_for_target_pr() -> None:
@@ -77,3 +81,19 @@ Source: https://github.com/stranske/Inv-Man-Intake/issues/89
     findings = extract_non_pass_findings(text, source_file="issue_context.txt", pr_number=54)
 
     assert findings == []
+
+
+def test_scope_output_includes_disposition_requirements() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/issues/89
+Source PR: #54
+verify:compare reported non-PASS output without a documented disposition.
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue_context.txt", pr_number=54)
+    scope = _as_scope(findings, pr_number=54)
+
+    assert "Disposition Scope For PR #54" in scope
+    assert "https://github.com/stranske/Inv-Man-Intake/issues/89" in scope
+    assert "reported non-PASS output without a documented disposition" in scope
+    assert "2+ sentence rationale" in scope
