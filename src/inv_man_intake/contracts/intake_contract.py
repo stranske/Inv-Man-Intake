@@ -26,8 +26,8 @@ ALLOWED_SOURCE_CHANNELS: frozenset[str] = frozenset(
     }
 )
 ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-ISO_DATETIME_RE = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})?$"
+ISO_DATETIME_WITH_TZ_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?(?:Z|[+-]\d{2}:\d{2})$"
 )
 
 
@@ -70,7 +70,7 @@ def _validate_received_at(raw_value: Any) -> tuple[bool, str]:
             return False, "received_at must be a valid ISO-8601 date or datetime"
         return True, ""
 
-    if not ISO_DATETIME_RE.fullmatch(candidate):
+    if not ISO_DATETIME_WITH_TZ_RE.fullmatch(candidate):
         return False, "received_at must be a valid ISO-8601 date or datetime"
 
     try:

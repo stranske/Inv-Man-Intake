@@ -172,3 +172,25 @@ def test_validate_intake_payload_rejects_non_canonical_received_at_datetime() ->
     result = validate_intake_payload(payload)
     assert result.is_valid is False
     assert any(issue.code == "invalid_received_at" for issue in result.errors)
+
+
+def test_validate_intake_payload_rejects_timezone_less_received_at_datetime() -> None:
+    payload = _valid_payload()
+    metadata = payload["metadata"]
+    assert isinstance(metadata, dict)
+    metadata["received_at"] = "2026-03-01T09:00:00"
+
+    result = validate_intake_payload(payload)
+    assert result.is_valid is False
+    assert any(issue.code == "invalid_received_at" for issue in result.errors)
+
+
+def test_validate_intake_payload_accepts_received_at_datetime_with_offset() -> None:
+    payload = _valid_payload()
+    metadata = payload["metadata"]
+    assert isinstance(metadata, dict)
+    metadata["received_at"] = "2026-03-01T09:00:00+00:00"
+
+    result = validate_intake_payload(payload)
+    assert result.is_valid is True
+    assert not any(issue.code == "invalid_received_at" for issue in result.errors)
