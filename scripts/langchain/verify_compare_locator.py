@@ -432,6 +432,8 @@ def _as_pr_note(findings: list[VerifyCompareFinding], pr_number: int | None = No
             "verify:compare signal."
         )
         connection = "Connection: Link this note to a bounded follow-up PR that resolves the specific concern."
+        follow_up_pr = "Follow-up PR reference: required (add PR link once remediation is opened)."
+        remaining_gap_issue = "Remaining gaps issue: required if any concern is not fully addressed by the follow-up PR."
     else:
         warranted_text = "Concern warranted: no (documentation-only outcome is acceptable)."
         reasoning = (
@@ -442,6 +444,8 @@ def _as_pr_note(findings: list[VerifyCompareFinding], pr_number: int | None = No
         connection = (
             "Connection: This note itself is the explanation for why no follow-up fix PR is needed."
         )
+        follow_up_pr = "Follow-up PR reference: not required (no code fix warranted)."
+        remaining_gap_issue = "Remaining gaps issue: not required (no unresolved technical gaps remain after documentation)."
 
     return "\n".join(
         [
@@ -452,6 +456,8 @@ def _as_pr_note(findings: list[VerifyCompareFinding], pr_number: int | None = No
             f"- {warranted_text}",
             f"- Reasoning: {reasoning}",
             f"- {connection}",
+            f"- {follow_up_pr}",
+            f"- {remaining_gap_issue}",
         ]
     )
 

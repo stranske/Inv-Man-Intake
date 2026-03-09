@@ -279,6 +279,11 @@ verify:compare reported non-PASS output without a documented disposition.
         "Connection: This note itself is the explanation for why no follow-up fix PR is needed."
         in note
     )
+    assert "Follow-up PR reference: not required (no code fix warranted)." in note
+    assert (
+        "Remaining gaps issue: not required (no unresolved technical gaps remain after documentation)."
+        in note
+    )
 
 
 def test_pr_note_output_for_fix_required_signal() -> None:
@@ -293,3 +298,8 @@ Source: https://github.com/stranske/Inv-Man-Intake/pull/86#issuecomment-555
     assert "## verify:compare Disposition For PR #86" in note
     assert "Concern warranted: yes (bounded follow-up fix required)." in note
     assert "Link this note to a bounded follow-up PR" in note
+    assert "Follow-up PR reference: required (add PR link once remediation is opened)." in note
+    assert (
+        "Remaining gaps issue: required if any concern is not fully addressed by the follow-up PR."
+        in note
+    )
