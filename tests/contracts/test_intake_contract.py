@@ -161,3 +161,14 @@ def test_validate_intake_payload_rejects_non_string_or_empty_received_at() -> No
         issue.code == "invalid_received_at" and "ISO-8601 string" in issue.message
         for issue in result_non_string.errors
     )
+
+
+def test_validate_intake_payload_rejects_non_canonical_received_at_datetime() -> None:
+    payload = _valid_payload()
+    metadata = payload["metadata"]
+    assert isinstance(metadata, dict)
+    metadata["received_at"] = "2026-03-01 09:00:00Z"
+
+    result = validate_intake_payload(payload)
+    assert result.is_valid is False
+    assert any(issue.code == "invalid_received_at" for issue in result.errors)

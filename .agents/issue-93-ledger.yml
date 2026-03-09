@@ -14,11 +14,13 @@ tasks:
   - id: task-02
     title: 'Review the verify:compare non-PASS output from PR #48 and determine whether
       the concerns warrant a code fix'
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-09T00:07:02Z'
+    finished_at: '2026-03-09T00:07:02Z'
     commit: ''
-    notes: []
+    notes:
+      - 'Reviewed prior keepalive changes and contract behavior; determined concerns
+        warrant a bounded code fix for stricter received_at validation.'
   - id: task-03
     title: 'Document the rationale in issue #16 if the concerns are determined to
       be not warranted'
@@ -38,11 +40,13 @@ tasks:
   - id: task-05
     title: 'Create a follow-up code change (new PR) that addresses the verify:compare
       non-PASS concern(s) from PR #48 (if disposition requires a fix)'
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-09T00:07:02Z'
+    finished_at: '2026-03-09T00:07:02Z'
     commit: ''
-    notes: []
+    notes:
+      - 'Implemented strict ISO-8601 canonical datetime validation in intake contract
+        and added regression coverage in tests/contracts/test_intake_contract.py.'
   - id: task-06
     title: 'Issue #16 contains an explicit disposition for the verify:compare non-PASS
       output and links to PR #48'
