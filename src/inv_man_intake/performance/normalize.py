@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Literal
 
 from inv_man_intake.performance.contracts import (
@@ -16,6 +16,20 @@ from inv_man_intake.performance.contracts import (
 )
 
 BenchmarkAlignmentStatus = Literal["aligned", "missing_portfolio", "missing_benchmark"]
+DateInput = date | datetime | str
+
+NORMALIZATION_ASSUMPTIONS: tuple[str, ...] = (
+    "Monthly series is required and drives canonical month range boundaries.",
+    "All canonical output dates use ISO 8601 calendar dates (YYYY-MM-DD).",
+    "Date normalization snaps input points to period-end boundaries by frequency.",
+    "Input series for a frequency must be strictly increasing and deterministic.",
+)
+NORMALIZATION_LIMITATIONS: tuple[str, ...] = (
+    "No source conflict arbitration across competing provider payloads.",
+    "No interpolation or advanced imputation for missing months.",
+    "No correlation or other statistics are computed in normalization stage.",
+    "No support for frequencies outside monthly, quarterly, and annual.",
+)
 
 
 @dataclass(frozen=True)
@@ -50,6 +64,15 @@ class BenchmarkAlignmentPoint:
     status: BenchmarkAlignmentStatus
 
 
+def describe_normalization_contract() -> dict[str, tuple[str, ...]]:
+    """Return deterministic assumptions and known v1 limitations for normalization."""
+
+    return {
+        "assumptions": NORMALIZATION_ASSUMPTIONS,
+        "limitations": NORMALIZATION_LIMITATIONS,
+    }
+
+
 def normalize_payload(payload: PerformancePayload) -> NormalizedPerformancePayload:
     """Normalize frequencies to period-end dates and build canonical monthly rows."""
 
@@ -69,6 +92,21 @@ def normalize_payload(payload: PerformancePayload) -> NormalizedPerformancePaylo
         canonical_months=canonical_months,
         missing_months=missing_months,
     )
+
+
+def normalize_date_input(raw_date: DateInput, *, frequency: str | None = None) -> date:
+    """Parse heterogeneous date values and optionally align to a frequency period end."""
+
+    parsed = _parse_date_value(raw_date)
+    if frequency is None:
+        return parsed
+    return _normalizer_for_frequency(frequency)(parsed)
+
+
+def canonical_date_string(raw_date: DateInput, *, frequency: str | None = None) -> str:
+    """Return canonical YYYY-MM-DD representation for a date-like input."""
+
+    return normalize_date_input(raw_date, frequency=frequency).isoformat()
 
 
 def normalize_series(series: PerformanceSeries) -> PerformanceSeries:
@@ -214,6 +252,33 @@ def _normalizer_for_frequency(frequency: str) -> Callable[[date], date]:
     if frequency == "annual":
         return _year_end
     raise ValueError(f"Unsupported frequency: {frequency}")
+
+
+def _parse_date_value(raw_date: DateInput) -> date:
+    if isinstance(raw_date, datetime):
+        return raw_date.date()
+    if isinstance(raw_date, date):
+        return raw_date
+    if not isinstance(raw_date, str):
+        raise ValueError("Date input must be a date, datetime, or string")
+
+    raw = raw_date.strip()
+    if not raw:
+        raise ValueError("Date input string must not be empty")
+
+    parsers: tuple[Callable[[str], date], ...] = (
+        date.fromisoformat,
+        lambda v: datetime.strptime(v, "%Y/%m/%d").date(),
+        lambda v: datetime.strptime(v, "%m/%d/%Y").date(),
+        lambda v: datetime.strptime(v, "%Y%m%d").date(),
+    )
+    for parser in parsers:
+        try:
+            return parser(raw)
+        except ValueError:
+            continue
+
+    raise ValueError(f"Unsupported date format: {raw_date!r}")
 
 
 def _iter_month_ends(start: date, end: date) -> tuple[date, ...]:

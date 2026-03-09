@@ -2,73 +2,98 @@
 
 ## Purpose
 
-Define deterministic normalization behavior for manager performance inputs before metrics/scoring.
+Define deterministic normalization behavior for manager-provided performance inputs before
+downstream metrics and scoring.
 
-This stage:
-- Aligns dates to frequency period-end boundaries.
-- Builds canonical month rows for downstream processing.
-- Flags missing months in the observed monthly range.
-- Provides benchmark alignment hooks for later correlation calculations.
+Normalization in v1 does four things:
+- Align input dates to period-end boundaries for each supported frequency.
+- Produce canonical monthly rows over the observed monthly range.
+- Flag missing monthly periods deterministically.
+- Provide benchmark alignment hooks for later correlation calculations.
 
-## Inputs
+## Input Contract
 
-- `PerformancePayload` from `inv_man_intake.performance.ingest`:
-  - `monthly` (required)
-  - `quarterly` (optional)
-  - `annual` (optional)
+`normalize_payload(...)` accepts `PerformancePayload`:
+- `monthly` (required, frequency must be `"monthly"`).
+- `quarterly` (optional, frequency must be `"quarterly"` when present).
+- `annual` (optional, frequency must be `"annual"` when present).
 
-## Date Normalization Rules
+Each frequency series must:
+- Contain at least one point.
+- Be strictly increasing by `as_of`.
+- Have no duplicate `as_of` dates.
 
-- `monthly`: normalize each point to month-end.
-- `quarterly`: normalize each point to quarter-end month-end (`03-31`, `06-30`, `09-30`, `12-31`).
-- `annual`: normalize each point to year-end (`12-31`).
+## Date Canonicalization Rules
 
-If two input points collapse into the same normalized period for a frequency, normalization fails with a deterministic validation error.
+All normalized dates are serialized as ISO 8601 calendar dates (`YYYY-MM-DD`).
+
+Frequency-specific period-end alignment:
+- `monthly`: snap each point to month-end.
+- `quarterly`: snap each point to quarter-end month-end (`03-31`, `06-30`, `09-30`, `12-31`).
+- `annual`: snap each point to year-end (`12-31`).
+
+If two points collapse to the same normalized date within a series, normalization fails with a
+deterministic validation error.
 
 ## Canonical Monthly Output
 
 `normalize_payload(...)` returns `NormalizedPerformancePayload` with:
-- normalized frequency series (`monthly`, `quarterly`, `annual`)
-- `canonical_months`: month-by-month rows from first normalized monthly point through last normalized monthly point
-- `missing_months`: deterministic tuple of missing month-end dates in that range
+- Normalized frequency series (`monthly`, `quarterly`, `annual`).
+- `canonical_months`: one row per month-end from first normalized monthly point through last.
+- `missing_months`: deterministic tuple of month-end dates in range with no monthly value.
 
-`canonical_months` rows include:
-- `as_of`
-- `monthly_value` (nullable)
-- `quarterly_value` (nullable)
-- `annual_value` (nullable)
-- `missing_month` (boolean)
+Each `canonical_months` row contains:
+- `as_of` (month-end date).
+- `monthly_value` (`float | None`).
+- `quarterly_value` (`float | None`).
+- `annual_value` (`float | None`).
+- `missing_month` (`bool`).
 
-## Missing-Month Detection
+## Missing-Month Semantics
 
-Gap detection is deterministic and inclusive over the monthly range:
-- start = first normalized monthly date
-- end = last normalized monthly date
-- missing = month-end dates in `[start, end]` that have no monthly value
+Gap detection is inclusive over the monthly range:
+- Start = first normalized monthly date.
+- End = last normalized monthly date.
+- Missing = month-end dates in `[start, end]` absent from normalized monthly points.
 
 No interpolation or imputation is performed in v1.
 
-## Benchmark Alignment Hook
+## Benchmark Alignment Hooks
 
-`build_benchmark_alignment(...)` aligns normalized portfolio monthly values against a benchmark monthly series and emits:
-- `aligned` (both values present)
-- `missing_portfolio` (benchmark only)
-- `missing_benchmark` (portfolio only)
+`build_benchmark_alignment(...)` aligns normalized monthly portfolio values with a monthly
+benchmark series and emits one of:
+- `aligned`.
+- `missing_portfolio`.
+- `missing_benchmark`.
 
-`correlation_inputs(...)` extracts aligned month/value triples for downstream correlation logic.
+`correlation_inputs(...)` then extracts aligned `(as_of, portfolio_value, benchmark_value)` triples
+for downstream statistics.
 
-This intentionally stops short of computing correlation metrics; it provides stable aligned inputs only.
+v1 intentionally does not compute correlations; it provides stable, ordered inputs only.
 
-## Determinism Expectations
+## Assumptions
 
-For identical payload inputs:
-- normalized period dates are identical,
-- canonical month row ordering is identical,
-- missing month flags are identical,
-- benchmark alignment status ordering is identical.
+The implementation assumptions are exposed in code by
+`describe_normalization_contract()` in `src/inv_man_intake/performance/normalize.py`.
 
-## v1 Limitations
+Current assumptions:
+- Monthly series is required and defines canonical range boundaries.
+- Canonical outputs use ISO 8601 date representation.
+- Date normalization snaps to period-end boundaries by frequency.
+- Input ordering must already be deterministic and strictly increasing.
 
-- No source conflict arbitration (handled in separate workstream).
-- No return interpolation or advanced gap imputation.
-- No correlation/statistics computation in this stage.
+## Limitations
+
+Current v1 limitations:
+- No source-conflict arbitration across competing provider submissions.
+- No interpolation or advanced imputation for missing months.
+- No correlation/statistics computation during normalization.
+- No support for frequencies outside monthly, quarterly, and annual.
+
+## Determinism Requirements
+
+For identical inputs, normalization must produce identical:
+- Normalized dates and values.
+- Canonical month row ordering.
+- Missing-month flags.
+- Benchmark alignment ordering and statuses.
