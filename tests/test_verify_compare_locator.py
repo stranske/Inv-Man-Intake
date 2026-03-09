@@ -303,3 +303,22 @@ Source: https://github.com/stranske/Inv-Man-Intake/pull/86#issuecomment-555
         "Remaining gaps issue: required if any concern is not fully addressed by the follow-up PR."
         in note
     )
+
+
+def test_pr_note_output_for_fix_required_signal_with_links() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/pull/86#issuecomment-555
+- Verdict: FAIL
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="verification_data.txt", pr_number=86)
+    note = _as_pr_note(
+        findings,
+        pr_number=86,
+        follow_up_pr_url="https://github.com/stranske/Inv-Man-Intake/pull/201",
+        remaining_gap_issue_url="https://github.com/stranske/Inv-Man-Intake/issues/202",
+    )
+
+    assert "Concern warranted: yes (bounded follow-up fix required)." in note
+    assert "Follow-up PR reference: https://github.com/stranske/Inv-Man-Intake/pull/201" in note
+    assert "Remaining gaps issue: https://github.com/stranske/Inv-Man-Intake/issues/202" in note

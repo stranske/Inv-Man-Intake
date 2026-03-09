@@ -414,7 +414,13 @@ def _as_validation(findings: list[VerifyCompareFinding], pr_number: int | None =
     return "\n".join(["FAIL: Disposition note is missing required criteria."] + errors)
 
 
-def _as_pr_note(findings: list[VerifyCompareFinding], pr_number: int | None = None) -> str:
+def _as_pr_note(
+    findings: list[VerifyCompareFinding],
+    pr_number: int | None = None,
+    *,
+    follow_up_pr_url: str | None = None,
+    remaining_gap_issue_url: str | None = None,
+) -> str:
     if not findings:
         return "No PR disposition note can be generated because no non-PASS findings were located."
 
@@ -432,8 +438,16 @@ def _as_pr_note(findings: list[VerifyCompareFinding], pr_number: int | None = No
             "verify:compare signal."
         )
         connection = "Connection: Link this note to a bounded follow-up PR that resolves the specific concern."
-        follow_up_pr = "Follow-up PR reference: required (add PR link once remediation is opened)."
-        remaining_gap_issue = "Remaining gaps issue: required if any concern is not fully addressed by the follow-up PR."
+        if follow_up_pr_url:
+            follow_up_pr = f"Follow-up PR reference: {follow_up_pr_url}"
+        else:
+            follow_up_pr = (
+                "Follow-up PR reference: required (add PR link once remediation is opened)."
+            )
+        if remaining_gap_issue_url:
+            remaining_gap_issue = f"Remaining gaps issue: {remaining_gap_issue_url}"
+        else:
+            remaining_gap_issue = "Remaining gaps issue: required if any concern is not fully addressed by the follow-up PR."
     else:
         warranted_text = "Concern warranted: no (documentation-only outcome is acceptable)."
         reasoning = (
@@ -463,7 +477,21 @@ def _as_pr_note(findings: list[VerifyCompareFinding], pr_number: int | None = No
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = _build_parser().parse_args(argv)
+    parser = _build_parser()
+    parser.add_argument(
+        "--follow-up-pr-url",
+        default=None,
+        help="Follow-up PR URL to include in --format=pr-note output when concern is warranted",
+    )
+    parser.add_argument(
+        "--remaining-gap-issue-url",
+        default=None,
+        help=(
+            "Issue URL that tracks remaining technical gaps, included in --format=pr-note "
+            "output when concern is warranted"
+        ),
+    )
+    args = parser.parse_args(argv)
     findings = scan_files(args.files, pr_number=args.pr)
 
     if args.format == "markdown":
@@ -479,7 +507,14 @@ def main(argv: list[str] | None = None) -> int:
     elif args.format == "validate":
         print(_as_validation(findings, pr_number=args.pr))
     elif args.format == "pr-note":
-        print(_as_pr_note(findings, pr_number=args.pr))
+        print(
+            _as_pr_note(
+                findings,
+                pr_number=args.pr,
+                follow_up_pr_url=args.follow_up_pr_url,
+                remaining_gap_issue_url=args.remaining_gap_issue_url,
+            )
+        )
     else:
         print(json.dumps([asdict(item) for item in findings], indent=2))
     return 0

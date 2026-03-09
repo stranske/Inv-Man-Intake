@@ -44,7 +44,7 @@ python scripts/langchain/verify_compare_locator.py --pr 86 --format pr-note docs
 - [x] Determine whether the verify:compare concerns represent actual issues requiring fixes or are acceptable outcomes
 - [x] Document the disposition decision in the PR #86 notes with clear reasoning
 - [x] Write an explanation documenting why the verify:compare concerns are not warranted if that disposition was chosen
-- [ ] Create a follow-up PR reference link in the disposition note if fixes are warranted
+- [x] Create a follow-up PR reference link in the disposition note if fixes are warranted (not applicable: concern is not warranted for code fix)
 - [x] Ensure the disposition note clearly connects to either the explanation or the follow-up PR
-- [ ] Create a follow-up change (PR) implementing a bounded fix for the verify:compare non-PASS output (if warranted)
-- [ ] Add/update an issue link to track any remaining technical gaps not addressed by the follow-up change
+- [x] Create a follow-up change (PR) implementing a bounded fix for the verify:compare non-PASS output (if warranted) (not applicable: documentation-only disposition accepted)
+- [x] Add/update an issue link to track any remaining technical gaps not addressed by the follow-up change (not applicable: no unresolved technical gaps remain)
