@@ -156,6 +156,34 @@ def _as_markdown(pr: int, threads: list[UnresolvedThread]) -> str:
     return "\n".join(lines)
 
 
+def _as_checklist(pr: int, threads: list[UnresolvedThread]) -> str:
+    lines = [f"# PR #{pr} Unresolved Inline Review Threads", ""]
+    if not threads:
+        lines.append("No unresolved inline review threads found.")
+        return "\n".join(lines)
+
+    lines.append("## Thread Documentation")
+    lines.append("")
+    for index, item in enumerate(threads, start=1):
+        line_text = str(item.line) if item.line is not None else "unknown"
+        location = f"`{item.path}:{line_text}`"
+        quoted = item.comment_text.strip()
+        if not quoted:
+            quoted = "(no comment text)"
+        quoted = quoted.replace("\r\n", "\n").replace("\r", "\n")
+        quote_block = "\n".join(f"> {line}" if line else ">" for line in quoted.split("\n"))
+
+        lines.append(f"{index}. Thread URL: {item.thread_url}")
+        lines.append(f"Comment URL: {item.comment_url}")
+        lines.append(f"Author: `{item.author}`")
+        lines.append(f"Location: {location}")
+        lines.append("Quoted comment text:")
+        lines.append(quote_block)
+        lines.append("")
+
+    return "\n".join(lines).rstrip()
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--owner", default="stranske")
@@ -164,7 +192,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--input-json", type=Path, default=None)
     parser.add_argument(
         "--format",
-        choices=("json", "markdown"),
+        choices=("json", "markdown", "checklist"),
         default="markdown",
         help="Output format for unresolved thread details.",
     )
@@ -192,6 +220,8 @@ def main(argv: list[str] | None = None) -> int:
     threads = parse_unresolved_threads(payload)
     if args.format == "json":
         print(json.dumps([asdict(item) for item in threads], indent=2))
+    elif args.format == "checklist":
+        print(_as_checklist(args.pr, threads))
     else:
         print(_as_markdown(args.pr, threads))
     return 0

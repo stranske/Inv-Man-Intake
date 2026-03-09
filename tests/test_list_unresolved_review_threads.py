@@ -117,3 +117,19 @@ def test_main_json_output_with_input_json(tmp_path: Path, capsys) -> None:
         "https://github.com/stranske/Inv-Man-Intake/pull/74#discussion_r222",
         "https://github.com/stranske/Inv-Man-Intake/pull/74#discussion_r333",
     ]
+
+
+def test_main_checklist_output_with_input_json(tmp_path: Path, capsys) -> None:
+    payload_path = tmp_path / "payload.json"
+    payload_path.write_text(json.dumps(_payload()), encoding="utf-8")
+
+    exit_code = main(["--pr", "74", "--input-json", str(payload_path), "--format", "checklist"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "## Thread Documentation" in captured.out
+    assert "Location: `src/app.py:42`" in captured.out
+    assert "Location: `src/service.py:88`" in captured.out
+    assert "Quoted comment text:" in captured.out
+    assert "> Please add guard clause." in captured.out
+    assert "> Prefer explicit error handling." in captured.out
