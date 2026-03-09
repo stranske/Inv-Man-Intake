@@ -110,6 +110,39 @@ def render_disposition_markdown(
     return "\n".join(lines) + "\n"
 
 
+def render_issue_comment_markdown(
+    *,
+    pr_number: int,
+    pr_url: str,
+    source_reference_url: str,
+    concerns: list[Concern],
+) -> str:
+    lines = [
+        f"verify:compare concern review for PR #{pr_number}",
+        "",
+        f"Source PR: {pr_url}",
+        f"verify:compare output: {source_reference_url}",
+        "",
+    ]
+
+    if concerns:
+        lines.append("Identified concerns:")
+        for index, concern in enumerate(concerns, start=1):
+            lines.append(f"{index}. {concern.text}")
+            lines.append(f"   - Reference: {concern.reference}")
+    else:
+        lines.append("Identified concerns:")
+        lines.append(
+            "1. No concerns could be extracted from the available verify:compare output text."
+        )
+        lines.append(
+            "   - Reference: "
+            f"{source_reference_url} (requires follow-up to retrieve complete raw output)"
+        )
+
+    return "\n".join(lines) + "\n"
+
+
 def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -122,6 +155,11 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         "--source-reference-url",
         required=True,
         help="URL that points directly to the verify:compare output.",
+    )
+    parser.add_argument(
+        "--issue-comment-output",
+        type=Path,
+        help="Optional output path for a ready-to-post issue comment markdown file.",
     )
     return parser
 
@@ -138,6 +176,16 @@ def main() -> int:
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(output, encoding="utf-8")
+
+    if args.issue_comment_output:
+        issue_comment = render_issue_comment_markdown(
+            pr_number=args.pr_number,
+            pr_url=args.pr_url,
+            source_reference_url=args.source_reference_url,
+            concerns=concerns,
+        )
+        args.issue_comment_output.parent.mkdir(parents=True, exist_ok=True)
+        args.issue_comment_output.write_text(issue_comment, encoding="utf-8")
     return 0
 
 

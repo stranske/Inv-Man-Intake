@@ -4,6 +4,7 @@ from scripts.verify_compare_disposition import (
     extract_concerns,
     main,
     render_disposition_markdown,
+    render_issue_comment_markdown,
 )
 
 
@@ -74,3 +75,49 @@ def test_main_writes_output_file(tmp_path: Path, monkeypatch) -> None:
     assert main() == 0
     generated = output_path.read_text(encoding="utf-8")
     assert "Missing checksum verification." in generated
+
+
+def test_render_issue_comment_markdown_lists_concerns() -> None:
+    concerns = extract_concerns(
+        "### Concerns\n- Missing checksum verification.",
+        default_reference="https://example.test/output",
+    )
+    comment = render_issue_comment_markdown(
+        pr_number=53,
+        pr_url="https://github.com/stranske/Inv-Man-Intake/pull/53",
+        source_reference_url="https://example.test/output",
+        concerns=concerns,
+    )
+    assert "verify:compare concern review for PR #53" in comment
+    assert "1. Missing checksum verification." in comment
+    assert "Reference: https://example.test/output" in comment
+
+
+def test_main_writes_issue_comment_file(tmp_path: Path, monkeypatch) -> None:
+    input_path = tmp_path / "verify-output.md"
+    output_path = tmp_path / "disposition.md"
+    comment_path = tmp_path / "issue-comment.md"
+    input_path.write_text("### Concerns\n- Missing checksum verification.", encoding="utf-8")
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "verify_compare_disposition.py",
+            "--input",
+            str(input_path),
+            "--output",
+            str(output_path),
+            "--pr-number",
+            "53",
+            "--pr-url",
+            "https://github.com/stranske/Inv-Man-Intake/pull/53",
+            "--source-reference-url",
+            "https://example.test/output",
+            "--issue-comment-output",
+            str(comment_path),
+        ],
+    )
+    assert main() == 0
+    generated_comment = comment_path.read_text(encoding="utf-8")
+    assert "verify:compare concern review for PR #53" in generated_comment
+    assert "Missing checksum verification." in generated_comment
