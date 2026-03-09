@@ -15,6 +15,7 @@ from inv_man_intake.performance.normalize import (
     build_benchmark_alignment,
     canonical_date_string,
     correlation_inputs,
+    detect_missing_months,
     describe_normalization_contract,
     normalize_date_input,
     normalize_payload,
@@ -96,6 +97,18 @@ def test_normalize_series_rejects_duplicate_period_collapses() -> None:
         normalize_series(monthly)
 
     assert str(exc.value) == "monthly[1].as_of normalizes to duplicate period 2025-01-31"
+
+
+def test_detect_missing_months_normalizes_monthly_series_inputs() -> None:
+    monthly = PerformanceSeries(
+        "monthly",
+        (
+            PerformancePoint(as_of=date(2025, 1, 10), value=0.1),
+            PerformancePoint(as_of=date(2025, 3, 4), value=0.2),
+        ),
+    )
+
+    assert detect_missing_months(monthly) == (date(2025, 2, 28),)
 
 
 def test_benchmark_alignment_hook_reports_missing_months_and_correlation_inputs() -> None:
