@@ -170,6 +170,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "json",
             "markdown",
             "scope",
+            "pr-comment-scope",
             "disposition",
             "validate",
             "validate-note",
@@ -221,6 +222,35 @@ def _as_scope(findings: list[VerifyCompareFinding], pr_number: int | None = None
             "- Decide whether the concern requires a bounded fix PR or documentation-only disposition.",
             "- Keep follow-up limited to verify:compare concerns; do not broaden scope.",
             "- Produce a 2+ sentence rationale for the final disposition decision.",
+        ]
+    )
+
+
+def _as_pr_comment_scope(findings: list[VerifyCompareFinding], pr_number: int | None = None) -> str:
+    """Generate scope guidance for posting a PR disposition comment."""
+    if not findings:
+        return (
+            "No PR comment scope can be generated because no non-PASS verify:compare findings were "
+            "located."
+        )
+
+    target = _select_target_finding(findings, pr_number=pr_number)
+    resolved_pr = target.pr_number if target.pr_number is not None else pr_number
+    pr_label = f"PR #{resolved_pr}" if resolved_pr is not None else "the target PR"
+    source_text = target.source_url or "(link not available)"
+
+    return "\n".join(
+        [
+            f"## PR Comment Scope For {pr_label}",
+            "",
+            f"- Add a disposition comment directly on {pr_label}.",
+            f"- Include the specific verify:compare output link as `Evidence link` (current source: {source_text}).",
+            "- Include a clear fixes-needed decision line: either "
+            "`No code fixes are needed; documentation-only follow-up is required.` or "
+            "`A bounded follow-up fix is needed to address the verify:compare concern.`",
+            "- Provide at least two sentences of justification tied to the evidence line.",
+            "- If documentation-only, include a separate rationale link to the disposition source issue/doc.",
+            "- Validate the final comment text with `--format validate-pr-comment` before marking the task complete.",
         ]
     )
 
@@ -432,6 +462,8 @@ def main(argv: list[str] | None = None) -> int:
         print(_as_markdown(findings))
     elif args.format == "scope":
         print(_as_scope(findings, pr_number=args.pr))
+    elif args.format == "pr-comment-scope":
+        print(_as_pr_comment_scope(findings, pr_number=args.pr))
     elif args.format == "disposition":
         print(_as_disposition(findings, pr_number=args.pr))
     elif args.format == "validate-note":

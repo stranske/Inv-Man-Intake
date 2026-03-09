@@ -3,6 +3,7 @@ from pathlib import Path
 from scripts.langchain.verify_compare_locator import (
     _as_disposition,
     _as_note_validation,
+    _as_pr_comment_scope,
     _as_pr_comment_validation,
     _as_scope,
     _as_validation,
@@ -102,6 +103,27 @@ verify:compare reported non-PASS output without a documented disposition.
     assert "https://github.com/stranske/Inv-Man-Intake/issues/89" in scope
     assert "reported non-PASS output without a documented disposition" in scope
     assert "2+ sentence rationale" in scope
+
+
+def test_pr_comment_scope_includes_pr_comment_requirements() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/pull/54#issuecomment-999
+Source PR: #54
+verify:compare reported non-PASS output without a documented disposition.
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue_context.txt", pr_number=54)
+    scope = _as_pr_comment_scope(findings, pr_number=54)
+
+    assert "PR Comment Scope For PR #54" in scope
+    assert "Add a disposition comment directly on PR #54." in scope
+    assert "validate-pr-comment" in scope
+
+
+def test_pr_comment_scope_for_empty_findings() -> None:
+    scope = _as_pr_comment_scope([], pr_number=54)
+
+    assert scope.startswith("No PR comment scope can be generated")
 
 
 def test_disposition_output_marks_documentation_only_gap() -> None:

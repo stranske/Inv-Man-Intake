@@ -33,6 +33,7 @@ Expected extracted row:
 - [x] Define scope for: Write a disposition note explaining why the non-PASS output does or does not require fixes
 - [x] Implement focused slice for: Write a disposition note explaining why the non-PASS output does or does not require fixes
 - [x] Validate focused slice for: Write a disposition note explaining why the non-PASS output does or does not require fixes
+- [x] Define scope for: Add the disposition note to PR #54 with a link to the relevant output
 
 ## Disposition scope definition
 
@@ -48,6 +49,23 @@ Scope statement:
 - Decide whether the concern needs a bounded fix PR or documentation-only disposition.
 - Keep follow-up strictly limited to verify:compare concerns.
 - Provide a disposition rationale of at least two sentences.
+
+## PR comment scope definition
+
+Generated via:
+
+```bash
+python scripts/langchain/verify_compare_locator.py --pr 54 --format pr-comment-scope codex-prompt-95.md
+```
+
+Scope statement:
+
+- Add a disposition comment directly on PR #54.
+- Include a specific verify:compare output link as `Evidence link`.
+- Include a clear fixes-needed decision line.
+- Provide at least two sentences of justification tied to the evidence.
+- Include a rationale link for documentation-only disposition.
+- Validate the final comment text using `--format validate-pr-comment`.
 
 ## Implemented disposition note draft
 
