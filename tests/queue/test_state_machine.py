@@ -48,6 +48,15 @@ def test_assign_new_item_rejects_system_actor() -> None:
         assign_item(item, actor_id="svc-1", actor_role="system", assignee_id="analyst-1")
 
 
+def test_assign_rejects_invalid_actor_role() -> None:
+    item = create_queue_item(item_id="queue-3-invalid-role")
+
+    with pytest.raises(QueuePermissionError, match="invalid actor_role: manager"):
+        assign_item(  # type: ignore[arg-type]
+            item, actor_id="mgr-1", actor_role="manager", assignee_id="analyst-1"
+        )
+
+
 def test_transition_matrix_accepts_valid_paths() -> None:
     item = create_queue_item(item_id="queue-4")
     item = assign_item(item, actor_id="ops-1", actor_role="ops", assignee_id="analyst-1")
@@ -113,6 +122,16 @@ def test_transition_to_assigned_requires_ops_role() -> None:
 
     with pytest.raises(QueuePermissionError, match="only ops can transition item to assigned"):
         transition_item(item, actor_id="analyst-1", actor_role="analyst", to_state="assigned")
+
+
+def test_transition_rejects_invalid_actor_role() -> None:
+    item = create_queue_item(item_id="queue-6-invalid-role")
+    item = assign_item(item, actor_id="ops-1", actor_role="ops", assignee_id="analyst-1")
+
+    with pytest.raises(QueuePermissionError, match="invalid actor_role: manager"):
+        transition_item(  # type: ignore[arg-type]
+            item, actor_id="mgr-1", actor_role="manager", to_state="in_review"
+        )
 
 
 def test_assign_reassignment_requires_ops_for_active_items() -> None:

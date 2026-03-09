@@ -16,6 +16,7 @@ _ALLOWED_TRANSITIONS: dict[QueueState, set[QueueState]] = {
     "blocked": {"assigned", "in_review"},
     "resolved": set(),
 }
+_VALID_ACTOR_ROLES: set[ActorRole] = {"analyst", "ops", "system"}
 
 
 class QueueTransitionError(ValueError):
@@ -63,6 +64,8 @@ def assign_item(
 
     if not actor_id:
         raise QueuePermissionError("actor_id must be non-empty")
+    if actor_role not in _VALID_ACTOR_ROLES:
+        raise QueuePermissionError(f"invalid actor_role: {actor_role}")
     if not assignee_id:
         raise QueuePermissionError("assignee_id must be non-empty")
 
@@ -90,6 +93,8 @@ def transition_item(
 
     if not actor_id:
         raise QueuePermissionError("actor_id must be non-empty")
+    if actor_role not in _VALID_ACTOR_ROLES:
+        raise QueuePermissionError(f"invalid actor_role: {actor_role}")
     if to_state == item.state:
         return item
 
