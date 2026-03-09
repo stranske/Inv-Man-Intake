@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from scripts.thread_reply_builder import (
     ThreadDisposition,
     build_thread_reply,
