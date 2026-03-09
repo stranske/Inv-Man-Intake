@@ -23,6 +23,14 @@ def test_create_queue_item_defaults_to_new_and_unassigned() -> None:
     assert item.created_at == item.updated_at
 
 
+@pytest.mark.parametrize("invalid_item_id", [" queue-1", "queue-1 ", "\tqueue-1\t"])
+def test_create_queue_item_rejects_surrounding_whitespace(invalid_item_id: str) -> None:
+    with pytest.raises(
+        QueueTransitionError, match="item_id must not include surrounding whitespace"
+    ):
+        create_queue_item(item_id=invalid_item_id)
+
+
 @pytest.mark.parametrize(
     ("role", "assignee"),
     [
@@ -65,12 +73,32 @@ def test_assign_rejects_blank_actor_id(blank_actor_id: str) -> None:
         assign_item(item, actor_id=blank_actor_id, actor_role="analyst", assignee_id="analyst-1")
 
 
+@pytest.mark.parametrize("actor_id", [" analyst-1", "analyst-1 "])
+def test_assign_rejects_actor_id_with_surrounding_whitespace(actor_id: str) -> None:
+    item = create_queue_item(item_id="queue-3-whitespace-actor")
+
+    with pytest.raises(
+        QueuePermissionError, match="actor_id must not include surrounding whitespace"
+    ):
+        assign_item(item, actor_id=actor_id, actor_role="analyst", assignee_id="analyst-1")
+
+
 @pytest.mark.parametrize("blank_assignee_id", ["", " ", "   "])
 def test_assign_rejects_blank_assignee_id(blank_assignee_id: str) -> None:
     item = create_queue_item(item_id="queue-3-blank-assignee")
 
     with pytest.raises(QueuePermissionError, match="assignee_id must be non-empty"):
         assign_item(item, actor_id="analyst-1", actor_role="analyst", assignee_id=blank_assignee_id)
+
+
+@pytest.mark.parametrize("assignee_id", [" analyst-1", "analyst-1 "])
+def test_assign_rejects_assignee_id_with_surrounding_whitespace(assignee_id: str) -> None:
+    item = create_queue_item(item_id="queue-3-whitespace-assignee")
+
+    with pytest.raises(
+        QueuePermissionError, match="assignee_id must not include surrounding whitespace"
+    ):
+        assign_item(item, actor_id="ops-1", actor_role="ops", assignee_id=assignee_id)
 
 
 def test_transition_matrix_accepts_valid_paths() -> None:
@@ -157,6 +185,17 @@ def test_transition_rejects_blank_actor_id(blank_actor_id: str) -> None:
 
     with pytest.raises(QueuePermissionError, match="actor_id must be non-empty"):
         transition_item(item, actor_id=blank_actor_id, actor_role="analyst", to_state="in_review")
+
+
+@pytest.mark.parametrize("actor_id", [" analyst-1", "analyst-1 "])
+def test_transition_rejects_actor_id_with_surrounding_whitespace(actor_id: str) -> None:
+    item = create_queue_item(item_id="queue-6-whitespace-transition-actor")
+    item = assign_item(item, actor_id="ops-1", actor_role="ops", assignee_id="analyst-1")
+
+    with pytest.raises(
+        QueuePermissionError, match="actor_id must not include surrounding whitespace"
+    ):
+        transition_item(item, actor_id=actor_id, actor_role="analyst", to_state="in_review")
 
 
 def test_assign_reassignment_requires_ops_for_active_items() -> None:

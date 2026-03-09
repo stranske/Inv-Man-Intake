@@ -41,11 +41,12 @@ class QueueItem:
 def create_queue_item(*, item_id: str) -> QueueItem:
     """Create a queue item in the initial `new` state."""
 
-    if not item_id:
-        raise QueueTransitionError("item_id must be non-empty")
+    normalized_item_id = _require_normalized_identifier(
+        item_id, field_name="item_id", error_cls=QueueTransitionError
+    )
     timestamp = _utc_now()
     return QueueItem(
-        item_id=item_id,
+        item_id=normalized_item_id,
         state="new",
         assignee_id=None,
         created_at=timestamp,
@@ -62,12 +63,10 @@ def assign_item(
 ) -> QueueItem:
     """Assign or reassign ownership and move item into `assigned` state."""
 
-    if not actor_id or not actor_id.strip():
-        raise QueuePermissionError("actor_id must be non-empty")
+    _require_normalized_identifier(actor_id, field_name="actor_id")
     if actor_role not in _VALID_ACTOR_ROLES:
         raise QueuePermissionError(f"invalid actor_role: {actor_role}")
-    if not assignee_id or not assignee_id.strip():
-        raise QueuePermissionError("assignee_id must be non-empty")
+    normalized_assignee_id = _require_normalized_identifier(assignee_id, field_name="assignee_id")
 
     if item.state == "new":
         if actor_role not in {"analyst", "ops"}:
@@ -79,7 +78,7 @@ def assign_item(
         raise QueueTransitionError(f"cannot assign item from terminal state: {item.state}")
 
     timestamp = _utc_now()
-    return replace(item, state="assigned", assignee_id=assignee_id, updated_at=timestamp)
+    return replace(item, state="assigned", assignee_id=normalized_assignee_id, updated_at=timestamp)
 
 
 def transition_item(
@@ -91,8 +90,7 @@ def transition_item(
 ) -> QueueItem:
     """Transition to a new state when matrix and permission rules allow it."""
 
-    if not actor_id or not actor_id.strip():
-        raise QueuePermissionError("actor_id must be non-empty")
+    normalized_actor_id = _require_normalized_identifier(actor_id, field_name="actor_id")
     if actor_role not in _VALID_ACTOR_ROLES:
         raise QueuePermissionError(f"invalid actor_role: {actor_role}")
     if to_state == item.state:
@@ -103,7 +101,7 @@ def transition_item(
         raise QueueTransitionError(f"invalid transition: {item.state} -> {to_state}")
 
     _check_transition_permission(
-        item=item, actor_id=actor_id, actor_role=actor_role, to_state=to_state
+        item=item, actor_id=normalized_actor_id, actor_role=actor_role, to_state=to_state
     )
     timestamp = _utc_now()
     return replace(item, state=to_state, updated_at=timestamp)
@@ -131,3 +129,17 @@ def _check_transition_permission(
 
 def _utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+def _require_normalized_identifier(
+    value: str,
+    *,
+    field_name: str,
+    error_cls: type[ValueError] = QueuePermissionError,
+) -> str:
+    normalized = value.strip()
+    if not normalized:
+        raise error_cls(f"{field_name} must be non-empty")
+    if value != normalized:
+        raise error_cls(f"{field_name} must not include surrounding whitespace")
+    return normalized
