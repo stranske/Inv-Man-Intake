@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Review the verify:compare non-PASS output from PR #85 to understand the
       specific concerns raised'
-    status: doing
+    status: done
     started_at: '2026-03-09T03:44:48Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-09T03:44:59Z'
+    commit: b28514a662b6ca99c8dd3808fc0cf6856cc34d8f
     notes: []
   - id: task-02
     title: Determine whether the verify:compare concerns represent actual issues or
