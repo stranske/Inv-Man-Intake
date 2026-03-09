@@ -167,6 +167,81 @@ def test_fk_violation_rejects_correction_with_unknown_field() -> None:
         )
 
 
+def test_fk_violation_rejects_correction_when_field_was_deleted() -> None:
+    conn = _connection()
+    apply_core_schema(conn)
+    apply_provenance_history_schema(conn)
+
+    conn.execute(
+        "INSERT INTO firms (firm_id, legal_name, aliases_json, created_at) VALUES (?, ?, ?, ?)",
+        ("firm_1", "Alpha Capital", None, "2026-03-01T08:00:00Z"),
+    )
+    conn.execute(
+        (
+            "INSERT INTO funds (fund_id, firm_id, fund_name, strategy, asset_class, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)"
+        ),
+        (
+            "fund_1",
+            "firm_1",
+            "Alpha Long/Short",
+            "long_short_equity",
+            "equity",
+            "2026-03-01T08:30:00Z",
+        ),
+    )
+    conn.execute(
+        (
+            "INSERT INTO documents (document_id, fund_id, file_name, file_hash, received_at, "
+            "version_date, source_channel, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        ),
+        (
+            "doc_1",
+            "fund_1",
+            "alpha_q1.pdf",
+            "hash-alpha-q1",
+            "2026-03-01T09:00:00Z",
+            "2026-03-01",
+            "email",
+            "2026-03-01T09:00:00Z",
+        ),
+    )
+    conn.execute(
+        (
+            "INSERT INTO extracted_fields "
+            "(field_id, document_id, field_key, value, confidence, source_page, source_snippet, extracted_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        ),
+        (
+            "field_1",
+            "doc_1",
+            "terms.management_fee",
+            "2%",
+            0.95,
+            4,
+            "Management fee: 2%",
+            "2026-03-01T09:10:00Z",
+        ),
+    )
+    conn.execute("DELETE FROM extracted_fields WHERE field_id = ?", ("field_1",))
+
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute(
+            (
+                "INSERT INTO field_corrections "
+                "(field_id, corrected_value, reason, corrected_by, corrected_at) "
+                "VALUES (?, ?, ?, ?, ?)"
+            ),
+            (
+                "field_1",
+                "1.75%",
+                "manual fix",
+                "analyst@example.com",
+                "2026-03-01T12:00:00Z",
+            ),
+        )
+
+
 def test_fk_violation_rejects_extracted_field_with_unknown_document() -> None:
     conn = _connection()
     apply_core_schema(conn)
@@ -211,6 +286,16 @@ def test_correction_history_exposes_most_recent_event_for_pointer() -> None:
     assert latest["corrected_at"] == "2026-03-01T11:00:00Z"
 
 
+def test_correction_history_exposes_latest_event_for_each_pointer() -> None:
+    fixture = load_seed_fixture(FIXTURE_PATH)
+
+    alpha_history = correction_history_for_pointer(fixture, "documents.doc_alpha_q1.source_channel")
+    bravo_history = correction_history_for_pointer(fixture, "documents.doc_bravo_q1.file_hash")
+
+    assert alpha_history[-1]["event_id"] == "evt-003"
+    assert bravo_history[-1]["event_id"] == "evt-002"
+
+
 def test_provenance_pointer_validation_accepts_known_document_fields() -> None:
     fixture = load_seed_fixture(FIXTURE_PATH)
 
@@ -227,3 +312,15 @@ def test_provenance_pointer_validation_flags_unknown_targets() -> None:
 
     assert "unknown-document:evt-003" in errors
     assert "unknown-field:evt-001" in errors
+
+
+def test_provenance_pointer_validation_flags_invalid_pointer_formats() -> None:
+    fixture = load_seed_fixture(FIXTURE_PATH)
+    broken = copy.deepcopy(fixture)
+    broken["corrections"][0]["provenance_pointer"] = "funds.fund_alpha_ls.fund_name"
+    broken["corrections"][1]["provenance_pointer"] = "documents.doc_alpha_q1"
+
+    errors = validate_provenance_pointers(broken)
+
+    assert "invalid-pointer-format:evt-003" in errors
+    assert "invalid-pointer-format:evt-001" in errors
