@@ -29,7 +29,10 @@ test('buildCompletionComment appends verify:compare output URL when provided', (
   });
 
   assert.match(body, /## Disposition/);
+  assert.match(body, /### verify:compare Outcome/);
+  assert.match(body, /Disposition note: \[Disposition\]\(#disposition\)/);
   assert.match(body, new RegExp(`- verify:compare output: ${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+  assert.match(body, new RegExp(`- Verification evidence: ${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
 });
 
 test('extractSection reads Disposition block without trailing sections', () => {
@@ -83,4 +86,6 @@ test('postCompletionComment posts comment when only verify_compare_url is presen
   assert.equal(comments.length, 1);
   assert.match(comments[0], /## Disposition/);
   assert.match(comments[0], /verify:compare output: https:\/\/github\.com\/acme\/inv-man\/actions\/runs\/42/);
+  assert.match(comments[0], /### verify:compare Outcome/);
+  assert.match(comments[0], /Disposition note: \[Disposition\]\(#disposition\)/);
 });

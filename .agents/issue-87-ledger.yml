@@ -13,18 +13,18 @@ tasks:
     notes: []
   - id: task-02
     title: 'Create a `## Disposition` section in the PR #57 completion audit record'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-03-08T23:51:20Z'
+    finished_at: '2026-03-08T23:51:20Z'
+    commit: 7591a11405d9361bc801ab67a53c0077556f3a0d
     notes: []
   - id: task-03
     title: Add a link to the relevant verify:compare output or log file in the disposition
       section
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-03-09T00:12:07Z'
+    finished_at: '2026-03-09T00:12:07Z'
+    commit: 103879aeeff821611fb2842ea32f0e4930649250
     notes: []
   - id: task-04
     title: Analyze the verify:compare output to determine if the concerns indicate
@@ -53,9 +53,9 @@ tasks:
   - id: task-07
     title: Update the verify:compare outcome note to link to the final disposition
       and/or the follow-up fix location (PR/commit/issue)
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-09T00:16:20Z'
+    finished_at: '2026-03-09T00:16:20Z'
     commit: ''
     notes: []
   - id: task-08
@@ -85,18 +85,18 @@ tasks:
     notes: []
   - id: task-11
     title: 'The PR #57 completion audit record contains a `## Disposition` section'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-03-08T23:51:20Z'
+    finished_at: '2026-03-08T23:51:20Z'
+    commit: 7591a11405d9361bc801ab67a53c0077556f3a0d
     notes: []
   - id: task-12
     title: The disposition section includes a direct link to the verify:compare output
       file or log entry
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-03-09T00:12:07Z'
+    finished_at: '2026-03-09T00:12:07Z'
+    commit: 103879aeeff821611fb2842ea32f0e4930649250
     notes: []
   - id: task-13
     title: If a fix was implemented, the disposition note links to the merged follow-up
@@ -116,8 +116,8 @@ tasks:
     notes: []
   - id: task-15
     title: The verify:compare outcome note includes a link to the disposition section
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-09T00:16:20Z'
+    finished_at: '2026-03-09T00:16:20Z'
     commit: ''
     notes: []

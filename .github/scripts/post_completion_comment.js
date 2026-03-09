@@ -140,6 +140,14 @@ function buildCompletionComment(tasks, acceptance, metadata = {}) {
       lines.push(`- verify:compare output: ${verifyCompareUrl}`);
     }
     lines.push('');
+
+    lines.push('### verify:compare Outcome');
+    lines.push('');
+    lines.push('- Disposition note: [Disposition](#disposition)');
+    if (verifyCompareUrl) {
+      lines.push(`- Verification evidence: ${verifyCompareUrl}`);
+    }
+    lines.push('');
   }
   
   lines.push('<details>');
