@@ -4,11 +4,15 @@ This guide shows how to identify unresolved inline review threads, including for
 
 ## GitHub UI (Merged or Open PR)
 
-1. Open the repository pull requests page and select the target PR.
-2. Click the **Conversation** tab on the PR.
-3. Scroll through review comments and look for thread status controls (for example, **Resolve conversation** on unresolved threads).
-4. Unresolved threads stay visible as open conversations; resolved threads are collapsed/marked as resolved.
-5. To inspect file context, open the **Files changed** tab and use the comment anchors to jump to the matching inline thread.
+Use these steps when the PR is already merged:
+
+1. Open the repository on GitHub and go to **Pull requests**.
+2. Change the PR filter to **Closed** and open the merged PR you want to audit.
+3. In that PR, open the **Conversation** tab.
+4. Find inline review threads that still show an active **Resolve conversation** button.
+5. Open the kebab menu (`...`) on a comment and use **Copy link** to save each unresolved thread URL for tracking.
+6. Cross-check in **Files changed** to confirm the exact file/line context for each unresolved thread.
+7. If needed, add a follow-up PR link and return to the original thread to mark it resolved after disposition.
 
 Tips:
 - For merged PRs, conversation threads remain available on the PR page.
