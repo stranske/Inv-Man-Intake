@@ -41,9 +41,7 @@ class IngestionService:
         for document_id in document_ids:
             owner = self._document_to_package.get(document_id)
             if owner is not None:
-                raise ValueError(
-                    f"document_id={document_id} already exists on package_id={owner}"
-                )
+                raise ValueError(f"document_id={document_id} already exists on package_id={owner}")
 
         record = IngestRecord(
             package_id=package_id,
