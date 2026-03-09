@@ -165,7 +165,16 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pr", type=int, default=None, help="Limit results to this PR number")
     parser.add_argument(
         "--format",
-        choices=("json", "markdown", "scope", "disposition", "review", "decision", "validate"),
+        choices=(
+            "json",
+            "markdown",
+            "scope",
+            "disposition",
+            "review",
+            "decision",
+            "validate",
+            "pr-note",
+        ),
         default="json",
         help="Output format",
     )
@@ -405,6 +414,48 @@ def _as_validation(findings: list[VerifyCompareFinding], pr_number: int | None =
     return "\n".join(["FAIL: Disposition note is missing required criteria."] + errors)
 
 
+def _as_pr_note(findings: list[VerifyCompareFinding], pr_number: int | None = None) -> str:
+    if not findings:
+        return "No PR disposition note can be generated because no non-PASS findings were located."
+
+    target = _select_target_finding(findings, pr_number=pr_number)
+    resolved_pr = target.pr_number if target.pr_number is not None else pr_number
+    pr_label = f"PR #{resolved_pr}" if resolved_pr is not None else "the target PR"
+    source_text = target.source_url or "(link not available)"
+    concern_warranted = _concern_requires_fix(target)
+
+    if concern_warranted:
+        warranted_text = "Concern warranted: yes (bounded follow-up fix required)."
+        reasoning = (
+            "The non-PASS output is not limited to a missing disposition record, so it may indicate "
+            "an unresolved verification concern. A focused follow-up PR should address only this "
+            "verify:compare signal."
+        )
+        connection = "Connection: Link this note to a bounded follow-up PR that resolves the specific concern."
+    else:
+        warranted_text = "Concern warranted: no (documentation-only outcome is acceptable)."
+        reasoning = (
+            "The non-PASS output explicitly indicates a missing disposition record rather than a "
+            "product or test behavior defect. Documenting the disposition closes the verification "
+            "traceability gap without requiring code changes."
+        )
+        connection = (
+            "Connection: This note itself is the explanation for why no follow-up fix PR is needed."
+        )
+
+    return "\n".join(
+        [
+            f"## verify:compare Disposition For {pr_label}",
+            "",
+            f"- Summary: `{target.evidence_line}`",
+            f"- Evidence link: {source_text}",
+            f"- {warranted_text}",
+            f"- Reasoning: {reasoning}",
+            f"- {connection}",
+        ]
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     findings = scan_files(args.files, pr_number=args.pr)
@@ -421,6 +472,8 @@ def main(argv: list[str] | None = None) -> int:
         print(_as_decision(findings, pr_number=args.pr))
     elif args.format == "validate":
         print(_as_validation(findings, pr_number=args.pr))
+    elif args.format == "pr-note":
+        print(_as_pr_note(findings, pr_number=args.pr))
     else:
         print(json.dumps([asdict(item) for item in findings], indent=2))
     return 0

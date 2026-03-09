@@ -3,6 +3,7 @@ from pathlib import Path
 from scripts.langchain.verify_compare_locator import (
     _as_decision,
     _as_disposition,
+    _as_pr_note,
     _as_review,
     _as_scope,
     _as_validation,
@@ -256,3 +257,39 @@ Source: https://github.com/stranske/Inv-Man-Intake/pull/86#issuecomment-555
 def test_decision_output_handles_empty_findings() -> None:
     decision = _as_decision([], pr_number=86)
     assert decision == "No non-PASS verify:compare findings located for decision."
+
+
+def test_pr_note_output_for_doc_gap_signal() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/issues/112
+Source PR: #86
+verify:compare reported non-PASS output without a documented disposition.
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue-112.txt", pr_number=86)
+    note = _as_pr_note(findings, pr_number=86)
+
+    assert "## verify:compare Disposition For PR #86" in note
+    assert (
+        "Summary: `verify:compare reported non-PASS output without a documented disposition.`"
+        in note
+    )
+    assert "Concern warranted: no (documentation-only outcome is acceptable)." in note
+    assert (
+        "Connection: This note itself is the explanation for why no follow-up fix PR is needed."
+        in note
+    )
+
+
+def test_pr_note_output_for_fix_required_signal() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/pull/86#issuecomment-555
+- Verdict: FAIL
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="verification_data.txt", pr_number=86)
+    note = _as_pr_note(findings, pr_number=86)
+
+    assert "## verify:compare Disposition For PR #86" in note
+    assert "Concern warranted: yes (bounded follow-up fix required)." in note
+    assert "Link this note to a bounded follow-up PR" in note
