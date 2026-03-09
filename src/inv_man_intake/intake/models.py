@@ -15,6 +15,7 @@ class IntakeFile:
     file_name: str
     role: str
     source_ref: str | None = None
+    document_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,7 @@ class IngestRecord:
     fund_id: str
     status: IngestStatus
     file_count: int
+    document_ids: tuple[str, ...]
     created_at: str
     updated_at: str
     note: str | None = None
@@ -54,4 +56,5 @@ class EscalationPayload:
     retry_attempted: bool
     fallback_tool: str | None
     file_count: int
+    document_ids: tuple[str, ...]
     event_at: str
