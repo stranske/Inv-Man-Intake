@@ -74,6 +74,23 @@ verify:compare reported non-PASS output without a documented disposition.
     assert "reported non-PASS output" in finding.evidence_line
 
 
+def test_extract_non_pass_phrase_with_markdown_links_for_pr75() -> None:
+    text = """
+Source: [PR #75](https://github.com/stranske/Inv-Man-Intake/pull/75)
+Source: [Issue #42](https://github.com/stranske/Inv-Man-Intake/issues/42)
+verify:compare reported non-PASS output without a documented disposition for PR #75.
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue_context.txt", pr_number=75)
+
+    assert len(findings) == 1
+    finding = findings[0]
+    assert finding.pr_number == 75
+    assert finding.verdict == "NON_PASS"
+    assert finding.source_url == "https://github.com/stranske/Inv-Man-Intake/issues/42"
+    assert "reported non-PASS output without a documented disposition" in finding.evidence_line
+
+
 def test_extract_ignores_non_verdict_concerns_wording() -> None:
     text = """
 Source: https://github.com/stranske/Inv-Man-Intake/issues/89
