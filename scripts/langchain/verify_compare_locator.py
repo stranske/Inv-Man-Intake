@@ -164,7 +164,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pr", type=int, default=None, help="Limit results to this PR number")
     parser.add_argument(
         "--format",
-        choices=("json", "markdown", "scope"),
+        choices=("json", "markdown", "scope", "disposition"),
         default="json",
         help="Output format",
     )
@@ -215,6 +215,73 @@ def _as_scope(findings: list[VerifyCompareFinding], pr_number: int | None = None
     )
 
 
+def _select_target_finding(
+    findings: list[VerifyCompareFinding], pr_number: int | None = None
+) -> VerifyCompareFinding:
+    candidates = findings
+    if pr_number is not None:
+        pr_matches = [item for item in findings if item.pr_number == pr_number]
+        if pr_matches:
+            candidates = pr_matches
+
+    def _score(item: VerifyCompareFinding) -> tuple[int, int]:
+        lower = item.evidence_line.lower()
+        doc_gap_signal = int(
+            "reported non-pass output" in lower and "without a documented disposition" in lower
+        )
+        has_source = int(item.source_url is not None)
+        return (doc_gap_signal, has_source)
+
+    return max(candidates, key=_score)
+
+
+def _as_disposition(findings: list[VerifyCompareFinding], pr_number: int | None = None) -> str:
+    if not findings:
+        return (
+            "No disposition note can be generated because no non-PASS verify:compare findings were "
+            "located."
+        )
+
+    target = _select_target_finding(findings, pr_number=pr_number)
+
+    resolved_pr = target.pr_number if target.pr_number is not None else pr_number
+    pr_label = f"PR #{resolved_pr}" if resolved_pr is not None else "the target PR"
+    source_text = target.source_url or "(link not available)"
+    evidence = target.evidence_line
+    lower_evidence = evidence.lower()
+
+    doc_gap_only = (
+        target.verdict == "NON_PASS"
+        and "without a documented disposition" in lower_evidence
+        and "reported non-pass output" in lower_evidence
+    )
+
+    if doc_gap_only:
+        decision = "No code fixes are needed; documentation-only follow-up is required."
+        rationale = (
+            "The flagged output identifies a missing disposition record rather than a product or test "
+            "behavior defect. Adding a disposition note to PR #54 closes the verification gap while "
+            "keeping scope bounded to verify:compare documentation requirements."
+        )
+    else:
+        decision = "A bounded follow-up fix is needed to address the verify:compare concern."
+        rationale = (
+            "The non-PASS signal is not limited to a missing disposition record, so the concern may "
+            "reflect an unresolved verification issue. A focused remediation PR should address only the "
+            "specific verify:compare evidence before closure."
+        )
+
+    return "\n".join(
+        [
+            f"Disposition note for {pr_label}:",
+            f"Evidence link: {source_text}",
+            f"Evidence line: `{evidence}`",
+            decision,
+            rationale,
+        ]
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     findings = scan_files(args.files, pr_number=args.pr)
@@ -223,6 +290,8 @@ def main(argv: list[str] | None = None) -> int:
         print(_as_markdown(findings))
     elif args.format == "scope":
         print(_as_scope(findings, pr_number=args.pr))
+    elif args.format == "disposition":
+        print(_as_disposition(findings, pr_number=args.pr))
     else:
         print(json.dumps([asdict(item) for item in findings], indent=2))
     return 0
