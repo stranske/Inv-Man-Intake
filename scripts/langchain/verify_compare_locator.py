@@ -165,7 +165,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pr", type=int, default=None, help="Limit results to this PR number")
     parser.add_argument(
         "--format",
-        choices=("json", "markdown", "scope", "disposition", "validate"),
+        choices=("json", "markdown", "scope", "disposition", "decision", "validate"),
         default="json",
         help="Output format",
     )
@@ -289,6 +289,32 @@ def _as_disposition(findings: list[VerifyCompareFinding], pr_number: int | None 
     )
 
 
+def _as_decision(findings: list[VerifyCompareFinding], pr_number: int | None = None) -> str:
+    """Return an explicit disposition decision line for checklist-style acceptance checks."""
+    if not findings:
+        return (
+            "fix-needed: no non-PASS verify:compare findings were provided; cannot justify a "
+            "not-warranted disposition without evidence."
+        )
+
+    target = _select_target_finding(findings, pr_number=pr_number)
+    lower_evidence = target.evidence_line.lower()
+    doc_gap_only = (
+        target.verdict == "NON_PASS"
+        and "without a documented disposition" in lower_evidence
+        and "reported non-pass output" in lower_evidence
+    )
+    if doc_gap_only:
+        return (
+            "not-warranted: the non-PASS output indicates a missing documented disposition "
+            "record, not a product behavior defect."
+        )
+    return (
+        "fix-needed: the non-PASS output is not limited to missing disposition documentation "
+        "and should be addressed by a bounded code follow-up."
+    )
+
+
 def _count_sentences(text: str) -> int:
     return len(SENTENCE_RE.findall(text))
 
@@ -342,6 +368,8 @@ def main(argv: list[str] | None = None) -> int:
         print(_as_scope(findings, pr_number=args.pr))
     elif args.format == "disposition":
         print(_as_disposition(findings, pr_number=args.pr))
+    elif args.format == "decision":
+        print(_as_decision(findings, pr_number=args.pr))
     elif args.format == "validate":
         print(_as_validation(findings, pr_number=args.pr))
     else:
