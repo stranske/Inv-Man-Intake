@@ -32,4 +32,5 @@ Thread dispositions for previously unresolved review items:
 ## Final Status
 
 - Unresolved thread count at audit time: 5
-- Current state: pending final PR #84 disposition comment link
+- Disposition comment: https://github.com/stranske/Inv-Man-Intake/pull/84#issuecomment-4020895038
+- Current unresolved thread count on PR #84: 0
