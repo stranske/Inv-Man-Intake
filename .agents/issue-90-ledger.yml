@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Review the verify:compare non-PASS output from PR #53 (https://github.com/[org]/[repo]/pull/53)
       to identify specific concerns and list them in a comment on this issue'
-    status: doing
+    status: done
     started_at: '2026-03-09T00:02:33Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-09T00:02:43Z'
+    commit: 431d2f87150b48d5dbb756b027d5c9ada604314d
     notes: []
   - id: task-02
     title: Create a summary document at `docs/dispositions/pr-53-verify-compare.md`
