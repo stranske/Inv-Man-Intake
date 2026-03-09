@@ -155,3 +155,40 @@ def test_compute_metrics_is_reproducible_for_identical_inputs() -> None:
     second = compute_metrics(payload, benchmark_monthly=benchmark)
 
     assert first == second
+
+
+def test_compute_metrics_canonical_schema_includes_all_prioritized_metrics() -> None:
+    payload = PerformancePayload(
+        monthly=PerformanceSeries(
+            "monthly",
+            (
+                PerformancePoint(as_of=date(2025, 1, 31), value=0.01),
+                PerformancePoint(as_of=date(2025, 2, 28), value=-0.02),
+                PerformancePoint(as_of=date(2025, 3, 31), value=0.03),
+            ),
+        )
+    )
+
+    metrics = compute_metrics(payload)
+    schema = metrics.to_canonical_dict()
+
+    assert tuple(schema.keys()) == (
+        "annualized_volatility",
+        "max_drawdown",
+        "sharpe_ratio",
+        "sortino_ratio",
+        "information_ratio",
+        "benchmark_correlation",
+        "observation_count",
+        "benchmark_observation_count",
+        "insufficient_data",
+    )
+    assert schema["annualized_volatility"] == pytest.approx(0.08717797887081347)
+    assert schema["max_drawdown"] == pytest.approx(0.020000000000000018)
+    assert schema["sharpe_ratio"] == pytest.approx(0.9176629354822469)
+    assert schema["sortino_ratio"] == pytest.approx(1.9999999999999993)
+    assert schema["information_ratio"] is None
+    assert schema["benchmark_correlation"] is None
+    assert schema["observation_count"] == 3
+    assert schema["benchmark_observation_count"] == 0
+    assert schema["insufficient_data"] == ("information_ratio", "benchmark_correlation")

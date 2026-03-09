@@ -29,6 +29,21 @@ class PerformanceMetrics:
     benchmark_observation_count: int
     insufficient_data: tuple[str, ...]
 
+    def to_canonical_dict(self) -> dict[str, object]:
+        """Return the canonical, stable key-ordered schema for downstream consumers."""
+
+        return {
+            "annualized_volatility": self.annualized_volatility,
+            "max_drawdown": self.max_drawdown,
+            "sharpe_ratio": self.sharpe_ratio,
+            "sortino_ratio": self.sortino_ratio,
+            "information_ratio": self.information_ratio,
+            "benchmark_correlation": self.benchmark_correlation,
+            "observation_count": self.observation_count,
+            "benchmark_observation_count": self.benchmark_observation_count,
+            "insufficient_data": self.insufficient_data,
+        }
+
 
 def compute_metrics(
     payload: PerformancePayload,
