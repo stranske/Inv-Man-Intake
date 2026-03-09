@@ -123,10 +123,22 @@ function buildCompletionComment(tasks, acceptance, metadata = {}) {
   }
 
   const disposition = String(metadata.disposition || '').trim();
-  if (disposition) {
+  const verifyCompareUrl = String(
+    metadata.verifyCompareUrl ||
+    metadata.verifierRunUrl ||
+    ''
+  ).trim();
+  const hasHttpLink = /https?:\/\/\S+/i.test(disposition);
+  const shouldIncludeDisposition = disposition.length > 0 || verifyCompareUrl.length > 0;
+  if (shouldIncludeDisposition) {
     lines.push('## Disposition');
     lines.push('');
-    lines.push(disposition);
+    if (disposition) {
+      lines.push(disposition);
+    }
+    if (verifyCompareUrl && (!hasHttpLink || !disposition.includes(verifyCompareUrl))) {
+      lines.push(`- verify:compare output: ${verifyCompareUrl}`);
+    }
     lines.push('');
   }
   
@@ -182,6 +194,13 @@ async function postCompletionComment({ github, context, core, inputs }) {
   }
   const commitSha = inputs.commit_sha || inputs.commitSha || '';
   const iteration = inputs.iteration || '';
+  const verifyCompareUrl = String(
+    inputs.verify_compare_url ||
+    inputs.verifyCompareUrl ||
+    inputs.verifier_run_url ||
+    inputs.verifierRunUrl ||
+    ''
+  ).trim();
   
   // Read the prompt file
   let content;
@@ -204,7 +223,7 @@ async function postCompletionComment({ github, context, core, inputs }) {
   
   const completedTasks = extractCheckedItems(tasksSection);
   const completedAcceptance = extractCheckedItems(acceptanceSection);
-  const hasDisposition = String(dispositionSection || '').trim().length > 0;
+  const hasDisposition = String(dispositionSection || '').trim().length > 0 || verifyCompareUrl.length > 0;
   
   core.info(
     `Found ${completedTasks.length} completed task(s), ${completedAcceptance.length} acceptance criteria, disposition: ${hasDisposition ? 'yes' : 'no'}`
@@ -220,6 +239,7 @@ async function postCompletionComment({ github, context, core, inputs }) {
     iteration,
     commitSha,
     disposition: dispositionSection,
+    verifyCompareUrl,
   });
   
   const { owner, repo } = context.repo;
