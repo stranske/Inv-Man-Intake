@@ -7,10 +7,10 @@ tasks:
     title: 'Create a checklist in `.github/PR77-unresolved-threads.md` enumerating
       each unresolved inline review thread on PR #77 (4 at audit time), with links
       and a short summary.'
-    status: doing
+    status: done
     started_at: '2026-03-09T03:46:52Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-09T03:47:06Z'
+    commit: bec4d686a2c691d4da6807bb2fb6482fe8533db1
     notes: []
   - id: task-02
     title: 'Create the file `.github/PR77-unresolved-threads.md` with a header (verify:
