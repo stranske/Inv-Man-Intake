@@ -233,6 +233,20 @@ verify:compare reported non-PASS output without a documented disposition.
     assert "missing documented disposition record" in decision
 
 
+def test_decision_output_marks_not_warranted_for_doc_gap_wording_variant() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/issues/118
+Source PR: #71
+verify:compare reported NON PASS output without documented disposition.
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue_context.txt", pr_number=71)
+    decision = _as_decision(findings, pr_number=71)
+
+    assert decision.startswith("not-warranted:")
+    assert "missing documented disposition record" in decision
+
+
 def test_decision_output_marks_fix_needed_for_fail_verdict() -> None:
     text = """
 Source: https://github.com/stranske/Inv-Man-Intake/pull/71#issuecomment-222
