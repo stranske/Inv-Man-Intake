@@ -226,3 +226,24 @@ def test_build_payload_rejects_non_finite_values() -> None:
                 ),
             )
         )
+
+
+def test_build_payload_normalizes_whitespace_and_rounds_values() -> None:
+    payload = build_explainability_payload(
+        components=(
+            ScoreComponentInput(
+                component=" alpha_quality ",
+                weight=0.333333333,
+                score=0.666666666,
+                rationale=" keeps improving ",
+            ),
+        )
+    )
+
+    component = payload.components[0]
+    assert component.component == "alpha_quality"
+    assert component.rationale == "keeps improving"
+    assert component.weight == pytest.approx(0.333333)
+    assert component.contribution == pytest.approx(0.222222)
+    assert payload.total_contribution == pytest.approx(0.222222)
+    assert payload.overall_score == pytest.approx(0.222222)

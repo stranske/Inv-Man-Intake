@@ -13,26 +13,29 @@ tasks:
     notes: []
   - id: task-02
     title: Create a new branch for the follow-up fixes based on the main branch
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-03-09T03:54:58Z'
+    finished_at: '2026-03-09T03:54:58Z'
+    commit: b9cb893f8b7f6f77dbc4063d8eb07c3e356f9c56
+    notes:
+      - Branch codex/issue-124 created from main for follow-up fixes.
   - id: task-03
     title: Implement code changes for each thread classified as warranted fix
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-03-09T04:17:53Z'
+    finished_at: '2026-03-09T04:17:53Z'
+    commit: df461d68af890d852888cb3f9b144f7077200d61
+    notes:
+      - Hardened explainability input validation for empty and duplicate component identifiers.
   - id: task-04
     title: Write or update tests to cover the implemented fixes
     status: done
     started_at: '2026-03-09T04:29:40Z'
-    finished_at: '2026-03-09T04:29:40Z'
-    commit: ''
+    finished_at: '2026-03-09T04:33:20Z'
+    commit: 64aad990b120f6598544fea73ad17e2c70046bdc
     notes:
       - Added explainability validation tests for empty components, negative weights, and trimmed duplicate IDs.
+      - Verified explainability module coverage and expanded normalization/rounding assertions.
   - id: task-05
     title: 'Create a pull request with title referencing PR #79 and issue #38'
     status: todo
