@@ -101,6 +101,21 @@ def compute_metrics(
     )
 
 
+def compute_metrics_canonical(
+    payload: PerformancePayload,
+    *,
+    benchmark_monthly: PerformanceSeries | None = None,
+    annual_risk_free_rate: float = 0.0,
+) -> dict[str, object]:
+    """Compute metrics and return the canonical schema directly."""
+
+    return compute_metrics(
+        payload,
+        benchmark_monthly=benchmark_monthly,
+        annual_risk_free_rate=annual_risk_free_rate,
+    ).to_canonical_dict()
+
+
 def _align_monthly_series(
     portfolio_monthly: PerformanceSeries, benchmark_monthly: PerformanceSeries
 ) -> tuple[list[float], list[float]]:

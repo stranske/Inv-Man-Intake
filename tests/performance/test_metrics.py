@@ -11,7 +11,7 @@ from inv_man_intake.performance.contracts import (
     PerformancePoint,
     PerformanceSeries,
 )
-from inv_man_intake.performance.metrics import compute_metrics
+from inv_man_intake.performance.metrics import compute_metrics, compute_metrics_canonical
 
 
 def test_compute_metrics_returns_expected_values_for_known_fixture() -> None:
@@ -192,3 +192,40 @@ def test_compute_metrics_canonical_schema_includes_all_prioritized_metrics() -> 
     assert schema["observation_count"] == 3
     assert schema["benchmark_observation_count"] == 0
     assert schema["insufficient_data"] == ("information_ratio", "benchmark_correlation")
+
+
+def test_compute_metrics_canonical_returns_stable_schema_directly() -> None:
+    payload = PerformancePayload(
+        monthly=PerformanceSeries(
+            "monthly",
+            (
+                PerformancePoint(as_of=date(2025, 1, 31), value=0.01),
+                PerformancePoint(as_of=date(2025, 2, 28), value=0.02),
+                PerformancePoint(as_of=date(2025, 3, 31), value=-0.01),
+            ),
+        )
+    )
+    benchmark = PerformanceSeries(
+        "monthly",
+        (
+            PerformancePoint(as_of=date(2025, 1, 31), value=0.00),
+            PerformancePoint(as_of=date(2025, 2, 28), value=0.01),
+            PerformancePoint(as_of=date(2025, 3, 31), value=-0.005),
+        ),
+    )
+
+    first = compute_metrics_canonical(payload, benchmark_monthly=benchmark)
+    second = compute_metrics_canonical(payload, benchmark_monthly=benchmark)
+
+    assert tuple(first.keys()) == (
+        "annualized_volatility",
+        "max_drawdown",
+        "sharpe_ratio",
+        "sortino_ratio",
+        "information_ratio",
+        "benchmark_correlation",
+        "observation_count",
+        "benchmark_observation_count",
+        "insufficient_data",
+    )
+    assert first == second
