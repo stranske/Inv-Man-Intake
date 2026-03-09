@@ -1,0 +1,9 @@
+# v1 extraction threshold policy
+field_auto_accept_min: 0.85
+key_field_confidence_min: 0.75
+document_key_field_coverage_min: 0.80
+mandatory_field_min: 0.60
+mandatory_fields:
+  - terms.management_fee
+  - performance.net_return_1y
+  - operations.aum
