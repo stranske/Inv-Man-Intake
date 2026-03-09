@@ -84,3 +84,22 @@ export LANGSMITH_TRACING_ENABLED="true"
 5. Validate enabled mode by setting:
    - `INV_MAN_TRACING_ENABLED=true`
    - `LANGCHAIN_TRACING_V2=true`
+
+## Missing Traces Troubleshooting
+
+1. Validate shell env before startup:
+   - `env | rg 'LANGSMITH_API_KEY|LANGSMITH_PROJECT|LANGCHAIN_TRACING_V2|INV_MAN_TRACING_ENABLED'`
+2. Re-run setup validation:
+   - `python -m inv_man_intake.observability.setup_validation --require-project`
+3. Confirm toggles resolve as enabled in tests:
+   - `pytest -q tests/observability/test_setup_validation.py tests/observability/test_tracing_toggle.py --no-cov`
+4. Verify application code uses `Tracer.from_env(...)` or `Tracer(enabled=True, ...)` with a sink.
+
+## Missing Metrics Troubleshooting
+
+1. Confirm extraction orchestration emits metrics via `metrics_hook`.
+2. Run fallback/escalation regression coverage:
+   - `pytest -q tests/test_extraction_orchestrator.py --no-cov`
+3. Validate observability smoke target locally:
+   - `pytest -q tests/observability/test_setup_validation.py tests/observability/test_tracing_toggle.py --no-cov`
+4. If CI passes but runtime metrics are absent, verify runtime logging/metrics sink wiring and deployment env toggles.
