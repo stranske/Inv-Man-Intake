@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Update PR #75 by enumerating the 5 unresolved inline review threads and
       capturing their identifiers/links in a comment'
-    status: doing
+    status: done
     started_at: '2026-03-09T03:52:09Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-09T03:52:19Z'
+    commit: ce132750340648b8e125f5b8675603597c5fb871
     notes: []
   - id: task-02
     title: 'Review PR #75 (verify: confirm completion in repo)'
