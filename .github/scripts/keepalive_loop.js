@@ -203,8 +203,12 @@ function normaliseTaskText(value) {
   return String(value ?? '').replace(/\s+/g, ' ').trim();
 }
 
+function stripMarkdownLinks(value) {
+  return String(value ?? '').replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1');
+}
+
 function normaliseTaskKey(value) {
-  return normaliseTaskText(value).toLowerCase();
+  return normaliseTaskText(stripMarkdownLinks(value)).toLowerCase();
 }
 
 function normaliseAttemptedTasks(value) {
@@ -4453,6 +4457,27 @@ async function autoReconcileTasks({ github: rawGithub, context, prNumber, baseSh
   // Update PR body to check off matched tasks
   let updatedBody = pr.body;
   let checkedCount = 0;
+  const checkTaskByNormalisedKey = (body, taskText) => {
+    const targetKey = normaliseTaskKey(taskText);
+    if (!targetKey) {
+      return { body, checked: false };
+    }
+    const lines = String(body || '').split('\n');
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
+      const checkboxMatch = line.match(/^(\s*(?:[-*+]|\d+[.)])\s*)\[\s*\](\s*)(.+)$/);
+      if (!checkboxMatch) {
+        continue;
+      }
+      const candidateText = checkboxMatch[3] || '';
+      if (normaliseTaskKey(candidateText) !== targetKey) {
+        continue;
+      }
+      lines[index] = line.replace(/\[\s*\]/, '[x]');
+      return { body: lines.join('\n'), checked: true };
+    }
+    return { body, checked: false };
+  };
 
   for (const match of highConfidence) {
     // Escape special regex characters in task text
@@ -4463,6 +4488,14 @@ async function autoReconcileTasks({ github: rawGithub, context, prNumber, baseSh
       updatedBody = updatedBody.replace(pattern, '$1$2[x]$3');
       checkedCount++;
       log(`Auto-checked task: ${match.task.slice(0, 50)}... (${match.reason})`);
+      continue;
+    }
+
+    const fallback = checkTaskByNormalisedKey(updatedBody, match.task);
+    if (fallback.checked) {
+      updatedBody = fallback.body;
+      checkedCount++;
+      log(`Auto-checked task (normalised fallback): ${match.task.slice(0, 50)}... (${match.reason})`);
     }
   }
 

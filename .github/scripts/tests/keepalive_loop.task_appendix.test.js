@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { buildTaskAppendix } = require('../keepalive_loop.js');
+const { autoReconcileTasks, buildTaskAppendix } = require('../keepalive_loop.js');
 
 test('suggested next task skips previously attempted task and falls through to acceptance criteria', () => {
   const sections = {
@@ -30,3 +30,47 @@ test('suggested next task skips previously attempted task and falls through to a
   assert.doesNotMatch(appendix, /### Suggested Next Task\n- Re-litigating checklist formatting\./);
 });
 
+test('autoReconcileTasks checks markdown issue-link task when llm emits plain issue ref', async () => {
+  const originalBody = [
+    '## Tasks',
+    '- [ ] [#57](https://github.com/stranske/Inv-Man-Intake/issues/57)',
+  ].join('\n');
+
+  let updatedBody = '';
+  const github = {
+    __testMock: true,
+    rest: {
+      pulls: {
+        get: async () => ({
+          data: {
+            body: originalBody,
+            title: 'Follow-up for #57',
+            head: { ref: 'codex/issue-57' },
+          },
+        }),
+        listFiles: async () => ({ data: [] }),
+        update: async ({ body }) => {
+          updatedBody = body;
+          return { data: {} };
+        },
+      },
+      repos: {
+        compareCommits: async () => ({ data: { commits: [] } }),
+      },
+    },
+  };
+
+  const result = await autoReconcileTasks({
+    github,
+    context: { repo: { owner: 'stranske', repo: 'Inv-Man-Intake' } },
+    prNumber: 57,
+    baseSha: 'abc123',
+    headSha: 'def456',
+    llmCompletedTasks: ['#57'],
+    core: { info() {}, warning() {}, debug() {} },
+  });
+
+  assert.equal(result.updated, true);
+  assert.equal(result.tasksChecked, 1);
+  assert.match(updatedBody, /- \[x\] \[#57\]\(https:\/\/github\.com\/stranske\/Inv-Man-Intake\/issues\/57\)/);
+});
