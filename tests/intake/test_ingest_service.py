@@ -19,7 +19,7 @@ def _files() -> list[IntakeFile]:
 
 def test_happy_path_transitions_received_processing_completed() -> None:
     service = IngestionService()
-    service.receive_package(
+    received = service.receive_package(
         package_id="pkg_1",
         firm_id="firm_1",
         fund_id="fund_1",
@@ -34,6 +34,8 @@ def test_happy_path_transitions_received_processing_completed() -> None:
     )
 
     assert completed.status == "completed"
+    assert received.document_ids == ("pkg_1:doc:0", "pkg_1:doc:1")
+    assert completed.document_ids == ("pkg_1:doc:0", "pkg_1:doc:1")
     events = service.get_events("pkg_1")
     assert [event.to_status for event in events] == ["received", "processing", "completed"]
 
@@ -62,6 +64,7 @@ def test_escalation_payload_contains_expected_context() -> None:
     assert escalation.retry_attempted is True
     assert escalation.fallback_tool == "alternate-parser-v1"
     assert escalation.file_count == 2
+    assert escalation.document_ids == ("pkg_2:doc:0", "pkg_2:doc:1")
 
 
 def test_invalid_transition_raises_error() -> None:
@@ -127,3 +130,98 @@ def test_get_events_unknown_package_raises_key_error() -> None:
     service = IngestionService()
     with pytest.raises(KeyError, match="unknown package_id=missing"):
         service.get_events("missing")
+
+
+def test_document_binding_uses_explicit_document_ids_when_present() -> None:
+    service = IngestionService()
+    files = [
+        IntakeFile(
+            file_name="manager_deck.pdf",
+            role="investment_deck",
+            source_ref="email:msg-1",
+            document_id="doc_001",
+        ),
+        IntakeFile(
+            file_name="returns.xlsx",
+            role="performance_track_record",
+            source_ref="email:msg-1",
+            document_id="doc_002",
+        ),
+    ]
+    record = service.receive_package(
+        package_id="pkg_docs",
+        firm_id="firm_9",
+        fund_id="fund_9",
+        files=files,
+        at="2026-03-01T12:45:00Z",
+    )
+
+    assert record.document_ids == ("doc_001", "doc_002")
+
+
+def test_can_query_record_and_events_by_document_id() -> None:
+    service = IngestionService()
+    files = [
+        IntakeFile(file_name="manager_deck.pdf", role="investment_deck", document_id="doc_A"),
+        IntakeFile(file_name="returns.xlsx", role="performance_track_record", document_id="doc_B"),
+    ]
+    service.receive_package(
+        package_id="pkg_lookup",
+        firm_id="firm_lookup",
+        fund_id="fund_lookup",
+        files=files,
+        at="2026-03-01T13:00:00Z",
+    )
+    service.mark_processing(package_id="pkg_lookup", at="2026-03-01T13:01:00Z")
+
+    by_doc = service.get_record_by_document("doc_A")
+    by_doc_events = service.get_events_by_document("doc_B")
+
+    assert by_doc.package_id == "pkg_lookup"
+    assert [event.to_status for event in by_doc_events] == ["received", "processing"]
+
+
+def test_duplicate_document_id_rejected_within_package() -> None:
+    service = IngestionService()
+    files = [
+        IntakeFile(file_name="a.pdf", role="investment_deck", document_id="dup_doc"),
+        IntakeFile(file_name="b.xlsx", role="performance_track_record", document_id="dup_doc"),
+    ]
+
+    with pytest.raises(ValueError, match="duplicate document_id=dup_doc"):
+        service.receive_package(
+            package_id="pkg_dup_doc",
+            firm_id="firm_x",
+            fund_id="fund_x",
+            files=files,
+            at="2026-03-01T13:30:00Z",
+        )
+
+
+def test_duplicate_document_id_rejected_across_packages() -> None:
+    service = IngestionService()
+    service.receive_package(
+        package_id="pkg_alpha",
+        firm_id="firm_a",
+        fund_id="fund_a",
+        files=[IntakeFile(file_name="a.pdf", role="investment_deck", document_id="shared_doc")],
+        at="2026-03-01T13:40:00Z",
+    )
+
+    with pytest.raises(ValueError, match="document_id=shared_doc already exists"):
+        service.receive_package(
+            package_id="pkg_beta",
+            firm_id="firm_b",
+            fund_id="fund_b",
+            files=[IntakeFile(file_name="b.pdf", role="investment_deck", document_id="shared_doc")],
+            at="2026-03-01T13:41:00Z",
+        )
+
+
+def test_unknown_document_queries_raise_key_error() -> None:
+    service = IngestionService()
+
+    with pytest.raises(KeyError, match="unknown document_id=missing_doc"):
+        service.get_record_by_document("missing_doc")
+    with pytest.raises(KeyError, match="unknown document_id=missing_doc"):
+        service.get_events_by_document("missing_doc")

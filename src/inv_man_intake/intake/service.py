@@ -25,6 +25,7 @@ class IngestionService:
     def __init__(self) -> None:
         self._records: dict[str, IngestRecord] = {}
         self._events: dict[str, list[IngestEvent]] = {}
+        self._document_to_package: dict[str, str] = {}
 
     def receive_package(
         self,
@@ -36,6 +37,13 @@ class IngestionService:
     ) -> IngestRecord:
         if package_id in self._records:
             raise ValueError(f"package_id={package_id} already exists")
+        document_ids = self._resolve_document_ids(package_id=package_id, files=files)
+        for document_id in document_ids:
+            owner = self._document_to_package.get(document_id)
+            if owner is not None:
+                raise ValueError(
+                    f"document_id={document_id} already exists on package_id={owner}"
+                )
 
         record = IngestRecord(
             package_id=package_id,
@@ -43,10 +51,13 @@ class IngestionService:
             fund_id=fund_id,
             status="received",
             file_count=len(files),
+            document_ids=tuple(document_ids),
             created_at=at,
             updated_at=at,
         )
         self._records[package_id] = record
+        for document_id in document_ids:
+            self._document_to_package[document_id] = package_id
         self._events[package_id] = [
             IngestEvent(
                 package_id=package_id,
@@ -87,6 +98,7 @@ class IngestionService:
             retry_attempted=retry_attempted,
             fallback_tool=fallback_tool,
             file_count=transitioned.file_count,
+            document_ids=transitioned.document_ids,
             event_at=at,
         )
 
@@ -101,6 +113,14 @@ class IngestionService:
             return tuple(self._events[package_id])
         except KeyError as exc:
             raise KeyError(f"unknown package_id={package_id}") from exc
+
+    def get_record_by_document(self, document_id: str) -> IngestRecord:
+        package_id = self._package_for_document(document_id)
+        return self.get_record(package_id)
+
+    def get_events_by_document(self, document_id: str) -> tuple[IngestEvent, ...]:
+        package_id = self._package_for_document(document_id)
+        return self.get_events(package_id)
 
     def _transition(
         self,
@@ -120,6 +140,7 @@ class IngestionService:
             fund_id=current.fund_id,
             status=to_status,
             file_count=current.file_count,
+            document_ids=current.document_ids,
             created_at=current.created_at,
             updated_at=at,
             note=note,
@@ -135,3 +156,21 @@ class IngestionService:
             )
         )
         return updated
+
+    def _package_for_document(self, document_id: str) -> str:
+        try:
+            return self._document_to_package[document_id]
+        except KeyError as exc:
+            raise KeyError(f"unknown document_id={document_id}") from exc
+
+    @staticmethod
+    def _resolve_document_ids(*, package_id: str, files: list[IntakeFile]) -> list[str]:
+        seen: set[str] = set()
+        resolved: list[str] = []
+        for index, file_entry in enumerate(files):
+            candidate = file_entry.document_id or f"{package_id}:doc:{index}"
+            if candidate in seen:
+                raise ValueError(f"duplicate document_id={candidate} in package_id={package_id}")
+            seen.add(candidate)
+            resolved.append(candidate)
+        return resolved
