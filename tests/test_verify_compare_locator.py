@@ -1,9 +1,9 @@
 from pathlib import Path
 
 from scripts.langchain.verify_compare_locator import (
-    _as_validation,
     _as_disposition,
     _as_scope,
+    _as_validation,
     extract_non_pass_findings,
     scan_files,
 )
