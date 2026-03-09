@@ -3,6 +3,7 @@
 const { ensureRateLimitWrapped } = require('./github-rate-limited-wrapper.js');
 
 const REVIEW_THREAD_AUDIT_MARKER = '<!-- agent-review-thread-audit -->';
+const REVIEW_THREAD_DISPOSITION_MARKER = '<!-- agent-review-thread-disposition -->';
 
 const REVIEW_THREADS_QUERY = `
 query UnresolvedReviewThreads($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
@@ -18,16 +19,29 @@ query UnresolvedReviewThreads($owner: String!, $repo: String!, $number: Int!, $c
           id
           isResolved
           isOutdated
-          comments(first: 1) {
+          comments(first: 50) {
             nodes {
+              id
               url
               path
               line
               originalLine
+              body
             }
           }
         }
       }
+    }
+  }
+}
+`;
+
+const ADD_REVIEW_THREAD_REPLY_MUTATION = `
+mutation AddReviewThreadReply($threadId: ID!, $body: String!) {
+  addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $threadId, body: $body }) {
+    comment {
+      id
+      url
     }
   }
 }
@@ -59,13 +73,90 @@ function extractUnresolvedReviewThreads(payload) {
     .filter((thread) => thread && thread.isResolved !== true)
     .map((thread) => {
       const comment = thread?.comments?.nodes?.[0] || null;
+      const comments =
+        thread?.comments?.nodes && Array.isArray(thread.comments.nodes) ? thread.comments.nodes : [];
       return {
         id: String(thread.id || ''),
         url: comment?.url || '',
         location: toThreadLocation(comment),
         isOutdated: Boolean(thread.isOutdated),
+        comments: comments.map((item) => ({
+          id: String(item?.id || ''),
+          url: String(item?.url || ''),
+          body: String(item?.body || ''),
+        })),
       };
     });
+}
+
+function parseDispositionRepliesInput(rawInput) {
+  if (!rawInput) {
+    return [];
+  }
+  if (Array.isArray(rawInput)) {
+    return rawInput;
+  }
+  if (typeof rawInput !== 'string') {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(rawInput);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function resolveDispositionEntry(thread, entries) {
+  if (!thread || !Array.isArray(entries) || entries.length === 0) {
+    return null;
+  }
+  return (
+    entries.find((entry) => String(entry?.thread_id || '') === thread.id) ||
+    entries.find((entry) => String(entry?.thread_url || '') === thread.url) ||
+    null
+  );
+}
+
+function buildDispositionReplyBody(entry) {
+  const disposition = String(entry?.disposition || '').trim().toLowerCase();
+  const fixRef = String(entry?.fix_reference || '').trim();
+  const rationale = String(entry?.rationale || '').trim();
+  const note = String(entry?.note || '').trim();
+  const lines = [REVIEW_THREAD_DISPOSITION_MARKER];
+
+  if (disposition === 'fix' || disposition === 'warranted-fix') {
+    if (!fixRef) {
+      return '';
+    }
+    lines.push(`Follow-up fix reference: ${fixRef}.`);
+    if (note) {
+      lines.push(note);
+    }
+    return lines.join('\n');
+  }
+
+  if (disposition === 'not-warranted') {
+    if (!rationale) {
+      return '';
+    }
+    lines.push(`Disposition: not warranted. ${rationale}`);
+    if (note) {
+      lines.push(note);
+    }
+    return lines.join('\n');
+  }
+
+  return '';
+}
+
+function hasDispositionReply(thread) {
+  if (!thread || !Array.isArray(thread.comments)) {
+    return false;
+  }
+  return thread.comments.some((comment) =>
+    String(comment?.body || '').includes(REVIEW_THREAD_DISPOSITION_MARKER),
+  );
 }
 
 function buildReviewThreadChecklistComment({ prNumber, sourceIssueNumber, unresolvedThreads, generatedAt }) {
@@ -196,12 +287,84 @@ async function postReviewThreadChecklistComment({
   };
 }
 
+async function postReviewThreadDispositionReplies({
+  github: rawGithub,
+  context,
+  core,
+  inputs,
+}) {
+  const github = await ensureRateLimitWrapped({ github: rawGithub, core, env: process.env });
+  const prNumber = Number(inputs.pr_number || inputs.prNumber || 0);
+  const replyEntries = parseDispositionRepliesInput(inputs.thread_replies || inputs.threadReplies);
+
+  if (!prNumber || prNumber <= 0) {
+    return { posted: false, reason: 'missing-pr-number' };
+  }
+  if (replyEntries.length === 0) {
+    return { posted: false, reason: 'missing-thread-replies' };
+  }
+
+  const { owner, repo } = context.repo;
+  const unresolvedThreads = await fetchAllUnresolvedReviewThreads({
+    github,
+    owner,
+    repo,
+    prNumber,
+  });
+
+  let postedCount = 0;
+  let skippedMissing = 0;
+  let skippedAlreadyDispositioned = 0;
+
+  for (const thread of unresolvedThreads) {
+    const entry = resolveDispositionEntry(thread, replyEntries);
+    if (!entry) {
+      skippedMissing += 1;
+      continue;
+    }
+    if (hasDispositionReply(thread)) {
+      skippedAlreadyDispositioned += 1;
+      continue;
+    }
+    const body = buildDispositionReplyBody(entry);
+    if (!body) {
+      skippedMissing += 1;
+      continue;
+    }
+
+    await github.graphql(ADD_REVIEW_THREAD_REPLY_MUTATION, {
+      threadId: thread.id,
+      body,
+    });
+    postedCount += 1;
+  }
+
+  core?.info?.(
+    `Posted review-thread dispositions: posted=${postedCount}, missing=${skippedMissing}, already=${skippedAlreadyDispositioned}`,
+  );
+
+  return {
+    posted: postedCount > 0,
+    postedCount,
+    unresolvedCount: unresolvedThreads.length,
+    skippedMissing,
+    skippedAlreadyDispositioned,
+  };
+}
+
 module.exports = {
   REVIEW_THREAD_AUDIT_MARKER,
+  REVIEW_THREAD_DISPOSITION_MARKER,
   REVIEW_THREADS_QUERY,
+  ADD_REVIEW_THREAD_REPLY_MUTATION,
   extractUnresolvedReviewThreads,
   buildReviewThreadChecklistComment,
   findExistingAuditComment,
+  parseDispositionRepliesInput,
+  resolveDispositionEntry,
+  buildDispositionReplyBody,
+  hasDispositionReply,
   fetchAllUnresolvedReviewThreads,
   postReviewThreadChecklistComment,
+  postReviewThreadDispositionReplies,
 };
