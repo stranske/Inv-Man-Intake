@@ -7,9 +7,9 @@ import argparse
 import json
 import re
 import sys
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Iterable
 
 VERDICT_LINE_RE = re.compile(r"\bverdict\b[^a-z0-9]+(pass|concerns|fail)\b", re.IGNORECASE)
 NON_PASS_RE = re.compile(
