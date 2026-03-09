@@ -1168,13 +1168,19 @@ def _append_non_pass_evidence(body: str, non_pass_output: list[str]) -> str:
     return body.rstrip() + "\n" + "\n".join(evidence_lines) + "\n"
 
 
-def _append_non_pass_analysis(body: str, non_pass_findings: list[str]) -> str:
+def _append_non_pass_analysis(
+    body: str,
+    non_pass_findings: list[str],
+    provider_verdicts: dict[str, dict[str, Any]] | None = None,
+) -> str:
     if not non_pass_findings:
         return body
     if "## verify:compare Analysis" in body:
         return body
 
-    analyses = [_analyze_non_pass_finding(finding) for finding in non_pass_findings]
+    analyses = [
+        _analyze_non_pass_finding(finding, provider_verdicts or {}) for finding in non_pass_findings
+    ]
     requires_code_changes = any(item["requires_code_changes"] for item in analyses)
     overall = "yes" if requires_code_changes else "no"
 
@@ -1196,7 +1202,9 @@ def _append_non_pass_analysis(body: str, non_pass_findings: list[str]) -> str:
     return body.rstrip() + "\n" + "\n".join(analysis_lines) + "\n"
 
 
-def _analyze_non_pass_finding(finding: str) -> dict[str, str | bool]:
+def _analyze_non_pass_finding(
+    finding: str, provider_verdicts: dict[str, dict[str, Any]] | None = None
+) -> dict[str, str | bool]:
     """Classify a verify:compare finding as code-change required or advisory."""
 
     finding_text = (finding or "").strip()
@@ -1204,7 +1212,19 @@ def _analyze_non_pass_finding(finding: str) -> dict[str, str | bool]:
     difference = difference_match.group(1).strip() if difference_match else finding_text
     verdict_match = re.search(r"Verdict=([^;]+)", finding_text, re.IGNORECASE)
     verdict = (verdict_match.group(1).strip() if verdict_match else "").lower()
+    provider_match = re.search(r"Provider=([^;]+)", finding_text, re.IGNORECASE)
+    provider = _normalize_provider_key(provider_match.group(1)) if provider_match else ""
     difference_lower = difference.lower()
+    provider_verdicts = provider_verdicts or {}
+    provider_payload = provider_verdicts.get(provider, {})
+    provider_confidence = _parse_confidence_value(str(provider_payload.get("confidence", 0)))
+
+    pass_providers_with_high_confidence: list[tuple[str, int]] = []
+    for name, payload in provider_verdicts.items():
+        payload_verdict = str(payload.get("verdict", "")).strip().lower()
+        payload_conf = _parse_confidence_value(str(payload.get("confidence", 0)))
+        if payload_verdict == "pass" and payload_conf >= 85:
+            pass_providers_with_high_confidence.append((name, payload_conf))
 
     if _is_advisory_concern(difference):
         return {
@@ -1247,6 +1267,23 @@ def _analyze_non_pass_finding(finding: str) -> dict[str, str | bool]:
         }
 
     if verdict == "concerns":
+        if (
+            provider_confidence
+            and provider_confidence < 70
+            and pass_providers_with_high_confidence
+            and not any(re.search(pattern, difference_lower) for pattern in severe_patterns)
+        ):
+            consensus = ", ".join(
+                f"{name} ({conf}%)" for name, conf in pass_providers_with_high_confidence
+            )
+            return {
+                "finding": finding_text,
+                "requires_code_changes": False,
+                "rationale": (
+                    "CONCERNS signal is low-confidence and contradicted by high-confidence PASS "
+                    f"provider(s): {consensus}; treat as disposition-only unless corroborated."
+                ),
+            }
         return {
             "finding": finding_text,
             "requires_code_changes": True,
@@ -1497,7 +1534,11 @@ def _generate_with_llm(
     )
     issue_body = _strip_markdown_fence(issue_body)
     issue_body = _append_advisory_notes(issue_body, advisory_concerns)
-    issue_body = _append_non_pass_analysis(issue_body, verification_data.non_pass_findings)
+    issue_body = _append_non_pass_analysis(
+        issue_body,
+        verification_data.non_pass_findings,
+        verification_data.provider_verdicts,
+    )
     issue_body = _append_non_pass_evidence(issue_body, verification_data.non_pass_output)
 
     # Append LangSmith trace URLs for observability (as HTML comments)
@@ -1678,7 +1719,11 @@ def _generate_without_llm(
     if needs_human:
         labels = ["needs-human"]
 
-    body = _append_non_pass_analysis("\n".join(body_parts), verification_data.non_pass_findings)
+    body = _append_non_pass_analysis(
+        "\n".join(body_parts),
+        verification_data.non_pass_findings,
+        verification_data.provider_verdicts,
+    )
     body = _append_non_pass_evidence(body, verification_data.non_pass_output)
 
     return FollowupIssue(
