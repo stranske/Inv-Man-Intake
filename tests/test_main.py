@@ -2,6 +2,7 @@
 
 import pytest
 
+from my_project import __all__ as public_api
 from my_project import __version__, add, greet
 
 
@@ -9,6 +10,11 @@ def test_version() -> None:
     """Version should be a stable string literal for the package."""
     assert __version__ == "0.1.0"
     assert isinstance(__version__, str)
+
+
+def test_public_api_contract() -> None:
+    """Public API should expose the expected stable symbols."""
+    assert public_api == ["__version__", "add", "greet"]
 
 
 @pytest.mark.parametrize(
