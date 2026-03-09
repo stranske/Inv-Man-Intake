@@ -165,7 +165,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pr", type=int, default=None, help="Limit results to this PR number")
     parser.add_argument(
         "--format",
-        choices=("json", "markdown", "scope", "disposition", "validate"),
+        choices=("json", "markdown", "scope", "disposition", "review", "validate"),
         default="json",
         help="Output format",
     )
@@ -214,6 +214,46 @@ def _as_scope(findings: list[VerifyCompareFinding], pr_number: int | None = None
             "- Produce a 2+ sentence rationale for the final disposition decision.",
         ]
     )
+
+
+def _concern_category(item: VerifyCompareFinding) -> str:
+    lower = item.evidence_line.lower()
+    if (
+        item.verdict == "NON_PASS"
+        and "reported non-pass output" in lower
+        and "without a documented disposition" in lower
+    ):
+        return "documentation gap"
+    return "potential fix required"
+
+
+def _as_review(findings: list[VerifyCompareFinding], pr_number: int | None = None) -> str:
+    if not findings:
+        return "No non-PASS verify:compare findings located for review."
+
+    candidates = findings
+    if pr_number is not None:
+        pr_matches = [item for item in findings if item.pr_number == pr_number]
+        if pr_matches:
+            candidates = pr_matches
+
+    resolved_pr = (
+        pr_number if pr_number is not None else candidates[0].pr_number if candidates else None
+    )
+    pr_label = f"PR #{resolved_pr}" if resolved_pr is not None else "target PR"
+    lines = [f"## verify:compare Concern Review For {pr_label}", ""]
+
+    for idx, item in enumerate(candidates, start=1):
+        source_text = item.source_url or "(link not available)"
+        lines.extend(
+            [
+                f"{idx}. Concern category: { _concern_category(item) }",
+                f"   Verdict: {item.verdict}",
+                f"   Evidence link: {source_text}",
+                f"   Evidence line: `{item.evidence_line}`",
+            ]
+        )
+    return "\n".join(lines)
 
 
 def _select_target_finding(
@@ -342,6 +382,8 @@ def main(argv: list[str] | None = None) -> int:
         print(_as_scope(findings, pr_number=args.pr))
     elif args.format == "disposition":
         print(_as_disposition(findings, pr_number=args.pr))
+    elif args.format == "review":
+        print(_as_review(findings, pr_number=args.pr))
     elif args.format == "validate":
         print(_as_validation(findings, pr_number=args.pr))
     else:

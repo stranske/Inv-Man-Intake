@@ -2,6 +2,7 @@ from pathlib import Path
 
 from scripts.langchain.verify_compare_locator import (
     _as_disposition,
+    _as_review,
     _as_scope,
     _as_validation,
     extract_non_pass_findings,
@@ -199,3 +200,24 @@ def test_validation_output_fails_when_no_findings() -> None:
     assert validation.startswith("FAIL: Disposition note is missing required criteria.")
     assert "Missing required evidence link" in validation
     assert "Missing clear statement on whether fixes are needed." in validation
+
+
+def test_review_output_classifies_documentation_gap_for_pr86_style_signal() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/issues/112
+Source PR: #86
+verify:compare reported non-PASS output without a documented disposition.
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue-112.txt", pr_number=86)
+    review = _as_review(findings, pr_number=86)
+
+    assert "## verify:compare Concern Review For PR #86" in review
+    assert "Concern category: documentation gap" in review
+    assert "Evidence link: https://github.com/stranske/Inv-Man-Intake/issues/112" in review
+    assert "reported non-PASS output without a documented disposition" in review
+
+
+def test_review_output_handles_empty_findings() -> None:
+    review = _as_review([], pr_number=86)
+    assert review == "No non-PASS verify:compare findings located for review."
