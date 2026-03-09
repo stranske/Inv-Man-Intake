@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Create a checklist comment in PR #70 conversation listing each of the
       2 unresolved inline review threads with direct links to each thread.'
-    status: doing
+    status: done
     started_at: '2026-03-09T03:38:47Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-09T03:39:00Z'
+    commit: f7fe860f74dff036878ada1e52f8e9212195194c
     notes: []
   - id: task-02
     title: 'Implement warranted fixes in a follow-up PR (reference PR #70 and issue
