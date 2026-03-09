@@ -1,5 +1,7 @@
 # verify:compare Outcome for PR #75
 
+- Last local update: 2026-03-09T23:08:11Z
+
 ## Reviewed concern
 
 The reviewed non-PASS output is: `verify:compare reported non-PASS output without a documented disposition for PR #75.`
@@ -19,3 +21,7 @@ Those gaps require follow-up implementation rather than a not-warranted dismissa
 ## Follow-up
 
 Follow-up tracking link: [Issue #14](https://github.com/stranske/Inv-Man-Intake/issues/14)
+
+## Next Step
+
+When GitHub API connectivity is restored, post this disposition summary to PR #75 and cross-link it from issue #42.

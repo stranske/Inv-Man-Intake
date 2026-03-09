@@ -1,0 +1,4 @@
+priority	category	item_type	issue	source_pr	status	next_action	local_run_note
+1	C3	issue-only	115	75	advanced	Post outcome note to PR #75 once API is reachable	Offline artifact updated at .outcomes/verify-compare-pr75.md
+1	C3	issue-only	90	53	advanced	Fetch PR #53 check logs and finalize concern-level dispositions	Disposition doc strengthened with explicit online action list
+2	C3	issue-only	89	54	advanced	Apply disposition comment to PR #54 and link from issue #44	Local evidence doc already satisfies locate/analyze/validate tasks
