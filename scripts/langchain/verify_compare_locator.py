@@ -166,7 +166,15 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pr", type=int, default=None, help="Limit results to this PR number")
     parser.add_argument(
         "--format",
-        choices=("json", "markdown", "scope", "disposition", "validate", "validate-note"),
+        choices=(
+            "json",
+            "markdown",
+            "scope",
+            "disposition",
+            "validate",
+            "validate-note",
+            "validate-pr-comment",
+        ),
         default="json",
         help="Output format",
     )
@@ -368,6 +376,54 @@ def _as_note_validation(text: str, pr_number: int | None = None) -> str:
     return "\n".join(["FAIL: Disposition note is missing required criteria."] + errors)
 
 
+def _validate_pr_comment_note(note: str, pr_number: int | None = None) -> tuple[bool, list[str]]:
+    """Validate a PR-ready disposition comment against acceptance requirements."""
+    valid, errors = _validate_disposition_note(note)
+    lines = [line.strip() for line in note.splitlines() if line.strip()]
+    lower_note = note.lower()
+
+    evidence_link = next(
+        (
+            line.split("Evidence link:", 1)[1].strip()
+            for line in lines
+            if line.startswith("Evidence link:")
+        ),
+        "",
+    )
+    if pr_number is not None:
+        issuecomment_pattern = re.compile(rf"/pull/{pr_number}#issuecomment-\d+\b", re.IGNORECASE)
+        if not issuecomment_pattern.search(evidence_link):
+            errors.append(
+                f"Evidence link must point to a specific PR #{pr_number} verify output comment "
+                "(expected #issuecomment URL)."
+            )
+
+    if "no code fixes are needed" in lower_note:
+        urls = re.findall(r"https?://\S+", note)
+        additional_links = [
+            url.rstrip(").,`") for url in urls if url.rstrip(").,`") != evidence_link
+        ]
+        if not additional_links:
+            errors.append("Documentation-only disposition must include a rationale link.")
+
+    return (valid and not errors, errors)
+
+
+def _as_pr_comment_validation(text: str, pr_number: int | None = None) -> str:
+    note = _extract_disposition_note(text, pr_number=pr_number)
+    if note is None:
+        target = f"PR #{pr_number}" if pr_number is not None else "the target PR"
+        return (
+            "FAIL: Disposition note is missing required criteria.\n"
+            f"Missing disposition note block for {target}."
+        )
+
+    valid, errors = _validate_pr_comment_note(note, pr_number=pr_number)
+    if valid:
+        return "PASS: PR disposition comment satisfies acceptance criteria."
+    return "\n".join(["FAIL: PR disposition comment is missing required criteria."] + errors)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     findings = scan_files(args.files, pr_number=args.pr)
@@ -385,6 +441,13 @@ def main(argv: list[str] | None = None) -> int:
             if path.exists() and path.is_file()
         )
         print(_as_note_validation(note_text, pr_number=args.pr))
+    elif args.format == "validate-pr-comment":
+        note_text = "\n".join(
+            path.read_text(encoding="utf-8", errors="replace")
+            for path in args.files
+            if path.exists() and path.is_file()
+        )
+        print(_as_pr_comment_validation(note_text, pr_number=args.pr))
     elif args.format == "validate":
         print(_as_validation(findings, pr_number=args.pr))
     else:

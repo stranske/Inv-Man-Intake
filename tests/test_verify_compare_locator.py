@@ -3,6 +3,7 @@ from pathlib import Path
 from scripts.langchain.verify_compare_locator import (
     _as_disposition,
     _as_note_validation,
+    _as_pr_comment_validation,
     _as_scope,
     _as_validation,
     _extract_disposition_note,
@@ -257,3 +258,58 @@ Adding a disposition note to PR #77 closes the verification gap while keeping sc
 
     assert validation.startswith("FAIL: Disposition note is missing required criteria.")
     assert "Missing disposition note block for PR #54." in validation
+
+
+def test_pr_comment_validation_fails_without_specific_output_link() -> None:
+    text = """
+```text
+Disposition note for PR #54:
+Evidence link: https://github.com/stranske/Inv-Man-Intake/issues/89
+Evidence line: `verify:compare reported non-PASS output without a documented disposition.`
+No code fixes are needed; documentation-only follow-up is required.
+The flagged output identifies a missing disposition record rather than a product or test behavior defect.
+Adding a disposition note to PR #54 closes the verification gap while keeping scope bounded to verify:compare documentation requirements.
+Rationale link: https://github.com/stranske/Inv-Man-Intake/issues/89
+```
+""".strip()
+
+    validation = _as_pr_comment_validation(text, pr_number=54)
+
+    assert validation.startswith("FAIL: PR disposition comment is missing required criteria.")
+    assert "Evidence link must point to a specific PR #54 verify output comment" in validation
+
+
+def test_pr_comment_validation_fails_without_rationale_link_for_doc_only() -> None:
+    text = """
+```text
+Disposition note for PR #54:
+Evidence link: https://github.com/stranske/Inv-Man-Intake/pull/54#issuecomment-1234
+Evidence line: `verify:compare reported non-PASS output without a documented disposition.`
+No code fixes are needed; documentation-only follow-up is required.
+The flagged output identifies a missing disposition record rather than a product or test behavior defect.
+Adding a disposition note to PR #54 closes the verification gap while keeping scope bounded to verify:compare documentation requirements.
+```
+""".strip()
+
+    validation = _as_pr_comment_validation(text, pr_number=54)
+
+    assert validation.startswith("FAIL: PR disposition comment is missing required criteria.")
+    assert "Documentation-only disposition must include a rationale link." in validation
+
+
+def test_pr_comment_validation_passes_with_required_links() -> None:
+    text = """
+```text
+Disposition note for PR #54:
+Evidence link: https://github.com/stranske/Inv-Man-Intake/pull/54#issuecomment-1234
+Evidence line: `verify:compare reported non-PASS output without a documented disposition.`
+No code fixes are needed; documentation-only follow-up is required.
+The flagged output identifies a missing disposition record rather than a product or test behavior defect.
+Adding a disposition note to PR #54 closes the verification gap while keeping scope bounded to verify:compare documentation requirements.
+Rationale link: https://github.com/stranske/Inv-Man-Intake/issues/89
+```
+""".strip()
+
+    validation = _as_pr_comment_validation(text, pr_number=54)
+
+    assert validation == "PASS: PR disposition comment satisfies acceptance criteria."
