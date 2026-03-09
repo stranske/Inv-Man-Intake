@@ -19,6 +19,9 @@ class ReviewThread:
     identifier: str
     url: str
 
+    def as_dict(self) -> dict[str, str]:
+        return {"identifier": self.identifier, "url": self.url}
+
 
 def _review_thread_nodes(payload: dict[str, Any]) -> list[dict[str, Any]]:
     root: Any = payload
@@ -143,6 +146,11 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         type=int,
         help="Optional expected unresolved thread count. Command fails if actual count differs.",
     )
+    parser.add_argument(
+        "--json-output",
+        type=Path,
+        help="Optional output path for unresolved thread inventory JSON.",
+    )
     return parser
 
 
@@ -162,6 +170,15 @@ def main() -> int:
     comment = render_pr_comment(pr_number=args.pr_number, threads=unresolved)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(comment, encoding="utf-8")
+
+    if args.json_output is not None:
+        args.json_output.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "pr_number": args.pr_number,
+            "unresolved_count": len(unresolved),
+            "threads": [thread.as_dict() for thread in unresolved],
+        }
+        args.json_output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return 0
 
 

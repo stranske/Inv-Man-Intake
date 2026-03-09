@@ -115,6 +115,45 @@ def test_main_writes_comment_file_when_count_matches(tmp_path: Path, monkeypatch
     assert "Identified 2 unresolved inline review thread(s):" in content
 
 
+def test_main_writes_optional_json_inventory(tmp_path: Path, monkeypatch) -> None:
+    input_path = tmp_path / "review-threads.json"
+    output_path = tmp_path / "comment.md"
+    json_output_path = tmp_path / "inventory.json"
+    input_path.write_text(json.dumps(_payload()), encoding="utf-8")
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "pr_review_thread_inventory.py",
+            "--input",
+            str(input_path),
+            "--pr-number",
+            "75",
+            "--output",
+            str(output_path),
+            "--json-output",
+            str(json_output_path),
+            "--expected-count",
+            "2",
+        ],
+    )
+
+    assert main() == 0
+    inventory = json.loads(json_output_path.read_text(encoding="utf-8"))
+    assert inventory["pr_number"] == 75
+    assert inventory["unresolved_count"] == 2
+    assert inventory["threads"] == [
+        {
+            "identifier": "discussion_r2901889973",
+            "url": "https://github.com/stranske/Inv-Man-Intake/pull/75#discussion_r2901889973",
+        },
+        {
+            "identifier": "discussion_r2901889997",
+            "url": "https://github.com/stranske/Inv-Man-Intake/pull/75#discussion_r2901889997",
+        },
+    ]
+
+
 def test_main_fails_when_expected_count_mismatch(tmp_path: Path, monkeypatch, capsys) -> None:
     input_path = tmp_path / "review-threads.json"
     output_path = tmp_path / "comment.md"
