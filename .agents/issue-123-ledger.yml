@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: 'Add a comment in PR #81 listing the 3 unresolved inline review threads
       identified at audit time.'
-    status: doing
+    status: done
     started_at: '2026-03-09T04:01:53Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-03-09T04:02:07Z'
+    commit: b2bd5b0aff44dcb030e3a55e559160cdeae8aad3
     notes: []
   - id: task-02
     title: 'Update the PR #81 comment to classify each unresolved thread as either
