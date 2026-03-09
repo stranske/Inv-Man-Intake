@@ -240,6 +240,32 @@ def test_compute_metrics_canonical_returns_stable_schema_directly() -> None:
     assert first == second
 
 
+def test_compute_metrics_canonical_matches_dataclass_canonical_output() -> None:
+    payload = PerformancePayload(
+        monthly=PerformanceSeries(
+            "monthly",
+            (
+                PerformancePoint(as_of=date(2025, 1, 31), value=0.02),
+                PerformancePoint(as_of=date(2025, 2, 28), value=-0.01),
+                PerformancePoint(as_of=date(2025, 3, 31), value=0.01),
+            ),
+        )
+    )
+    benchmark = PerformanceSeries(
+        "monthly",
+        (
+            PerformancePoint(as_of=date(2025, 1, 31), value=0.01),
+            PerformancePoint(as_of=date(2025, 2, 28), value=-0.005),
+            PerformancePoint(as_of=date(2025, 3, 31), value=0.008),
+        ),
+    )
+
+    metrics = compute_metrics(payload, benchmark_monthly=benchmark)
+    canonical_direct = compute_metrics_canonical(payload, benchmark_monthly=benchmark)
+
+    assert canonical_direct == metrics.to_canonical_dict()
+
+
 def test_compute_metrics_canonical_returns_fresh_schema_each_call() -> None:
     payload = PerformancePayload(
         monthly=PerformanceSeries(
