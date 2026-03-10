@@ -1,4 +1,4 @@
 priority	category	issue	pr	state	next_action	notes
-1	C2	146	162	in_progress	merge_pr_then_close_issue	Unresolved-thread follow-up for PR #68; checks green; merge blocked by intermittent api.github.com connectivity.
-1	C2	142	166	in_progress	merge_pr_then_close_issue	Unresolved-thread follow-up for PR #74; checks green.
-2	C3	118	155	in_progress	merge_pr_then_close_issue	verify:compare non-PASS disposition for PR #71; checks green.
+1	C2	146	162	pr_merged	close_issue	PR #162 merged via REST API at 2026-03-10T19:21:52Z; issue close call still blocked by intermittent api.github.com connectivity.
+1	C2	142	166	in_progress	merge_pr_then_close_issue	Unresolved-thread follow-up for PR #74; checks green; merge blocked by intermittent api.github.com connectivity.
+2	C3	118	155	in_progress	merge_pr_then_close_issue	verify:compare non-PASS disposition for PR #71; checks green; merge blocked by intermittent api.github.com connectivity.
