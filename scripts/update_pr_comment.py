@@ -17,6 +17,7 @@ _json_module = json
 try:
     import requests  # type: ignore[import-untyped]
 except ModuleNotFoundError:
+
     class _SimpleResponse:
         def __init__(self, payload: Any, status_code: int) -> None:
             self._payload = payload
