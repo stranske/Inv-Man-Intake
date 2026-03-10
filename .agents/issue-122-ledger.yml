@@ -1,0 +1,172 @@
+version: 1
+issue: 122
+base: main
+branch: codex/issue-122
+tasks:
+  - id: task-01
+    title: 'Identify all 9 unresolved inline review threads on PR #85 by examining
+      the GitHub API or UI'
+    status: done
+    started_at: '2026-03-09T03:53:26Z'
+    finished_at: '2026-03-09T03:53:39Z'
+    commit: 007eeca20203296e2c5f2d9dae1ec4d68abdb08f
+    notes: []
+  - id: task-02
+    title: Create a structured list documenting each thread with its location (file
+      path, line number) and summary of the concern
+    status: done
+    started_at: '2026-03-09T04:12:00Z'
+    finished_at: '2026-03-09T04:19:29Z'
+    commit: ''
+    notes:
+      - Added structured list output mode to scripts/pr_review_thread_inventory.py
+      - Verified with unit tests and CLI sample run
+  - id: task-03
+    title: Generate direct GitHub links to each of the 9 unresolved threads
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Post the complete list with links as a comment on PR #85'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Review each unresolved thread to understand the concern raised by the reviewer
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Create a classification proposal document for each thread containing:
+      (1) thread link, (2) proposed label (warranted-fix or not-warranted), (3) one
+      complete sentence rationale'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Post the classification proposal as a comment on PR #85 for human review'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Wait for human approval of classifications before proceeding to implementation
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Create a detailed implementation plan listing specific code changes for
+      each approved warranted-fix thread
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Implement code changes to address the first approved warranted-fix from
+      the thread list
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Write tests to verify the first fix addresses the review concern adequately
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: 'Create a follow-up PR with the first fix that includes "Fixes #24" and
+      "Addresses review threads from #85" in the PR description'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: 'Post the follow-up PR URL as a comment on PR #85 mapping which thread(s)
+      it addresses'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: Repeat implementation, testing, and PR creation for any remaining approved
+      warranted-fix threads
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: 'Update the PR #85 comment with final approved labels and rationale for
+      each thread'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: 'Post a final comment on PR #85 confirming the unresolved thread count
+      is 0 or that each remaining thread has an explicit not-warranted disposition
+      recorded'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: 'PR #85 has 0 unresolved inline review threads remaining in GitHub, or
+      all remaining threads have explicit not-warranted dispositions'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: 'A comment exists on PR #85 containing a list of all 9 audit-time threads'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: 'Each of the 9 audit-time threads has a comment entry containing: (1) a
+      direct GitHub link to the thread, (2) a classification label (warranted-fix
+      or not-warranted), and (3) at least one complete sentence explaining the decision'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: 'If any fixes were implemented, at least one follow-up PR exists with "Fixes
+      #24" and "Addresses review threads from #85" in the PR description, and the
+      PR URL is posted as a comment on PR #85'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: 'Each follow-up PR (if any) has a comment on PR #85 mapping which specific
+      thread(s) it addresses'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
