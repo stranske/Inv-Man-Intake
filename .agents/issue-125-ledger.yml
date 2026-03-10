@@ -1,0 +1,132 @@
+version: 1
+issue: 125
+base: main
+branch: codex/issue-125
+tasks:
+  - id: task-01
+    title: 'Add a file `docs/pr-80-unresolved-threads.md` enumerating the 4 unresolved
+      inline review threads on PR #80 (include direct links/identifiers for each thread).'
+    status: done
+    started_at: '2026-03-09T04:21:44Z'
+    finished_at: '2026-03-09T04:21:55Z'
+    commit: 889969b9e2a15f32b64c4c980c55dd405175ff34
+    notes: []
+  - id: task-02
+    title: "Update `docs/pr-80-unresolved-threads.md` to classify each thread as either\
+      \ \u201Cwarranted fix\u201D or \u201Cnot-warranted disposition\u201D with a\
+      \ one-sentence rationale."
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: "Implement fixes for any \u201Cwarranted fix\u201D threads in a bounded\
+      \ follow-up PR branch (limit changes to the specific thread concerns)."
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Add a section to `docs/pr-80-unresolved-threads.md` linking to any follow-up
+      fix PR(s) created.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Update `docs/pr-80-unresolved-threads.md` to record the final disposition
+      for every thread (fixed via PR link or disposition rationale).
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: '`docs/pr-80-unresolved-threads.md` exists and lists all 4 unresolved threads
+      from PR #80 with a classification and disposition for each.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: If any fixes were warranted, at least one follow-up PR link is present
+      in `docs/pr-80-unresolved-threads.md`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: "No unresolved inline review threads remain on PR #80, or each remaining\
+      \ thread has an explicit \u201Cnot-warranted disposition\u201D rationale recorded\
+      \ in `docs/pr-80-unresolved-threads.md`."
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'Enumerate unresolved review threads on PR #80'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: 'Classify each thread: warranted fix vs not-warranted disposition'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: If warranted, implement bounded follow-up PR(s)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Post a PR comment documenting disposition for every unresolved thread
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Confirm thread count is reduced to zero (or explicitly dispositioned)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: All unresolved inline comments are addressed or dispositioned with rationale
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: Follow-up fix PR(s), if any, are linked from the source PR
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: 'Update `docs/pr-80-unresolved-threads.md` to classify each thread as either
+      "warranted fix" or "not-warranted disposition" with a one-sentence rationale.
+      (Agent cannot make subjective design decisions about whether review feedback
+      warrants implementation or disposition | Rephrase to: ''Review each thread and
+      propose a classification with rationale for human approval'' or have a human
+      make the warranted/not-warranted determination first)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
