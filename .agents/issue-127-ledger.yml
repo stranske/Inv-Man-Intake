@@ -1,0 +1,75 @@
+version: 1
+issue: 127
+base: main
+branch: codex/issue-127
+tasks:
+  - id: task-01
+    title: 'Create a checklist comment in PR #70 conversation listing each of the
+      2 unresolved inline review threads with direct links to each thread.'
+    status: done
+    started_at: '2026-03-09T03:38:47Z'
+    finished_at: '2026-03-09T03:45:36Z'
+    commit: 67bd3f92fef05985e845eb3dda242970511a9fb4
+    notes: []
+  - id: task-02
+    title: 'Implement warranted fixes in a follow-up PR (reference PR #70 and issue
+      #35 in the PR description).'
+    status: done
+    started_at: '2026-03-09T03:50:00Z'
+    finished_at: '2026-03-09T03:51:34Z'
+    commit: 1d0b759f85dcdbca42b4315a82522239b9be9f0a
+    notes: []
+  - id: task-03
+    title: 'Update PR #70 by replying on each unresolved inline review thread with
+      either the fix reference (commit/PR link) or the not-warranted rationale (minimum
+      one complete sentence).'
+    status: done
+    started_at: '2026-03-09T04:23:11Z'
+    finished_at: '2026-03-09T04:23:11Z'
+    commit: ''
+    notes:
+      - Enforced complete sentence validation for not-warranted rationales.
+      - Enforced GitHub PR/commit link validation for warranted-fix references.
+      - Verified with node test suite for review-thread audit helpers.
+  - id: task-04
+    title: 'Update the audit checklist comment on PR #70 to mark each thread as resolved/dispositioned
+      and confirm unresolved thread count is 0.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Review each unresolved thread and document the disposition (warranted-fix
+      or not-warranted) based on: (1) whether it identifies a functional bug, (2)
+      whether it conflicts with existing tests, or (3) whether it addresses a security
+      concern. Document the specific criterion used for each decision.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'PR #70 shows 0 unresolved inline review threads in the GitHub UI.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Each previously-unresolved thread (2 at audit time) has a reply containing
+      either a linked follow-up fix PR/commit or an explicit not-warranted rationale
+      (minimum one complete sentence explaining why the change is not being made).
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'Any follow-up fix PR(s) reference PR #70 and issue #35 and are linked
+      from a PR #70 comment.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []

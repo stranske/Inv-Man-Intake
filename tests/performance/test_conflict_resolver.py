@@ -146,6 +146,48 @@ def test_resolver_accepts_single_source_inputs() -> None:
     assert other_only.escalate is False
 
 
+@pytest.mark.parametrize("threshold", (-0.01, 100.01))
+def test_resolver_rejects_out_of_range_threshold(threshold: float) -> None:
+    xlsx = PerformanceSeries(
+        "monthly",
+        (PerformancePoint(as_of=date(2025, 1, 31), value=0.1),),
+    )
+    other = PerformanceSeries(
+        "monthly",
+        (PerformancePoint(as_of=date(2025, 1, 31), value=0.2),),
+    )
+
+    with pytest.raises(ValueError) as exc:
+        resolve_source_conflicts(
+            xlsx_series=xlsx,
+            other_series=other,
+            escalation_threshold_percent=threshold,
+        )
+
+    assert str(exc.value) == "escalation_threshold_percent must be between 0 and 100 inclusive"
+
+
+def test_resolver_accepts_custom_threshold_with_no_overlap() -> None:
+    xlsx = PerformanceSeries(
+        "monthly",
+        (PerformancePoint(as_of=date(2025, 1, 31), value=0.1),),
+    )
+    other = PerformanceSeries(
+        "monthly",
+        (PerformancePoint(as_of=date(2025, 2, 28), value=0.2),),
+    )
+
+    result = resolve_source_conflicts(
+        xlsx_series=xlsx,
+        other_series=other,
+        escalation_threshold_percent=0.0,
+    )
+
+    assert result.overlap_count == 0
+    assert result.conflict_percentage == pytest.approx(0.0)
+    assert result.escalate is False
+
+
 def _month_end_from_index(index: int) -> date:
     year = 2025 + ((index) // 12)
     month = (index % 12) + 1

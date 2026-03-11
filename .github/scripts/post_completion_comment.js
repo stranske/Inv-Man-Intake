@@ -121,6 +121,24 @@ function buildCompletionComment(tasks, acceptance, metadata = {}) {
     }
     lines.push('');
   }
+
+  const disposition = String(metadata.disposition || '').trim();
+  const verifyCompareUrl = String(metadata.verifyCompareUrl || '').trim();
+  if (disposition || verifyCompareUrl) {
+    lines.push('## Disposition');
+    lines.push('');
+    if (verifyCompareUrl) {
+      lines.push('### verify:compare Outcome');
+      lines.push(`- verify:compare output: ${verifyCompareUrl}`);
+      lines.push(`- Verification evidence: ${verifyCompareUrl}`);
+      lines.push('Disposition note: [Disposition](#disposition)');
+      lines.push('');
+    }
+    if (disposition) {
+      lines.push(disposition);
+      lines.push('');
+    }
+  }
   
   lines.push('<details>');
   lines.push('<summary>About this comment</summary>');
@@ -174,6 +192,7 @@ async function postCompletionComment({ github, context, core, inputs }) {
   }
   const commitSha = inputs.commit_sha || inputs.commitSha || '';
   const iteration = inputs.iteration || '';
+  const verifyCompareUrl = String(inputs.verify_compare_url || inputs.verifyCompareUrl || '').trim();
   
   // Read the prompt file
   let content;
@@ -192,13 +211,14 @@ async function postCompletionComment({ github, context, core, inputs }) {
   // Extract checked items from Tasks and Acceptance Criteria sections
   const tasksSection = extractSection(content, 'Tasks');
   const acceptanceSection = extractSection(content, 'Acceptance [Cc]riteria');
+  const dispositionSection = extractSection(content, 'Disposition');
   
   const completedTasks = extractCheckedItems(tasksSection);
   const completedAcceptance = extractCheckedItems(acceptanceSection);
   
   core.info(`Found ${completedTasks.length} completed task(s) and ${completedAcceptance.length} acceptance criteria`);
 
-  if (completedTasks.length === 0 && completedAcceptance.length === 0) {
+  if (completedTasks.length === 0 && completedAcceptance.length === 0 && !dispositionSection && !verifyCompareUrl) {
     core.info('No new completions detected, skipping completion comment.');
     return { posted: false, reason: 'no-completions' };
   }
@@ -207,6 +227,8 @@ async function postCompletionComment({ github, context, core, inputs }) {
   const commentBody = buildCompletionComment(completedTasks, completedAcceptance, {
     iteration,
     commitSha,
+    disposition: dispositionSection,
+    verifyCompareUrl,
   });
   
   const { owner, repo } = context.repo;
