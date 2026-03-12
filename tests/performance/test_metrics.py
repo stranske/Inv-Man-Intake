@@ -108,6 +108,30 @@ def test_compute_metrics_requires_monthly_benchmark_frequency() -> None:
     assert str(exc.value) == "benchmark_monthly must use frequency='monthly'"
 
 
+def test_compute_metrics_rejects_duplicate_benchmark_dates() -> None:
+    payload = PerformancePayload(
+        monthly=PerformanceSeries(
+            "monthly",
+            (
+                PerformancePoint(as_of=date(2025, 1, 31), value=0.01),
+                PerformancePoint(as_of=date(2025, 2, 28), value=0.02),
+            ),
+        )
+    )
+    duplicate_benchmark = PerformanceSeries(
+        "monthly",
+        (
+            PerformancePoint(as_of=date(2025, 1, 31), value=0.005),
+            PerformancePoint(as_of=date(2025, 1, 31), value=0.006),
+        ),
+    )
+
+    with pytest.raises(ValueError) as exc:
+        compute_metrics(payload, benchmark_monthly=duplicate_benchmark)
+
+    assert str(exc.value) == "monthly[1].as_of duplicates a previous date"
+
+
 def test_compute_metrics_flags_benchmark_metrics_when_overlap_is_too_small() -> None:
     payload = PerformancePayload(
         monthly=PerformanceSeries(
@@ -195,7 +219,7 @@ def test_compute_metrics_canonical_schema_includes_all_prioritized_metrics() -> 
     assert schema["benchmark_correlation"] is None
     assert schema["observation_count"] == 3
     assert schema["benchmark_observation_count"] == 0
-    assert schema["insufficient_data"] == ("information_ratio", "benchmark_correlation")
+    assert schema["insufficient_data"] == ()
 
 
 def test_compute_metrics_canonical_returns_stable_schema_directly() -> None:
@@ -305,12 +329,7 @@ def test_compute_metrics_handles_zero_excess_volatility_without_exceptions() -> 
     assert metrics.annualized_volatility == pytest.approx(0.0)
     assert metrics.sharpe_ratio is None
     assert metrics.sortino_ratio is None
-    assert metrics.insufficient_data == (
-        "sharpe_ratio",
-        "sortino_ratio",
-        "information_ratio",
-        "benchmark_correlation",
-    )
+    assert metrics.insufficient_data == ("sharpe_ratio", "sortino_ratio")
 
 
 def test_compute_metrics_handles_zero_tracking_error_without_exceptions() -> None:

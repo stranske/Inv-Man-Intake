@@ -11,6 +11,7 @@ from inv_man_intake.performance.contracts import (
     PerformancePayload,
     PerformanceSeries,
     validate_payload,
+    validate_series,
 )
 
 _ANNUALIZATION_FACTOR = 12.0
@@ -100,15 +101,20 @@ def compute_metrics(
 
     aligned_portfolio: list[float] = []
     aligned_benchmark: list[float] = []
-    if benchmark_monthly is not None:
+    has_benchmark = benchmark_monthly is not None
+    if has_benchmark:
+        assert benchmark_monthly is not None
         if benchmark_monthly.frequency != "monthly":
             raise ValueError("benchmark_monthly must use frequency='monthly'")
+        validate_series(benchmark_monthly)
         aligned_portfolio, aligned_benchmark = _align_monthly_series(
             payload.monthly, benchmark_monthly
         )
-
-    information_ratio = _information_ratio(aligned_portfolio, aligned_benchmark)
-    benchmark_correlation = _correlation(aligned_portfolio, aligned_benchmark)
+        information_ratio = _information_ratio(aligned_portfolio, aligned_benchmark)
+        benchmark_correlation = _correlation(aligned_portfolio, aligned_benchmark)
+    else:
+        information_ratio = None
+        benchmark_correlation = None
 
     prioritized_metrics: dict[str, float | None] = {
         "annualized_volatility": annualized_volatility,
@@ -118,8 +124,15 @@ def compute_metrics(
         "information_ratio": information_ratio,
         "benchmark_correlation": benchmark_correlation,
     }
+    insufficient_fields = _PRIORITIZED_METRIC_FIELDS
+    if not has_benchmark:
+        insufficient_fields = tuple(
+            field
+            for field in _PRIORITIZED_METRIC_FIELDS
+            if field not in {"information_ratio", "benchmark_correlation"}
+        )
     insufficient_data = tuple(
-        key for key in _PRIORITIZED_METRIC_FIELDS if prioritized_metrics[key] is None
+        key for key in insufficient_fields if prioritized_metrics[key] is None
     )
 
     return PerformanceMetrics(
