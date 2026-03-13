@@ -102,9 +102,7 @@ def compute_metrics(
 
     aligned_portfolio: list[float] = []
     aligned_benchmark: list[float] = []
-    has_benchmark = False
     if benchmark_monthly is not None:
-        has_benchmark = True
         if benchmark_monthly.frequency != "monthly":
             raise ValueError("benchmark_monthly must use frequency='monthly'")
         validate_series(benchmark_monthly)
@@ -125,13 +123,15 @@ def compute_metrics(
         "information_ratio": information_ratio,
         "benchmark_correlation": benchmark_correlation,
     }
-    insufficient_fields = _PRIORITIZED_METRIC_FIELDS
-    if not has_benchmark:
-        insufficient_fields = tuple(
+    insufficient_fields = (
+        _PRIORITIZED_METRIC_FIELDS
+        if benchmark_monthly is not None
+        else tuple(
             field
             for field in _PRIORITIZED_METRIC_FIELDS
             if field not in _BENCHMARK_ONLY_FIELDS
         )
+    )
     insufficient_data = tuple(
         key for key in insufficient_fields if prioritized_metrics[key] is None
     )
