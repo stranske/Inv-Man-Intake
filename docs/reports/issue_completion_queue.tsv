@@ -1,0 +1,4 @@
+priority	category	issue	source_pr	status	next_action	notes
+1	C2	145	69	attempted_close_blocked	Close issue after confirming PR #69 thread resolution	API blocker: error connecting to api.github.com
+1	C3	117	73	attempted_close_blocked	Close issue after verify disposition confirmation	API blocker: error connecting to api.github.com
+1	C2	136	76	in_progress	Open bounded follow-up to resolve/disposition 7 unresolved threads	PR #76 unresolved review threads remain

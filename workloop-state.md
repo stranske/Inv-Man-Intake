@@ -24,3 +24,35 @@
 - PR #81 remediation: fixed `Python CI / lint-format` by applying `ruff format` to scoring engine.
 - Pre-push sync (git-remote-sync): PASS (`git fetch origin --prune`, `git rebase origin/main`).
 - Prepared push for commit `77aaf93`.
+
+## 2026-03-12 19:35:14 CDT
+- Automation: pd-workloop-resume
+- Skills applied this run: issue-completion-audit, issue-pr-workloop, workflow-steward, git-remote-sync, post-push-review.
+- Required preflight: PASS
+  - `git ls-remote origin` succeeded.
+  - `gh api rate_limit` succeeded.
+- Required initial audit command: FAILED after 3 retry attempts (30s backoff), all at:
+  - `gh issue list --repo stranske/Inv-Man-Intake --state closed --limit 200 --json number,title,url`
+- Queue file status: `docs/reports/issue_completion_queue.tsv` was missing after failed audit; using fallback direct open-PR/issue sweep.
+- Fallback queue items processed (3 total, includes C3):
+  - #145 (C2, assumed priority-1 from carry-forward queue): verified source PR #69 now has all 3 review threads resolved (GraphQL reviewThreads all `isResolved=true`). Attempted to close issue, but blocked by repeated `error connecting to api.github.com`.
+  - #136 (C2, priority-1 carry-forward): verified source PR #76 still has 7 unresolved review threads (GraphQL reviewThreads unresolved). Next action remains follow-up disposition/fix PR + thread resolution.
+  - #117 (C3, assumed priority-1 from carry-forward queue): verified source PR #73 has documented non-PASS disposition and resolved review thread(s). Attempted to close issue, but blocked by repeated `error connecting to api.github.com`.
+- Measurable progress outcome: closure attempts for priority-1 items (#145, #117) were prepared and executed but not completed due API connectivity blocker; no new issue PR opened while priority follow-ups remain.
+- Remote blocker observed during action phase:
+  - `gh issue close 145 --repo stranske/Inv-Man-Intake ...` -> `error connecting to api.github.com`
+  - `gh issue close 117 --repo stranske/Inv-Man-Intake ...` -> `error connecting to api.github.com`
+- Next immediate steps once API connectivity stabilizes:
+  1) close #145 and #117 with prepared completion comments,
+  2) advance #136 by creating bounded follow-up PR to resolve/disposition PR #76 threads,
+  3) rerun audit to regenerate canonical queue TSV.
+
+## 2026-03-12 19:37:17 CDT
+- Required end-of-run audit rerun: FAILED
+  - Command: `python /Users/teacher/.codex/skills/issue-completion-audit/scripts/run_audit_report.py --repo stranske/Inv-Man-Intake --hours 24 --apply-safe --queue-path docs/reports/issue_completion_queue.tsv`
+  - Error: `gh issue list --repo stranske/Inv-Man-Intake --state closed --limit 200 --json number,title,url` returned non-zero exit status 1.
+- Snapshot recording status:
+  - Canonical refreshed queue snapshot could not be generated due repeated GitHub API failure.
+  - Fallback queue snapshot remains at `docs/reports/issue_completion_queue.tsv` with 3 processed carry-forward items.
+- Mirror status:
+  - `.codex/workloop-state.md` mirror update blocked (`Operation not permitted`).
