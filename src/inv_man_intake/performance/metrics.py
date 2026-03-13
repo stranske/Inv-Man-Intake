@@ -127,9 +127,7 @@ def compute_metrics(
         _PRIORITIZED_METRIC_FIELDS
         if benchmark_monthly is not None
         else tuple(
-            field
-            for field in _PRIORITIZED_METRIC_FIELDS
-            if field not in _BENCHMARK_ONLY_FIELDS
+            field for field in _PRIORITIZED_METRIC_FIELDS if field not in _BENCHMARK_ONLY_FIELDS
         )
     )
     insufficient_data = tuple(
@@ -169,7 +167,7 @@ def _canonicalize_schema(schema: CanonicalMetricsSchema) -> CanonicalMetricsSche
     unexpected = tuple(field for field in schema if field not in _CANONICAL_SCHEMA_FIELDS)
     if missing or unexpected:
         raise RuntimeError(
-            "canonical metrics schema mismatch: " f"missing={missing}, unexpected={unexpected}"
+            f"canonical metrics schema mismatch: missing={missing}, unexpected={unexpected}"
         )
 
     _validate_canonical_schema_values(schema)
