@@ -84,3 +84,10 @@
   - `git push --force-with-lease origin codex/workloop-resume-20260312-1934-local`
   - 5 retries all failed with: `Could not resolve host: github.com`
 - Local branch contains latest run-state commit and is ready to push when DNS/API connectivity recovers.
+
+## 2026-03-12 19:43:11 CDT
+- Final retry after successful branch push still could not mutate issues via GH API:
+  - `gh issue close 145 ...` -> `error connecting to api.github.com`
+  - `gh issue close 117 ...` -> `error connecting to api.github.com`
+  - `gh issue comment 136 ...` -> `error connecting to api.github.com`
+- Queue actions remain prepared but unapplied pending API stability.
