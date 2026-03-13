@@ -54,3 +54,7 @@
 - Push update (2026-03-12 19:32:06 CDT): pushed branch codex/issue-136-thread-disposition-local at commit 66aad4d.
 - Post-push PR action: attempted gh pr create (5 retries), all failed with "error connecting to api.github.com".
 - Post-push-review follow-up blocked pending API recovery because no PR number could be created/retrieved.
+- PR creation recovered: opened PR #172 for issue #136 (branch codex/issue-136-thread-disposition-local).
+- CI follow-up: initial lint-ruff failure fixed in commit 6a09b05 and pushed; current checks are pending with no inline review comments yet.
+- Queue mutation blocker (2026-03-12 19:34:40 CDT): repeated issue comment/close attempts for #145, #117, and #136 failed despite retries with "error connecting to api.github.com".
+- Measurable-progress target status: code/PR progress achieved for priority item #136, but issue closure action for priority-1 items remains blocked by API write failures.
