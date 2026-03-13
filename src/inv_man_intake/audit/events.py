@@ -37,10 +37,7 @@ def _normalize_to_utc_timestamp(at: str | None) -> str:
             dt = datetime.fromisoformat(at_str)
         except ValueError as exc:
             raise ValueError("at must be a valid ISO-8601 datetime") from exc
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=UTC)
-        else:
-            dt = dt.astimezone(UTC)
+        dt = dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt.astimezone(UTC)
     return dt.isoformat(timespec="seconds")
 
 
