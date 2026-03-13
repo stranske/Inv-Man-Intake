@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from types import MappingProxyType
 from uuid import uuid4
 
 
@@ -22,7 +23,25 @@ class QueueAuditEvent:
     state_after: str | None = None
     override_reason: str | None = None
     note: str | None = None
-    metadata: dict[str, str] = field(default_factory=dict)
+    metadata: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}))
+
+
+def _normalize_to_utc_timestamp(at: str | None) -> str:
+    if at is None:
+        dt = datetime.now(UTC)
+    else:
+        at_str = at.strip()
+        if at_str.endswith("Z"):
+            at_str = f"{at_str[:-1]}+00:00"
+        try:
+            dt = datetime.fromisoformat(at_str)
+        except ValueError as exc:
+            raise ValueError("at must be a valid ISO-8601 datetime") from exc
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        else:
+            dt = dt.astimezone(UTC)
+    return dt.isoformat(timespec="seconds")
 
 
 def create_queue_audit_event(
@@ -51,8 +70,10 @@ def create_queue_audit_event(
         raise ValueError("actor_role must be non-empty")
 
     resolved_event_id = event_id or f"audit_{uuid4().hex}"
-    resolved_at = at or datetime.now(UTC).isoformat(timespec="seconds")
-    resolved_metadata = {} if metadata is None else {str(k): str(v) for k, v in metadata.items()}
+    resolved_at = _normalize_to_utc_timestamp(at)
+    resolved_metadata = MappingProxyType(
+        {} if metadata is None else {str(k): str(v) for k, v in metadata.items()}
+    )
     return QueueAuditEvent(
         event_id=resolved_event_id,
         item_id=item_id,

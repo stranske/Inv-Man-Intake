@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from datetime import datetime
 
 from .events import QueueAuditEvent, create_queue_audit_event
 
@@ -16,7 +17,9 @@ class QueueAuditRepository:
 
     def append(self, event: QueueAuditEvent) -> QueueAuditRepository:
         """Append one event and return a new repository instance."""
-        if self._events and event.at < self._events[-1].at:
+        if self._events and (
+            datetime.fromisoformat(event.at) < datetime.fromisoformat(self._events[-1].at)
+        ):
             raise ValueError("audit events must be appended in non-decreasing timestamp order")
         return QueueAuditRepository(_events=self._events + (event,))
 
@@ -31,7 +34,7 @@ class QueueAuditRepository:
         state_after: str | None = None,
         override_reason: str | None = None,
         note: str | None = None,
-        metadata: dict[str, str] | None = None,
+        metadata: Mapping[str, str] | None = None,
         event_id: str | None = None,
         at: str | None = None,
     ) -> QueueAuditRepository:

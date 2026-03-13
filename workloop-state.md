@@ -24,3 +24,30 @@
 - PR #81 remediation: fixed `Python CI / lint-format` by applying `ruff format` to scoring engine.
 - Pre-push sync (git-remote-sync): PASS (`git fetch origin --prune`, `git rebase origin/main`).
 - Prepared push for commit `77aaf93`.
+
+## 2026-03-12 19:25:05 CDT - workloop resume run
+- Skills used: issue-completion-audit, issue-pr-workloop, git-remote-sync, workflow-steward, post-push-review.
+- Preflight:
+  - git ls-remote origin: PASS
+  - gh api rate_limit: PASS
+- Required initial audit command:
+  - Ran 3 attempts with 30s backoff.
+  - Failed each attempt at: gh issue list --repo stranske/Inv-Man-Intake --state closed --limit 200 --json number,title,url
+- Queue source:
+  - docs/reports/issue_completion_queue.tsv was not generated (docs/reports missing).
+  - Fallback direct sweep used with priority focus on open audit follow-up issues #145 (C2), #136 (C2), #117 (C3).
+- Remote blocker while executing queue actions:
+  - Repeated error: "error connecting to api.github.com\ncheck your internet connection or https://githubstatus.com"
+  - Attempted per-command retries (5x) for issue mutation commands; still failed.
+- Local-only fallback work completed (issue #136 follow-up scope):
+  - Implemented timestamp normalization/validation and UTC coercion in queue audit events.
+  - Made audit event metadata immutable via MappingProxyType.
+  - Switched repository timestamp ordering checks to datetime-based comparisons.
+  - Broadened append_queue_action metadata typing to Mapping[str, str].
+  - Updated queue audit retention runbook wording to match enforcement behavior.
+  - Added tests for metadata immutability, invalid timestamp rejection, Z/offset normalization, and timezone-ordering determinism.
+  - Validation: pytest -q --no-cov tests/audit/test_queue_audit.py (9 passed).
+- Push/review status:
+  - No push performed due intermittent GitHub API connectivity failures.
+- Final audit rerun (2026-03-12 19:30:52 CDT): FAILED after 3 attempts with 30s backoff on the same closed-issues query command.
+- Refreshed queue snapshot could not be recorded due recurring GitHub CLI/API failure on closed issue enumeration.
