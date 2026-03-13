@@ -56,3 +56,25 @@
   - Fallback queue snapshot remains at `docs/reports/issue_completion_queue.tsv` with 3 processed carry-forward items.
 - Mirror status:
   - `.codex/workloop-state.md` mirror update blocked (`Operation not permitted`).
+
+## 2026-03-12 19:39:48 CDT
+- Git remote sync + push for run log branch: PASS
+  - `git fetch origin --prune`
+  - `git rebase origin/main`
+  - `git push --force-with-lease origin codex/workloop-resume-20260312-1934-local`
+- Post-push queue action retries (5 attempts each) all blocked by GitHub API connectivity:
+  - `gh issue close 145 --repo stranske/Inv-Man-Intake ...` -> failed all 5 attempts (`error connecting to api.github.com`)
+  - `gh issue close 117 --repo stranske/Inv-Man-Intake ...` -> failed all 5 attempts (`error connecting to api.github.com`)
+  - `gh issue comment 136 --repo stranske/Inv-Man-Intake ...` -> failed all 5 attempts (`error connecting to api.github.com`)
+- Queue item disposition remains:
+  - #145: ready-to-close once API stabilizes (source PR #69 threads verified resolved)
+  - #117: ready-to-close once API stabilizes (source PR #73 C3 disposition verified)
+  - #136: remains open/in-progress (7 unresolved threads on PR #76)
+
+## 2026-03-12 19:41:31 CDT
+- Required end-of-run audit rerun (post-action retry wave): FAILED
+  - Command: `python /Users/teacher/.codex/skills/issue-completion-audit/scripts/run_audit_report.py --repo stranske/Inv-Man-Intake --hours 24 --apply-safe --queue-path docs/reports/issue_completion_queue.tsv`
+  - Error persisted: `gh issue list --repo stranske/Inv-Man-Intake --state closed --limit 200 --json number,title,url` returned non-zero exit status 1.
+- End-of-run snapshot status:
+  - Could not record canonical refreshed queue from audit due repeated GitHub API failure path.
+  - `docs/reports/issue_completion_queue.tsv` retained as fallback queue for next run continuation.
