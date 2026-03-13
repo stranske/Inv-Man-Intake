@@ -21,9 +21,7 @@ class QueueAuditRepository:
             event_at = datetime.fromisoformat(event.at)
         except ValueError as exc:
             raise ValueError("event.at must be a valid ISO-8601 datetime") from exc
-        if self._events and (
-            event_at < datetime.fromisoformat(self._events[-1].at)
-        ):
+        if self._events and (event_at < datetime.fromisoformat(self._events[-1].at)):
             raise ValueError("audit events must be appended in non-decreasing timestamp order")
         return QueueAuditRepository(_events=self._events + (event,))
 

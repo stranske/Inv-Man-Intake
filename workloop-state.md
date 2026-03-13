@@ -89,3 +89,9 @@
   - Refreshed `docs/reports/issue_completion_queue.tsv` could not be regenerated in this run due recurring GitHub API connectivity/error condition above.
 - Run disposition:
   - Backlog work advanced on priority item PR #172; remote review-thread/issue mutations remain blocked pending API recovery.
+
+## 2026-03-13 00:09:21 CDT - workloop resume checkpoint
+- Queue fallback (audit command failed 3x at closed issue list); processed items target set: #145 (C2), #136 (C2), #117 (C3).
+- PR #172 branch synced locally (`workloop-172` from `origin/codex/issue-136-thread-disposition-local`).
+- Applied lint-format fix in `src/inv_man_intake/audit/repository.py` to address failing `Python CI / lint-format` signal.
+- Validation on branch: `pytest -q --no-cov tests/audit/test_queue_audit.py` (10 passed), `ruff check` passed.
