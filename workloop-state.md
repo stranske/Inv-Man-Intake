@@ -48,7 +48,7 @@
   - Added tests for metadata immutability, invalid timestamp rejection, Z/offset normalization, and timezone-ordering determinism.
   - Validation: pytest -q --no-cov tests/audit/test_queue_audit.py (9 passed).
 - Push/review status:
-  - No push performed due intermittent GitHub API connectivity failures.
+  - No push performed due to intermittent GitHub API connectivity failures.
 - Final audit rerun (2026-03-12 19:30:52 CDT): FAILED after 3 attempts with 30s backoff on the same closed-issues query command.
 - Refreshed queue snapshot could not be recorded due recurring GitHub CLI/API failure on closed issue enumeration.
 - Push update (2026-03-12 19:32:06 CDT): pushed branch codex/issue-136-thread-disposition-local at commit 66aad4d.

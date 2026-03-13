@@ -25,6 +25,12 @@ class QueueAuditEvent:
     note: str | None = None
     metadata: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}))
 
+    def __post_init__(self) -> None:
+        metadata = self.metadata
+        if not isinstance(metadata, MappingProxyType):
+            metadata = MappingProxyType({str(k): str(v) for k, v in metadata.items()})
+        object.__setattr__(self, "metadata", metadata)
+
 
 def _normalize_to_utc_timestamp(at: str | None) -> str:
     if at is None:

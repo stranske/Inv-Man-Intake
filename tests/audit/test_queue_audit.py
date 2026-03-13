@@ -110,7 +110,7 @@ def test_create_queue_audit_event_metadata_is_immutable() -> None:
         event.metadata["source"] = "manual"  # type: ignore[index]
 
 
-def test_repository_append_rejects_equivalent_offset_that_is_chronologically_earlier() -> None:
+def test_repository_append_rejects_offset_timestamp_that_is_chronologically_earlier() -> None:
     repo = QueueAuditRepository().append_queue_action(
         item_id="queue-7",
         action="claim",
@@ -127,6 +127,20 @@ def test_repository_append_rejects_equivalent_offset_that_is_chronologically_ear
             actor_role="analyst",
             at="2026-03-07T19:29:59-05:00",
         )
+
+
+def test_repository_append_rejects_invalid_first_timestamp() -> None:
+    repo = QueueAuditRepository()
+    event = create_queue_audit_event(
+        item_id="queue-10",
+        action="claim",
+        actor_id="analyst-10",
+        actor_role="analyst",
+    )
+    object.__setattr__(event, "at", "not-a-timestamp")
+
+    with pytest.raises(ValueError, match="valid ISO-8601 datetime"):
+        repo.append(event)
 
 
 def test_create_queue_audit_event_normalizes_z_and_offsets_to_utc() -> None:
