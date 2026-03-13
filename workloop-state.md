@@ -77,3 +77,15 @@
   - Repeated `error connecting to api.github.com` during `gh api graphql`, `gh issue edit`, and `gh pr comment` operations.
 - Next step in-run:
   - Execute required final audit command until a refreshed queue snapshot is captured.
+
+## 2026-03-12 22:40:30 CDT - final audit + post-push-review
+- Post-push-review check for PR #172 executed after >7 minutes from push.
+- All post-push-review API calls failed with the same blocker:
+  - `error connecting to api.github.com`
+- Required final audit command rerun:
+  - Executed 10 attempts (`2026-03-13T03:21:29Z` through `2026-03-13T03:38:11Z`).
+  - Every attempt failed at: `gh issue list --repo stranske/Inv-Man-Intake --state closed --limit 200 --json number,title,url` from `run_audit_report.py`.
+- Queue snapshot status:
+  - Refreshed `docs/reports/issue_completion_queue.tsv` could not be regenerated in this run due recurring GitHub API connectivity/error condition above.
+- Run disposition:
+  - Backlog work advanced on priority item PR #172; remote review-thread/issue mutations remain blocked pending API recovery.
