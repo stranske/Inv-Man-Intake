@@ -148,11 +148,11 @@ A coverage task is NOT complete just because you added tests. It is complete ONL
 ---
 ## PR Tasks and Acceptance Criteria
 
-**Progress:** 28/29 tasks complete, 1 remaining
+**Progress:** 29/29 tasks complete, 0 remaining
 
 ### ⚠️ IMPORTANT: Task Reconciliation Required
 
-The previous iteration changed **6 file(s)** but did not update task checkboxes.
+The previous iteration changed **5 file(s)** but did not update task checkboxes.
 
 **Before continuing, you MUST:**
 1. Review the recent commits to understand what was changed
@@ -208,7 +208,7 @@ The PR is complete when ALL of these are satisfied:
 - [x] `scripts/list_unresolved_pr_threads.sh` exists and, when run, outputs the unresolved thread identifiers/count for PR #76
 - [x] `docs/pr-76-thread-disposition.md` exists and contains entries for all 7 threads noted at audit time
 - [x] For each unresolved thread, either a code change is present (with referenced file paths) or a documented disposition rationale exists in `docs/pr-76-thread-disposition.md`
-- [ ] Any follow-up fix PR(s) are linked from `docs/pr-76-thread-disposition.md` (and referenced from PR #76)
+- [x] Any follow-up fix PR(s) are linked from `docs/pr-76-thread-disposition.md` (and referenced from PR #76)
 
 ### Recently Attempted Tasks
 Avoid repeating these unless a task needs explicit follow-up:

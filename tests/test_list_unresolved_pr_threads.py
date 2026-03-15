@@ -15,7 +15,7 @@ def _write_executable(path: Path, content: str) -> None:
 
 
 def _run_script(
-    *, tmp_path: Path, gh_script: str, disposition_doc: Path
+    *, tmp_path: Path, gh_script: str, disposition_doc: Path | None, pr_number: str = "76"
 ) -> subprocess.CompletedProcess[str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -23,10 +23,13 @@ def _run_script(
 
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}:{env['PATH']}"
-    env["DISPOSITION_DOC"] = str(disposition_doc)
+    if disposition_doc is not None:
+        env["DISPOSITION_DOC"] = str(disposition_doc)
+    else:
+        env.pop("DISPOSITION_DOC", None)
 
     return subprocess.run(
-        [str(SCRIPT_PATH), "76"],
+        [str(SCRIPT_PATH), pr_number],
         cwd=REPO_ROOT,
         env=env,
         text=True,
@@ -96,4 +99,20 @@ def test_script_uses_repo_disposition_doc_to_emit_seven_audit_time_threads(tmp_p
     assert "warning: gh api graphql failed; using fallback data" in result.stderr
     assert "pending-api-recovery-1" in result.stdout
     assert "pending-api-recovery-7" in result.stdout
+    assert "unresolved_threads_count: 7" in result.stdout
+
+
+def test_script_defaults_to_pr_specific_repo_disposition_doc(tmp_path: Path) -> None:
+    result = _run_script(
+        tmp_path=tmp_path,
+        gh_script="#!/usr/bin/env bash\nexit 1\n",
+        disposition_doc=None,
+    )
+
+    assert result.returncode == 0
+    assert (
+        "warning: gh api graphql failed; using fallback data from docs/pr-76-thread-disposition.md"
+        in result.stderr
+    )
+    assert "pending-api-recovery-1" in result.stdout
     assert "unresolved_threads_count: 7" in result.stdout

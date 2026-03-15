@@ -5,7 +5,7 @@ REPO="${REPO:-stranske/Inv-Man-Intake}"
 PR_NUMBER="${1:-76}"
 OWNER="${REPO%/*}"
 NAME="${REPO#*/}"
-DISPOSITION_DOC="${DISPOSITION_DOC:-docs/pr-76-thread-disposition.md}"
+DISPOSITION_DOC="${DISPOSITION_DOC:-docs/pr-${PR_NUMBER}-thread-disposition.md}"
 
 query="$(cat <<'EOF'
 query($owner:String!, $name:String!, $number:Int!){
