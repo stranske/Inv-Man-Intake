@@ -194,6 +194,9 @@ ADVISORY_PATTERNS = [
     r"\bcould\b",
     r"\bwould be nice\b",
     r"\bminor\b",
+    r"\bpreference\b",
+    r"\bwording\b",
+    r"\bambiguous\b",
     r"\bprefer\b",
     r"\bsuggestion\b",
     r"\bclarify\b",
@@ -492,6 +495,8 @@ class VerificationData:
     """Data extracted from verification comments."""
 
     provider_verdicts: dict[str, dict[str, Any]] = field(default_factory=dict)
+    non_pass_output: list[str] = field(default_factory=list)
+    non_pass_findings: list[str] = field(default_factory=list)
     concerns: list[str] = field(default_factory=list)
     low_scores: dict[str, int] = field(default_factory=dict)
     iteration_count: int = 0
@@ -561,6 +566,20 @@ def extract_verification_data(comment_body: str) -> VerificationData:
             "verdict": verdict.strip(),
             "confidence": confidence,
         }
+        if len(cols) >= 5:
+            summary = cols[4].strip()
+            data.provider_verdicts[provider]["summary"] = summary
+        verdict_kind = verdict.strip().lower()
+        if verdict_kind != "pass":
+            data.non_pass_output.append(
+                f"Provider={provider}; Model={model}; Verdict={verdict.strip()}; "
+                f"Confidence={confidence}%"
+            )
+            summary = data.provider_verdicts[provider].get("summary", "")
+            if summary:
+                data.non_pass_findings.append(
+                    f"Provider={provider}; Verdict={verdict.strip()}; Difference={summary}"
+                )
 
     # Extract verdicts from provider detail sections as a fallback.
     current_provider = None
@@ -1122,6 +1141,91 @@ def _append_advisory_notes(body: str, advisory_concerns: list[str]) -> str:
     return body.rstrip() + "\n" + "\n".join(notes_lines) + "\n"
 
 
+def _non_pass_requires_code_changes(verification_data: VerificationData) -> tuple[bool, str]:
+    """Decide whether verify:compare non-PASS output should trigger code changes."""
+    policy_result = _resolve_verdict_policy(verification_data)
+    has_high_confidence_pass = any(
+        (payload.get("verdict", "").strip().lower() == "pass")
+        and int(payload.get("confidence", 0) or 0) >= 90
+        for payload in verification_data.provider_verdicts.values()
+    )
+    if policy_result.verdict_kind == "fail":
+        return (
+            True,
+            "Difference describes a functional defect or regression signal that should be "
+            "resolved in code.",
+        )
+
+    if verification_data.non_pass_findings:
+        blocking, advisory = _split_concerns(
+            [finding.split("Difference=", 1)[1] for finding in verification_data.non_pass_findings]
+        )
+        if advisory and not blocking:
+            if has_high_confidence_pass:
+                return (
+                    False,
+                    "Difference is low-confidence and contradicted by high-confidence PASS "
+                    "provider(s); document disposition unless code evidence emerges.",
+                )
+            return (
+                False,
+                "Difference is advisory-only and does not indicate a correctness or regression gap.",
+            )
+
+    return (
+        True,
+        "Difference identifies an unmet behavior or missing coverage signal that should be "
+        "resolved in code.",
+    )
+
+
+def generate_disposition_comment(
+    verification_data: VerificationData,
+    *,
+    pr_number: int,
+    source_url: str | None = None,
+) -> str:
+    """Render a verify:compare disposition comment from extracted evidence."""
+    requires_code_changes, rationale = _non_pass_requires_code_changes(verification_data)
+    decision = "yes" if requires_code_changes else "no"
+
+    lines = [
+        "## verify:compare Disposition",
+        "",
+        f"Source: verify:compare non-PASS output from PR #{pr_number}",
+    ]
+    if source_url:
+        lines.append(f"Source link: {source_url}")
+
+    if verification_data.non_pass_output:
+        lines.extend(["", "### Evidence", ""])
+        lines.extend(f"- `{item}`" for item in verification_data.non_pass_output)
+
+    if verification_data.non_pass_findings:
+        lines.extend(["", "### Analysis", ""])
+        lines.extend(f"- {item}" for item in verification_data.non_pass_findings)
+
+    lines.extend(
+        [
+            "",
+            f"non-PASS output requires code changes: **{decision}**",
+            f"technical rationale: {rationale}",
+            "",
+        ]
+    )
+    return "\n".join(lines).strip() + "\n"
+
+
+def generate_issue_disposition_link_comment(*, disposition_url: str) -> str:
+    """Render a short issue comment linking the verify:compare disposition note."""
+    if not disposition_url or not disposition_url.strip():
+        raise ValueError("disposition_url is required")
+    return (
+        "Disposition documentation for verify:compare is recorded here: "
+        f"{disposition_url.strip()}\n"
+    )
+
+
 def generate_followup_issue(
     verification_data: VerificationData,
     original_issue: OriginalIssueData,
@@ -1460,6 +1564,29 @@ def _generate_without_llm(
 
     for ac in acceptance_criteria:
         body_parts.append(f"- [ ] {ac}")
+
+    if verification_data.non_pass_findings or verification_data.non_pass_output:
+        requires_code_changes, rationale = _non_pass_requires_code_changes(verification_data)
+        decision = "yes" if requires_code_changes else "no"
+        body_parts.extend(
+            [
+                "",
+                "## verify:compare Analysis",
+                "",
+                f"non-PASS output requires code changes: **{decision}**",
+                f"requires code changes: **{decision}**; technical rationale: {rationale}",
+                "",
+            ]
+        )
+        body_parts.extend(f"- {item}" for item in verification_data.non_pass_findings)
+        body_parts.extend(
+            [
+                "",
+                "## verify:compare Evidence",
+                "",
+            ]
+        )
+        body_parts.extend(f"- `{item}`" for item in verification_data.non_pass_output)
 
     if advisory_concerns:
         body_parts.extend(
