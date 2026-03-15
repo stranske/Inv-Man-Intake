@@ -28,3 +28,10 @@
 - 2026-03-15 10:06:40 CDT: Required audit command failed after 3 attempts at gh issue list closed call; proceeding with direct open-PR sweep fallback.
 - 2026-03-15 10:10:21 CDT: Reconstructed fallback queue at docs/reports/issue_completion_queue.tsv from latest queue artifact (P1: PR #171, PR #172, Issue #117 C3).
 - 2026-03-15 10:10:21 CDT: Added docs/dispositions/issue-117-verify-compare-disposition.md to advance C3 disposition work while API endpoints are unstable.
+- 2026-03-15 10:12:20 CDT: Queue item PR #171 processed: local sync branch rebased on origin/main (already up to date); targeted tests passed (tests/performance/test_metrics.py with --no-cov).
+- 2026-03-15 10:12:20 CDT: Queue item PR #172 processed in fallback mode: targeted tests passed (tests/audit/test_queue_audit.py with --no-cov); branch checkout blocked by protected .codex/workloop-state.md path conflict.
+- 2026-03-15 10:12:20 CDT: Queue item Issue #117 (C3) advanced: added repo-tracked disposition draft at docs/dispositions/issue-117-verify-compare-disposition.md.
+- 2026-03-15 10:12:20 CDT: Remote mutation blocker: gh issue comment/close for #117 failed repeatedly with 'error connecting to api.github.com'.
+- 2026-03-15 10:12:20 CDT: Mirror blocker persists: unable to write .codex/workloop-state.md (Operation not permitted).
+- 2026-03-15 10:18:08 CDT: End-of-run audit rerun failed after 3 attempts at gh issue list closed (same blocker); refreshed canonical queue snapshot could not be fetched from API.
+- 2026-03-15 10:18:08 CDT: Retaining fallback queue snapshot at docs/reports/issue_completion_queue.tsv for continued P1 drain sequencing.
