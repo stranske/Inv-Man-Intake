@@ -1,0 +1,4 @@
+priority	category	kind	target	issue	pr	state	reason	next_action	url	source_issue	source_pr
+1	C2	pr	PR #171	145	171	OPEN	mergeStateStatus=UNSTABLE; review threads resolved (2/2); remote checks intermittently unreachable	Re-run checks sweep when api.github.com is reachable; rebase if behind; push only if code changes needed	https://github.com/stranske/Inv-Man-Intake/pull/171	34	69
+1	C2	pr	PR #172	136	172	OPEN	mergeStateStatus=CLEAN; review threads resolved (5/5); checks green at 2026-03-15T16:03Z	Keep periodic sweep; merge when policy gate allows	https://github.com/stranske/Inv-Man-Intake/pull/172	43	76
+1	C3	issue	Issue #117	117	73	OPEN	Disposition documented locally but issue comment/close blocked by repeated api.github.com connectivity failures	Retry gh issue comment+close once connectivity stabilizes; link disposition file	https://github.com/stranske/Inv-Man-Intake/issues/117	46	73
