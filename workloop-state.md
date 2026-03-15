@@ -24,3 +24,7 @@
 - PR #81 remediation: fixed `Python CI / lint-format` by applying `ruff format` to scoring engine.
 - Pre-push sync (git-remote-sync): PASS (`git fetch origin --prune`, `git rebase origin/main`).
 - Prepared push for commit `77aaf93`.
+- 2026-03-15 10:06:40 CDT: Run started. Preflight remote checks passed (git ls-remote, gh rate_limit).
+- 2026-03-15 10:06:40 CDT: Required audit command failed after 3 attempts at gh issue list closed call; proceeding with direct open-PR sweep fallback.
+- 2026-03-15 10:10:21 CDT: Reconstructed fallback queue at docs/reports/issue_completion_queue.tsv from latest queue artifact (P1: PR #171, PR #172, Issue #117 C3).
+- 2026-03-15 10:10:21 CDT: Added docs/dispositions/issue-117-verify-compare-disposition.md to advance C3 disposition work while API endpoints are unstable.
