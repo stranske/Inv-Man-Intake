@@ -1,0 +1,4 @@
+priority	category	issue	pr	status	next_action	updated_at_utc
+1	C2	145	69	threads_resolved_remote_mutation_blocked	close issue #145 when GitHub write API recovers	2026-03-15T22:26:00Z
+1	C2	136	172	in_progress_threads_resolved	continue PR #172 merge path and verify issue acceptance artifacts	2026-03-15T22:26:00Z
+1	C3	116	74	needs_disposition_comment_remote_mutation_blocked	post explicit verify:compare disposition note and link evidence	2026-03-15T22:26:00Z

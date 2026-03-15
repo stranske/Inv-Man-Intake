@@ -95,3 +95,34 @@
 - PR #172 branch synced locally (`workloop-172` from `origin/codex/issue-136-thread-disposition-local`).
 - Applied lint-format fix in `src/inv_man_intake/audit/repository.py` to address failing `Python CI / lint-format` signal.
 - Validation on branch: `pytest -q --no-cov tests/audit/test_queue_audit.py` (10 passed), `ruff check` passed.
+
+## 2026-03-15 17:19:23 CDT - workloop resume run
+- Skills active this run: issue-completion-audit, issue-pr-workloop, git-remote-sync, workflow-steward, post-push-review.
+- Preflight:
+  - `git ls-remote origin`: PASS
+  - `gh api rate_limit`: PASS (read endpoints)
+- Required startup audit command:
+  - Executed 3 attempts with 30s backoff.
+  - All attempts failed at `gh issue list --repo stranske/Inv-Man-Intake --state closed --limit 200 --json number,title,url` inside `run_audit_report.py`.
+- Queue processing (3 items, priority-1 first, includes C3):
+  - P1/C2 item #145 (PR #69): verified via GraphQL that all tracked review threads are already `isResolved=true`.
+  - P1/C2 item #136 (PR #172): verified all 5 review threads are `isResolved=true`; acceptance artifacts (`scripts/list_unresolved_pr_threads.sh`, `docs/pr-76-thread-disposition.md`) present on branch.
+  - P1/C3 item #116 (verify follow-up for PR #74): reviewed issue context and queued explicit disposition follow-up action.
+- Remote mutation blocker:
+  - Repeated write failures on `gh issue comment`/`gh issue close` with exact error:
+    - `error connecting to api.github.com`
+    - `check your internet connection or https://githubstatus.com`
+  - Retried issue #145 close/comment 10 attempts; all failed.
+- Queue snapshot recorded (fallback):
+  - Wrote `docs/reports/issue_completion_queue.tsv` with current P1/C2/C3 actions and next steps.
+- Measurable-progress target:
+  - Direct close/mutation of priority-1 item blocked by GitHub write API outages in this run.
+  - Verified that one targeted priority-1 unresolved-thread item (#145) is now substantively complete and queued for immediate close once write API recovers.
+
+## 2026-03-15 17:25:31 CDT - final audit rerun result
+- Required end-of-run audit command rerun executed with 3 attempts and 30s backoff.
+- All attempts failed at the same command inside `run_audit_report.py`:
+  - `gh issue list --repo stranske/Inv-Man-Intake --state closed --limit 200 --json number,title,url`
+- Fallback refreshed queue snapshot retained at:
+  - `docs/reports/issue_completion_queue.tsv`
+- Remote write blocker remains active for issue mutation commands during this run.
