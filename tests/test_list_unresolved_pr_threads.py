@@ -83,3 +83,17 @@ JSON
     assert "THREAD_3\ttests/test_a.py\t7\treviewer-c\thttps://example.test/t3" in result.stdout
     assert "THREAD_2" not in result.stdout
     assert "unresolved_threads_count: 2" in result.stdout
+
+
+def test_script_uses_repo_disposition_doc_to_emit_seven_audit_time_threads(tmp_path: Path) -> None:
+    result = _run_script(
+        tmp_path=tmp_path,
+        gh_script="#!/usr/bin/env bash\nexit 1\n",
+        disposition_doc=REPO_ROOT / "docs" / "pr-76-thread-disposition.md",
+    )
+
+    assert result.returncode == 0
+    assert "warning: gh api graphql failed; using fallback data" in result.stderr
+    assert "pending-api-recovery-1" in result.stdout
+    assert "pending-api-recovery-7" in result.stdout
+    assert "unresolved_threads_count: 7" in result.stdout
