@@ -1,0 +1,4 @@
+priority	category	item_type	item_id	source_issue	source_pr	status	next_action	notes	updated_at
+1	C3	ISSUE	117	46	73	CLOSED_LOCAL_PENDING_SYNC	Retry gh issue comment/close when api.github.com write connectivity recovers	Disposition doc recorded at docs/dispositions/issue-117-verify-compare-disposition.md; 12 close attempts failed with host-connect error	2026-03-15T14:10:10Z
+1	C2	PR	171	145	171	OPEN_SWEEPED	Monitor mergeable_state unstable and recheck checks/comments in next sweep	reviewThreads unresolved=0; latest check-runs for head sha show completed success/skipped only	2026-03-15T14:08:30Z
+2	C2	PR	172	136	172	OPEN_SWEEPED	Keep monitoring for new inline review comments	mergeable_state clean; reviewThreads unresolved=0; checks currently passing	2026-03-15T14:08:30Z
