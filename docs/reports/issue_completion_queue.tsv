@@ -1,0 +1,4 @@
+priority	category	item_type	item_id	source_issue	source_pr	status	next_action	updated_at_utc	notes
+1	C2	pr	171	145	171	DONE_SWEEP	Monitor for new comments/check failures	2026-03-15T20:10:00Z	mergeStateStatus=UNSTABLE; unresolved_threads=0; checks observed passing in latest sweep
+1	C2	pr	172	136	172	DONE_SWEEP	Monitor for new comments/check failures	2026-03-15T20:10:00Z	mergeStateStatus=CLEAN; unresolved_threads=0; checks passing in latest sweep
+1	C3	issue	117	117	73	BLOCKED_REMOTE_API	Retry issue close when api.github.com is reachable	2026-03-15T20:14:00Z	disposition file added; PR #73 comment posted; issue comment/close mutations failed (api.github.com connectivity)

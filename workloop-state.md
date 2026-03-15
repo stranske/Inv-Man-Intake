@@ -24,3 +24,29 @@
 - PR #81 remediation: fixed `Python CI / lint-format` by applying `ruff format` to scoring engine.
 - Pre-push sync (git-remote-sync): PASS (`git fetch origin --prune`, `git rebase origin/main`).
 - Prepared push for commit `77aaf93`.
+
+## 2026-03-15 15:10:00 CDT
+- Automation: pd-workloop-resume
+- Run branch: `codex/workloop-resume-20260315-2000-local`
+- Preflight: `git ls-remote origin` PASS, `gh api rate_limit` PASS.
+- Required start audit command: failed 3/3 attempts at `gh issue list --state closed` in `run_audit_report.py`.
+- Queue/workloop actions completed (P1-first, minimum 3 items, includes C3):
+  - P1/C2 PR #171 swept: unresolved review threads = 0, no failing checks detected in latest available run output.
+  - P1/C2 PR #172 swept: unresolved review threads = 0, checks passing.
+  - P1/C3 Issue #117 advanced with disposition doc at `docs/dispositions/issue-117-verify-compare-disposition.md`; pending remote close mutation.
+- Artifacts refreshed in this worktree:
+  - `docs/reports/issue_completion_queue.tsv`
+  - `docs/reports/issue_completion_dashboard.md`
+  - `docs/dispositions/issue-117-verify-compare-disposition.md`
+
+## 2026-03-15 15:14:00 CDT
+- C3 follow-up for Issue #117: disposition published in repo and linked from PR #73 comment.
+- Remote mutation blocker persisted:
+  - `gh issue comment 117` failed across retries with `error connecting to api.github.com`.
+  - `gh issue close 117` failed across retries (13 attempts this run) with `error connecting to api.github.com`.
+- Queue updated to `BLOCKED_REMOTE_API` for Issue #117 close action.
+
+## 2026-03-15 15:18:30 CDT
+- Required end-of-run audit refresh executed with retry/backoff and failed 3/3.
+- Failure point remained: `gh issue list --state closed --json number,title,url` in `run_audit_report.py`.
+- Refreshed local queue/dashboard snapshot retained under `docs/reports/` for handoff.
