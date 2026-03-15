@@ -126,3 +126,11 @@
 - Fallback refreshed queue snapshot retained at:
   - `docs/reports/issue_completion_queue.tsv`
 - Remote write blocker remains active for issue mutation commands during this run.
+
+## 2026-03-15 17:26:37 CDT - push update
+- Local commit created: `a8bca72` (`chore(workloop): record p1 queue sweep and final audit blocker`).
+- Pre-push sync (git-remote-sync subset):
+  - `git fetch origin --prune` PASS
+  - `git rebase origin/main` PASS (already up-to-date)
+- Pushed branch `codex/issue-136-thread-disposition-resume` to origin.
+- Pushed same commit to active PR branch `codex/issue-136-thread-disposition-local` (PR #172 now includes run artifacts).
