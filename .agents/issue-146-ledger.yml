@@ -15,11 +15,12 @@ tasks:
     title: Update `docs/pr-68-unresolved-threads.md` to document for each thread the
       review comment's concern and whether it requires a code change based on objective
       criteria (e.g., correctness bug, test gap, documented requirement)
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-16T06:58:00Z'
+    finished_at: '2026-03-16T06:58:00Z'
     commit: ''
-    notes: []
+    notes:
+      - Documented in docs/pr-68-unresolved-threads.md with objective disposition analysis.
   - id: task-03
     title: 'Fix warranted items from PR #68 by implementing the minimal code change(s)
       and adding/updating the relevant test(s) in the same follow-up PR'
@@ -27,24 +28,27 @@ tasks:
     started_at: null
     finished_at: null
     commit: ''
-    notes: []
+    notes:
+      - Local evidence indicates fix previously landed; remote PR/CI verification blocked by api.github.com connectivity.
   - id: task-04
     title: Add drafted comment text in `docs/pr-68-unresolved-threads.md` documenting
       the final disposition for every unresolved thread (including links to any follow-up
       fix PRs)
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-16T06:58:00Z'
+    finished_at: '2026-03-16T06:58:00Z'
     commit: ''
-    notes: []
+    notes:
+      - Draft PR comment text is present in docs/pr-68-unresolved-threads.md.
   - id: task-05
     title: Update `docs/pr-68-unresolved-threads.md` to record the final unresolved
       thread count as 0 (or that all threads are explicitly dispositioned)
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-16T06:58:00Z'
+    finished_at: '2026-03-16T06:58:00Z'
     commit: ''
-    notes: []
+    notes:
+      - File records disposition-tracked unresolved count as 0.
   - id: task-06
     title: 'Post the drafted comment from `docs/pr-68-unresolved-threads.md` to PR
       #68'
@@ -52,23 +56,26 @@ tasks:
     started_at: null
     finished_at: null
     commit: ''
-    notes: []
+    notes:
+      - Blocked this run: cannot post to PR #68 while api.github.com is unreachable.
   - id: task-07
     title: '`docs/pr-68-unresolved-threads.md` exists and lists exactly 2 unresolved
       threads from PR #68 (the audit-time count)'
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-16T06:58:00Z'
+    finished_at: '2026-03-16T06:58:00Z'
     commit: ''
-    notes: []
+    notes:
+      - Document exists and inventories two audit-time unresolved threads.
   - id: task-08
     title: Each listed thread includes an analysis of whether it identifies a correctness
       issue, test gap, or documented requirement violation, with supporting evidence
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-16T06:58:00Z'
+    finished_at: '2026-03-16T06:58:00Z'
     commit: ''
-    notes: []
+    notes:
+      - Per-thread concern type and objective evidence are documented.
   - id: task-09
     title: For each code change addressing a thread, the follow-up PR includes corresponding
       test coverage demonstrating the fix, and all CI checks pass
@@ -76,7 +83,8 @@ tasks:
     started_at: null
     finished_at: null
     commit: ''
-    notes: []
+    notes:
+      - Blocked this run: cannot validate remote CI status for the follow-up PR.
   - id: task-10
     title: '`docs/pr-68-unresolved-threads.md` includes links to any follow-up fix
       PR(s) created to address warranted items'
@@ -84,12 +92,14 @@ tasks:
     started_at: null
     finished_at: null
     commit: ''
-    notes: []
+    notes:
+      - Follow-up PR link insertion blocked until remote connectivity recovers.
   - id: task-11
     title: '`docs/pr-68-unresolved-threads.md` states that the unresolved thread count
       is reduced to 0 (or that all threads are explicitly dispositioned)'
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-16T06:58:00Z'
+    finished_at: '2026-03-16T06:58:00Z'
     commit: ''
-    notes: []
+    notes:
+      - Final status section explicitly states all audit-time threads are dispositioned.

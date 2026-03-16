@@ -1,0 +1,4 @@
+priority	category	issue	pr	component	status	next_action	owner
+1	C2	146	68	review-closure	CLOSED_LOCAL	Post drafted disposition comment to PR #68 when GitHub API connectivity returns	codex
+1	C3	90	53	verify-handling	BLOCKED	Retrieve verify:compare artifacts and complete human disposition decisions	codex+human
+2	C3	115	75	verify-handling	ADVANCED_LOCAL	Sync local disposition outcome note to GitHub issue/PR comments once remote access returns	codex

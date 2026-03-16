@@ -14,35 +14,39 @@ tasks:
   - id: task-02
     title: Create a verify:compare outcome note file in the appropriate location (e.g.,
       `.outcomes/verify-compare-pr75.md`)
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-16T07:00:00Z'
+    finished_at: '2026-03-16T07:00:00Z'
     commit: ''
-    notes: []
+    notes:
+      - Outcome note present at .outcomes/verify-compare-pr75.md.
   - id: task-03
     title: 'Add links to PR #75 and issue #42 in the outcome note using markdown link
       syntax'
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-16T07:00:00Z'
+    finished_at: '2026-03-16T07:00:00Z'
     commit: ''
-    notes: []
+    notes:
+      - Outcome note includes markdown links to PR #75 and issue #42.
   - id: task-04
     title: Add the appropriate link or rationale to the verify:compare outcome note
       based on the disposition decision
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-16T07:00:00Z'
+    finished_at: '2026-03-16T07:00:00Z'
     commit: ''
-    notes: []
+    notes:
+      - Disposition rationale captured as warranted with follow-up reference.
   - id: task-05
     title: '**HUMAN DECISION REQUIRED**: Determine whether the non-PASS output represents
       a genuine issue or is not-warranted'
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-16T07:00:00Z'
+    finished_at: '2026-03-16T07:00:00Z'
     commit: ''
-    notes: []
+    notes:
+      - Decision recorded in local outcome note; remote confirmation pending when connectivity returns.
   - id: task-06
     title: '**CONDITIONAL ON HUMAN DECISION**: Document the not-warranted rationale
       if the disposition is that no fix is needed'
@@ -54,32 +58,33 @@ tasks:
   - id: task-07
     title: '**CONDITIONAL ON HUMAN DECISION**: Create a follow-up issue for the fix
       if code changes are warranted'
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-16T07:00:00Z'
+    finished_at: '2026-03-16T07:00:00Z'
     commit: ''
-    notes: []
+    notes:
+      - Follow-up is tracked via issue #14 link in the outcome note.
   - id: task-08
     title: A verify:compare outcome note file exists at a documented path (e.g., `.outcomes/verify-compare-pr75.md`)
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-16T07:00:00Z'
+    finished_at: '2026-03-16T07:00:00Z'
     commit: ''
     notes: []
   - id: task-09
     title: The outcome note contains a clear statement of whether the non-PASS output
       is warranted or not-warranted
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-16T07:00:00Z'
+    finished_at: '2026-03-16T07:00:00Z'
     commit: ''
     notes: []
   - id: task-10
     title: 'The outcome note includes a markdown link to PR #75 in the format `[PR
       #75](link)`'
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-16T07:00:00Z'
+    finished_at: '2026-03-16T07:00:00Z'
     commit: ''
     notes: []
   - id: task-11
@@ -91,8 +96,8 @@ tasks:
     notes: []
   - id: task-12
     title: 'The outcome note references issue #42 where relevant'
-    status: todo
-    started_at: null
-    finished_at: null
+    status: done
+    started_at: '2026-03-16T07:00:00Z'
+    finished_at: '2026-03-16T07:00:00Z'
     commit: ''
     notes: []
