@@ -1,0 +1,506 @@
+version: 1
+issue: 123
+base: main
+branch: codex/issue-123
+tasks:
+  - id: task-01
+    title: 'Add a comment in PR #81 listing the 3 unresolved inline review threads
+      identified at audit time.'
+    status: done
+    started_at: '2026-03-09T04:01:53Z'
+    finished_at: '2026-03-09T04:02:07Z'
+    commit: b2bd5b0aff44dcb030e3a55e559160cdeae8aad3
+    notes: []
+  - id: task-02
+    title: 'Update the PR #81 comment to classify each unresolved thread as either
+      "warranted fix" or "not-warranted disposition" with a brief rationale per thread.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Define scope for: Create `scripts/fetch_pr_threads.py` to retrieve all
+      unresolved threads from PR #81 using GitHub API (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Implement focused slice for: Create `scripts/fetch_pr_threads.py` to retrieve
+      all unresolved threads from PR #81 using GitHub API (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Validate focused slice for: Create `scripts/fetch_pr_threads.py` to retrieve
+      all unresolved threads from PR #81 using GitHub API (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Define scope for: Add `scripts/classify_threads.py` with `classify_thread()`
+      function that returns "warranted" or "not-warranted" with rationale (verify:
+      confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Implement focused slice for: Add `scripts/classify_threads.py` with `classify_thread()`
+      function that returns "warranted" or "not-warranted" with rationale (verify:
+      confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'Validate focused slice for: Add `scripts/classify_threads.py` with `classify_thread()`
+      function that returns "warranted" or "not-warranted" with rationale (verify:
+      confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'Define scope for: Create `data/pr81_threads.json` to store fetched thread
+      data with thread IDs (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: 'Implement focused slice for: Create `data/pr81_threads.json` to store
+      fetched thread data with thread IDs (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: 'Validate focused slice for: Create `data/pr81_threads.json` to store fetched
+      thread data with thread IDs (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: 'Define scope for: Create `data/pr81_threads.json` to store fetched thread
+      data with content (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: 'Implement focused slice for: Create `data/pr81_threads.json` to store
+      fetched thread data with content (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: 'Validate focused slice for: Create `data/pr81_threads.json` to store fetched
+      thread data with content (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: 'Define scope for: Create `data/pr81_threads.json` to store fetched thread
+      data with (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: 'context (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: 'Implement focused slice for: Create `data/pr81_threads.json` to store
+      fetched thread data with (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: 'Validate focused slice for: Create `data/pr81_threads.json` to store fetched
+      thread data with (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: 'Define scope for: Implement `scripts/generate_classification_report.py`
+      to produce markdown table with columns: Thread ID (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: 'Implement focused slice for: Implement `scripts/generate_classification_report.py`
+      to produce markdown table with columns: Thread ID (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: 'Validate focused slice for: Implement `scripts/generate_classification_report.py`
+      to produce markdown table with columns: Thread ID (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-22
+    title: 'Define scope for: Implement `scripts/generate_classification_report.py`
+      to produce markdown table with Classification (verify: confirm completion in
+      repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-23
+    title: 'Implement focused slice for: Implement `scripts/generate_classification_report.py`
+      to produce markdown table with Classification (verify: confirm completion in
+      repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-24
+    title: 'Validate focused slice for: Implement `scripts/generate_classification_report.py`
+      to produce markdown table with Classification (verify: confirm completion in
+      repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-25
+    title: 'Define scope for: Implement `scripts/generate_classification_report.py`
+      to produce markdown table with Rationale (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-26
+    title: 'Implement focused slice for: Implement `scripts/generate_classification_report.py`
+      to produce markdown table with Rationale (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-27
+    title: 'Validate focused slice for: Implement `scripts/generate_classification_report.py`
+      to produce markdown table with Rationale (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-28
+    title: 'Define scope for: Add unit tests in `tests/test_classify_threads.py` verifying
+      classification logic returns expected format (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-29
+    title: 'Implement focused slice for: Add unit tests in `tests/test_classify_threads.py`
+      verifying classification logic returns expected format (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-30
+    title: 'Validate focused slice for: Add unit tests in `tests/test_classify_threads.py`
+      verifying classification logic returns expected format (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-31
+    title: 'Define scope for: Create `scripts/update_pr_comment.py` to post generated
+      classification report as comment on PR #81 (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-32
+    title: 'Implement focused slice for: Create `scripts/update_pr_comment.py` to
+      post generated classification report as comment on PR #81 (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-33
+    title: 'Validate focused slice for: Create `scripts/update_pr_comment.py` to post
+      generated classification report as comment on PR #81 (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-34
+    title: 'Define scope for: Add `.env.example` file with required GitHub token variable
+      for API authentication (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-35
+    title: 'Implement focused slice for: Add `.env.example` file with required GitHub
+      token variable for API authentication (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-36
+    title: 'Validate focused slice for: Add `.env.example` file with required GitHub
+      token variable for API authentication (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-37
+    title: 'Update `requirements.txt` to include `PyGithub` (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-38
+    title: '`requests` dependencies (verify: dependencies updated)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-39
+    title: 'Define scope for: Create `scripts/validate_classification_output.py` to
+      verify all threads have non-empty classification'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-40
+    title: 'Implement focused slice for: Create `scripts/validate_classification_output.py`
+      to verify all threads have non-empty classification'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-41
+    title: 'Validate focused slice for: Create `scripts/validate_classification_output.py`
+      to verify all threads have non-empty classification'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-42
+    title: 'rationale (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-43
+    title: 'Define scope for: Add integration test in `tests/test_pr_workflow.py`
+      that mocks GitHub API (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-44
+    title: 'Implement focused slice for: Add integration test in `tests/test_pr_workflow.py`
+      that mocks GitHub API (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-45
+    title: 'Validate focused slice for: Add integration test in `tests/test_pr_workflow.py`
+      that mocks GitHub API (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-46
+    title: 'Define scope for: verifies end-to-end flow (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-47
+    title: 'Implement focused slice for: verifies end-to-end flow (verify: confirm
+      completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-48
+    title: 'Validate focused slice for: verifies end-to-end flow (verify: confirm
+      completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-49
+    title: Create a follow-up PR that implements fixes for any threads classified
+      as "warranted fix".
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-50
+    title: 'Add a PR #81 comment documenting the final disposition for every previously-unresolved
+      thread, including links to follow-up PR(s) and/or commit(s) where applicable.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-51
+    title: 'Update PR #81 comment to confirm the unresolved thread count is reduced
+      to zero (or each is explicitly dispositioned).'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-52
+    title: 'PR #81 has no unresolved inline review threads remaining, or each thread
+      has an explicit disposition comment with rationale.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-53
+    title: 'Any follow-up fix PR(s) created are linked from PR #81.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-54
+    title: 'Enumerate unresolved review threads on PR #81'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-55
+    title: 'Classify each thread: warranted fix vs not-warranted disposition'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-56
+    title: If warranted, implement bounded follow-up PR(s)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-57
+    title: Post a PR comment documenting disposition for every unresolved thread
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-58
+    title: Confirm thread count is reduced to zero (or explicitly dispositioned)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-59
+    title: All unresolved inline comments are addressed or dispositioned with rationale
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-60
+    title: Follow-up fix PR(s), if any, are linked from the source PR
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-61
+    title: 'Add a comment in PR #81 listing the 3 unresolved inline review threads
+      identified at audit time. (Agent can add comments to PRs via GitHub API - this
+      is within capabilities.)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-62
+    title: Create a follow-up PR that implements fixes for any threads classified
+      as "warranted fix". (Agent can create PRs - this is within capabilities. The
+      conditional nature (only if warranted) is acceptable.)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
