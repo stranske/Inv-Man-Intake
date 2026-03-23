@@ -1,0 +1,117 @@
+version: 1
+issue: 124
+base: main
+branch: codex/issue-124
+tasks:
+  - id: task-01
+    title: 'Create a list of the 2 unresolved inline review threads on PR #79 (URLs/IDs)
+      in a PR #79 comment'
+    status: done
+    started_at: '2026-03-09T03:38:54Z'
+    finished_at: '2026-03-09T03:39:02Z'
+    commit: 2e49a60e246f709536160542276034732c8d0bc3
+    notes: []
+  - id: task-02
+    title: Create a new branch for the follow-up fixes based on the main branch
+    status: done
+    started_at: '2026-03-09T03:54:58Z'
+    finished_at: '2026-03-09T03:54:58Z'
+    commit: b9cb893f8b7f6f77dbc4063d8eb07c3e356f9c56
+    notes:
+      - Branch codex/issue-124 created from main for follow-up fixes.
+  - id: task-03
+    title: Implement code changes for each thread classified as warranted fix
+    status: done
+    started_at: '2026-03-09T04:17:53Z'
+    finished_at: '2026-03-09T04:17:53Z'
+    commit: df461d68af890d852888cb3f9b144f7077200d61
+    notes:
+      - Hardened explainability input validation for empty and duplicate component identifiers.
+  - id: task-04
+    title: Write or update tests to cover the implemented fixes
+    status: done
+    started_at: '2026-03-09T04:29:40Z'
+    finished_at: '2026-03-09T04:33:20Z'
+    commit: 64aad990b120f6598544fea73ad17e2c70046bdc
+    notes:
+      - Added explainability validation tests for empty components, negative weights, and trimmed duplicate IDs.
+      - Verified explainability module coverage and expanded normalization/rounding assertions.
+  - id: task-05
+    title: 'Create a pull request with title referencing PR #79 and issue #38'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Add links in the new PR description to both PR #79 and issue #38'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Add disposition comments replying to each unresolved thread on PR #79
+      with a brief rationale (and link the follow-up PR if applicable)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'Update the PR #79 summary comment to confirm all threads have disposition
+      comments'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Review each unresolved thread and document the classification decision
+      with rationale (human decision required for subjective assessment of whether
+      review feedback warrants code changes)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: 'All unresolved inline review threads on PR #79 have disposition comments
+      with rationale'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Each disposition comment includes a link to follow-up PR if classified
+      as warranted fix
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: 'For each warranted fix: a follow-up PR exists that links to PR #79 in
+      its description'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: 'For each warranted fix: PR #79 has a comment linking to the follow-up
+      PR'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: 'PR #79 comment contains the complete list of 2 thread URLs/IDs that were
+      addressed'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []

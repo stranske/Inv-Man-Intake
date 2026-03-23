@@ -72,6 +72,10 @@ SECTION_TITLES = {
 
 LIST_ITEM_REGEX = re.compile(r"^\s*([-*+]|\d+[.)]|[A-Za-z][.)])\s+(.*)$")
 CHECKBOX_REGEX = re.compile(r"^\[([ xX])\]\s*(.*)$")
+GITHUB_RESOURCE_URL_REGEX = re.compile(
+    r"https://github\.com/(?P<repo>[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/(?:issues|pull)/(?P<number>\d+)",
+    re.IGNORECASE,
+)
 MISSING_CONCERNS_MESSAGE = (
     "Verification output did not include extractable concerns; "
     "re-run verification to capture verifier-context.md and verifier-diff-summary.md."
@@ -510,6 +514,9 @@ class OriginalIssueData:
 
     title: str = ""
     number: int = 0
+    repository: str = ""
+    source_issue_number: int | None = None
+    source_pr_number: int | None = None
     why: str = ""
     scope: str = ""
     tasks: list[str] = field(default_factory=list)
@@ -789,8 +796,77 @@ def extract_original_issue_data(
     # Extract tasks and acceptance criteria from checklist/bulleted items.
     data.tasks = _parse_checklist(sections["tasks"])
     data.acceptance_criteria = _parse_checklist(sections["acceptance"])
+    data.repository = _extract_repository_slug(issue_body)
+    data.source_issue_number = _extract_source_reference_number(issue_body, resource="issue")
+    data.source_pr_number = _extract_source_reference_number(issue_body, resource="pr")
 
     return data
+
+
+def _extract_repository_slug(text: str) -> str:
+    match = GITHUB_RESOURCE_URL_REGEX.search(text or "")
+    if not match:
+        return ""
+    return match.group("repo")
+
+
+def _extract_source_reference_number(text: str, *, resource: str) -> int | None:
+    if resource not in {"issue", "pr"}:
+        raise ValueError("resource must be 'issue' or 'pr'")
+    label = "issue" if resource == "issue" else "pr"
+    pattern = re.compile(rf"source\s+{label}\s*:\s*#(\d+)\b", re.IGNORECASE)
+    match = pattern.search(text or "")
+    if not match:
+        return None
+    return int(match.group(1))
+
+
+def _render_linked_reference(*, repo: str, resource: str, number: int) -> str:
+    if resource not in {"issue", "pr"}:
+        raise ValueError("resource must be 'issue' or 'pr'")
+    resource_path = "issues" if resource == "issue" else "pull"
+    label = "Issue" if resource == "issue" else "PR"
+    if repo:
+        return f"[{label} #{number}](https://github.com/{repo}/{resource_path}/{number})"
+    return f"{label} #{number}"
+
+
+def _build_source_lines(*, pr_number: int, original_issue: OriginalIssueData) -> list[str]:
+    lines = [
+        "- Original PR: "
+        f"{_render_linked_reference(repo=original_issue.repository, resource='pr', number=pr_number)}"
+    ]
+    if original_issue.number > 0:
+        lines.append(
+            "- Parent issue: "
+            f"{_render_linked_reference(repo=original_issue.repository, resource='issue', number=original_issue.number)}"
+        )
+    if original_issue.source_pr_number and original_issue.source_pr_number != pr_number:
+        lines.append(
+            "- Source PR: "
+            f"{_render_linked_reference(repo=original_issue.repository, resource='pr', number=original_issue.source_pr_number)}"
+        )
+    if (
+        original_issue.source_issue_number
+        and original_issue.source_issue_number != original_issue.number
+    ):
+        lines.append(
+            "- Source issue: "
+            f"{_render_linked_reference(repo=original_issue.repository, resource='issue', number=original_issue.source_issue_number)}"
+        )
+    return lines
+
+
+def _render_followup_title(
+    *, prefix: str, pr_number: int, original_issue: OriginalIssueData
+) -> str:
+    title = f"{prefix} (PR #{pr_number})"
+    if (
+        original_issue.source_issue_number
+        and original_issue.source_issue_number != original_issue.number
+    ):
+        title = f"{title} [issue #{original_issue.source_issue_number}]"
+    return title
 
 
 def _resolve_section(label: str) -> str | None:
@@ -1499,7 +1575,11 @@ def _generate_with_llm(
         title_focus = concrete_tasks[0].get("task", "verification concerns")[:50]
     else:
         title_focus = "verification concerns"
-    title = f"[Follow-up] {title_focus} (PR #{pr_number})"
+    title = _render_followup_title(
+        prefix=f"[Follow-up] {title_focus}",
+        pr_number=pr_number,
+        original_issue=original_issue,
+    )
 
     return FollowupIssue(
         title=title,
@@ -1580,8 +1660,7 @@ def _generate_without_llm(
             "",
             "## Source",
             "",
-            f"- Original PR: #{pr_number}",
-            f"- Parent issue: #{original_issue.number}",
+            *_build_source_lines(pr_number=pr_number, original_issue=original_issue),
             "",
             "## Scope",
             "",
@@ -1677,7 +1756,11 @@ def _generate_without_llm(
         ]
     )
 
-    title = f"[Follow-up] Address verification concerns from PR #{pr_number}"
+    title = _render_followup_title(
+        prefix="[Follow-up] Address verification concerns",
+        pr_number=pr_number,
+        original_issue=original_issue,
+    )
 
     labels = ["follow-up", "agents:optimize"]
     if needs_human:
