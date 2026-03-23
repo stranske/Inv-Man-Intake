@@ -161,7 +161,7 @@ def _validate_entries(entries: tuple[ScoreEntry, ...]) -> None:
         key = (entry.manager_id, entry.asset_class)
         if key in seen:
             raise ValueError(
-                f"duplicate score entry for manager={entry.manager_id}, asset={entry.asset_class}"
+                f"duplicate score entry for manager={entry.manager_id}, asset_class={entry.asset_class}"
             )
         seen.add(key)
 
