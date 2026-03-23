@@ -165,7 +165,16 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pr", type=int, default=None, help="Limit results to this PR number")
     parser.add_argument(
         "--format",
-        choices=("json", "markdown", "scope", "disposition", "validate"),
+        choices=(
+            "json",
+            "markdown",
+            "scope",
+            "disposition",
+            "review",
+            "decision",
+            "validate",
+            "pr-note",
+        ),
         default="json",
         help="Output format",
     )
@@ -216,6 +225,85 @@ def _as_scope(findings: list[VerifyCompareFinding], pr_number: int | None = None
     )
 
 
+def _concern_category(item: VerifyCompareFinding) -> str:
+    lower = item.evidence_line.lower()
+    if (
+        item.verdict == "NON_PASS"
+        and "reported non-pass output" in lower
+        and "without a documented disposition" in lower
+    ):
+        return "documentation gap"
+    return "potential fix required"
+
+
+def _concern_requires_fix(item: VerifyCompareFinding) -> bool:
+    return _concern_category(item) != "documentation gap"
+
+
+def _as_review(findings: list[VerifyCompareFinding], pr_number: int | None = None) -> str:
+    if not findings:
+        return "No non-PASS verify:compare findings located for review."
+
+    candidates = findings
+    if pr_number is not None:
+        pr_matches = [item for item in findings if item.pr_number == pr_number]
+        if pr_matches:
+            candidates = pr_matches
+
+    resolved_pr = (
+        pr_number if pr_number is not None else candidates[0].pr_number if candidates else None
+    )
+    pr_label = f"PR #{resolved_pr}" if resolved_pr is not None else "target PR"
+    lines = [f"## verify:compare Concern Review For {pr_label}", ""]
+
+    for idx, item in enumerate(candidates, start=1):
+        source_text = item.source_url or "(link not available)"
+        lines.extend(
+            [
+                f"{idx}. Concern category: { _concern_category(item) }",
+                f"   Verdict: {item.verdict}",
+                f"   Evidence link: {source_text}",
+                f"   Evidence line: `{item.evidence_line}`",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def _as_decision(findings: list[VerifyCompareFinding], pr_number: int | None = None) -> str:
+    if not findings:
+        return "No non-PASS verify:compare findings located for decision."
+
+    target = _select_target_finding(findings, pr_number=pr_number)
+    resolved_pr = target.pr_number if target.pr_number is not None else pr_number
+    pr_label = f"PR #{resolved_pr}" if resolved_pr is not None else "the target PR"
+    source_text = target.source_url or "(link not available)"
+
+    if _concern_requires_fix(target):
+        warranted = "Warranted: yes (bounded follow-up fix required)."
+        reasoning = (
+            "The non-PASS output is not limited to a missing disposition record, so it may indicate "
+            "an unresolved verification concern that should be fixed."
+        )
+    else:
+        warranted = "Warranted: no (acceptable documentation-only outcome)."
+        reasoning = (
+            "The non-PASS output specifically indicates missing disposition documentation rather than "
+            "a product behavior or test defect."
+        )
+
+    return "\n".join(
+        [
+            f"## verify:compare Concern Determination For {pr_label}",
+            "",
+            f"- Concern category: {_concern_category(target)}",
+            f"- Evidence link: {source_text}",
+            f"- Evidence line: `{target.evidence_line}`",
+            f"- {warranted}",
+            f"- Reasoning: {reasoning}",
+        ]
+    )
+
+
 def _select_target_finding(
     findings: list[VerifyCompareFinding], pr_number: int | None = None
 ) -> VerifyCompareFinding:
@@ -254,13 +342,7 @@ def _as_disposition(findings: list[VerifyCompareFinding], pr_number: int | None 
     pr_label = f"PR #{resolved_pr}" if resolved_pr is not None else "the target PR"
     source_text = target.source_url or "(link not available)"
     evidence = target.evidence_line
-    lower_evidence = evidence.lower()
-
-    doc_gap_only = (
-        target.verdict == "NON_PASS"
-        and "without a documented disposition" in lower_evidence
-        and "reported non-pass output" in lower_evidence
-    )
+    doc_gap_only = not _concern_requires_fix(target)
 
     if doc_gap_only:
         decision = "No code fixes are needed; documentation-only follow-up is required."
@@ -332,8 +414,84 @@ def _as_validation(findings: list[VerifyCompareFinding], pr_number: int | None =
     return "\n".join(["FAIL: Disposition note is missing required criteria."] + errors)
 
 
+def _as_pr_note(
+    findings: list[VerifyCompareFinding],
+    pr_number: int | None = None,
+    *,
+    follow_up_pr_url: str | None = None,
+    remaining_gap_issue_url: str | None = None,
+) -> str:
+    if not findings:
+        return "No PR disposition note can be generated because no non-PASS findings were located."
+
+    target = _select_target_finding(findings, pr_number=pr_number)
+    resolved_pr = target.pr_number if target.pr_number is not None else pr_number
+    pr_label = f"PR #{resolved_pr}" if resolved_pr is not None else "the target PR"
+    source_text = target.source_url or "(link not available)"
+    concern_warranted = _concern_requires_fix(target)
+
+    if concern_warranted:
+        warranted_text = "Concern warranted: yes (bounded follow-up fix required)."
+        reasoning = (
+            "The non-PASS output is not limited to a missing disposition record, so it may indicate "
+            "an unresolved verification concern. A focused follow-up PR should address only this "
+            "verify:compare signal."
+        )
+        connection = "Connection: Link this note to a bounded follow-up PR that resolves the specific concern."
+        if follow_up_pr_url:
+            follow_up_pr = f"Follow-up PR reference: {follow_up_pr_url}"
+        else:
+            follow_up_pr = (
+                "Follow-up PR reference: required (add PR link once remediation is opened)."
+            )
+        if remaining_gap_issue_url:
+            remaining_gap_issue = f"Remaining gaps issue: {remaining_gap_issue_url}"
+        else:
+            remaining_gap_issue = "Remaining gaps issue: required if any concern is not fully addressed by the follow-up PR."
+    else:
+        warranted_text = "Concern warranted: no (documentation-only outcome is acceptable)."
+        reasoning = (
+            "The non-PASS output explicitly indicates a missing disposition record rather than a "
+            "product or test behavior defect. Documenting the disposition closes the verification "
+            "traceability gap without requiring code changes."
+        )
+        connection = (
+            "Connection: This note itself is the explanation for why no follow-up fix PR is needed."
+        )
+        follow_up_pr = "Follow-up PR reference: not required (no code fix warranted)."
+        remaining_gap_issue = "Remaining gaps issue: not required (no unresolved technical gaps remain after documentation)."
+
+    return "\n".join(
+        [
+            f"## verify:compare Disposition For {pr_label}",
+            "",
+            f"- Summary: `{target.evidence_line}`",
+            f"- Evidence link: {source_text}",
+            f"- {warranted_text}",
+            f"- Reasoning: {reasoning}",
+            f"- {connection}",
+            f"- {follow_up_pr}",
+            f"- {remaining_gap_issue}",
+        ]
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
-    args = _build_parser().parse_args(argv)
+    parser = _build_parser()
+    parser.add_argument(
+        "--follow-up-pr-url",
+        default=None,
+        help="Follow-up PR URL to include in --format=pr-note output when concern is warranted",
+    )
+    parser.add_argument(
+        "--remaining-gap-issue-url",
+        default=None,
+        help=(
+            "Issue URL that tracks remaining technical gaps, included in --format=pr-note "
+            "output when concern is warranted"
+        ),
+    )
+    args = parser.parse_args(argv)
     findings = scan_files(args.files, pr_number=args.pr)
 
     if args.format == "markdown":
@@ -342,8 +500,21 @@ def main(argv: list[str] | None = None) -> int:
         print(_as_scope(findings, pr_number=args.pr))
     elif args.format == "disposition":
         print(_as_disposition(findings, pr_number=args.pr))
+    elif args.format == "review":
+        print(_as_review(findings, pr_number=args.pr))
+    elif args.format == "decision":
+        print(_as_decision(findings, pr_number=args.pr))
     elif args.format == "validate":
         print(_as_validation(findings, pr_number=args.pr))
+    elif args.format == "pr-note":
+        print(
+            _as_pr_note(
+                findings,
+                pr_number=args.pr,
+                follow_up_pr_url=args.follow_up_pr_url,
+                remaining_gap_issue_url=args.remaining_gap_issue_url,
+            )
+        )
     else:
         print(json.dumps([asdict(item) for item in findings], indent=2))
     return 0
