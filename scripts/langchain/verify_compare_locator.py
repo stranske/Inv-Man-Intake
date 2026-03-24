@@ -15,6 +15,7 @@ VERDICT_LINE_RE = re.compile(r"\bverdict\b[^a-z0-9]+(pass|concerns|fail)\b", re.
 NON_PASS_RE = re.compile(
     r"\b(?:reported non[- ]pass output|verdict[^a-z0-9]+non[- ]pass)\b", re.IGNORECASE
 )
+DOC_GAP_RE = re.compile(r"\bwithout\s+(?:a\s+)?documented disposition\b", re.IGNORECASE)
 PR_LINK_RE = re.compile(
     r"https?://github\.com/[^\s)]+/pull/(\d+)(?:#issuecomment-\d+)?", re.IGNORECASE
 )
@@ -73,6 +74,15 @@ def _extract_pr_number_from_line(line: str) -> int | None:
     if not match:
         return None
     return int(match.group(1))
+
+
+def _is_doc_gap_only_finding(finding: VerifyCompareFinding) -> bool:
+    lower_evidence = finding.evidence_line.lower()
+    return (
+        finding.verdict == "NON_PASS"
+        and bool(NON_PASS_RE.search(lower_evidence))
+        and bool(DOC_GAP_RE.search(lower_evidence))
+    )
 
 
 def extract_non_pass_findings(
@@ -165,9 +175,14 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--pr", type=int, default=None, help="Limit results to this PR number")
     parser.add_argument(
         "--format",
-        choices=("json", "markdown", "scope", "disposition", "validate"),
+        choices=("json", "markdown", "scope", "disposition", "decision", "validate", "comment"),
         default="json",
         help="Output format",
+    )
+    parser.add_argument(
+        "--tracking-url",
+        default=None,
+        help="Tracking issue or follow-up PR URL to include in --format comment output.",
     )
     return parser
 
@@ -226,10 +241,7 @@ def _select_target_finding(
             candidates = pr_matches
 
     def _score(item: VerifyCompareFinding) -> tuple[int, int, int]:
-        lower = item.evidence_line.lower()
-        doc_gap_signal = int(
-            "reported non-pass output" in lower and "without a documented disposition" in lower
-        )
+        doc_gap_signal = int(_is_doc_gap_only_finding(item))
         has_source = int(item.source_url is not None)
         source_specificity = 0
         if item.source_url and "#issuecomment-" in item.source_url and "/pull/" in item.source_url:
@@ -254,13 +266,7 @@ def _as_disposition(findings: list[VerifyCompareFinding], pr_number: int | None 
     pr_label = f"PR #{resolved_pr}" if resolved_pr is not None else "the target PR"
     source_text = target.source_url or "(link not available)"
     evidence = target.evidence_line
-    lower_evidence = evidence.lower()
-
-    doc_gap_only = (
-        target.verdict == "NON_PASS"
-        and "without a documented disposition" in lower_evidence
-        and "reported non-pass output" in lower_evidence
-    )
+    doc_gap_only = _is_doc_gap_only_finding(target)
 
     if doc_gap_only:
         decision = "No code fixes are needed; documentation-only follow-up is required."
@@ -286,6 +292,27 @@ def _as_disposition(findings: list[VerifyCompareFinding], pr_number: int | None 
             decision,
             rationale,
         ]
+    )
+
+
+def _as_decision(findings: list[VerifyCompareFinding], pr_number: int | None = None) -> str:
+    """Return an explicit disposition decision line for checklist-style acceptance checks."""
+    if not findings:
+        return (
+            "fix-needed: no non-PASS verify:compare findings were provided; cannot justify a "
+            "not-warranted disposition without evidence."
+        )
+
+    target = _select_target_finding(findings, pr_number=pr_number)
+    doc_gap_only = _is_doc_gap_only_finding(target)
+    if doc_gap_only:
+        return (
+            "not-warranted: the non-PASS output indicates a missing documented disposition "
+            "record, not a product behavior defect."
+        )
+    return (
+        "fix-needed: the non-PASS output is not limited to missing disposition documentation "
+        "and should be addressed by a bounded code follow-up."
     )
 
 
@@ -332,6 +359,44 @@ def _as_validation(findings: list[VerifyCompareFinding], pr_number: int | None =
     return "\n".join(["FAIL: Disposition note is missing required criteria."] + errors)
 
 
+def _as_comment(
+    findings: list[VerifyCompareFinding],
+    pr_number: int | None = None,
+    tracking_url: str | None = None,
+) -> str:
+    """Render a ready-to-post verify:compare disposition comment body."""
+    if not findings:
+        return (
+            "## verify:compare Disposition\n\n"
+            "fix-needed: no non-PASS verify:compare findings were provided; cannot justify a "
+            "not-warranted disposition without evidence."
+        )
+
+    target = _select_target_finding(findings, pr_number=pr_number)
+    resolved_pr = target.pr_number if target.pr_number is not None else pr_number
+    decision = _as_decision(findings, pr_number=pr_number)
+    source_text = target.source_url or "(link not available)"
+    lines = [
+        "## verify:compare Disposition",
+        "",
+        (
+            f"Source: verify:compare non-PASS output from PR #{resolved_pr}"
+            if resolved_pr is not None
+            else "Source: verify:compare non-PASS output"
+        ),
+        f"Evidence: {source_text}",
+        f"Evidence line: `{target.evidence_line}`",
+        "",
+        decision,
+        "",
+    ]
+    if tracking_url:
+        lines.append(f"Tracking: {tracking_url}")
+    else:
+        lines.append("Tracking: [add issue/pr link]")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     findings = scan_files(args.files, pr_number=args.pr)
@@ -342,8 +407,12 @@ def main(argv: list[str] | None = None) -> int:
         print(_as_scope(findings, pr_number=args.pr))
     elif args.format == "disposition":
         print(_as_disposition(findings, pr_number=args.pr))
+    elif args.format == "decision":
+        print(_as_decision(findings, pr_number=args.pr))
     elif args.format == "validate":
         print(_as_validation(findings, pr_number=args.pr))
+    elif args.format == "comment":
+        print(_as_comment(findings, pr_number=args.pr, tracking_url=args.tracking_url))
     else:
         print(json.dumps([asdict(item) for item in findings], indent=2))
     return 0

@@ -1,6 +1,8 @@
 from pathlib import Path
 
 from scripts.langchain.verify_compare_locator import (
+    _as_comment,
+    _as_decision,
     _as_disposition,
     _as_scope,
     _as_validation,
@@ -216,3 +218,77 @@ def test_validation_output_fails_when_no_findings() -> None:
     assert validation.startswith("FAIL: Disposition note is missing required criteria.")
     assert "Missing required evidence link" in validation
     assert "Missing clear statement on whether fixes are needed." in validation
+
+
+def test_decision_output_marks_not_warranted_for_doc_gap() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/issues/118
+Source PR: #71
+verify:compare reported non-PASS output without a documented disposition.
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue_context.txt", pr_number=71)
+    decision = _as_decision(findings, pr_number=71)
+
+    assert decision.startswith("not-warranted:")
+    assert "missing documented disposition record" in decision
+
+
+def test_decision_output_marks_not_warranted_for_doc_gap_wording_variant() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/issues/118
+Source PR: #71
+verify:compare reported NON PASS output without documented disposition.
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue_context.txt", pr_number=71)
+    decision = _as_decision(findings, pr_number=71)
+
+    assert decision.startswith("not-warranted:")
+    assert "missing documented disposition record" in decision
+
+
+def test_decision_output_marks_fix_needed_for_fail_verdict() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/pull/71#issuecomment-222
+- Verdict: FAIL
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="verification_data.txt", pr_number=71)
+    decision = _as_decision(findings, pr_number=71)
+
+    assert decision.startswith("fix-needed:")
+    assert "bounded code follow-up" in decision
+
+
+def test_comment_output_for_doc_gap_contains_decision_and_tracking_link() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/issues/118
+Source PR: #71
+verify:compare reported non-PASS output without a documented disposition.
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue_context.txt", pr_number=71)
+    comment = _as_comment(
+        findings,
+        pr_number=71,
+        tracking_url="https://github.com/stranske/Inv-Man-Intake/issues/45",
+    )
+
+    assert comment.startswith("## verify:compare Disposition")
+    assert "Source: verify:compare non-PASS output from PR #71" in comment
+    assert "not-warranted:" in comment
+    assert "Tracking: https://github.com/stranske/Inv-Man-Intake/issues/45" in comment
+
+
+def test_comment_output_defaults_tracking_placeholder_without_url() -> None:
+    text = """
+Source: https://github.com/stranske/Inv-Man-Intake/pull/71#issuecomment-222
+- Verdict: FAIL
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="verification_data.txt", pr_number=71)
+    comment = _as_comment(findings, pr_number=71)
+
+    assert "fix-needed:" in comment
+    assert "Tracking: [add issue/pr link]" in comment
