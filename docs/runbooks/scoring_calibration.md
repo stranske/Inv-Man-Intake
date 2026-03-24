@@ -10,7 +10,9 @@ This runbook defines the release-time workflow for scoring regression and calibr
 Both JSON files must contain a list of records in the format:
 
 ```json
-{"manager_id":"<id>","asset_class":"<class>","score":0.0}
+[
+  {"manager_id":"<id>","asset_class":"<class>","score":0.0}
+]
 ```
 
 ## Run Calibration
