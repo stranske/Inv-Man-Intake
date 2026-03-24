@@ -49,6 +49,8 @@ def resolve_source_conflicts(
 
     if xlsx_series is None and other_series is None:
         raise ValueError("At least one source series is required")
+    if escalation_threshold_percent < 0.0 or escalation_threshold_percent > 100.0:
+        raise ValueError("escalation_threshold_percent must be between 0 and 100 inclusive")
 
     if xlsx_series is not None:
         validate_series(xlsx_series)
