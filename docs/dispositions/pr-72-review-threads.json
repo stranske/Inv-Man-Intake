@@ -1,0 +1,74 @@
+{
+  "threads": [
+    {
+      "id": "pending-thread-1",
+      "isResolved": false,
+      "comments": {
+        "nodes": [
+          {
+            "url": "https://github.com/stranske/Inv-Man-Intake/pull/72#thread-pending-1",
+            "path": "PENDING_GH_FETCH",
+            "line": null,
+            "body": "Pending live fetch: GH_TOKEN is invalid in this environment, so the original unresolved thread body is not yet copied from PR #72."
+          }
+        ]
+      }
+    },
+    {
+      "id": "pending-thread-2",
+      "isResolved": false,
+      "comments": {
+        "nodes": [
+          {
+            "url": "https://github.com/stranske/Inv-Man-Intake/pull/72#thread-pending-2",
+            "path": "PENDING_GH_FETCH",
+            "line": null,
+            "body": "Pending live fetch: GH_TOKEN is invalid in this environment, so the original unresolved thread body is not yet copied from PR #72."
+          }
+        ]
+      }
+    },
+    {
+      "id": "pending-thread-3",
+      "isResolved": false,
+      "comments": {
+        "nodes": [
+          {
+            "url": "https://github.com/stranske/Inv-Man-Intake/pull/72#thread-pending-3",
+            "path": "PENDING_GH_FETCH",
+            "line": null,
+            "body": "Pending live fetch: GH_TOKEN is invalid in this environment, so the original unresolved thread body is not yet copied from PR #72."
+          }
+        ]
+      }
+    },
+    {
+      "id": "pending-thread-4",
+      "isResolved": false,
+      "comments": {
+        "nodes": [
+          {
+            "url": "https://github.com/stranske/Inv-Man-Intake/pull/72#thread-pending-4",
+            "path": "PENDING_GH_FETCH",
+            "line": null,
+            "body": "Pending live fetch: GH_TOKEN is invalid in this environment, so the original unresolved thread body is not yet copied from PR #72."
+          }
+        ]
+      }
+    },
+    {
+      "id": "pending-thread-5",
+      "isResolved": false,
+      "comments": {
+        "nodes": [
+          {
+            "url": "https://github.com/stranske/Inv-Man-Intake/pull/72#thread-pending-5",
+            "path": "PENDING_GH_FETCH",
+            "line": null,
+            "body": "Pending live fetch: GH_TOKEN is invalid in this environment, so the original unresolved thread body is not yet copied from PR #72."
+          }
+        ]
+      }
+    }
+  ]
+}
