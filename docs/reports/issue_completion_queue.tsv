@@ -1,0 +1,4 @@
+priority	category	kind	target	issue	pr	state	reason	next_action	url	source_issue	source_pr
+1	C2	pr	PR #171	145	171	active	PR merge/check state unstable from open-PR sweep	recheck required checks and resolve thread-driven follow-up commits	https://github.com/stranske/Inv-Man-Intake/pull/171	145	171
+1	C2	pr	PR #172	136	172	active	Priority unresolved-review follow-up issue remains open	rebase on main and resolve any newly surfaced review/check blockers	https://github.com/stranske/Inv-Man-Intake/pull/172	136	172
+1	C3	issue	Issue #117	117	-	open	verify:compare non-PASS disposition follow-up remains open	publish repo-tracked disposition note and post issue linkage	https://github.com/stranske/Inv-Man-Intake/issues/117	117	-
