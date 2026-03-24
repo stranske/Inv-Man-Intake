@@ -1,0 +1,270 @@
+version: 1
+issue: 130
+base: main
+branch: codex/issue-130
+tasks:
+  - id: task-01
+    title: 'Create a checklist in `.github/PR77-unresolved-threads.md` enumerating
+      each unresolved inline review thread on PR #77 (4 at audit time), with links
+      and a short summary.'
+    status: done
+    started_at: '2026-03-09T03:46:52Z'
+    finished_at: '2026-03-09T03:47:06Z'
+    commit: bec4d686a2c691d4da6807bb2fb6482fe8533db1
+    notes: []
+  - id: task-02
+    title: 'Create the file `.github/PR77-unresolved-threads.md` with a header (verify:
+      confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Define scope for: Create the file `.github/PR77-unresolved-threads.md`
+      with structure for tracking unresolved threads (verify: confirm completion in
+      repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Implement focused slice for: Create the file `.github/PR77-unresolved-threads.md`
+      with structure for tracking unresolved threads (verify: confirm completion in
+      repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Validate focused slice for: Create the file `.github/PR77-unresolved-threads.md`
+      with structure for tracking unresolved threads (verify: confirm completion in
+      repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Identify (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Define scope for: list all 4 unresolved inline review threads from PR
+      #77 in the tracking document (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'Implement focused slice for: list all 4 unresolved inline review threads
+      from PR #77 in the tracking document (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'Validate focused slice for: list all 4 unresolved inline review threads
+      from PR #77 in the tracking document (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: 'Add direct links to each unresolved thread in the tracking document (verify:
+      confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: 'Write a short summary for each unresolved thread describing the review
+      concern (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: "Update `.github/PR77-unresolved-threads.md` to classify each thread as\
+      \ either \u201Cwarranted fix\u201D or \u201Cnot-warranted disposition\u201D\
+      , including a one-sentence rationale per thread."
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Implement any warranted fixes as a small follow-up PR branch, limiting
+      changes to the specific files/lines referenced by the threads.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: 'Create a new branch for implementing fixes to warranted unresolved threads
+      (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: 'Implement code changes for each thread classified as warranted fix (verify:
+      confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: 'Ensure changes are limited to only the specific files (verify: confirm
+      completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: 'lines referenced in the review threads (verify: confirm completion in
+      repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: 'Create (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: 'submit a pull request with the warranted fixes (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: 'Add a PR comment on PR #77 documenting the disposition for every previously-unresolved
+      thread, linking to the follow-up PR(s) when applicable.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: Update `.github/PR77-unresolved-threads.md` to confirm the unresolved thread
+      count is 0 (or that each is explicitly dispositioned with rationale).
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-22
+    title: '`.github/PR77-unresolved-threads.md` exists and lists all 4 previously-unresolved
+      PR #77 threads with link + classification + rationale.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-23
+    title: 'For each previously-unresolved PR #77 inline thread, there is either a
+      code change in a follow-up PR addressing it or a PR #77 comment explicitly dispositioning
+      it with rationale.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-24
+    title: 'Any follow-up fix PR(s) are linked from a comment on PR #77.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-25
+    title: 'The unresolved inline review thread count on PR #77 is reduced to 0, or
+      each thread is explicitly dispositioned in PR comments.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-26
+    title: 'Enumerate unresolved review threads on PR #77'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-27
+    title: 'Classify each thread: warranted fix vs not-warranted disposition'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-28
+    title: If warranted, implement bounded follow-up PR(s)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-29
+    title: Post a PR comment documenting disposition for every unresolved thread
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-30
+    title: Confirm thread count is reduced to zero (or explicitly dispositioned)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-31
+    title: All unresolved inline comments are addressed or dispositioned with rationale
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-32
+    title: Follow-up fix PR(s), if any, are linked from the source PR
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-33
+    title: 'Update `.github/PR77-unresolved-threads.md` to classify each thread as
+      either "warranted fix" or "not-warranted disposition", including a one-sentence
+      rationale per thread. (This requires subjective design decisions about whether
+      review feedback warrants code changes, which violates AGENT_LIMITATIONS. | Rephrase
+      to: ''For each thread, document the technical concern raised and propose a classification
+      with supporting evidence from code context or project standards, flagging any
+      that require human judgment.'')'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
