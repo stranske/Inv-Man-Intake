@@ -1,0 +1,3 @@
+# Runtime dependencies for PR thread triage scripts.
+PyGithub>=2.3.0
+requests>=2.31.0

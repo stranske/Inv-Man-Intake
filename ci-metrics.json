@@ -1,0 +1,18 @@
+{
+  "failures": [],
+  "generated_at": "2026-03-09T05:20:16Z",
+  "junit_path": "pytest-junit.xml",
+  "slow_tests": {
+    "items": [],
+    "limit": 15,
+    "threshold_seconds": 1.0
+  },
+  "summary": {
+    "duration_seconds": 0.166,
+    "errors": 0,
+    "failures": 0,
+    "passed": 149,
+    "skipped": 0,
+    "tests": 149
+  }
+}

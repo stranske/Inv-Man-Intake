@@ -14,3 +14,16 @@ def pytest_xdist_auto_num_workers(config: object) -> int:  # pragma: no cover - 
     """
 
     return 1
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Force deterministic xdist behavior when CI injects ``-n auto``.
+
+    Some CI workflows append ``-n auto`` dynamically. Normalizing it to a
+    single worker keeps behavior equivalent to local sequential runs and avoids
+    CI-only ordering/race failures.
+    """
+
+    numprocesses = getattr(config.option, "numprocesses", None)
+    if numprocesses == "auto":
+        config.option.numprocesses = 1
