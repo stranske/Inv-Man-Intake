@@ -9,7 +9,7 @@ Keep deterministic queue-action history for override traceability without mutati
 - Audit records are append-only and immutable after write.
 - Events are retrieved in append order; item-level trails preserve insertion sequence.
 - Each event includes actor identity (`actor_id`, `actor_role`) and timestamp (`at`).
-- Override actions should include a non-empty `override_reason` when policy exceptions are used.
+- Override actions are expected to include a non-empty `override_reason` when policy exceptions are used, but this is not currently constructor-enforced.
 
 ## Retention Baseline
 
