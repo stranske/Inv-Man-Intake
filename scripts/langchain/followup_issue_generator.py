@@ -1152,13 +1152,16 @@ def _summarize_code_change_need(verification_data: VerificationData) -> tuple[bo
         )
 
     blocking_concerns, _ = _split_concerns(verification_data.concerns)
-    if policy_result.split_verdict and policy_result.concerns_confidence is not None:
-        if policy_result.concerns_confidence < verdict_policy.CONCERNS_NEEDS_HUMAN_THRESHOLD:
-            return (
-                False,
-                "Difference is low-confidence and contradicted by high-confidence PASS "
-                "provider(s), so disposition-only follow-up is appropriate.",
-            )
+    if (
+        policy_result.split_verdict
+        and policy_result.concerns_confidence is not None
+        and policy_result.concerns_confidence < verdict_policy.CONCERNS_NEEDS_HUMAN_THRESHOLD
+    ):
+        return (
+            False,
+            "Difference is low-confidence and contradicted by high-confidence PASS "
+            "provider(s), so disposition-only follow-up is appropriate.",
+        )
 
     if blocking_concerns:
         return (
