@@ -493,8 +493,6 @@ class VerificationData:
 
     provider_verdicts: dict[str, dict[str, Any]] = field(default_factory=dict)
     concerns: list[str] = field(default_factory=list)
-    non_pass_output: list[str] = field(default_factory=list)
-    non_pass_findings: list[str] = field(default_factory=list)
     low_scores: dict[str, int] = field(default_factory=dict)
     iteration_count: int = 0
     tasks_attempted: int = 0
@@ -570,15 +568,6 @@ def extract_verification_data(comment_body: str) -> VerificationData:
             if verdict.strip().upper() != "PASS":
                 provider_summary_concerns.append(summary_text)
         data.provider_verdicts[provider] = entry
-        if verdict.strip().upper() != "PASS":
-            data.non_pass_output.append(
-                f"Provider={provider}; Model={model}; Verdict={verdict.strip()}; "
-                f"Confidence={confidence}%"
-            )
-            if summary_text:
-                data.non_pass_findings.append(
-                    f"Provider={provider}; Verdict={verdict.strip()}; Difference={summary_text}"
-                )
 
     # Extract verdicts from provider detail sections as a fallback.
     current_provider = None
@@ -1142,80 +1131,6 @@ def _append_advisory_notes(body: str, advisory_concerns: list[str]) -> str:
     return body.rstrip() + "\n" + "\n".join(notes_lines) + "\n"
 
 
-def _summarize_code_change_need(verification_data: VerificationData) -> tuple[bool, str]:
-    policy_result = _resolve_verdict_policy(verification_data)
-    if policy_result.verdict_kind == "fail":
-        return (
-            True,
-            "Difference describes a functional defect or regression signal that should be "
-            "resolved in code.",
-        )
-
-    blocking_concerns, _ = _split_concerns(verification_data.concerns)
-    if (
-        policy_result.split_verdict
-        and policy_result.concerns_confidence is not None
-        and policy_result.concerns_confidence < verdict_policy.CONCERNS_NEEDS_HUMAN_THRESHOLD
-    ):
-        return (
-            False,
-            "Difference is low-confidence and contradicted by high-confidence PASS "
-            "provider(s), so disposition-only follow-up is appropriate.",
-        )
-
-    if blocking_concerns:
-        return (
-            True,
-            "Difference describes a concrete gap or missing edge case that should be resolved "
-            "in code.",
-        )
-
-    return (
-        False,
-        "Difference is advisory rather than a functional defect, so disposition-only follow-up "
-        "is appropriate.",
-    )
-
-
-def generate_disposition_comment(
-    verification_data: VerificationData,
-    *,
-    pr_number: int,
-    source_url: str | None = None,
-) -> str:
-    requires_code_changes, rationale = _summarize_code_change_need(verification_data)
-    code_change_text = "yes" if requires_code_changes else "no"
-    lines = [
-        "## verify:compare Disposition",
-        "",
-        f"Source: verify:compare non-PASS output from PR #{pr_number}",
-    ]
-    if source_url:
-        lines.append(f"Source link: {source_url}")
-    lines.extend(["", "## verify:compare Evidence", ""])
-    for entry in verification_data.non_pass_output:
-        lines.append(f"- `{entry}`")
-    for finding in verification_data.non_pass_findings:
-        lines.append(f"- {finding}")
-    lines.extend(
-        [
-            "",
-            "## Decision",
-            "",
-            f"- non-PASS output requires code changes: **{code_change_text}**",
-            f"- technical rationale: {rationale}",
-        ]
-    )
-    return "\n".join(lines)
-
-
-def generate_issue_disposition_link_comment(*, disposition_url: str) -> str:
-    return (
-        "Disposition documentation for verify:compare is recorded here: "
-        f"{disposition_url}"
-    )
-
-
 def generate_followup_issue(
     verification_data: VerificationData,
     original_issue: OriginalIssueData,
@@ -1577,16 +1492,6 @@ def _generate_without_llm(
             f"- Resolved verdict: {verdict}",
         ]
     )
-    requires_code_changes, rationale = _summarize_code_change_need(verification_data)
-    body_parts.append(
-        f"- non-PASS output requires code changes: **{'yes' if requires_code_changes else 'no'}**"
-    )
-    body_parts.append(
-        f"- requires code changes: **{'yes' if requires_code_changes else 'no'}**; "
-        f"technical rationale: {rationale}"
-    )
-    for finding in verification_data.non_pass_findings:
-        body_parts.append(f"- {finding}")
     for concern in blocking_concerns[:10]:
         body_parts.append(f"- Concern: {concern}")
     for concern in advisory_concerns[:10]:
@@ -1599,8 +1504,6 @@ def _generate_without_llm(
             "",
         ]
     )
-    for entry in verification_data.non_pass_output:
-        body_parts.append(f"- {entry}")
     for provider, data in verification_data.provider_verdicts.items():
         evidence = f"- {provider}: {data.get('verdict', 'Unknown')} @ {data.get('confidence', 0)}%"
         summary = data.get("summary")
