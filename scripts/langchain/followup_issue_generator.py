@@ -569,7 +569,6 @@ def extract_verification_data(comment_body: str) -> VerificationData:
             entry["summary"] = summary_text
             if verdict.strip().upper() != "PASS":
                 provider_summary_concerns.append(summary_text)
-        data.provider_verdicts[provider] = entry
         if verdict.strip().upper() != "PASS":
             data.non_pass_output.append(
                 f"Provider={provider}; Model={model}; Verdict={verdict.strip()}; "
@@ -579,6 +578,7 @@ def extract_verification_data(comment_body: str) -> VerificationData:
                 data.non_pass_findings.append(
                     f"Provider={provider}; Verdict={verdict.strip()}; Difference={summary_text}"
                 )
+        data.provider_verdicts[provider] = entry
 
     # Extract verdicts from provider detail sections as a fallback.
     current_provider = None
@@ -1210,10 +1210,7 @@ def generate_disposition_comment(
 
 
 def generate_issue_disposition_link_comment(*, disposition_url: str) -> str:
-    return (
-        "Disposition documentation for verify:compare is recorded here: "
-        f"{disposition_url}"
-    )
+    return "Disposition documentation for verify:compare is recorded here: " f"{disposition_url}"
 
 
 def generate_followup_issue(
