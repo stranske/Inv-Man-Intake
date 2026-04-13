@@ -1210,10 +1210,7 @@ def generate_disposition_comment(
 
 
 def generate_issue_disposition_link_comment(*, disposition_url: str) -> str:
-    return (
-        "Disposition documentation for verify:compare is recorded here: "
-        f"{disposition_url}"
-    )
+    return "Disposition documentation for verify:compare is recorded here: " f"{disposition_url}"
 
 
 def generate_followup_issue(
