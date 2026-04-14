@@ -1,0 +1,114 @@
+version: 1
+issue: 142
+base: main
+branch: codex/issue-142
+tasks:
+  - id: task-01
+    title: 'Navigate to PR #74 and identify all unresolved inline review threads'
+    status: done
+    started_at: '2026-03-09T04:19:56Z'
+    finished_at: '2026-03-09T04:20:10Z'
+    commit: 4186c3e357b7f68d79ed6babcdaa1ef0f10394f6
+    notes: []
+  - id: task-02
+    title: Document each unresolved thread with its location and quoted comment text
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Collect and record the direct URL link for each unresolved thread
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Analyze each unresolved thread to determine if it represents a warranted
+      fix or should be dispositioned
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Write disposition rationale for each thread explaining the warranted or
+      not-warranted classification
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Implement code changes for all warranted fixes identified from PR #74
+      threads'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Create a new pull request containing the warranted fixes with reference
+      to PR #74'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'Ensure the follow-up PR description clearly links back to the original
+      PR #74'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'Add links in PR #74 comments pointing to the follow-up fix PR(s) created'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: '**Post disposition comments with rationale to each unresolved thread on
+      PR #74** - Requires human judgment to determine warranted vs not-warranted classification
+      without objective criteria defined'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: 'PR #74 shows 0 unresolved inline review threads after disposition/comments
+      are posted'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: 'For each previously-unresolved thread, there is a recorded rationale in
+      PR #74 (comment visible in the thread)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: 'If any warranted fixes were identified, at least one follow-up PR exists
+      and is linked from PR #74'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: 'All warranted fixes reference the specific thread URL from PR #74 that
+      prompted them'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
