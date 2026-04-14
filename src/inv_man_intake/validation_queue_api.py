@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Literal, cast
+from typing import Literal, TypeGuard
 
 from .workflow_validation import OwnerRole, ValidationQueueRow, ValidationState
 
@@ -195,16 +195,24 @@ def _optional_trim(value: str | None) -> str | None:
     return trimmed if trimmed else None
 
 
+def _is_validation_state(value: str) -> TypeGuard[ValidationState]:
+    return value in _ALLOWED_STATES
+
+
+def _is_owner_role(value: str) -> TypeGuard[OwnerRole]:
+    return value in _ALLOWED_OWNER_ROLES
+
+
 def _parse_state(value: str) -> ValidationState:
-    if value not in _ALLOWED_STATES:
+    if not _is_validation_state(value):
         raise ValueError(f"Invalid state: {value}")
-    return cast(ValidationState, value)
+    return value
 
 
 def _parse_owner_role(value: str) -> OwnerRole:
-    if value not in _ALLOWED_OWNER_ROLES:
+    if not _is_owner_role(value):
         raise ValueError(f"Invalid owner role: {value}")
-    return cast(OwnerRole, value)
+    return value
 
 
 def _parse_sort_by(value: str) -> QueueSortBy:
