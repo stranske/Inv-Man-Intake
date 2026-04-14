@@ -341,7 +341,9 @@ class VisualArtifactRepository:
 
     def ensure_schema(self) -> None:
         if not self._documents_table_exists():
-            raise RuntimeError("documents table missing; apply core schema before visual artifact schema")
+            raise RuntimeError(
+                "documents table missing; apply core schema before visual artifact schema"
+            )
         self._connection.executescript("""
             CREATE TABLE IF NOT EXISTS visual_artifacts (
                 artifact_id TEXT PRIMARY KEY,
