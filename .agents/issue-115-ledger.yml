@@ -1,0 +1,98 @@
+version: 1
+issue: 115
+base: main
+branch: codex/issue-115
+tasks:
+  - id: task-01
+    title: 'Review the verify:compare non-PASS output from PR #75 to understand the
+      specific concerns'
+    status: done
+    started_at: '2026-03-09T03:37:51Z'
+    finished_at: '2026-03-09T03:38:04Z'
+    commit: d5ecfb2990534ceff2e1fc8f93bd814ad439ac84
+    notes: []
+  - id: task-02
+    title: Create a verify:compare outcome note file in the appropriate location (e.g.,
+      `.outcomes/verify-compare-pr75.md`)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Add links to PR #75 and issue #42 in the outcome note using markdown link
+      syntax'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Add the appropriate link or rationale to the verify:compare outcome note
+      based on the disposition decision
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: '**HUMAN DECISION REQUIRED**: Determine whether the non-PASS output represents
+      a genuine issue or is not-warranted'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: '**CONDITIONAL ON HUMAN DECISION**: Document the not-warranted rationale
+      if the disposition is that no fix is needed'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: '**CONDITIONAL ON HUMAN DECISION**: Create a follow-up issue for the fix
+      if code changes are warranted'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: A verify:compare outcome note file exists at a documented path (e.g., `.outcomes/verify-compare-pr75.md`)
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: The outcome note contains a clear statement of whether the non-PASS output
+      is warranted or not-warranted
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: 'The outcome note includes a markdown link to PR #75 in the format `[PR
+      #75](link)`'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: 'The outcome note includes either:'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: 'The outcome note references issue #42 where relevant'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
