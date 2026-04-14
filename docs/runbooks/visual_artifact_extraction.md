@@ -31,6 +31,8 @@ Each extracted artifact includes:
 ## Limitations And Fallback Behavior
 
 - PDF parsing is stream/object oriented and does not decode embedded image compression.
+- Undecoded PDF image streams use generic binary MIME typing (`application/octet-stream`) unless the filter identifies a self-describing encoded format such as JPEG or JPEG 2000.
+- PDF image objects whose stream bytes cannot be parsed are skipped rather than emitted as zero-byte artifacts.
 - PDF page mapping relies on `/XObject` references. If a page link cannot be resolved, artifacts are retained with `page_number=0` fallback.
 - PPTX extraction requires slide relationship files and media targets to exist in the archive.
 - Unsupported extensions raise `UnsupportedVisualSourceError`; callers should route those files to non-visual extraction paths.

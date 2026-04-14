@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import sqlite3
 
+import pytest
+
 from inv_man_intake.data.migrations.core_schema import apply_core_schema
 from inv_man_intake.data.provenance import VisualArtifactRecord
 from inv_man_intake.data.repository import VisualArtifactRepository
@@ -103,3 +105,44 @@ def test_visual_artifact_repository_preserves_slide_coordinates() -> None:
     rows = repo.list_artifacts("doc_1")
     assert rows[0].source_slide == 4
     assert rows[0].source_ref == "rId7"
+
+
+def test_visual_artifact_repository_requires_core_schema_before_ensure_schema() -> None:
+    conn = sqlite3.connect(":memory:")
+    repo = VisualArtifactRepository(conn)
+
+    with pytest.raises(RuntimeError, match="documents table missing"):
+        repo.ensure_schema()
+
+
+def test_visual_artifact_repository_enables_foreign_keys() -> None:
+    conn = sqlite3.connect(":memory:")
+    repo = VisualArtifactRepository(conn)
+
+    assert repo._connection.execute("PRAGMA foreign_keys").fetchone() == (1,)
+
+
+def test_visual_artifact_repository_insert_is_idempotent_for_same_artifact() -> None:
+    conn = _connection()
+    repo = VisualArtifactRepository(conn)
+    repo.ensure_schema()
+
+    record = VisualArtifactRecord(
+        artifact_id="va_dup_1",
+        document_id="doc_1",
+        source_type="pdf",
+        source_page=2,
+        source_slide=None,
+        source_ref="pdf-object-12",
+        storage_path="artifacts/doc_1/pdf/page-2/object-12.bin",
+        sha256="dup123",
+        mime_type="image/jpeg",
+        byte_size=1240,
+        extracted_at="2026-03-01T09:10:00Z",
+    )
+
+    repo.insert_artifact(record)
+    repo.insert_artifact(record)
+
+    rows = repo.list_artifacts("doc_1")
+    assert [row.artifact_id for row in rows] == ["va_dup_1"]
