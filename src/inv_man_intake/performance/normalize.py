@@ -146,12 +146,13 @@ def detect_missing_months(monthly_series: PerformanceSeries) -> tuple[date, ...]
 
     if monthly_series.frequency != "monthly":
         raise ValueError("detect_missing_months requires frequency='monthly'")
-    if not monthly_series.points:
+    normalized_monthly = normalize_series(monthly_series)
+    if not normalized_monthly.points:
         return ()
 
-    actual = {point.as_of for point in monthly_series.points}
-    start = monthly_series.points[0].as_of
-    end = monthly_series.points[-1].as_of
+    actual = {point.as_of for point in normalized_monthly.points}
+    start = normalized_monthly.points[0].as_of
+    end = normalized_monthly.points[-1].as_of
 
     missing: list[date] = []
     for month_end in _iter_month_ends(start, end):
