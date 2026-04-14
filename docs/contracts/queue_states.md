@@ -51,11 +51,12 @@ Any transition outside this matrix is rejected with:
 - Transition to `in_review`, `blocked`, or `resolved`:
   - Allowed for assignee
   - Allowed for `ops`
+  - `system` actors must match the recorded assignee ID; they do not bypass assignee checks
   - Rejected for non-assignee analyst/system actors with:
     - `QueuePermissionError("only assignee or ops can transition this item")`
 
 ## Deterministic Behavior
 
 - `transition_item(..., to_state=<current_state>)` is a no-op and returns the input item.
-- `actor_id` and assignment IDs must be non-empty.
+- `actor_id` and assignment IDs must be non-empty and normalized before transitions are applied.
 - All item timestamps are persisted in UTC ISO-8601 format with second precision.

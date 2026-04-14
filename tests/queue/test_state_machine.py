@@ -7,6 +7,7 @@ from typing import Literal
 import pytest
 
 from inv_man_intake.queue.state_machine import (
+    QueueItem,
     QueuePermissionError,
     QueueTransitionError,
     assign_item,
@@ -159,6 +160,14 @@ def test_transition_rejects_non_assignee_non_ops_actor() -> None:
         transition_item(item, actor_id="analyst-2", actor_role="analyst", to_state="in_review")
 
 
+def test_transition_rejects_non_assignee_system_actor() -> None:
+    item = create_queue_item(item_id="queue-5-system")
+    item = assign_item(item, actor_id="ops-1", actor_role="ops", assignee_id="analyst-1")
+
+    with pytest.raises(QueuePermissionError, match="only assignee or ops can transition this item"):
+        transition_item(item, actor_id="svc-1", actor_role="system", to_state="in_review")
+
+
 def test_transition_to_assigned_requires_ops_role() -> None:
     item = create_queue_item(item_id="queue-6")
     item = assign_item(item, actor_id="ops-1", actor_role="ops", assignee_id="analyst-1")
@@ -216,3 +225,24 @@ def test_resolved_state_rejects_reassignment() -> None:
         QueueTransitionError, match="cannot assign item from terminal state: resolved"
     ):
         assign_item(item, actor_id="ops-1", actor_role="ops", assignee_id="analyst-2")
+
+
+def test_transition_rejects_blank_assignee_id_on_existing_item() -> None:
+    item = QueueItem(
+        item_id="queue-9",
+        state="assigned",
+        assignee_id="",
+        created_at="2026-03-01T10:00:00+00:00",
+        updated_at="2026-03-01T10:00:00+00:00",
+    )
+
+    with pytest.raises(QueuePermissionError, match="assignee_id must be non-empty"):
+        transition_item(item, actor_id="analyst-1", actor_role="analyst", to_state="in_review")
+
+
+def test_transition_to_same_state_is_noop() -> None:
+    item = create_queue_item(item_id="queue-10")
+    unchanged = transition_item(item, actor_id="ops-1", actor_role="ops", to_state="new")
+
+    assert unchanged is item
+    assert unchanged.updated_at == item.updated_at
