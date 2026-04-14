@@ -349,10 +349,7 @@ def generate_disposition_comment(
 
 def generate_issue_disposition_link_comment(*, disposition_url: str) -> str:
     """Render a short tracker comment pointing back to a disposition note."""
-    return (
-        "Disposition documentation for verify:compare is recorded here: "
-        f"{disposition_url}"
-    )
+    return "Disposition documentation for verify:compare is recorded here: " f"{disposition_url}"
 
 
 # Pre-computed normalized aliases for efficient section resolution.
@@ -614,9 +611,7 @@ class VerificationData:
                 continue
             summary = (payload.get("summary") or "").strip()
             if summary:
-                rows.append(
-                    f"Provider={provider}; Verdict={verdict}; Difference={summary}"
-                )
+                rows.append(f"Provider={provider}; Verdict={verdict}; Difference={summary}")
         return rows
 
 
