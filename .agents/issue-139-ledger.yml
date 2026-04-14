@@ -1,0 +1,118 @@
+version: 1
+issue: 139
+base: main
+branch: codex/issue-139
+tasks:
+  - id: task-01
+    title: Create a markdown document at `scripts/list-unresolved-pr-threads.md` explaining
+      how to find unresolved review threads
+    status: done
+    started_at: '2026-03-09T03:50:53Z'
+    finished_at: '2026-03-09T03:51:03Z'
+    commit: ed55bf18da5947b3b6e173c13f9ba45660031c27
+    notes: []
+  - id: task-02
+    title: Document the GitHub UI steps for viewing unresolved threads on a merged
+      PR in the markdown file
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Add GitHub CLI commands or API examples to the markdown file for programmatically
+      listing unresolved threads
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Review the unresolved inline comment thread on PR #73 and document its
+      content in a local file `pr73-thread-review.md`'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Add to `pr73-thread-review.md`: a quote or link to the original review
+      comment, the reviewer''s concern, and possible disposition options (fix/defer/reject)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Create a follow-up PR with bounded fixes if the thread is classified as
+      warranted (include references to PR #73 and issue #46 in the PR description)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Post a summary comment on PR #73 listing the thread with its disposition
+      and rationale (must include: quote/link to original comment, chosen disposition,
+      and at least one sentence explaining why)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: '**[HUMAN REQUIRED]** Review `pr73-thread-review.md` and determine whether
+      the thread requires a code change or can be dispositioned without changes'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: '**[HUMAN REQUIRED]** Approve the disposition rationale before posting
+      to PR #73'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: File `scripts/list-unresolved-pr-threads.md` exists and contains GitHub
+      UI steps plus CLI/API examples
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: File `pr73-thread-review.md` exists and contains the documented thread
+      content with disposition options
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: 'PR #73 shows 0 unresolved inline review threads in the GitHub UI'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: 'PR #73 has a comment that includes: (1) a quote or link to the original
+      review comment, (2) the chosen disposition (fix/defer/reject), and (3) at least
+      one sentence explaining why'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: 'Any follow-up fix PR(s) created are linked from PR #73 and reference issue
+      #46 in their description'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
