@@ -160,6 +160,40 @@ def validate_intake_payload(payload: dict[str, Any]) -> IntakeValidationResult:
                 )
             )
 
+        raw_contract_version = metadata.get("contract_version")
+        if raw_contract_version is not None:
+            contract_version = _as_str(raw_contract_version)
+            if not contract_version:
+                errors.append(
+                    IntakeValidationIssue(
+                        code="invalid_contract_version",
+                        path="metadata.contract_version",
+                        message="contract_version must be a non-empty string when provided",
+                    )
+                )
+            elif contract_version != "v1":
+                errors.append(
+                    IntakeValidationIssue(
+                        code="unsupported_contract_version",
+                        path="metadata.contract_version",
+                        message="contract_version must be 'v1' for the current intake contract",
+                    )
+                )
+
+        raw_schema_revision = metadata.get("schema_revision")
+        if raw_schema_revision is not None and (
+            isinstance(raw_schema_revision, bool)
+            or not isinstance(raw_schema_revision, int)
+            or raw_schema_revision < 1
+        ):
+            errors.append(
+                IntakeValidationIssue(
+                    code="invalid_schema_revision",
+                    path="metadata.schema_revision",
+                    message="schema_revision must be a positive integer when provided",
+                )
+            )
+
     if not isinstance(files, list) or len(files) == 0:
         errors.append(
             IntakeValidationIssue(

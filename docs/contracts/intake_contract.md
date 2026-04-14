@@ -57,7 +57,7 @@ Downstream services should treat the following fields as contract/version anchor
 
 Change control expectations:
 
-- Additive optional fields may ship under `contract_version = v1`.
+- Additive optional fields may ship under `metadata.contract_version: "v1"`.
 - Required field changes, semantic changes, or validation-breaking changes require a new contract major version (`v2+`) and coordinated downstream updates.
 - Contract updates must land with matching tests and migration notes in downstream contracts/runbooks.
 

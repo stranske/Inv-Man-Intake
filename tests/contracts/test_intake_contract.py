@@ -194,3 +194,45 @@ def test_validate_intake_payload_accepts_received_at_datetime_with_offset() -> N
     result = validate_intake_payload(payload)
     assert result.is_valid is True
     assert not any(issue.code == "invalid_received_at" for issue in result.errors)
+
+
+def test_validate_intake_payload_accepts_contract_version_and_schema_revision() -> None:
+    payload = _valid_payload()
+    metadata = payload["metadata"]
+    assert isinstance(metadata, dict)
+    metadata["contract_version"] = "v1"
+    metadata["schema_revision"] = 2
+
+    result = validate_intake_payload(payload)
+    assert result.is_valid is True
+    assert not any(
+        issue.code in {"invalid_contract_version", "invalid_schema_revision"}
+        for issue in result.errors
+    )
+
+
+def test_validate_intake_payload_rejects_unsupported_contract_version() -> None:
+    payload = _valid_payload()
+    metadata = payload["metadata"]
+    assert isinstance(metadata, dict)
+    metadata["contract_version"] = "v2"
+
+    result = validate_intake_payload(payload)
+    assert result.is_valid is False
+    assert any(issue.code == "unsupported_contract_version" for issue in result.errors)
+
+
+def test_validate_intake_payload_rejects_invalid_schema_revision() -> None:
+    payload = _valid_payload()
+    metadata = payload["metadata"]
+    assert isinstance(metadata, dict)
+    metadata["schema_revision"] = 0
+
+    result_zero = validate_intake_payload(payload)
+    assert result_zero.is_valid is False
+    assert any(issue.code == "invalid_schema_revision" for issue in result_zero.errors)
+
+    metadata["schema_revision"] = True
+    result_bool = validate_intake_payload(payload)
+    assert result_bool.is_valid is False
+    assert any(issue.code == "invalid_schema_revision" for issue in result_bool.errors)
