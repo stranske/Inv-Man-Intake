@@ -38,11 +38,14 @@ def extract_visual_artifacts(
 
 def _extract_pdf_artifacts(*, source_doc_id: str, content: bytes) -> tuple[VisualArtifact, ...]:
     objects = _parse_pdf_objects(content)
-    image_streams = {
-        object_id: _extract_pdf_stream(body)
-        for object_id, body in objects.items()
-        if b"/Subtype /Image" in body
-    }
+    image_streams: dict[int, bytes] = {}
+    for object_id, body in objects.items():
+        if b"/Subtype /Image" not in body:
+            continue
+        stream = _extract_pdf_stream(body)
+        if stream is None:
+            continue
+        image_streams[object_id] = stream
     if not image_streams:
         return ()
 
@@ -106,33 +109,33 @@ def _extract_pdf_artifacts(*, source_doc_id: str, content: bytes) -> tuple[Visua
 
 
 def _extract_pptx_artifacts(*, source_doc_id: str, content: bytes) -> tuple[VisualArtifact, ...]:
-    archive = zipfile.ZipFile(io.BytesIO(content))
-    slide_targets = _collect_slide_targets(archive)
-
     artifacts: list[VisualArtifact] = []
-    for slide_number in sorted(slide_targets):
-        for source_ref, media_path in sorted(slide_targets[slide_number]):
-            if media_path not in archive.namelist():
-                continue
-            payload = archive.read(media_path)
-            extension = Path(media_path).suffix.lower().removeprefix(".")
-            mime_type = _mime_from_extension(extension)
-            source = ArtifactSource(
-                source_doc_id=source_doc_id,
-                slide_number=slide_number,
-                source_ref=source_ref,
-            )
-            artifacts.append(
-                _build_artifact(
-                    source=source,
-                    mime_type=mime_type,
-                    content=payload,
-                    storage_path=(
-                        f"artifacts/{source_doc_id}/pptx/slide-{slide_number}/"
-                        f"{Path(media_path).name}"
-                    ),
+    with zipfile.ZipFile(io.BytesIO(content)) as archive:
+        slide_targets = _collect_slide_targets(archive)
+
+        for slide_number in sorted(slide_targets):
+            for source_ref, media_path in sorted(slide_targets[slide_number]):
+                if media_path not in archive.namelist():
+                    continue
+                payload = archive.read(media_path)
+                extension = Path(media_path).suffix.lower().removeprefix(".")
+                mime_type = _mime_from_extension(extension)
+                source = ArtifactSource(
+                    source_doc_id=source_doc_id,
+                    slide_number=slide_number,
+                    source_ref=source_ref,
                 )
-            )
+                artifacts.append(
+                    _build_artifact(
+                        source=source,
+                        mime_type=mime_type,
+                        content=payload,
+                        storage_path=(
+                            f"artifacts/{source_doc_id}/pptx/slide-{slide_number}/"
+                            f"{Path(media_path).name}"
+                        ),
+                    )
+                )
 
     return tuple(artifacts)
 
@@ -145,11 +148,12 @@ def _parse_pdf_objects(content: bytes) -> dict[int, bytes]:
     return objects
 
 
-def _extract_pdf_stream(object_body: bytes) -> bytes:
+def _extract_pdf_stream(object_body: bytes) -> bytes | None:
     match = _PDF_STREAM_PATTERN.search(object_body)
     if match is None:
-        return b""
-    return match.group(1)
+        return None
+    stream = match.group(1)
+    return stream or None
 
 
 def _map_pdf_page_refs(objects: dict[int, bytes]) -> dict[int, tuple[int, ...]]:
@@ -170,7 +174,7 @@ def _pdf_mime_type(object_body: bytes) -> str:
     if b"/JPXDecode" in object_body:
         return "image/jp2"
     if b"/FlateDecode" in object_body:
-        return "image/png"
+        return "application/octet-stream"
     return "application/octet-stream"
 
 

@@ -337,8 +337,11 @@ class VisualArtifactRepository:
 
     def __init__(self, connection: sqlite3.Connection) -> None:
         self._connection = connection
+        self._connection.execute("PRAGMA foreign_keys = ON")
 
     def ensure_schema(self) -> None:
+        if not self._documents_table_exists():
+            raise RuntimeError("documents table missing; apply core schema before visual artifact schema")
         self._connection.executescript("""
             CREATE TABLE IF NOT EXISTS visual_artifacts (
                 artifact_id TEXT PRIMARY KEY,
@@ -362,10 +365,16 @@ class VisualArtifactRepository:
             """)
         self._connection.commit()
 
+    def _documents_table_exists(self) -> bool:
+        row = self._connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'documents'"
+        ).fetchone()
+        return row is not None
+
     def insert_artifact(self, record: VisualArtifactRecord) -> None:
         self._connection.execute(
             (
-                "INSERT INTO visual_artifacts (artifact_id, document_id, source_type, source_page, "
+                "INSERT OR IGNORE INTO visual_artifacts (artifact_id, document_id, source_type, source_page, "
                 "source_slide, source_ref, storage_path, sha256, mime_type, byte_size, extracted_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             ),

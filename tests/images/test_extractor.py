@@ -63,7 +63,7 @@ def test_extract_visual_artifacts_from_pdf_links_page_and_hash_metadata() -> Non
     assert artifacts[0].sha256
     assert artifacts[0].artifact_id.startswith("va_")
     assert artifacts[1].source.page_number == 2
-    assert artifacts[1].mime_type == "image/png"
+    assert artifacts[1].mime_type == "application/octet-stream"
 
 
 def test_extract_visual_artifacts_from_pptx_links_slide_and_relationship_metadata() -> None:
@@ -96,6 +96,21 @@ def test_visual_artifact_ids_are_stable_for_same_source_payload() -> None:
 
     assert [item.artifact_id for item in first] == [item.artifact_id for item in second]
     assert [item.sha256 for item in first] == [item.sha256 for item in second]
+
+
+def test_extract_visual_artifacts_skips_pdf_image_objects_without_stream_bytes() -> None:
+    content = (
+        b"1 0 obj\n<< /Type /Page /Resources << /XObject << /Im0 5 0 R >> >> >>\nendobj\n"
+        b"5 0 obj\n<< /Subtype /Image /Filter /DCTDecode /Length 0 >>\nendobj\n"
+    )
+
+    artifacts = extract_visual_artifacts(
+        source_doc_id="doc_pdf_empty",
+        file_name="manager_deck.pdf",
+        content=content,
+    )
+
+    assert artifacts == ()
 
 
 def test_extract_visual_artifacts_rejects_unsupported_extension() -> None:
