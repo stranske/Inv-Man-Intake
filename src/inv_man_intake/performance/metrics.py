@@ -11,6 +11,7 @@ from inv_man_intake.performance.contracts import (
     PerformancePayload,
     PerformanceSeries,
     validate_payload,
+    validate_series,
 )
 
 _ANNUALIZATION_FACTOR = 12.0
@@ -23,6 +24,7 @@ _PRIORITIZED_METRIC_FIELDS = (
     "information_ratio",
     "benchmark_correlation",
 )
+_BENCHMARK_ONLY_FIELDS = ("information_ratio", "benchmark_correlation")
 _CANONICAL_SCHEMA_FIELDS = (
     "annualized_volatility",
     "max_drawdown",
@@ -103,12 +105,15 @@ def compute_metrics(
     if benchmark_monthly is not None:
         if benchmark_monthly.frequency != "monthly":
             raise ValueError("benchmark_monthly must use frequency='monthly'")
+        validate_series(benchmark_monthly)
         aligned_portfolio, aligned_benchmark = _align_monthly_series(
             payload.monthly, benchmark_monthly
         )
-
-    information_ratio = _information_ratio(aligned_portfolio, aligned_benchmark)
-    benchmark_correlation = _correlation(aligned_portfolio, aligned_benchmark)
+        information_ratio = _information_ratio(aligned_portfolio, aligned_benchmark)
+        benchmark_correlation = _correlation(aligned_portfolio, aligned_benchmark)
+    else:
+        information_ratio = None
+        benchmark_correlation = None
 
     prioritized_metrics: dict[str, float | None] = {
         "annualized_volatility": annualized_volatility,
@@ -118,8 +123,15 @@ def compute_metrics(
         "information_ratio": information_ratio,
         "benchmark_correlation": benchmark_correlation,
     }
+    insufficient_fields = (
+        _PRIORITIZED_METRIC_FIELDS
+        if benchmark_monthly is not None
+        else tuple(
+            field for field in _PRIORITIZED_METRIC_FIELDS if field not in _BENCHMARK_ONLY_FIELDS
+        )
+    )
     insufficient_data = tuple(
-        key for key in _PRIORITIZED_METRIC_FIELDS if prioritized_metrics[key] is None
+        key for key in insufficient_fields if prioritized_metrics[key] is None
     )
 
     return PerformanceMetrics(
@@ -155,7 +167,7 @@ def _canonicalize_schema(schema: CanonicalMetricsSchema) -> CanonicalMetricsSche
     unexpected = tuple(field for field in schema if field not in _CANONICAL_SCHEMA_FIELDS)
     if missing or unexpected:
         raise RuntimeError(
-            "canonical metrics schema mismatch: " f"missing={missing}, unexpected={unexpected}"
+            f"canonical metrics schema mismatch: missing={missing}, unexpected={unexpected}"
         )
 
     _validate_canonical_schema_values(schema)
