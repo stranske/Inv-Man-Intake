@@ -25,11 +25,11 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=9.0.2",
-    "pytest-cov>=7.0.0",
-    "ruff>=0.15.0",
-    "mypy>=1.19.1",
-    "black==26.1.0",
+    "pytest==9.0.3",
+    "pytest-cov==7.1.0",
+    "ruff==0.15.10",
+    "mypy==1.20.1",
+    "black==26.3.1",
 ]
 
 [project.urls]
@@ -102,10 +102,6 @@ no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 show_error_codes = true
-
-[[tool.mypy.overrides]]
-module = "tests.*"
-disallow_untyped_defs = false
 
 [tool.black]
 line-length = 100
