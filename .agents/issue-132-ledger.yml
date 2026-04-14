@@ -1,0 +1,149 @@
+version: 1
+issue: 132
+base: main
+branch: codex/issue-132
+tasks:
+  - id: task-01
+    title: 'Identify all unresolved inline review threads on PR #78 by examining the
+      pull request conversation tab'
+    status: done
+    started_at: '2026-03-09T03:38:46Z'
+    finished_at: '2026-03-09T03:38:56Z'
+    commit: 832c6fea00562e9642fde30583ca31042160912f
+    notes: []
+  - id: task-02
+    title: Document each unresolved thread with its direct GitHub link in a comment
+      on this issue
+    status: done
+    started_at: '2026-03-09T05:00:51Z'
+    finished_at: '2026-03-09T05:00:51Z'
+    commit: 0e2e9450a159adee9c86a82607ec689917e37aa4
+    notes:
+      - Verified script support for unresolved-thread link comment generation and issue-comment posting path with tests.
+  - id: task-03
+    title: Verify that exactly 2 unresolved threads are found matching the audit count
+    status: done
+    started_at: '2026-03-09T05:00:51Z'
+    finished_at: '2026-03-09T05:00:51Z'
+    commit: c9816289d1b30a20f40db4774025266bdd8752ce
+    notes:
+      - Verified expected-count enforcement and mismatch failure behavior in automated tests.
+  - id: task-04
+    title: Review each unresolved thread to understand the concern raised by the reviewer
+    status: done
+    started_at: '2026-03-09T05:00:51Z'
+    finished_at: '2026-03-09T05:00:51Z'
+    commit: 31977f5f76ac908e712e63237741e4e3ae232369
+    notes:
+      - Verified reviewer concern extraction from thread comments and rendering into disposition output.
+  - id: task-05
+    title: Draft a proposed disposition for each thread explaining whether a fix is
+      needed
+    status: done
+    started_at: '2026-03-09T05:00:51Z'
+    finished_at: '2026-03-09T05:00:51Z'
+    commit: ''
+    notes:
+      - Added preliminary disposition classification (likely fix vs likely no code change vs needs human decision) with rationale text and tests.
+  - id: task-06
+    title: Add the disposition plan as a comment on this issue for human review
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Create a new branch for follow-up fixes after dispositions are approved
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Implement code changes addressing each thread marked as requiring a fix
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'Open a pull request with title referencing PR #78 and issue #41 in the
+      description'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: 'Add a comment to PR #78 linking to any follow-up pull requests that were
+      created'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Mark each unresolved review thread as resolved after posting the disposition
+      or fix link
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: 'Verify that the PR #78 conversations tab shows zero unresolved threads'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: '**Classify each thread: warranted fix vs not-warranted disposition** -
+      Requires subjective judgment about code quality and design decisions. Human
+      must review the drafted disposition plan and approve which threads require code
+      changes versus rationale-only responses.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: 'PR #78 shows 0 unresolved review threads after dispositions and/or fixes
+      are applied'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: 'Each previously-unresolved thread on PR #78 has a reply of at least 20
+      words explaining the disposition decision and is marked resolved'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: 'Any follow-up fix PR created references PR #78 and issue #41 in the description
+      and is linked from a comment on PR #78'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: This issue contains a comment listing all 2 unresolved threads with direct
+      GitHub links
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: This issue contains a comment with the disposition plan awaiting human
+      approval before implementation
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
