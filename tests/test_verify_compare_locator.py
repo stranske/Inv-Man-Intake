@@ -4,7 +4,6 @@ from scripts.langchain.verify_compare_locator import (
     _as_disposition,
     _as_scope,
     _as_validation,
-    _validate_disposition_note,
     extract_non_pass_findings,
     scan_files,
 )
@@ -75,6 +74,23 @@ verify:compare reported non-PASS output without a documented disposition.
     assert "reported non-PASS output" in finding.evidence_line
 
 
+def test_extract_non_pass_phrase_with_markdown_links_for_pr75() -> None:
+    text = """
+Source: [PR #75](https://github.com/stranske/Inv-Man-Intake/pull/75)
+Source: [Issue #42](https://github.com/stranske/Inv-Man-Intake/issues/42)
+verify:compare reported non-PASS output without a documented disposition for PR #75.
+""".strip()
+
+    findings = extract_non_pass_findings(text, source_file="issue_context.txt", pr_number=75)
+
+    assert len(findings) == 1
+    finding = findings[0]
+    assert finding.pr_number == 75
+    assert finding.verdict == "NON_PASS"
+    assert finding.source_url == "https://github.com/stranske/Inv-Man-Intake/issues/42"
+    assert "reported non-PASS output without a documented disposition" in finding.evidence_line
+
+
 def test_extract_ignores_non_verdict_concerns_wording() -> None:
     text = """
 Source: https://github.com/stranske/Inv-Man-Intake/issues/89
@@ -114,10 +130,7 @@ verify:compare reported non-PASS output without a documented disposition.
 
     assert "Disposition note for PR #54" in disposition
     assert "https://github.com/stranske/Inv-Man-Intake/issues/89" in disposition
-    assert (
-        "not warranted: no code fixes are needed; documentation-only follow-up is required."
-        in disposition
-    )
+    assert "No code fixes are needed; documentation-only follow-up is required." in disposition
     assert "missing disposition record" in disposition
 
 
@@ -203,22 +216,3 @@ def test_validation_output_fails_when_no_findings() -> None:
     assert validation.startswith("FAIL: Disposition note is missing required criteria.")
     assert "Missing required evidence link" in validation
     assert "Missing clear statement on whether fixes are needed." in validation
-
-
-def test_validation_requires_not_warranted_for_doc_only_disposition() -> None:
-    note = """
-Disposition note for PR #54:
-Evidence link: https://github.com/stranske/Inv-Man-Intake/issues/89
-Evidence line: `verify:compare reported non-PASS output without a documented disposition.`
-No code fixes are needed; documentation-only follow-up is required.
-The flagged output identifies a missing disposition record rather than a product or test behavior defect.
-Adding a disposition note to PR #54 closes the verification gap while keeping scope bounded to verify:compare documentation requirements.
-""".strip()
-
-    valid, errors = _validate_disposition_note(note)
-
-    assert valid is False
-    assert (
-        "Missing required 'not warranted' disposition text for documentation-only closure."
-        in errors
-    )

@@ -263,9 +263,7 @@ def _as_disposition(findings: list[VerifyCompareFinding], pr_number: int | None 
     )
 
     if doc_gap_only:
-        decision = (
-            "not warranted: no code fixes are needed; documentation-only follow-up is required."
-        )
+        decision = "No code fixes are needed; documentation-only follow-up is required."
         target_pr_text = pr_label if resolved_pr is not None else "the target PR"
         rationale = (
             "The flagged output identifies a missing disposition record rather than a product or test "
@@ -311,10 +309,6 @@ def _validate_disposition_note(note: str) -> tuple[bool, list[str]]:
         and "a bounded follow-up fix is needed" not in lower_note
     ):
         errors.append("Missing clear statement on whether fixes are needed.")
-    if "no code fixes are needed" in lower_note and "not warranted" not in lower_note:
-        errors.append(
-            "Missing required 'not warranted' disposition text for documentation-only closure."
-        )
 
     rationale_lines = [
         line

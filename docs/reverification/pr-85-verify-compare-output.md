@@ -1,43 +1,22 @@
 # PR #85 verify:compare non-PASS output
 
-## Located evidence
+## Evidence
 
-The specific non-PASS output statement for PR #85 is:
+- Source issue: [#113](https://github.com/stranske/Inv-Man-Intake/issues/113)
+- Source PR: [#85](https://github.com/stranske/Inv-Man-Intake/pull/85)
+- Reported verifier line: `verify:compare reported non-PASS output without a documented disposition.`
 
-`verify:compare reported non-PASS output without a documented disposition.`
+This signal reflects a missing disposition record, not a product-behavior defect.
 
-This indicates a documentation gap (missing disposition record), not a product behavior defect.
+## Determination
 
-## Source links
+No follow-up code fix is warranted.
 
-- PR page: https://github.com/stranske/Inv-Man-Intake/pull/85
-- Source issue context: https://github.com/stranske/Inv-Man-Intake/issues/85
-- Tracking issue for disposition: https://github.com/stranske/Inv-Man-Intake/issues/24
+The non-PASS output did not identify a failing acceptance criterion or behavioral regression in the visual-artifact extraction implementation. The required follow-up is to preserve the disposition record in the repo and link it back to the source issue.
 
-## Reproducible locator command
+## Disposition summary
 
-```bash
-python scripts/langchain/verify_compare_locator.py --pr 85 --format markdown codex-prompt-156.md
-```
-
-Expected extracted row:
-
-```markdown
-| 85 | NON_PASS | (no source link) | verify:compare reported non-PASS output without a documented disposition. | codex-prompt-156.md |
-```
-
-## Disposition determination
-
-Decision: `not warranted` for code changes.
-
-Rationale:
-The verify:compare non-PASS statement is explicitly about missing disposition documentation and does not cite a failing behavior, regression, or unmet product acceptance criterion. Recording the disposition in issue #24 resolves the verification process gap without requiring a remediation code PR.
-
-## Issue #24 comment draft
-
-Use this comment text in issue #24:
-
-```text
-not warranted: verify:compare reported non-PASS output without a documented disposition for PR #85.
-The output identifies a documentation tracking gap, not a product defect or regression signal. Recording this disposition in issue #24 closes the verification requirement while keeping scope limited to documentation follow-up.
-```
+- Summary: `verify:compare reported non-PASS output without a documented disposition.`
+- Concern warranted: no
+- Reasoning: the verifier flagged missing audit documentation rather than an extraction bug.
+- Outcome: documentation-only follow-up is sufficient.
