@@ -121,9 +121,12 @@ def _check_transition_permission(
 
     if item.assignee_id is None:
         raise QueuePermissionError("assignee_id must be set before workflow transitions")
+    normalized_assignee_id = _require_normalized_identifier(
+        item.assignee_id, field_name="assignee_id"
+    )
 
-    is_assignee = actor_id == item.assignee_id
-    if actor_role not in {"ops", "system"} and not is_assignee:
+    is_assignee = actor_id == normalized_assignee_id
+    if actor_role != "ops" and not is_assignee:
         raise QueuePermissionError("only assignee or ops can transition this item")
 
 
