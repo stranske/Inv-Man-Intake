@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 
 _ROUND_PRECISION = 6
 _RECONCILIATION_TOLERANCE = 1e-6
@@ -46,8 +47,13 @@ def build_explainability_payload(
 
     if not components:
         raise ValueError("components must contain at least one component")
+    if overall_score is not None and not isfinite(overall_score):
+        raise ValueError("overall_score must be finite")
 
     normalized = tuple(_normalize_component(component) for component in components)
+    component_ids = [component.component for component in normalized]
+    if len(component_ids) != len(set(component_ids)):
+        raise ValueError("component identifiers must be unique")
     ordered = tuple(sorted(normalized, key=lambda component: component.component))
 
     computed_total = _round(sum(component.contribution for component in ordered))
@@ -84,20 +90,26 @@ def format_explainability_payload(payload: ExplainabilityPayload) -> dict[str, o
 
 
 def _normalize_component(component: ScoreComponentInput) -> ScoreComponentOutput:
-    if not component.component:
+    component_id = component.component.strip()
+    if not component_id:
         raise ValueError("component must be non-empty")
-    if not component.rationale:
-        raise ValueError(f"{component.component}.rationale must be non-empty")
+    rationale = component.rationale.strip()
+    if not rationale:
+        raise ValueError(f"{component_id}.rationale must be non-empty")
+    if not isfinite(component.weight):
+        raise ValueError(f"{component_id}.weight must be finite")
     if component.weight < 0:
-        raise ValueError(f"{component.component}.weight must be >= 0")
+        raise ValueError(f"{component_id}.weight must be >= 0")
+    if not isfinite(component.score):
+        raise ValueError(f"{component_id}.score must be finite")
     if component.score < 0 or component.score > 1:
-        raise ValueError(f"{component.component}.score must be between 0 and 1")
+        raise ValueError(f"{component_id}.score must be between 0 and 1")
 
     return ScoreComponentOutput(
-        component=component.component,
+        component=component_id,
         weight=_round(component.weight),
         contribution=_round(component.weight * component.score),
-        rationale=component.rationale,
+        rationale=rationale,
     )
 
 
