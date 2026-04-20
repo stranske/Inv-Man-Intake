@@ -493,6 +493,8 @@ class VerificationData:
 
     provider_verdicts: dict[str, dict[str, Any]] = field(default_factory=dict)
     concerns: list[str] = field(default_factory=list)
+    non_pass_output: list[str] = field(default_factory=list)
+    non_pass_findings: list[str] = field(default_factory=list)
     low_scores: dict[str, int] = field(default_factory=dict)
     iteration_count: int = 0
     tasks_attempted: int = 0
@@ -567,6 +569,15 @@ def extract_verification_data(comment_body: str) -> VerificationData:
             entry["summary"] = summary_text
             if verdict.strip().upper() != "PASS":
                 provider_summary_concerns.append(summary_text)
+        verdict_upper = verdict.strip().upper()
+        if verdict_upper != "PASS":
+            data.non_pass_output.append(
+                f"Provider={provider}; Model={model}; Verdict={verdict_upper}; Confidence={confidence}%"
+            )
+            if summary_text:
+                data.non_pass_findings.append(
+                    f"Provider={provider}; Verdict={verdict_upper}; Difference={summary_text}"
+                )
         data.provider_verdicts[provider] = entry
 
     # Extract verdicts from provider detail sections as a fallback.
@@ -1131,6 +1142,96 @@ def _append_advisory_notes(body: str, advisory_concerns: list[str]) -> str:
     return body.rstrip() + "\n" + "\n".join(notes_lines) + "\n"
 
 
+def _resolve_code_change_requirement(verification_data: VerificationData) -> tuple[bool, str]:
+    """Return whether non-PASS output requires code changes and rationale."""
+
+    findings = verification_data.non_pass_findings
+    if not findings:
+        return False, "No non-PASS provider differences were found."
+
+    has_fail = any("Verdict=FAIL" in finding for finding in findings)
+    if has_fail:
+        return (
+            True,
+            "Difference describes a functional defect or regression signal that should be resolved in code.",
+        )
+
+    pass_confidences = [
+        int(payload.get("confidence", 0) or 0)
+        for payload in verification_data.provider_verdicts.values()
+        if str(payload.get("verdict", "")).strip().upper() == "PASS"
+    ]
+    non_pass_confidences = [
+        int(payload.get("confidence", 0) or 0)
+        for payload in verification_data.provider_verdicts.values()
+        if str(payload.get("verdict", "")).strip().upper() != "PASS"
+    ]
+
+    if (
+        pass_confidences
+        and non_pass_confidences
+        and max(pass_confidences) >= 90
+        and max(non_pass_confidences) <= 69
+    ):
+        return (
+            False,
+            "Difference is low-confidence and contradicted by high-confidence PASS provider(s).",
+        )
+
+    if all(_is_advisory_concern(finding) for finding in findings):
+        return (
+            False,
+            "Difference is advisory-only (style/wording) and does not indicate a functional defect.",
+        )
+
+    return True, "Difference indicates unresolved implementation concerns that should be fixed in code."
+
+
+def generate_disposition_comment(
+    verification_data: VerificationData,
+    *,
+    pr_number: int,
+    source_url: str | None = None,
+) -> str:
+    """Render a verify:compare disposition comment from extracted non-PASS evidence."""
+
+    needs_code_change, rationale = _resolve_code_change_requirement(verification_data)
+    decision_text = "yes" if needs_code_change else "no"
+
+    lines = [
+        "## verify:compare Disposition",
+        "",
+        f"Source: verify:compare non-PASS output from PR #{pr_number}",
+    ]
+    if source_url:
+        lines.append(f"Source link: {source_url}")
+
+    lines.extend(["", "Evidence:"])
+    if verification_data.non_pass_output:
+        for line in verification_data.non_pass_output:
+            lines.append(f"- `{line}`")
+    else:
+        lines.append("- `(no non-PASS provider output found)`")
+
+    lines.extend(
+        [
+            "",
+            f"- non-PASS output requires code changes: **{decision_text}**",
+            f"- requires code changes: **{decision_text}**; technical rationale: {rationale}",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def generate_issue_disposition_link_comment(*, disposition_url: str) -> str:
+    """Render a short issue comment linking to verify:compare disposition evidence."""
+
+    return (
+        "Disposition documentation for verify:compare is recorded here: "
+        f"{disposition_url}"
+    )
+
+
 def generate_followup_issue(
     verification_data: VerificationData,
     original_issue: OriginalIssueData,
@@ -1493,6 +1594,14 @@ def _generate_without_llm(
             f"- Resolved verdict: {verdict}",
         ]
     )
+    for finding in verification_data.non_pass_findings:
+        body_parts.append(f"- {finding}")
+    requires_code_change, rationale = _resolve_code_change_requirement(verification_data)
+    decision_text = "yes" if requires_code_change else "no"
+    body_parts.append(f"- non-PASS output requires code changes: **{decision_text}**")
+    body_parts.append(
+        f"- requires code changes: **{decision_text}**; technical rationale: {rationale}"
+    )
     for concern in blocking_concerns[:10]:
         body_parts.append(f"- Concern: {concern}")
     for concern in advisory_concerns[:10]:
@@ -1505,6 +1614,8 @@ def _generate_without_llm(
             "",
         ]
     )
+    for line in verification_data.non_pass_output:
+        body_parts.append(f"- {line}")
     for provider, data in verification_data.provider_verdicts.items():
         evidence = f"- {provider}: {data.get('verdict', 'Unknown')} @ {data.get('confidence', 0)}%"
         summary = data.get("summary")

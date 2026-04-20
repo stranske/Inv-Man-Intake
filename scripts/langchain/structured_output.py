@@ -3,11 +3,11 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
-T = TypeVar("T", bound=BaseModel)
+ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
 DEFAULT_REPAIR_PROMPT = """
@@ -31,8 +31,8 @@ MAX_REPAIR_ATTEMPTS = 1
 
 
 @dataclass(frozen=True)
-class StructuredOutputResult[T: BaseModel]:
-    payload: T | None
+class StructuredOutputResult(Generic[ModelT]):
+    payload: ModelT | None
     raw_content: str | None
     error_stage: str | None
     error_detail: str | None
@@ -95,14 +95,14 @@ def clamp_repair_attempts(max_repair_attempts: int) -> int:
     )
 
 
-def _invoke_repair_loop[T: BaseModel](
+def _invoke_repair_loop(
     *,
     repair: Callable[[str, str, str], str | None] | None,
     attempts: int,
-    model: type[T],
+    model: type[ModelT],
     error_detail: str,
     content: str,
-) -> StructuredOutputResult[T]:
+) -> StructuredOutputResult[ModelT]:
     if repair is None or attempts == 0:
         return StructuredOutputResult(
             payload=None,
@@ -154,14 +154,14 @@ def _invoke_repair_loop[T: BaseModel](
     )
 
 
-def invoke_repair_loop[T: BaseModel](
+def invoke_repair_loop(
     *,
     repair: Callable[[str, str, str], str | None] | None,
     attempts: int,
-    model: type[T],
+    model: type[ModelT],
     error_detail: str,
     content: str,
-) -> StructuredOutputResult[T]:
+) -> StructuredOutputResult[ModelT]:
     return _invoke_repair_loop(
         repair=repair,
         attempts=attempts,
@@ -171,13 +171,13 @@ def invoke_repair_loop[T: BaseModel](
     )
 
 
-def parse_structured_output[T: BaseModel](
+def parse_structured_output(
     content: str,
-    model: type[T],
+    model: type[ModelT],
     *,
     repair: Callable[[str, str, str], str | None] | None,
     max_repair_attempts: int = 1,
-) -> StructuredOutputResult[T]:
+) -> StructuredOutputResult[ModelT]:
     try:
         payload = model.model_validate_json(content)
         return StructuredOutputResult(
