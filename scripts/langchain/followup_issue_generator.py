@@ -492,6 +492,8 @@ class VerificationData:
     """Data extracted from verification comments."""
 
     provider_verdicts: dict[str, dict[str, Any]] = field(default_factory=dict)
+    non_pass_output: list[str] = field(default_factory=list)
+    non_pass_findings: list[str] = field(default_factory=list)
     concerns: list[str] = field(default_factory=list)
     low_scores: dict[str, int] = field(default_factory=dict)
     iteration_count: int = 0
@@ -563,10 +565,19 @@ def extract_verification_data(comment_body: str) -> VerificationData:
             "verdict": verdict.strip(),
             "confidence": confidence,
         }
+        verdict_kind = verdict.strip().upper()
         if summary_text:
             entry["summary"] = summary_text
-            if verdict.strip().upper() != "PASS":
+            if verdict_kind != "PASS":
                 provider_summary_concerns.append(summary_text)
+        if verdict_kind != "PASS":
+            data.non_pass_output.append(
+                f"Provider={provider}; Model={model}; Verdict={verdict_kind}; Confidence={confidence}%"
+            )
+            if summary_text:
+                data.non_pass_findings.append(
+                    f"Provider={provider}; Verdict={verdict_kind}; Difference={summary_text}"
+                )
         data.provider_verdicts[provider] = entry
 
     # Extract verdicts from provider detail sections as a fallback.
@@ -673,6 +684,7 @@ def extract_verification_data(comment_body: str) -> VerificationData:
                         all_concerns.append(concern)
 
     all_concerns.extend(provider_summary_concerns)
+    all_concerns.extend(data.non_pass_findings)
 
     # Deduplicate while preserving order, and filter out spurious entries
     seen: set[str] = set()
@@ -1505,12 +1517,17 @@ def _generate_without_llm(
             "",
         ]
     )
-    for provider, data in verification_data.provider_verdicts.items():
-        evidence = f"- {provider}: {data.get('verdict', 'Unknown')} @ {data.get('confidence', 0)}%"
-        summary = data.get("summary")
-        if summary:
-            evidence += f" ({summary})"
-        body_parts.append(evidence)
+    if verification_data.non_pass_output:
+        for evidence in verification_data.non_pass_output:
+            body_parts.append(f"- {evidence}")
+    else:
+        for provider, data in verification_data.provider_verdicts.items():
+            evidence = (
+                f"- Provider={provider}; Model={data.get('model', '')}; "
+                f"Verdict={str(data.get('verdict', 'Unknown')).strip().upper()}; "
+                f"Confidence={int(data.get('confidence', 0))}%"
+            )
+            body_parts.append(evidence)
 
     # Add background context in collapsible section
     body_parts.extend(
@@ -1611,9 +1628,131 @@ def _build_why_section(
     if needs_human_reason:
         parts.append(needs_human_reason)
 
+    disposition = _evaluate_non_pass_disposition(verification_data)
+    parts.append(f"non-PASS output requires code changes: **{disposition.requires_code_changes}**.")
+    parts.append(
+        "requires code changes: "
+        f"**{disposition.requires_code_changes}**; technical rationale: {disposition.rationale}"
+    )
+
     parts.append("This follow-up addresses the remaining gaps with improved task structure.")
 
     return " ".join(parts)
+
+
+@dataclass(frozen=True)
+class _DispositionEvaluation:
+    requires_code_changes: str
+    rationale: str
+
+
+def _evaluate_non_pass_disposition(verification_data: VerificationData) -> _DispositionEvaluation:
+    if not verification_data.provider_verdicts:
+        return _DispositionEvaluation(
+            requires_code_changes="no",
+            rationale="No provider verdict evidence was captured.",
+        )
+
+    entries = list(verification_data.provider_verdicts.values())
+    fail_entries = [
+        payload
+        for payload in entries
+        if str(payload.get("verdict", "")).strip().upper().startswith("FAIL")
+    ]
+    if fail_entries:
+        return _DispositionEvaluation(
+            requires_code_changes="yes",
+            rationale=(
+                "Difference describes a functional defect or regression signal "
+                "that should be resolved in code."
+            ),
+        )
+
+    pass_confidences = [
+        int(payload.get("confidence", 0))
+        for payload in entries
+        if str(payload.get("verdict", "")).strip().upper().startswith("PASS")
+    ]
+    concerns_confidences = [
+        int(payload.get("confidence", 0))
+        for payload in entries
+        if str(payload.get("verdict", "")).strip().upper().startswith("CONCERN")
+    ]
+    if (
+        pass_confidences
+        and concerns_confidences
+        and max(pass_confidences) >= 85
+        and max(concerns_confidences) < 85
+    ):
+        return _DispositionEvaluation(
+            requires_code_changes="no",
+            rationale=(
+                "Difference is low-confidence and contradicted by high-confidence PASS provider(s)."
+            ),
+        )
+
+    non_pass_findings = verification_data.non_pass_findings or verification_data.concerns
+    if non_pass_findings and all(_is_advisory_concern(item) for item in non_pass_findings):
+        return _DispositionEvaluation(
+            requires_code_changes="no",
+            rationale=(
+                "Difference appears advisory/stylistic and does not indicate a reproducible "
+                "functional defect."
+            ),
+        )
+
+    return _DispositionEvaluation(
+        requires_code_changes="yes",
+        rationale="Difference indicates unresolved behavior risk that should be addressed in code.",
+    )
+
+
+def generate_disposition_comment(
+    verification_data: VerificationData,
+    pr_number: int,
+    source_url: str | None = None,
+) -> str:
+    """Render a deterministic verify:compare disposition block for issue comments."""
+    disposition = _evaluate_non_pass_disposition(verification_data)
+    lines = [
+        "## verify:compare Disposition",
+        "",
+        f"Source: verify:compare non-PASS output from PR #{pr_number}",
+    ]
+    if source_url:
+        lines.append(f"Source link: {source_url}")
+    lines.extend(["", "Evidence:"])
+
+    evidence_lines = list(verification_data.non_pass_output)
+    if not evidence_lines:
+        for provider, payload in verification_data.provider_verdicts.items():
+            verdict = str(payload.get("verdict", "UNKNOWN")).strip().upper() or "UNKNOWN"
+            if verdict == "PASS":
+                continue
+            model = str(payload.get("model", ""))
+            confidence = int(payload.get("confidence", 0))
+            evidence_lines.append(
+                f"Provider={provider}; Model={model}; Verdict={verdict}; Confidence={confidence}%"
+            )
+    for line in evidence_lines:
+        lines.append(f"- `{line}`")
+
+    lines.extend(
+        [
+            "",
+            f"non-PASS output requires code changes: **{disposition.requires_code_changes}**",
+            (
+                "requires code changes: "
+                f"**{disposition.requires_code_changes}**; technical rationale: {disposition.rationale}"
+            ),
+        ]
+    )
+    return "\n".join(lines)
+
+
+def generate_issue_disposition_link_comment(disposition_url: str) -> str:
+    """Render a short issue comment linking to the disposition note."""
+    return f"Disposition documentation for verify:compare is recorded here: {disposition_url}"
 
 
 def main() -> int:
