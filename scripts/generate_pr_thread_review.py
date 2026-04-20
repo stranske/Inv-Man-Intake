@@ -95,7 +95,7 @@ def render_review_markdown(
                 f"- Reviewer: `{comment.reviewer}`",
                 f"- File context: `{comment.path or 'unknown'}`"
                 + (f":{comment.line}" if comment.line else ""),
-                f"- Quote: \"{quote or 'TODO: add quote from original review comment'}\"",
+                f'- Quote: "{quote or "TODO: add quote from original review comment"}"',
                 "- Reviewer concern: TODO: summarize reviewer concern from thread discussion.",
                 "- Disposition options:",
                 "  - Fix: implement bounded code/test change and link follow-up PR.",
