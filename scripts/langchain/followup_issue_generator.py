@@ -76,6 +76,15 @@ MISSING_CONCERNS_MESSAGE = (
     "Verification output did not include extractable concerns; "
     "re-run verification to capture verifier-context.md and verifier-diff-summary.md."
 )
+MISSING_CONCERNS_VERDICTS = {
+    "unknown",
+    "concerns",
+    "error",
+    "fail",
+    "needs work",
+    "not ready",
+}
+NON_PASS_DETAIL_LIMIT = 10
 
 LOGGER = logging.getLogger(__name__)
 
@@ -174,15 +183,27 @@ def _parse_confidence_value(text: str) -> int:
     """Parse confidence text into an integer percent."""
     if not text:
         return 0
+    percent_match = re.search(r"(\d+(?:\.\d+)?)\s*%", text)
+    if percent_match:
+        return int(round(float(percent_match.group(1))))
     match = re.search(r"\d+(?:\.\d+)?", text)
     if not match:
         return 0
     value = float(match.group(0))
-    if "%" in text:
-        return int(round(value))
     if value <= 1:
         return int(round(value * 100))
     return int(round(value))
+
+
+def _coerce_confidence_percent(value: Any) -> int:
+    """Coerce stored confidence into a percent without rescaling integer percentages."""
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if 0 < value < 1:
+            return int(round(value * 100))
+        return int(round(value))
+    return _parse_confidence_value(str(value or "0"))
 
 
 ADVISORY_PATTERNS = [
@@ -529,8 +550,6 @@ class FollowupIssue:
 def extract_verification_data(comment_body: str) -> VerificationData:
     """Extract structured data from verification comment(s)."""
     data = VerificationData()
-    non_pass_output: list[str] = []
-    non_pass_findings: list[str] = []
 
     # Extract provider verdicts (from comparison reports)
     lines = comment_body.splitlines()
@@ -562,26 +581,16 @@ def extract_verification_data(comment_body: str) -> VerificationData:
         confidence_text = cols[3]
         confidence = _parse_confidence_value(confidence_text)
         summary_text = cols[4].strip() if len(cols) >= 5 else ""
-        verdict_clean = verdict.strip()
         entry = {
             "model": model,
-            "verdict": verdict_clean,
+            "verdict": verdict.strip(),
             "confidence": confidence,
         }
         if summary_text:
             entry["summary"] = summary_text
-            if verdict_clean.upper() != "PASS":
+            if verdict.strip().upper() != "PASS":
                 provider_summary_concerns.append(summary_text)
         data.provider_verdicts[provider] = entry
-        if verdict_clean.lower() != "pass":
-            non_pass_output.append(
-                f"Provider={provider}; Model={model}; Verdict={verdict_clean}; "
-                f"Confidence={confidence}%"
-            )
-            if summary_text:
-                non_pass_findings.append(
-                    f"Provider={provider}; Verdict={verdict_clean}; Difference={summary_text}"
-                )
 
     # Extract verdicts from provider detail sections as a fallback.
     current_provider = None
@@ -705,16 +714,6 @@ def extract_verification_data(comment_body: str) -> VerificationData:
             seen.add(c_lower)
             data.concerns.append(c)
 
-    # Keep deterministic non-PASS findings in concerns for task derivation.
-    for finding in non_pass_findings:
-        finding_key = finding.strip().lower()
-        if finding_key and finding_key not in seen:
-            seen.add(finding_key)
-            data.concerns.append(finding)
-
-    data.non_pass_output = list(dict.fromkeys(non_pass_output))
-    data.non_pass_findings = list(dict.fromkeys(non_pass_findings))
-
     if not data.concerns and _should_add_missing_concerns_note(
         comment_body, data.provider_verdicts
     ):
@@ -762,7 +761,29 @@ def extract_verification_data(comment_body: str) -> VerificationData:
         for match in problem_pattern.finditer(issues_text):
             data.structural_issues.append(match.group(1).strip())
 
+    _refresh_non_pass_evidence(data)
     return data
+
+
+def _refresh_non_pass_evidence(data: VerificationData) -> None:
+    """Rebuild non-PASS evidence from final provider verdicts."""
+
+    data.non_pass_output = []
+    data.non_pass_findings = []
+    for provider, payload in data.provider_verdicts.items():
+        verdict = str(payload.get("verdict", "") or "").strip()
+        if verdict.upper() == "PASS":
+            continue
+        model = str(payload.get("model", "") or "").strip()
+        confidence = _coerce_confidence_percent(payload.get("confidence", 0))
+        data.non_pass_output.append(
+            f"Provider={provider}; Model={model}; Verdict={verdict}; Confidence={confidence}%"
+        )
+        summary = str(payload.get("summary", "") or "").strip()
+        if summary:
+            data.non_pass_findings.append(
+                f"Provider={provider}; Verdict={verdict}; Difference={summary}"
+            )
 
 
 def _should_add_missing_concerns_note(
@@ -779,7 +800,7 @@ def _should_add_missing_concerns_note(
             verdicts.append(verdict)
     if not verdicts:
         return True
-    return any(verdict == "unknown" for verdict in verdicts)
+    return any(verdict in MISSING_CONCERNS_VERDICTS for verdict in verdicts)
 
 
 def extract_original_issue_data(
@@ -1155,103 +1176,92 @@ def _append_advisory_notes(body: str, advisory_concerns: list[str]) -> str:
     return body.rstrip() + "\n" + "\n".join(notes_lines) + "\n"
 
 
-def _assess_code_change_requirement(verification_data: VerificationData) -> tuple[str, str]:
-    """Return ('yes'|'no', rationale) for whether verify:compare implies code changes."""
-    normalized_verdicts = {
-        provider: (payload.get("verdict") or "").strip().lower()
-        for provider, payload in verification_data.provider_verdicts.items()
-    }
-    if any(verdict == "fail" for verdict in normalized_verdicts.values()):
-        return (
-            "yes",
-            "Difference describes a functional defect or regression signal that should be "
-            "resolved in code.",
-        )
-
-    # High-confidence PASS can override low-confidence CONCERNS when no provider reports FAIL.
-    pass_confidences = [
-        int(payload.get("confidence") or 0)
-        for payload in verification_data.provider_verdicts.values()
-        if (payload.get("verdict") or "").strip().lower() == "pass"
-    ]
-    concerns_confidences = [
-        int(payload.get("confidence") or 0)
-        for payload in verification_data.provider_verdicts.values()
-        if (payload.get("verdict") or "").strip().lower() == "concerns"
-    ]
-    if (
-        pass_confidences
-        and concerns_confidences
-        and max(pass_confidences) >= 85
-        and max(concerns_confidences) < 70
-    ):
-        return (
-            "no",
-            "Difference is low-confidence and contradicted by high-confidence PASS " "provider(s).",
-        )
-
-    findings = verification_data.non_pass_findings or verification_data.concerns
-    actionable_findings = [finding for finding in findings if not _is_advisory_concern(finding)]
-    if actionable_findings:
-        return (
-            "yes",
-            "Difference describes a functional defect or regression signal that should be "
-            "resolved in code.",
-        )
-
-    return (
-        "no",
-        "Difference is advisory-only (style/wording/preference) and does not require a code "
-        "change.",
+def _format_code_change_decision(verification_data: VerificationData) -> str:
+    policy_result = _resolve_verdict_policy(verification_data)
+    blocking_concerns, advisory_concerns = _split_concerns(verification_data.concerns)
+    requires_code_change = policy_result.verdict.lower() in {"fail", "error"} or bool(
+        blocking_concerns
     )
+    if (
+        policy_result.verdict_kind == "concerns"
+        and policy_result.split_verdict
+        and not policy_result.needs_human
+    ):
+        requires_code_change = False
+    if policy_result.verdict.lower() == "concerns" and advisory_concerns and not blocking_concerns:
+        requires_code_change = False
+
+    rationale = policy_result.needs_human_reason
+    if not rationale:
+        if (
+            policy_result.verdict_kind == "concerns"
+            and policy_result.split_verdict
+            and not policy_result.needs_human
+        ):
+            rationale = (
+                "low-confidence and contradicted by high-confidence PASS provider(s); "
+                "no code follow-up is required."
+            )
+        elif requires_code_change:
+            rationale = (
+                "Difference describes a functional defect or regression signal that should be "
+                "resolved in code."
+            )
+        else:
+            rationale = (
+                "Difference appears advisory or contradicted by higher-confidence PASS "
+                "provider evidence; no code follow-up is required."
+            )
+
+    answer = "yes" if requires_code_change else "no"
+    return f"non-PASS output requires code changes: **{answer}**; technical rationale: {rationale}"
 
 
 def generate_disposition_comment(
     verification_data: VerificationData,
-    *,
     pr_number: int,
     source_url: str | None = None,
 ) -> str:
-    """Generate a markdown disposition comment from verify:compare output."""
-    requires_code_changes, rationale = _assess_code_change_requirement(verification_data)
-    lines = [
+    """Generate a durable issue/PR disposition comment for non-PASS verification output."""
+
+    body_parts = [
         "## verify:compare Disposition",
         "",
         f"Source: verify:compare non-PASS output from PR #{pr_number}",
     ]
     if source_url:
-        lines.append(f"Source link: {source_url}")
+        body_parts.append(f"Source link: {source_url}")
 
-    lines.extend(["", "## verify:compare Evidence"])
-    for item in verification_data.non_pass_output:
-        lines.append(f"- `{item}`")
-    if not verification_data.non_pass_output:
-        lines.append("- No non-PASS provider rows were detected in the supplied output.")
-
-    lines.extend(
-        [
-            "",
-            "## verify:compare Analysis",
-            "",
-            f"- non-PASS output requires code changes: **{requires_code_changes}**",
-            (
-                "- requires code changes: "
-                f"**{requires_code_changes}**; technical rationale: {rationale}"
-            ),
-        ]
-    )
+    body_parts.extend(["", "### Evidence", ""])
+    if verification_data.non_pass_output:
+        max_non_pass_output = NON_PASS_DETAIL_LIMIT
+        for output in verification_data.non_pass_output[:max_non_pass_output]:
+            body_parts.append(f"- `{output}`")
+        remaining_non_pass_output = len(verification_data.non_pass_output) - max_non_pass_output
+        if remaining_non_pass_output > 0:
+            body_parts.append(f"- ... plus {remaining_non_pass_output} more evidence entries")
+    else:
+        body_parts.append("- No structured non-PASS provider output was extracted.")
 
     if verification_data.non_pass_findings:
-        lines.append("")
-        for finding in verification_data.non_pass_findings:
-            lines.append(f"- {finding}")
+        body_parts.extend(["", "### Findings", ""])
+        max_non_pass_findings = NON_PASS_DETAIL_LIMIT
+        for finding in verification_data.non_pass_findings[:max_non_pass_findings]:
+            body_parts.append(f"- {finding}")
+        remaining_non_pass_findings = (
+            len(verification_data.non_pass_findings) - max_non_pass_findings
+        )
+        if remaining_non_pass_findings > 0:
+            body_parts.append(f"- ... plus {remaining_non_pass_findings} more findings")
 
-    return "\n".join(lines)
+    body_parts.extend(["", "### Decision", "", _format_code_change_decision(verification_data)])
+    return "\n".join(body_parts)
 
 
-def generate_issue_disposition_link_comment(*, disposition_url: str) -> str:
-    """Generate issue comment body that links to a verify:compare disposition note."""
-    return "Disposition documentation for verify:compare is recorded here: " f"{disposition_url}"
+def generate_issue_disposition_link_comment(disposition_url: str) -> str:
+    """Generate a short issue comment linking to the durable disposition evidence."""
+
+    return f"Disposition documentation for verify:compare is recorded here: {disposition_url}"
 
 
 def generate_followup_issue(
@@ -1536,7 +1546,6 @@ def _generate_without_llm(
         verdict=verdict,
         needs_human_reason=needs_human_reason,
     )
-    requires_code_changes, rationale = _assess_code_change_requirement(verification_data)
 
     # Convert concerns to tasks
     tasks = []
@@ -1562,42 +1571,18 @@ def _generate_without_llm(
         "",
         why_section,
         "",
-        "## verify:compare Analysis",
+        "## Source",
         "",
-        f"- non-PASS output requires code changes: **{requires_code_changes}**",
-        f"- requires code changes: **{requires_code_changes}**; technical rationale: {rationale}",
+        f"- Original PR: #{pr_number}",
+        f"- Parent issue: #{original_issue.number}",
+        "",
+        "## Scope",
+        "",
+        f"Address verification concerns from PR #{pr_number} related to {original_issue.title}.",
+        "",
+        "## Tasks",
+        "",
     ]
-    for finding in verification_data.non_pass_findings:
-        body_parts.append(f"- {finding}")
-
-    body_parts.extend(
-        [
-            "",
-            "## verify:compare Evidence",
-            "",
-        ]
-    )
-    for evidence in verification_data.non_pass_output:
-        body_parts.append(f"- {evidence}")
-    if not verification_data.non_pass_output:
-        body_parts.append("- No non-PASS provider rows were detected in the supplied output.")
-
-    body_parts.extend(
-        [
-            "",
-            "## Source",
-            "",
-            f"- Original PR: #{pr_number}",
-            f"- Parent issue: #{original_issue.number}",
-            "",
-            "## Scope",
-            "",
-            f"Address verification concerns from PR #{pr_number} related to {original_issue.title}.",
-            "",
-            "## Tasks",
-            "",
-        ]
-    )
 
     if needs_human:
         body_parts.append(
@@ -1641,10 +1626,13 @@ def _generate_without_llm(
             f"- Resolved verdict: {verdict}",
         ]
     )
+    for finding in verification_data.non_pass_findings[:NON_PASS_DETAIL_LIMIT]:
+        body_parts.append(f"- {finding}")
     for concern in blocking_concerns[:10]:
         body_parts.append(f"- Concern: {concern}")
     for concern in advisory_concerns[:10]:
         body_parts.append(f"- Advisory: {concern}")
+    body_parts.append(f"- {_format_code_change_decision(verification_data)}")
 
     body_parts.extend(
         [
@@ -1653,6 +1641,12 @@ def _generate_without_llm(
             "",
         ]
     )
+    max_non_pass_output = 10
+    for output in verification_data.non_pass_output[:max_non_pass_output]:
+        body_parts.append(f"- `{output}`")
+    remaining_non_pass_output = len(verification_data.non_pass_output) - max_non_pass_output
+    if remaining_non_pass_output > 0:
+        body_parts.append(f"- ... plus {remaining_non_pass_output} more evidence entries")
     for provider, data in verification_data.provider_verdicts.items():
         evidence = f"- {provider}: {data.get('verdict', 'Unknown')} @ {data.get('confidence', 0)}%"
         summary = data.get("summary")
