@@ -3,14 +3,14 @@ requires = ["setuptools>=82.0.1", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "my-project"
+name = "inv-man-intake"
 version = "0.1.0"
-description = "Template Python project with stranske/Workflows CI integration"
+description = "Investment manager intake-to-scoring pipeline with extraction, provenance, validation queue, and scoring contracts"
 readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [
-    {name = "Your Name", email = "your.email@example.com"},
+    {name = "stranske"},
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -32,8 +32,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/stranske/Template"
-Repository = "https://github.com/stranske/Template"
+Homepage = "https://github.com/stranske/Inv-Man-Intake"
+Repository = "https://github.com/stranske/Inv-Man-Intake"
 
 [tool.setuptools.package-data]
 inv_man_intake = ["data/migrations/sql/*.sql"]
@@ -43,11 +43,11 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v --cov=my_project --cov-report=term-missing --cov-report=xml -p no:langsmith_plugin -p no:pytest_langsmith_plugin"
+addopts = "-v --cov=inv_man_intake --cov-report=term-missing --cov-report=xml -p no:langsmith_plugin -p no:pytest_langsmith_plugin"
 pythonpath = ["src"]
 
 [tool.coverage.run]
-source = ["my_project"]
+source = ["inv_man_intake"]
 branch = true
 
 [tool.coverage.report]
@@ -57,9 +57,6 @@ exclude_lines = [
     "raise NotImplementedError",
     "if TYPE_CHECKING:",
     "if __name__ == .__main__.:",
-]
-omit = [
-    "src/my_project/extraction_orchestrator.py",
 ]
 fail_under = 80
 
@@ -85,11 +82,11 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["inv_man_intake", "my_project", "tools"]
+known-first-party = ["inv_man_intake", "tools"]
 
 [tool.mypy]
 python_version = "3.12"
-files = ["src/my_project", "tests/test_main.py"]
+files = ["src/inv_man_intake"]
 exclude = ["^scripts/", "^tools/"]
 strict = true
 warn_return_any = true

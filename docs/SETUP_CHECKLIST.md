@@ -205,12 +205,12 @@ scripts/                        # Python utility scripts
 ├── fallback_split.py
 └── parse_chatgpt_topics.py
 src/
-└── my_project/                 # Your Python package
+└── inv_man_intake/             # Investment manager intake package
     ├── __init__.py
-    └── main.py
+    └── ...
 tests/
 ├── __init__.py
-└── test_main.py
+└── ...
 Issues.txt                      # Agent issue queue
 Topics.txt                      # Issue topic configuration
 pyproject.toml                  # Python project configuration

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from inv_man_intake.extraction.orchestrator import ExtractionFailedError, ExtractionOrchestrator
 from inv_man_intake.observability import InMemoryTraceSink, Tracer, new_trace_context
-from my_project.extraction_orchestrator import ExtractionFailedError, ExtractionOrchestrator
 
 
 def _count_metric_event(payload: dict[str, object], counters: dict[str, int]) -> None:

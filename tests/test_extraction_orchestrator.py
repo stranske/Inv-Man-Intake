@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from inv_man_intake.observability import InMemoryTraceSink, Tracer
-from my_project.extraction_orchestrator import (
+from inv_man_intake.extraction.orchestrator import (
     ExtractionFailedError,
     ExtractionOrchestrator,
     RetryPolicy,
 )
+from inv_man_intake.observability import InMemoryTraceSink, Tracer
 
 
 def test_primary_success_skips_fallback() -> None:
