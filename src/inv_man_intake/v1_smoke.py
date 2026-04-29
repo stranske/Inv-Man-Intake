@@ -14,9 +14,12 @@ from inv_man_intake.extraction.confidence import (
 from inv_man_intake.extraction.orchestrator import ExtractionOrchestrator
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
 from inv_man_intake.intake.integration import register_intake_bundle_file
+from inv_man_intake.intake.models import IngestRecord
 from inv_man_intake.intake.service import IngestionService
 from inv_man_intake.observability import (
     InMemoryTraceSink,
+    TraceContext,
+    TraceEvent,
     Tracer,
     child_trace_context,
     extract_trace_context,
@@ -200,7 +203,7 @@ def run_v1_smoke_pipeline(
 def _run_extraction_smoke(
     *,
     tracer: Tracer,
-    trace_context,
+    trace_context: TraceContext,
     source_doc_id: str,
 ) -> ExtractedDocumentResult:
     def primary_extractor(payload: dict[str, object]) -> dict[str, object]:
@@ -342,7 +345,7 @@ def _explainability_inputs(
     )
 
 
-def _start_event(sink: InMemoryTraceSink, name: str):
+def _start_event(sink: InMemoryTraceSink, name: str) -> TraceEvent:
     matches = [event for event in sink.events if event.name == name and event.ended_at is None]
     assert matches, f"missing trace start event {name}"
     return matches[0]
@@ -353,7 +356,7 @@ def _assert_registered_package_state(
     service: IngestionService,
     package_id: str,
     expected_document_ids: tuple[str, ...],
-):
+) -> IngestRecord:
     record = service.get_record(package_id)
     assert record.status == "received"
     assert record.document_ids == expected_document_ids, "document identifiers must remain stable"

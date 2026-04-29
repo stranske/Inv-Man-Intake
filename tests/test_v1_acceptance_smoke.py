@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -10,7 +9,6 @@ import pytest
 from inv_man_intake.intake.integration import register_intake_bundle_file
 from inv_man_intake.intake.service import IngestionService
 from inv_man_intake.observability import InMemoryTraceSink
-from inv_man_intake.queue.assignment import create_analyst_first_assignment
 from inv_man_intake.scoring.contracts import ScoreSubmission
 from inv_man_intake.scoring.engine import compute_score
 from inv_man_intake.v1_smoke import (
