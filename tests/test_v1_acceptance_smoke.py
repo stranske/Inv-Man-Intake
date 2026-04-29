@@ -67,12 +67,9 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path() -> None:
             service,
         )
 
+    record = _assert_registered_package_state(service=service, package_id=_SMOKE_PACKAGE_ID)
     assert registration.accepted is True
-    assert registration.package_id == _SMOKE_PACKAGE_ID
-    record = service.get_record(_SMOKE_PACKAGE_ID)
-    assert record.status == "received"
-    assert record.document_ids == _EXPECTED_DOCUMENT_IDS
-    assert service.get_events(_SMOKE_PACKAGE_ID)[0].to_status == "received"
+    assert registration.package_id == record.package_id
 
     intake_start = _start_event(sink, "v1_acceptance.intake_register")
     carrier = inject_trace_context(trace_context)
@@ -204,6 +201,54 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path() -> None:
     assert _start_event(sink, "v1_acceptance.scoring_compute").parent_span_id == (
         performance_start.span_id
     )
+
+
+def test_v1_acceptance_smoke_fails_when_intake_registration_is_bypassed() -> None:
+    service = IngestionService()
+    with pytest.raises(KeyError, match="unknown package_id=pkg_pdf_mixed_001"):
+        _assert_registered_package_state(service=service, package_id=_SMOKE_PACKAGE_ID)
+
+
+def test_v1_acceptance_smoke_fails_when_document_identifiers_are_not_stable() -> None:
+    service = IngestionService()
+    register_intake_bundle_file(_FIXTURE_ROOT / "pdf_primary_mixed_bundle.json", service)
+
+    record = service.get_record(_SMOKE_PACKAGE_ID)
+    service._records[_SMOKE_PACKAGE_ID] = type(record)(
+        package_id=record.package_id,
+        firm_id=record.firm_id,
+        fund_id=record.fund_id,
+        status=record.status,
+        file_count=record.file_count,
+        document_ids=("volatile-doc-id",) + record.document_ids[1:],
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+        note=record.note,
+    )
+
+    with pytest.raises(AssertionError, match="document identifiers must remain stable"):
+        _assert_registered_package_state(service=service, package_id=_SMOKE_PACKAGE_ID)
+
+
+def test_v1_acceptance_smoke_fails_when_scoring_omits_explainability_payload() -> None:
+    score = compute_score(
+        ScoreSubmission(
+            manager_id="fund_summit_arc_special_situations",
+            asset_class="credit",
+            components=_score_components(0.67),
+        )
+    )
+    with pytest.raises(AssertionError, match="scoring output must include explainability payload"):
+        _assert_score_has_explainability(score=score, explainability_payload=None)
+
+
+def test_v1_acceptance_smoke_fails_when_conflict_case_lacks_queue_or_audit_evidence() -> None:
+    with pytest.raises(AssertionError, match="conflict case must emit queue or audit evidence"):
+        _assert_conflict_escalation_has_evidence(
+            escalate=True,
+            audit_entries=(),
+            queue_item_id=None,
+        )
 
 
 def _run_extraction_smoke(
@@ -356,3 +401,32 @@ def _start_event(sink: InMemoryTraceSink, name: str):
     matches = [event for event in sink.events if event.name == name and event.ended_at is None]
     assert matches, f"missing trace start event {name}"
     return matches[0]
+
+
+def _assert_registered_package_state(*, service: IngestionService, package_id: str):
+    record = service.get_record(package_id)
+    assert record.status == "received"
+    assert record.document_ids == _EXPECTED_DOCUMENT_IDS, "document identifiers must remain stable"
+    assert service.get_events(package_id)[0].to_status == "received"
+    return record
+
+
+def _assert_score_has_explainability(
+    *,
+    score,
+    explainability_payload: dict[str, object] | None,
+) -> None:
+    assert score.final_score >= 0.0
+    assert explainability_payload is not None, "scoring output must include explainability payload"
+    assert explainability_payload.get("components"), "scoring explainability requires components"
+
+
+def _assert_conflict_escalation_has_evidence(
+    *,
+    escalate: bool,
+    audit_entries: tuple[object, ...],
+    queue_item_id: str | None,
+) -> None:
+    if not escalate:
+        return
+    assert audit_entries or queue_item_id, "conflict case must emit queue or audit evidence"
