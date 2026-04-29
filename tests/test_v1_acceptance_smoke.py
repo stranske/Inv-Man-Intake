@@ -41,10 +41,17 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path() -> None:
     trace_context = artifacts.trace_context
     assert registration.accepted is True
     assert registration.package_id == record.package_id
+    assert record.firm_id == "firm_summit_arc_advisors"
+    assert record.fund_id == "fund_summit_arc_special_situations"
+    assert record.document_ids == _EXPECTED_DOCUMENT_IDS
 
     threshold_decision = artifacts.threshold_decision
     extraction_with_thresholds = artifacts.extraction_with_thresholds
     extraction_fields = {field.key: field for field in extraction_with_thresholds.fields}
+    _assert_extraction_contains_provenance(
+        extraction_fields=extraction_fields,
+        document_ids=record.document_ids,
+    )
 
     assert extraction_fields["strategy.asset_class"].source_doc_id in record.document_ids
     assert extraction_fields["strategy.asset_class"].source_page == 2
@@ -73,6 +80,11 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path() -> None:
     assert queue_assignment.item_id == f"{record.package_id}:validation:performance_conflict"
     assert queue_assignment.owner_role == "analyst"
     assert queue_assignment.events[0].note == "analyst-first default assignment"
+    _assert_conflict_escalation_has_evidence(
+        escalate=conflict_result.escalate,
+        audit_entries=conflict_result.audit_entries,
+        queue_item_id=queue_assignment.item_id,
+    )
 
     score = artifacts.score
     formatted_explainability = artifacts.formatted_explainability
@@ -161,6 +173,24 @@ def _assert_score_has_explainability(
     assert score.final_score >= 0.0
     assert explainability_payload is not None, "scoring output must include explainability payload"
     assert explainability_payload.get("components"), "scoring explainability requires components"
+
+
+def _assert_extraction_contains_provenance(
+    *,
+    extraction_fields: dict[str, object],
+    document_ids: tuple[str, ...],
+) -> None:
+    required_field_keys = (
+        "strategy.asset_class",
+        "terms.management_fee",
+        "performance.net_return_1y",
+        "operations.aum",
+        "team.key_person_risk",
+    )
+    for key in required_field_keys:
+        field = extraction_fields[key]
+        assert field.source_doc_id in document_ids
+        assert field.source_page is not None
 
 
 def _assert_conflict_escalation_has_evidence(
