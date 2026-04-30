@@ -144,3 +144,17 @@ This supports parallel execution without losing traceability between high-level 
 - Milestone B: Extraction confidence, validation queue, and image feedback primitives
 - Milestone C: Performance normalization and conflict policy automation
 - Milestone D: Asset-class scoring, explainability, and triage outputs
+
+## 6) V1 Readiness Smoke
+
+The repo-level v1 readiness check is:
+
+```bash
+python -m pytest tests/test_v1_acceptance_smoke.py --no-cov
+```
+
+The smoke is deterministic and offline. It proves one representative manager package can move
+through intake registration, stable document identifiers, confidence-gated extraction, performance
+normalization, conflict audit and analyst queue evidence, asset-class scoring, explainability output,
+and cross-stage trace propagation. This is the acceptance check for the v1 intake-to-scoring design
+commitment; focused unit tests still own the narrower component contracts.
