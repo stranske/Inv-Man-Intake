@@ -79,9 +79,19 @@ def main() -> int:
     # Write to GITHUB_OUTPUT
     github_output = os.environ.get("GITHUB_OUTPUT")
     if github_output:
-        with open(github_output, "a") as f:
-            f.write(f"python-version={output_version}\n")
-        print(f"Resolved mypy Python version: {output_version}")
+        try:
+            with open(github_output, "a", encoding="utf-8") as f:
+                f.write(f"python-version={output_version}\n")
+            print(f"Resolved mypy Python version: {output_version}")
+        except OSError as exc:
+            # Don't fail the pipeline on runner output-path issues; print a
+            # fallback output for local/debug consumers instead.
+            print(
+                f"warning: unable to write GITHUB_OUTPUT ({exc}); "
+                f"falling back to stdout output",
+                file=sys.stderr,
+            )
+            print(f"python-version={output_version}")
     else:
         # For local testing
         print(f"python-version={output_version}")
