@@ -87,6 +87,7 @@ known-first-party = ["inv_man_intake", "tools"]
 [tool.mypy]
 python_version = "3.12"
 files = ["src/inv_man_intake"]
+exclude = ["^scripts/", "^tools/"]
 strict = true
 warn_return_any = true
 warn_unused_configs = true
@@ -99,7 +100,7 @@ warn_unused_ignores = true
 show_error_codes = true
 
 [[tool.mypy.overrides]]
-module = ["tests.*", "scripts.*", "tools.*"]
+module = ["tests.*", "scripts.*"]
 ignore_errors = true
 
 [tool.black]
