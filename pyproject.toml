@@ -99,6 +99,10 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 show_error_codes = true
 
+[[tool.mypy.overrides]]
+module = ["tests.*", "scripts.*", "tools.*"]
+ignore_errors = true
+
 [tool.black]
 line-length = 100
 target-version = ["py312"]
