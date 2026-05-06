@@ -32,38 +32,45 @@ def check_lock_file_completeness() -> tuple[bool, list[str]]:
     optional_groups = re.findall(r"^(\w+)\s*=", optional_section.group(1), re.MULTILINE)
     print(f"✓ Found optional dependency groups: {', '.join(optional_groups)}")
 
-    # Check dependabot-auto-lock.yml includes all extras
-    workflow_path = Path(".github/workflows/dependabot-auto-lock.yml")
-    if workflow_path.exists():
-        workflow = workflow_path.read_text()
-        for group in optional_groups:
-            if f"--extra {group}" not in workflow:
-                issues.append(f"dependabot-auto-lock.yml missing --extra {group}")
+    # Check the auto-lock workflow includes all extras.
+    # Older repos used dependabot-auto-lock.yml; current standard uses maint-*.
+    workflow_candidates = [
+        Path(".github/workflows/maint-dependabot-auto-lock.yml"),
+        Path(".github/workflows/dependabot-auto-lock.yml"),
+    ]
+    workflow_path = next((path for path in workflow_candidates if path.exists()), None)
+    if workflow_path is None:
+        issues.append("dependabot auto-lock workflow not found")
+        return False, issues
 
-        if not issues:
-            print("✓ dependabot-auto-lock.yml includes all extras")
-    else:
-        issues.append("dependabot-auto-lock.yml not found")
+    workflow = workflow_path.read_text()
+    for group in optional_groups:
+        if f"--extra {group}" not in workflow:
+            issues.append(f"{workflow_path.name} missing --extra {group}")
+
+    if not issues:
+        print(f"✓ {workflow_path.name} includes all extras")
 
     return len(issues) == 0, issues
 
 
 def check_for_hardcoded_versions() -> tuple[bool, list[str]]:
-    """Check for hardcoded version numbers in tests."""
+    """Check for hardcoded dependency tool versions in tests."""
     issues = []
     test_files = list(Path("tests").rglob("*.py"))
 
-    # Patterns that indicate hardcoded versions
+    # Focus on dependency/tool version assertions only. Numeric assertions in
+    # domain tests are expected and should not fail this validation.
     version_patterns = [
-        r'==\s*["\']?\d+\.\d+',  # == version
-        r'assert.*version.*==.*["\d]',  # assert version == "x.y"
+        r'(?i)\b(pytest|ruff|mypy|black|coverage|setuptools|wheel)\b.*==\s*["\']?\d+\.\d+',
+        r'(?i)\bversion\b.*==\s*["\']?\d+\.\d+',
     ]
 
     problematic_files = []
     for test_file in test_files:
         content = test_file.read_text()
 
-        # Skip if it's the lockfile consistency test or dependency alignment test
+        # Skip dedicated dependency-alignment tests.
         if (
             "lockfile_consistency" in test_file.name
             or "dependency_version_alignment" in test_file.name
@@ -155,7 +162,7 @@ def check_test_expectations() -> tuple[bool, list[str]]:
     return len(issues) == 0, issues
 
 
-def main():
+def main() -> int:
     print("=" * 60)
     print("Dependency Test Setup Validation")
     print("=" * 60)
