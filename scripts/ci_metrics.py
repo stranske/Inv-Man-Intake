@@ -229,8 +229,29 @@ def main() -> int:
     try:
         payload = build_metrics(junit_path, top_n=top_n, min_seconds=min_seconds)
     except FileNotFoundError as exc:
+        payload = {
+            "generated_at": (
+                _dt.datetime.now(_dt.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+            ),
+            "status": "skipped",
+            "reason": "missing-junit-report",
+            "junit_path": str(junit_path),
+            "summary": {
+                "tests": 0,
+                "failures": 0,
+                "errors": 0,
+                "skipped": 0,
+                "passed": 0,
+                "duration_seconds": 0.0,
+            },
+            "failures": [],
+            "slow_tests": {
+                "threshold_seconds": min_seconds,
+                "limit": top_n,
+                "items": [],
+            },
+        }
         print(str(exc), file=sys.stderr)
-        return 1
 
     output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"Metrics written to {output_path}")
