@@ -58,3 +58,28 @@ def test_pdf_primary_provider_rejects_non_pdf_bytes() -> None:
             source_doc_id="doc_xlsx",
             content=(_FIXTURE_ROOT / "summit_arc_track_record.xlsx").read_bytes(),
         )
+
+
+def test_pdf_primary_provider_rejects_pdf_without_eof_marker() -> None:
+    provider = PdfPrimaryExtractionProvider()
+    broken_pdf = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n"
+
+    with pytest.raises(UnsupportedDocumentFormatError, match="only supports PDF bytes"):
+        provider.extract(source_doc_id="doc_pdf_broken", content=broken_pdf)
+
+
+def test_pdf_primary_provider_uses_literals_from_stream_blocks_only() -> None:
+    provider = PdfPrimaryExtractionProvider()
+    content = (
+        b"%PDF-1.4\n"
+        b"1 0 obj\n<< /Length 40 >>\nstream\n"
+        b"(Page 2) (Management fee: 2.00%) Tj\n"
+        b"endstream\n"
+        b"endobj\n"
+        b"(Management fee: 9.99%)\n"
+        b"%%EOF"
+    )
+
+    result = provider.extract(source_doc_id="doc_pdf_stream_only", content=content)
+    fields = {field.key: field for field in result.fields}
+    assert fields["terms.management_fee"].value == "2.00%"

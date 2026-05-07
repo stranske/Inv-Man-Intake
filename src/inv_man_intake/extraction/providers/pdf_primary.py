@@ -32,13 +32,14 @@ class PdfPrimaryExtractionProvider:
     )
     _PAGE_PATTERN = re.compile(r"\bpage\s+(?P<page>[0-9]+)\b", re.IGNORECASE)
     _TEXT_LITERAL_PATTERN = re.compile(rb"\((?:\\.|[^\\()])*\)")
+    _STREAM_PATTERN = re.compile(rb"stream\r?\n(.*?)\r?\nendstream", re.DOTALL)
 
     @property
     def name(self) -> str:
         return "pdf-primary"
 
     def extract(self, source_doc_id: str, content: bytes) -> ExtractedDocumentResult:
-        if not content.startswith(b"%PDF-"):
+        if not self._is_supported_pdf(content):
             raise UnsupportedDocumentFormatError("pdf-primary only supports PDF bytes")
 
         text = self._extract_literal_text(content)
@@ -68,9 +69,16 @@ class PdfPrimaryExtractionProvider:
     @classmethod
     def _extract_literal_text(cls, content: bytes) -> str:
         chunks = []
-        for raw_literal in cls._TEXT_LITERAL_PATTERN.findall(content):
-            chunks.append(cls._decode_pdf_literal(raw_literal[1:-1]))
+        for stream_body in cls._STREAM_PATTERN.findall(content):
+            for raw_literal in cls._TEXT_LITERAL_PATTERN.findall(stream_body):
+                chunks.append(cls._decode_pdf_literal(raw_literal[1:-1]))
         return "\n".join(chunk for chunk in chunks if chunk.strip())
+
+    @staticmethod
+    def _is_supported_pdf(content: bytes) -> bool:
+        if not content.startswith(b"%PDF-"):
+            return False
+        return b"%%EOF" in content
 
     @staticmethod
     def _decode_pdf_literal(raw: bytes) -> str:
