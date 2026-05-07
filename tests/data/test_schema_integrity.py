@@ -54,19 +54,23 @@ def test_seed_fixture_foreign_key_relationships_are_intact() -> None:
     load_core_seed_rows(conn, fixture)
 
     # Ensure every fund row points to an existing firm row.
-    orphan_funds = conn.execute("""
+    orphan_funds = conn.execute(
+        """
         SELECT COUNT(*)
         FROM funds f
         LEFT JOIN firms p ON p.firm_id = f.firm_id
         WHERE p.firm_id IS NULL
-        """).fetchone()[0]
+        """
+    ).fetchone()[0]
     # Ensure every document row points to an existing fund row.
-    orphan_documents = conn.execute("""
+    orphan_documents = conn.execute(
+        """
         SELECT COUNT(*)
         FROM documents d
         LEFT JOIN funds p ON p.fund_id = d.fund_id
         WHERE p.fund_id IS NULL
-        """).fetchone()[0]
+        """
+    ).fetchone()[0]
 
     assert orphan_funds == 0
     assert orphan_documents == 0

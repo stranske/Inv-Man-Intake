@@ -20,7 +20,8 @@ class CoreRepository:
         self._connection.execute("PRAGMA foreign_keys = ON")
 
     def ensure_core_schema(self) -> None:
-        self._connection.executescript("""
+        self._connection.executescript(
+            """
             CREATE TABLE IF NOT EXISTS firms (
                 firm_id TEXT PRIMARY KEY,
                 legal_name TEXT NOT NULL,
@@ -49,7 +50,8 @@ class CoreRepository:
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (fund_id) REFERENCES funds (fund_id) ON DELETE CASCADE
             );
-            """)
+            """
+        )
         self._connection.commit()
 
     def create_firm(self, firm: Firm) -> None:
@@ -344,7 +346,8 @@ class VisualArtifactRepository:
             raise RuntimeError(
                 "documents table missing; apply core schema before visual artifact schema"
             )
-        self._connection.executescript("""
+        self._connection.executescript(
+            """
             CREATE TABLE IF NOT EXISTS visual_artifacts (
                 artifact_id TEXT PRIMARY KEY,
                 document_id TEXT NOT NULL,
@@ -364,7 +367,8 @@ class VisualArtifactRepository:
                 ON visual_artifacts (document_id);
             CREATE INDEX IF NOT EXISTS idx_visual_artifacts_document_sha256
                 ON visual_artifacts (document_id, sha256);
-            """)
+            """
+        )
         self._connection.commit()
 
     def _documents_table_exists(self) -> bool:
