@@ -32,6 +32,13 @@ def _truthy(value: str | None) -> bool:
     return value.lower() in {"1", "true", "yes", "on"}
 
 
+def _default_output_path() -> Path:
+    runner_temp = os.environ.get("RUNNER_TEMP")
+    if runner_temp:
+        return Path(runner_temp) / _DEFAULT_OUTPUT
+    return Path(_DEFAULT_OUTPUT)
+
+
 def _extract_line_rate(xml_path: Path) -> float:
     if not xml_path.is_file():
         raise FileNotFoundError(f"Coverage XML not found: {xml_path}")
@@ -96,7 +103,7 @@ def _build_missing_payload(*, xml_path: Path) -> dict[str, Any]:
 
 def main() -> int:
     xml_path = Path(os.environ.get("COVERAGE_XML_PATH", _DEFAULT_COVERAGE_XML))
-    output_path = Path(os.environ.get("OUTPUT_PATH", _DEFAULT_OUTPUT))
+    output_path = Path(os.environ["OUTPUT_PATH"]) if os.environ.get("OUTPUT_PATH") else _default_output_path()
     baseline = _parse_float(
         os.environ.get("BASELINE_COVERAGE"), "BASELINE_COVERAGE", _DEFAULT_BASELINE
     )

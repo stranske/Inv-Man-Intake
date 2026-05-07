@@ -34,6 +34,13 @@ def _truthy(value: str | None) -> bool:
     return value.lower() in {"1", "true", "yes", "on"}
 
 
+def _default_path(filename: str) -> Path:
+    runner_temp = os.environ.get("RUNNER_TEMP")
+    if runner_temp:
+        return Path(runner_temp) / filename
+    return Path(filename)
+
+
 def _load_metrics(junit_path: Path, metrics_path: Path) -> tuple[dict[str, Any], bool]:
     if metrics_path.is_file():
         try:
@@ -104,13 +111,25 @@ def _build_classification_payload(metrics: dict[str, Any]) -> dict[str, Any]:
 
 def main() -> int:
     junit_path = Path(os.environ.get("JUNIT_PATH", _DEFAULT_JUNIT))
-    metrics_path = Path(os.environ.get("METRICS_PATH", _DEFAULT_METRICS))
-    history_path = Path(os.environ.get("HISTORY_PATH", _DEFAULT_HISTORY))
+    metrics_path = (
+        Path(os.environ["METRICS_PATH"])
+        if os.environ.get("METRICS_PATH")
+        else _default_path(_DEFAULT_METRICS)
+    )
+    history_path = (
+        Path(os.environ["HISTORY_PATH"])
+        if os.environ.get("HISTORY_PATH")
+        else _default_path(_DEFAULT_HISTORY)
+    )
     classification_env = os.environ.get("ENABLE_CLASSIFICATION")
     if classification_env is None:
         classification_env = os.environ.get("ENABLE_CLASSIFICATION_FLAG")
     classification_flag = _truthy(classification_env)
-    classification_out = Path(os.environ.get("CLASSIFICATION_OUT", _DEFAULT_CLASSIFICATION))
+    classification_out = (
+        Path(os.environ["CLASSIFICATION_OUT"])
+        if os.environ.get("CLASSIFICATION_OUT")
+        else _default_path(_DEFAULT_CLASSIFICATION)
+    )
 
     if not junit_path.is_file():
         timestamp = (

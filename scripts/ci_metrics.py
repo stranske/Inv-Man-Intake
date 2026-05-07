@@ -33,6 +33,13 @@ _DEFAULT_TOP_N = 15
 _DEFAULT_MIN_SECONDS = 1.0
 
 
+def _default_output_path() -> Path:
+    runner_temp = os.environ.get("RUNNER_TEMP")
+    if runner_temp:
+        return Path(runner_temp) / _DEFAULT_OUTPUT
+    return Path(_DEFAULT_OUTPUT)
+
+
 def _tag_name(node: ET.Element) -> str:
     """Return the local tag name (strip XML namespaces)."""
     tag = node.tag
@@ -222,7 +229,7 @@ def build_metrics(
 
 def main() -> int:
     junit_path = Path(os.environ.get("JUNIT_PATH", _DEFAULT_JUNIT))
-    output_path = Path(os.environ.get("OUTPUT_PATH", _DEFAULT_OUTPUT))
+    output_path = Path(os.environ["OUTPUT_PATH"]) if os.environ.get("OUTPUT_PATH") else _default_output_path()
     top_n = _parse_int(os.environ.get("TOP_N"), "TOP_N", _DEFAULT_TOP_N)
     min_seconds = _parse_float(os.environ.get("MIN_SECONDS"), "MIN_SECONDS", _DEFAULT_MIN_SECONDS)
 
