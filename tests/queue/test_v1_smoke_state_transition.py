@@ -1,41 +1,44 @@
 """Smoke-linked transition test for the v1 validation queue contract.
 
-Locks `docs/contracts/queue_states.md` against the integrated workflow path:
-the v1 conflict/escalation queue item must move
-`pending_triage -> in_validation -> completed`, and only the documented
-state names are allowed.
+Drives a real ``pending_triage -> in_validation -> completed`` transition for
+the v1 conflict/escalation queue item from
+``tests/test_v1_acceptance_smoke.py``, and parses
+``docs/contracts/queue_states.md`` to assert that the state names documented
+there match ``ValidationState``. Doc/code drift therefore fails CI.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
+from typing import get_args
 
 import pytest
 
-from inv_man_intake.v1_smoke import run_v1_smoke_pipeline
 from inv_man_intake.workflow_validation import (
+    ValidationState,
     ValidationWorkflowError,
     claim_for_analyst_triage,
     create_queue_item,
     transition_state,
 )
 
-_FIXTURE_ROOT = Path("tests/fixtures/intake")
-_SMOKE_PACKAGE_ID = "pkg_pdf_mixed_001"
-_EXPECTED_DOCUMENT_IDS = (
-    "pkg_pdf_mixed_001:doc:0",
-    "pkg_pdf_mixed_001:doc:1",
-    "pkg_pdf_mixed_001:doc:2",
-    "pkg_pdf_mixed_001:doc:3",
-)
+_CONTRACT_PATH = Path("docs/contracts/queue_states.md")
+_STATE_BULLET_RE = re.compile(r"^- `([a-z_]+)`:", re.MULTILINE)
 
 
-def test_v1_smoke_queue_item_drives_documented_state_path() -> None:
-    artifacts = run_v1_smoke_pipeline(
-        fixture_root=_FIXTURE_ROOT,
-        package_id=_SMOKE_PACKAGE_ID,
-        expected_document_ids=_EXPECTED_DOCUMENT_IDS,
+def test_documented_state_names_match_validation_state() -> None:
+    contract_text = _CONTRACT_PATH.read_text(encoding="utf-8")
+    states_section = contract_text.split("## States", 1)[1].split("##", 1)[0]
+    documented = set(_STATE_BULLET_RE.findall(states_section))
+    assert documented == set(get_args(ValidationState)), (
+        "docs/contracts/queue_states.md state list disagrees with "
+        "ValidationState in workflow_validation.py"
     )
+
+
+def test_v1_smoke_queue_item_drives_documented_state_path(v1_smoke_artifacts) -> None:
+    artifacts = v1_smoke_artifacts
 
     item = create_queue_item(
         item_id=artifacts.queue_assignment.item_id,

@@ -93,18 +93,23 @@ from inv_man_intake.workflow_validation import (
 
 ## Determinism
 
-- `actor_id`, `assignee_id`, and other ownership identifiers must be
-  non-empty.
+- `item_id`, `package_id`, `escalation_reason`, `actor_id`, `analyst_id`,
+  `new_owner_id`, and `owner_id` must all be non-empty; `create_queue_item`,
+  `claim_for_analyst_triage`, `transfer_owner`, and `transition_state` raise
+  `ValidationWorkflowError` if any required identifier is empty.
 - All item timestamps are persisted in UTC ISO-8601 format with second
   precision (see `_utc_now` in `workflow_validation.py`).
-- `claim_for_analyst_triage`, `transfer_owner`, and `transition_state` each
-  append exactly one immutable `QueueEvent` to `item.events` so the audit
-  trail is replayable.
+- `claim_for_analyst_triage`, `transfer_owner`, and `transition_state`
+  append exactly one immutable `QueueEvent` to `item.events` per applied
+  change. `transition_state(..., to_state=<current_state>)` is a no-op,
+  returns the input unchanged, and appends no event.
 
 ## Smoke Coverage
 
 `tests/queue/test_v1_smoke_state_transition.py` drives a real
 `pending_triage -> in_validation -> completed` transition path tied to the
 v1 conflict/escalation flow (`tests/test_v1_acceptance_smoke.py`'s queue
-assignment item id) so a future doc/implementation drift fails CI before
-merge.
+assignment item id) and parses this file's `## States` bullet list to
+assert that documented state names match `ValidationState` in
+`workflow_validation.py`. Doc/code drift on either the canonical state set
+or the integrated transition path therefore fails CI before merge.
