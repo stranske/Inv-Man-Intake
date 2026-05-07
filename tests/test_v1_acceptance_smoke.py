@@ -14,7 +14,6 @@ from inv_man_intake.scoring.engine import compute_score
 from inv_man_intake.v1_smoke import (
     _assert_registered_package_state,
     _score_components,
-    run_v1_smoke_pipeline,
 )
 
 _FIXTURE_ROOT = Path("tests/fixtures/intake")
@@ -27,12 +26,8 @@ _EXPECTED_DOCUMENT_IDS = (
 )
 
 
-def test_v1_acceptance_smoke_exercises_intake_to_scoring_path() -> None:
-    artifacts = run_v1_smoke_pipeline(
-        fixture_root=_FIXTURE_ROOT,
-        package_id=_SMOKE_PACKAGE_ID,
-        expected_document_ids=_EXPECTED_DOCUMENT_IDS,
-    )
+def test_v1_acceptance_smoke_exercises_intake_to_scoring_path(v1_smoke_artifacts) -> None:
+    artifacts = v1_smoke_artifacts
     registration = artifacts.registration
     record = artifacts.record
     sink = artifacts.sink

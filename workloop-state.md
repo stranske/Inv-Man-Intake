@@ -1,5 +1,28 @@
 # Workloop State
 
+## 2026-05-07T07:50:00Z - opener lane PR #400 materialized
+
+- Automation: `pd-workloop-resume` (claude_code opener lane, scheduled run).
+- Source repo: `stranske/Inv-Man-Intake`.
+- Source issue: `#381` (`Reconcile validation queue contract: docs describe orphan state machine; integrated path uses different states`, `priority:high`, `repo-review-approved`).
+- Source PR: `#400` (`https://github.com/stranske/Inv-Man-Intake/pull/400`), non-draft, labels `agent:claude` + `agents:keepalive` + `autofix`.
+- Branch: `claude/issue-381-validation-queue-contract`.
+- Selection:
+  - Cap-health preflight: `total_opener_owned=2`, `raw_cap_reached=false`, `non_drainable_cap_blocker=false`, `drainable_count=1`. Cap had room.
+  - Live priority discovery (high/normal/low) found `Inv-Man-Intake#381` as the oldest unblocked `priority:high` issue with no linked open PR. Manager-Database #976/#977/#978/#979 and Travel-Plan-Permission #1046 were younger; Inv-Man-Intake #379 already linked to in-flight PR #393.
+- Action taken:
+  - Picked `workflow_validation.py`'s state set (`pending_triage` -> `in_validation` -> `awaiting_manager_response` / `ops_review` -> `completed` / `rejected`) as canonical.
+  - Rewrote `docs/contracts/queue_states.md` to that state set, with transition matrix, ownership rules, escalation routes, and import surface.
+  - Removed the orphan `src/inv_man_intake/queue/state_machine.py` and its tests.
+  - Trimmed `src/inv_man_intake/queue/__init__.py` to assignment + SLA primitives, eliminating the `create_queue_item` name collision.
+  - Added `tests/queue/test_v1_smoke_state_transition.py` driving `pending_triage -> in_validation -> completed` keyed to the v1 conflict queue item id, with a regression that legacy state names like `resolved` are rejected.
+- Validation passed locally:
+  - `python -m pytest tests/queue tests/test_workflow_validation.py tests/test_validation_queue_api.py tests/test_v1_acceptance_smoke.py --no-cov` (28 passed).
+  - `ruff check` and `mypy` clean on touched modules.
+  - `rg "def create_queue_item" src/inv_man_intake` returned exactly one match (`workflow_validation.py:79`).
+- Relay event emitted: `pr_opened active.source_repo=stranske/Inv-Man-Intake active.source_issue=381 active.source_pr=400 active.next_action=wait_for_keepalive`.
+- Next action: keepalive's per-agent runner (`reusable-claude-run.yml` via `agent:claude`) takes over from here for any CI fixups or review-comment work; opener is done with this lane.
+
 ## 2026-05-07T06:25:00Z - closer lane PR #399 review/CI remediation
 
 - Automation: `imi-merge-verify-closer` (codex closer lane).

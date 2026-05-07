@@ -1,4 +1,10 @@
-"""Validation queue state machine, assignment, and SLA primitives."""
+"""Validation queue assignment and SLA primitives.
+
+Queue *state machine* primitives (`create_queue_item`, `transition_state`,
+state names, etc.) live in :mod:`inv_man_intake.workflow_validation`. That
+module is the single public source of truth for queue states; this package
+exposes only assignment ownership and SLA helpers built on top of it.
+"""
 
 from inv_man_intake.queue.assignment import (
     AssignmentEvent,
@@ -9,29 +15,13 @@ from inv_man_intake.queue.assignment import (
     update_sla_breach,
 )
 from inv_man_intake.queue.sla import SlaFields
-from inv_man_intake.queue.state_machine import (
-    QueueItem,
-    QueuePermissionError,
-    QueueState,
-    QueueTransitionError,
-    assign_item,
-    create_queue_item,
-    transition_item,
-)
 
 __all__ = [
     "AssignmentEvent",
     "QueueAssignmentError",
     "QueueAssignmentRecord",
-    "QueueItem",
-    "QueuePermissionError",
-    "QueueState",
-    "QueueTransitionError",
     "SlaFields",
-    "assign_item",
     "create_analyst_first_assignment",
-    "create_queue_item",
     "reassign_to_ops_for_block",
-    "transition_item",
     "update_sla_breach",
 ]

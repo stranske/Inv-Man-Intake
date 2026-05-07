@@ -101,6 +101,8 @@ def claim_for_analyst_triage(
 ) -> ValidationQueueItem:
     """Claim a pending queue item for analyst first-touch triage."""
 
+    if not analyst_id:
+        raise ValidationWorkflowError("analyst_id must be non-empty")
     if item.owner_id is not None:
         raise ValidationWorkflowError("Queue item already has an owner")
     if item.state != "pending_triage":
@@ -135,6 +137,10 @@ def transfer_owner(
 ) -> ValidationQueueItem:
     """Transfer queue ownership between analysts and ops."""
 
+    if not actor_id:
+        raise ValidationWorkflowError("actor_id must be non-empty")
+    if not new_owner_id:
+        raise ValidationWorkflowError("new_owner_id must be non-empty")
     if item.state in _TERMINAL_STATES:
         raise ValidationWorkflowError("Cannot transfer ownership for terminal queue items")
     if item.owner_id is None:
@@ -171,6 +177,8 @@ def transition_state(
 
     if item.state == to_state:
         return item
+    if not actor_id:
+        raise ValidationWorkflowError("actor_id must be non-empty")
     if item.owner_id is None:
         raise ValidationWorkflowError("Queue item must be claimed before state transitions")
     if item.owner_id != actor_id and actor_role != "ops":
