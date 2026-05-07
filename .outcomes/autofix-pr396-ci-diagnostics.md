@@ -1,34 +1,35 @@
 # Autofix diagnostics for PR #396
 
 Date: 2026-05-07
-Head SHA: `f7098e7c92c1611e19bef418c4bb17e6ebffebcf`
+Head SHA: `cf56d6be95b461d40a7e90e97f151ee13325e68f`
+Gate run: `25476249058`
 
 ## Summary
 
-The CI failure reported only the final step names:
+The CI run reports only aggregate failures:
 - `Python CI / python 3.12` -> `Finalize check results`
 - `Python CI / python 3.13` -> `Finalize check results`
+- `gate-summary` -> `Enforce Gate success`
 
-No failing command output was available in this workspace, so the failure could not be reproduced exactly.
+No failing sub-step logs were available in this run workspace, so no deterministic code-level root cause could be extracted from the provided context.
 
-## Local reproduction results
+## Local reproduction (this head)
 
-All checks that map to the reusable CI workflow passed locally:
+Executed locally in this workspace:
 
-- `ruff check src tests`
-- `black --check src tests`
-- `mypy src/inv_man_intake`
-- `pytest -q` (427 passed)
-- coverage: `91.32%` (minimum `80%`)
-- `python scripts/sync_dev_dependencies.py --check` passed
-- `python scripts/sync_test_dependencies.py --verify` passed
+- `ruff check src tests` -> pass
+- `mypy src/inv_man_intake` -> pass
+- `pytest -q` -> pass (`428 passed`)
+- coverage from pytest-cov -> pass (`91.32%`, required `80%`)
+- `python scripts/sync_dev_dependencies.py --check` -> pass
+- `python scripts/sync_test_dependencies.py --verify` -> pass
 
-## Most likely CI-only causes
+## Most likely remaining causes
 
-1. A transient dependency/tool install issue in the reusable workflow environment.
-2. A matrix-runtime-specific failure on GitHub-hosted Python 3.13 not reproducible here (3.13 runtime unavailable in this workspace).
-3. Missing failing-step logs in this run context; only final aggregate step status is present.
+1. Transient runner/dependency installation issue in GitHub-hosted CI.
+2. Python 3.13-only behavior or environment issue not reproducible in this local Python 3.12 workspace.
+3. Missing failing-step log details in provided run context.
 
-## Next required data
+## Next required data for targeted fix
 
-For a targeted code fix, capture the logs from the failing `Pytest (unit tests with coverage)` and/or `Enforce coverage minimum` step in run `25475814929` for both Python versions.
+Capture and attach logs from the failing Python CI matrix jobs in run `25476249058`, specifically the first failing step before `Finalize check results` for each matrix entry (`python 3.12` and `python 3.13`).
