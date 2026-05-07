@@ -28,7 +28,7 @@ dev = [
     "pytest-cov==7.1.0",
     "ruff>=0.15.12",
     "mypy>=1.20.2",
-    "black==26.3.1",
+    "black==25.9.0",
 ]
 
 [project.urls]
@@ -102,3 +102,10 @@ show_error_codes = true
 [tool.black]
 line-length = 100
 target-version = ["py312"]
+workers = 1
+extend-exclude = '''
+(
+  ^/node_modules
+  | ^/\.workflows-lib
+)
+'''
