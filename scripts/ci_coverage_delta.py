@@ -84,6 +84,16 @@ def _build_payload(
     return payload, should_fail
 
 
+def _build_missing_payload(*, xml_path: Path) -> dict[str, Any]:
+    timestamp = _dt.datetime.now(_dt.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return {
+        "timestamp": timestamp,
+        "status": "missing-report",
+        "reason": "coverage-xml-not-found",
+        "coverage_xml_path": str(xml_path),
+    }
+
+
 def main() -> int:
     xml_path = Path(os.environ.get("COVERAGE_XML_PATH", _DEFAULT_COVERAGE_XML))
     output_path = Path(os.environ.get("OUTPUT_PATH", _DEFAULT_OUTPUT))
@@ -97,7 +107,11 @@ def main() -> int:
         current = _extract_line_rate(xml_path)
     except FileNotFoundError as exc:
         print(str(exc), file=sys.stderr)
-        return 1
+        output_path.write_text(
+            json.dumps(_build_missing_payload(xml_path=xml_path), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return 0
 
     payload, should_fail = _build_payload(current, baseline, alert_drop, fail_on_drop=fail_on_drop)
 
