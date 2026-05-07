@@ -268,7 +268,7 @@ def _run_secondary_extraction_boundary_smoke(
         },
         "fallback_name": "secondary-unsupported-escalation",
         "fallback_extractor": lambda payload: (_ for _ in ()).throw(
-            ValueError(f"unsupported secondary document bytes for {payload['document_id']}")
+            ValueError(_unsupported_secondary_bytes_reason(bytes(payload["content"])))
         ),
         "tracer": tracer,
     }
@@ -289,6 +289,14 @@ def _run_secondary_extraction_boundary_smoke(
 
 def _fixture_bytes(*, fixture_root: Path, file_name: str) -> bytes:
     return (fixture_root.parent / "extraction" / file_name).read_bytes()
+
+
+def _unsupported_secondary_bytes_reason(content: bytes) -> str:
+    if content.startswith(b"PK"):
+        return "unsupported secondary document bytes format: xlsx"
+    if content.startswith(b"%PDF-"):
+        return "unsupported secondary document bytes format: pdf"
+    return "unsupported secondary document bytes format: unknown"
 
 
 def _performance_series() -> tuple[PerformanceSeries, PerformanceSeries, PerformanceSeries]:

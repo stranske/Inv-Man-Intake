@@ -55,4 +55,7 @@ def test_v1_smoke_routes_secondary_bytes_to_deterministic_escalation() -> None:
     secondary = artifacts.secondary_extraction_result
     assert secondary.resolved is False
     assert secondary.escalation_route == "ops_review"
-    assert secondary.escalation_reason.startswith("secondary-unsupported-escalation:")
+    assert (
+        secondary.escalation_reason
+        == "secondary-unsupported-escalation: unsupported secondary document bytes format: xlsx"
+    )
