@@ -3,9 +3,9 @@
 # CI Autofix Diagnostic
 
 - Date: 2026-05-07
-- Gate run: https://github.com/stranske/Inv-Man-Intake/actions/runs/25477048050
+- Gate run: https://github.com/stranske/Inv-Man-Intake/actions/runs/25477150283
 - PR: #397
-- Head SHA: `75acc049efba462cebda1cbea3a1c63e29447036`
+- Head SHA: `cd6686c62e5cfc588508ba588f124403b8fad6f9`
 
 ## Observed failure
 
@@ -16,11 +16,12 @@
 ## Triage result
 
 - The failing step is inside reusable workflow infrastructure sourced from `stranske/Workflows`.
+- This repository already has synced helper scripts under `.github/scripts/`, so the issue is likely checkout/auth/ref handling in the reusable workflow path.
 - In `agent-standard`, workflow files are protected and cannot be edited locally for autofix.
-- Local repo checks did not expose an application-code failure tied to this checkout step.
+- Local code check: `pytest -q tests/test_workflow_validation.py` ran with `6 passed`; the command exited non-zero only because the repo-wide `--cov-fail-under=80` threshold is expected to fail on a narrow subset run.
 
 ## Required human follow-up
 
 - Add `needs-human` on PR #397.
-- Inspect the reusable workflow checkout logic and credentials/ref handling in `stranske/Workflows` for the `Checkout Workflows helper` step.
+- Inspect the `Checkout Workflows helper` step implementation in `stranske/Workflows` (reusable CI workflow used by `.github/workflows/ci.yml`) for token access/ref resolution on this PR event.
 - Re-run Gate after Workflows-side fix or sync.
