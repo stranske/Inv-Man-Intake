@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 
 import pytest
 
+from inv_man_intake.data.repository import CoreRepository
 from inv_man_intake.intake.integration import IntakeRegistrationResult, register_intake_bundle_file
 from inv_man_intake.intake.service import IngestionService
+from inv_man_intake.storage.document_store import InMemoryDocumentStore
 
 _FIXTURE_ROOT = Path("tests/fixtures/intake")
 
@@ -172,3 +175,37 @@ def test_duplicate_package_id_rejected_deterministically() -> None:
     assert first.accepted is True
     assert second.accepted is False
     assert second.errors[0].code == "duplicate_package_id"
+
+
+def test_registration_without_persistence_dependencies_keeps_in_memory_behavior() -> None:
+    service = IngestionService()
+
+    result = _register("pdf_primary_bundle.json", service)
+
+    assert result.accepted is True
+    assert result.persisted_documents == ()
+
+
+def test_registration_with_only_one_persistence_dependency_is_noop() -> None:
+    service = IngestionService()
+    repository = CoreRepository(sqlite3.connect(":memory:"))
+
+    result = register_intake_bundle_file(
+        _FIXTURE_ROOT / "pdf_primary_bundle.json",
+        service,
+        core_repository=repository,
+    )
+
+    assert result.accepted is True
+    assert result.persisted_documents == ()
+    with pytest.raises(sqlite3.OperationalError, match="no such table: firm"):
+        repository.get_firm("firm_north_ridge_capital")
+
+    result_with_store_only = register_intake_bundle_file(
+        _FIXTURE_ROOT / "pptx_primary_bundle.json",
+        service,
+        document_store=InMemoryDocumentStore(),
+    )
+
+    assert result_with_store_only.accepted is True
+    assert result_with_store_only.persisted_documents == ()
