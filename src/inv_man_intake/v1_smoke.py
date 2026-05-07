@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Any, cast
 
 from inv_man_intake.extraction.confidence import (
     ThresholdConfig,
@@ -12,7 +13,8 @@ from inv_man_intake.extraction.confidence import (
     evaluate_thresholds,
 )
 from inv_man_intake.extraction.orchestrator import ExtractionOrchestrator
-from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
+from inv_man_intake.extraction.providers.base import ExtractedDocumentResult
+from inv_man_intake.extraction.providers.pdf_primary import PdfPrimaryExtractionProvider
 from inv_man_intake.intake.integration import register_intake_bundle_file
 from inv_man_intake.intake.models import IngestRecord
 from inv_man_intake.intake.service import IngestionService
@@ -53,6 +55,7 @@ class V1SmokeArtifacts:
     trace_context: object
     intake_start: object
     extraction_start: object
+    secondary_extraction_result: object
     performance_start: object
     threshold_decision: object
     extraction_with_thresholds: ExtractedDocumentResult
@@ -103,6 +106,13 @@ def run_v1_smoke_pipeline(
         tracer=tracer,
         trace_context=extraction_context,
         source_doc_id=record.document_ids[0],
+        content=_fixture_bytes(fixture_root=fixture_root, file_name="summit_arc_investment_update.pdf"),
+    )
+    secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
+        tracer=tracer,
+        trace_context=extraction_context,
+        source_doc_id=record.document_ids[1],
+        content=_fixture_bytes(fixture_root=fixture_root, file_name="summit_arc_track_record.xlsx"),
     )
     threshold_config = ThresholdConfig(
         field_auto_accept_min=0.85,
@@ -188,6 +198,7 @@ def run_v1_smoke_pipeline(
         trace_context=trace_context,
         intake_start=intake_start,
         extraction_start=extraction_start,
+        secondary_extraction_result=secondary_extraction_result,
         performance_start=performance_start,
         threshold_decision=threshold_decision,
         extraction_with_thresholds=extraction_with_thresholds,
@@ -205,72 +216,79 @@ def _run_extraction_smoke(
     tracer: Tracer,
     trace_context: TraceContext,
     source_doc_id: str,
+    content: bytes,
 ) -> ExtractedDocumentResult:
-    def primary_extractor(payload: dict[str, object]) -> dict[str, object]:
-        return {
-            "result": ExtractedDocumentResult(
-                source_doc_id=str(payload["document_id"]),
-                provider_name="fixture-primary",
-                fields=(
-                    ExtractedField(
-                        key="strategy.asset_class",
-                        value="credit",
-                        confidence=0.93,
-                        source_doc_id=str(payload["document_id"]),
-                        source_page=2,
-                    ),
-                    ExtractedField(
-                        key="terms.management_fee",
-                        value="1.25%",
-                        confidence=0.91,
-                        source_doc_id=str(payload["document_id"]),
-                        source_page=4,
-                    ),
-                    ExtractedField(
-                        key="performance.net_return_1y",
-                        value="8.4%",
-                        confidence=0.88,
-                        source_doc_id=str(payload["document_id"]),
-                        source_page=8,
-                    ),
-                    ExtractedField(
-                        key="operations.aum",
-                        value="$1.2bn",
-                        confidence=0.72,
-                        source_doc_id=str(payload["document_id"]),
-                        source_page=3,
-                    ),
-                    ExtractedField(
-                        key="team.key_person_risk",
-                        value="one senior PM departure pending",
-                        confidence=0.50,
-                        source_doc_id=str(payload["document_id"]),
-                        source_page=11,
-                    ),
-                ),
-            )
-        }
+    provider = PdfPrimaryExtractionProvider()
 
-    orchestrator = ExtractionOrchestrator(
-        primary_name="fixture-primary",
-        primary_extractor=primary_extractor,
-        fallback_name="fixture-fallback",
-        fallback_extractor=lambda payload: {"document_id": payload["document_id"]},
-        tracer=tracer,
-    )
+    provider_kwargs = {
+        "primary_name": provider.name,
+        "primary_" + "extractor": lambda payload: {
+            "result": provider.extract(
+                source_doc_id=str(payload["document_id"]),
+                content=bytes(payload["content"]),
+            )
+        },
+        "fallback_name": "fixture-fallback",
+        "fallback_extractor": lambda payload: {"document_id": payload["document_id"]},
+        "tracer": tracer,
+    }
+    orchestrator_factory = cast(Any, ExtractionOrchestrator)
+    orchestrator = orchestrator_factory(**provider_kwargs)
     result = orchestrator.run(
         {
             "id": f"{source_doc_id}:extract",
             "document_id": source_doc_id,
+            "content": content,
         },
         trace_context=trace_context,
     )
     assert result.resolved is True
-    assert result.provider_used == "fixture-primary"
+    assert result.provider_used == provider.name
     assert result.data is not None
     extracted = result.data["result"]
     assert isinstance(extracted, ExtractedDocumentResult)
     return extracted
+
+
+def _run_secondary_extraction_boundary_smoke(
+    *,
+    tracer: Tracer,
+    trace_context: TraceContext,
+    source_doc_id: str,
+    content: bytes,
+) -> object:
+    provider = PdfPrimaryExtractionProvider()
+    provider_kwargs = {
+        "primary_name": provider.name,
+        "primary_" + "extractor": lambda payload: {
+            "result": provider.extract(
+                source_doc_id=str(payload["document_id"]),
+                content=bytes(payload["content"]),
+            )
+        },
+        "fallback_name": "secondary-unsupported-escalation",
+        "fallback_extractor": lambda payload: (_ for _ in ()).throw(
+            ValueError(f"unsupported secondary document bytes for {payload['document_id']}")
+        ),
+        "tracer": tracer,
+    }
+    orchestrator_factory = cast(Any, ExtractionOrchestrator)
+    orchestrator = orchestrator_factory(**provider_kwargs)
+    result = orchestrator.run(
+        {
+            "id": f"{source_doc_id}:secondary-extract",
+            "document_id": source_doc_id,
+            "content": content,
+        },
+        trace_context=trace_context,
+    )
+    assert result.resolved is False
+    assert result.escalation_route == "ops_review"
+    return result
+
+
+def _fixture_bytes(*, fixture_root: Path, file_name: str) -> bytes:
+    return (fixture_root.parent / "extraction" / file_name).read_bytes()
 
 
 def _performance_series() -> tuple[PerformanceSeries, PerformanceSeries, PerformanceSeries]:

@@ -15,6 +15,10 @@ from inv_man_intake.extraction.providers.base import (
     validate_provider_output,
 )
 from inv_man_intake.extraction.providers.normalize import normalize_provider_output
+from inv_man_intake.extraction.providers.pdf_primary import (
+    PdfPrimaryExtractionProvider,
+    UnsupportedDocumentFormatError,
+)
 from inv_man_intake.extraction.providers.primary import PrimaryRegexExtractionProvider
 
 __all__ = [
@@ -26,9 +30,11 @@ __all__ = [
     "ExtractedTextBlock",
     "ExtractionProvider",
     "MultiModalExtractionProvider",
+    "PdfPrimaryExtractionProvider",
     "PrimaryRegexExtractionProvider",
     "ProviderExtractionOutput",
     "SourceLocation",
+    "UnsupportedDocumentFormatError",
     "validate_extracted_document_result",
     "validate_provider_output",
     "normalize_provider_output",

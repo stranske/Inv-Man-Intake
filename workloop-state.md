@@ -1,5 +1,28 @@
 # Workloop State
 
+## 2026-05-07T06:05:28Z - opener lane PR materialization
+
+- Automation: `pd-workloop-resume` (codex opener lane).
+- Source issue: `#380` (`Implement and prove real document-bytes extraction in the v1 smoke path`).
+- Branch: `codex/issue-380-real-byte-extraction`.
+- Selection:
+  - ACTION A succeeded from the neutral Code workspace.
+  - Live priority discovery found high-priority supported issues; `#379` is already linked to open PR `#393`.
+  - Cap-health preflight reported `total_opener_owned=4`, `raw_cap_reached=false`, `normal_cap_reached=false`, `non_drainable_cap_blocker=false`; opener has one available slot.
+  - `#380` is the oldest high-priority supported issue not already linked to an open opener PR.
+- Implementation:
+  - Added `PdfPrimaryExtractionProvider`, a dependency-free, text-bearing PDF byte provider that validates PDF framing, extracts literal stream text, emits stable canonical fields with source pages, and calls `validate_extracted_document_result`.
+  - Routed v1 smoke primary extraction through `ExtractionOrchestrator` with committed PDF bytes instead of hard-coded smoke fields.
+  - Routed the secondary XLSX role through the same orchestrator boundary with deterministic `ops_review` unsupported-format escalation.
+  - Added real-byte PDF/no-match/unsupported fixtures, focused provider/orchestrator tests, and docs for current real-byte support.
+- Validation passed:
+  - `python -m ruff check src/inv_man_intake/extraction/providers/pdf_primary.py src/inv_man_intake/extraction/providers/__init__.py src/inv_man_intake/v1_smoke.py tests/extraction/test_pdf_primary_provider.py tests/extraction/test_document_byte_provider.py tests/test_v1_acceptance_smoke.py`
+  - `python -m mypy src/inv_man_intake/extraction/providers/pdf_primary.py src/inv_man_intake/v1_smoke.py`
+  - `python -m pytest tests/extraction/test_pdf_primary_provider.py tests/extraction/test_document_byte_provider.py --no-cov`
+  - `python -m pytest tests/extraction tests/test_v1_acceptance_smoke.py --no-cov`
+  - `rg "fixture-primary|primary_extractor" src/inv_man_intake/v1_smoke.py tests/test_v1_acceptance_smoke.py` returned no matches.
+- Next action: commit, push, open ready-for-review PR with `agent:codex`, `agents:keepalive`, and `autofix`; emit `pr_opened` handoff event.
+
 ## 2026-03-08 04:10:27 CDT
 - Automation: pd-workloop-resume
 - Context carry-forward:

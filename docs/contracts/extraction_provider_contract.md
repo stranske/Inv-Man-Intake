@@ -64,6 +64,16 @@ Future adapters should call these helpers before returning:
 These helpers are defined in `inv_man_intake.extraction.providers.base` and are intended to catch
 contract drift early in adapter development and in tests.
 
+## Current Real-Byte Fixture Support
+
+`PdfPrimaryExtractionProvider` supports committed, text-bearing PDF bytes for v1 smoke coverage. It
+validates `%PDF-` framing, extracts literal content-stream text, emits canonical fields with
+document/page provenance, and calls `validate_extracted_document_result(...)` before returning.
+
+Secondary v1 roles such as XLSX are routed through the same provider/orchestrator boundary in smoke
+coverage. Until a dedicated XLSX parser exists, unsupported secondary bytes produce deterministic
+`ops_review` escalation rather than hard-coded extracted fields.
+
 ## Fallback Adapter Implementation Notes
 
 When adding a fallback parser/OCR adapter:
