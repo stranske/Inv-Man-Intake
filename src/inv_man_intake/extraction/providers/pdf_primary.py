@@ -89,6 +89,19 @@ class PdfPrimaryExtractionProvider:
             if current == 92 and index + 1 < len(raw):
                 index += 1
                 escaped = raw[index]
+                if escaped in (10, 13):
+                    if escaped == 13 and index + 1 < len(raw) and raw[index + 1] == 10:
+                        index += 1
+                    index += 1
+                    continue
+                if 48 <= escaped <= 55:
+                    octal = bytes([escaped])
+                    while len(octal) < 3 and index + 1 < len(raw) and 48 <= raw[index + 1] <= 55:
+                        index += 1
+                        octal += bytes([raw[index]])
+                    decoded.append(chr(int(octal, 8)))
+                    index += 1
+                    continue
                 decoded.append(
                     {
                         ord("n"): "\n",

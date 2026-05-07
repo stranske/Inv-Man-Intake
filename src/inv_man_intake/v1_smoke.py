@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from inv_man_intake.extraction.confidence import (
     ThresholdConfig,
@@ -106,7 +107,9 @@ def run_v1_smoke_pipeline(
         tracer=tracer,
         trace_context=extraction_context,
         source_doc_id=record.document_ids[0],
-        content=_fixture_bytes(fixture_root=fixture_root, file_name="summit_arc_investment_update.pdf"),
+        content=_fixture_bytes(
+            fixture_root=fixture_root, file_name="summit_arc_investment_update.pdf"
+        ),
     )
     secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
         tracer=tracer,
@@ -219,21 +222,13 @@ def _run_extraction_smoke(
     content: bytes,
 ) -> ExtractedDocumentResult:
     provider = PdfPrimaryExtractionProvider()
-
-    provider_kwargs = {
-        "primary_name": provider.name,
-        "primary_" + "extractor": lambda payload: {
-            "result": provider.extract(
-                source_doc_id=str(payload["document_id"]),
-                content=bytes(payload["content"]),
-            )
-        },
-        "fallback_name": "fixture-fallback",
-        "fallback_extractor": lambda payload: {"document_id": payload["document_id"]},
-        "tracer": tracer,
-    }
-    orchestrator_factory = cast(Any, ExtractionOrchestrator)
-    orchestrator = orchestrator_factory(**provider_kwargs)
+    orchestrator = ExtractionOrchestrator(
+        primary_name=provider.name,
+        primary_extractor=_pdf_primary_extractor(provider),
+        fallback_name="fixture-fallback",
+        fallback_extractor=lambda payload: {"document_id": payload["document_id"]},
+        tracer=tracer,
+    )
     result = orchestrator.run(
         {
             "id": f"{source_doc_id}:extract",
@@ -258,22 +253,13 @@ def _run_secondary_extraction_boundary_smoke(
     content: bytes,
 ) -> object:
     provider = PdfPrimaryExtractionProvider()
-    provider_kwargs = {
-        "primary_name": provider.name,
-        "primary_" + "extractor": lambda payload: {
-            "result": provider.extract(
-                source_doc_id=str(payload["document_id"]),
-                content=bytes(payload["content"]),
-            )
-        },
-        "fallback_name": "secondary-unsupported-escalation",
-        "fallback_extractor": lambda payload: (_ for _ in ()).throw(
-            ValueError(_unsupported_secondary_bytes_reason(bytes(payload["content"])))
-        ),
-        "tracer": tracer,
-    }
-    orchestrator_factory = cast(Any, ExtractionOrchestrator)
-    orchestrator = orchestrator_factory(**provider_kwargs)
+    orchestrator = ExtractionOrchestrator(
+        primary_name=provider.name,
+        primary_extractor=_pdf_primary_extractor(provider),
+        fallback_name="secondary-unsupported-escalation",
+        fallback_extractor=_unsupported_secondary_extractor,
+        tracer=tracer,
+    )
     result = orchestrator.run(
         {
             "id": f"{source_doc_id}:secondary-extract",
@@ -287,12 +273,36 @@ def _run_secondary_extraction_boundary_smoke(
     return result
 
 
+def _pdf_primary_extractor(
+    provider: PdfPrimaryExtractionProvider,
+) -> Callable[[dict[str, Any]], dict[str, ExtractedDocumentResult]]:
+    def extract(payload: dict[str, Any]) -> dict[str, ExtractedDocumentResult]:
+        content = payload["content"]
+        if not isinstance(content, (bytes, bytearray)):
+            raise TypeError("document content must be bytes")
+        return {
+            "result": provider.extract(
+                source_doc_id=str(payload["document_id"]),
+                content=bytes(content),
+            )
+        }
+
+    return extract
+
+
+def _unsupported_secondary_extractor(payload: dict[str, Any]) -> dict[str, object]:
+    content = payload["content"]
+    if not isinstance(content, (bytes, bytearray)):
+        raise TypeError("document content must be bytes")
+    raise ValueError(_unsupported_secondary_bytes_reason(bytes(content)))
+
+
 def _fixture_bytes(*, fixture_root: Path, file_name: str) -> bytes:
     return (fixture_root.parent / "extraction" / file_name).read_bytes()
 
 
 def _unsupported_secondary_bytes_reason(content: bytes) -> str:
-    if content.startswith(b"PK"):
+    if content.startswith(b"PK\x03\x04"):
         return "unsupported secondary document bytes format: xlsx"
     if content.startswith(b"%PDF-"):
         return "unsupported secondary document bytes format: pdf"

@@ -1,5 +1,32 @@
 # Workloop State
 
+## 2026-05-07T06:25:00Z - closer lane PR #399 review/CI remediation
+
+- Automation: `imi-merge-verify-closer` (codex closer lane).
+- Source issue: `#380` (`Implement and prove real document-bytes extraction in the v1 smoke path`).
+- Source PR: `#399` (`https://github.com/stranske/Inv-Man-Intake/pull/399`).
+- Branch: `codex/issue-380-real-byte-extraction`.
+- Selection:
+  - ACTION A succeeded from the neutral Code workspace.
+  - Full fleet discovery ran across supported repos; maintenance/dependency PRs were excluded.
+  - The sentinel active lane `stranske/Inv-Man-Intake#399` was still open and agent-owned, so it was selected before moving to other repos.
+- Blockers found:
+  - `Python CI / lint-format` failed on the PR.
+  - Five unresolved Copilot review threads were present: explicit orchestrator kwargs, non-idiomatic fallback raising, PDF literal octal/line-continuation escapes, XLSX fixture realism, and `workloop-state.md` repo noise.
+- Action taken:
+  - Replaced dynamic `ExtractionOrchestrator` kwargs with explicit keyword construction and typed helper extractors.
+  - Replaced generator-`throw` fallback raising with a named fallback extractor.
+  - Added minimal PDF literal octal escape and escaped line-continuation handling.
+  - Replaced the placeholder `.xlsx` bytes with a small ZIP-backed XLSX-like fixture and tightened secondary detection to `PK\x03\x04`.
+  - Kept `workloop-state.md` in the PR because this automation requires selected-repo durable root state; the PR thread should be resolved with that disposition.
+- Validation passed locally:
+  - `python -m ruff check src/inv_man_intake/extraction/providers/pdf_primary.py src/inv_man_intake/v1_smoke.py tests/extraction/test_pdf_primary_provider.py tests/extraction/test_document_byte_provider.py tests/test_v1_acceptance_smoke.py`
+  - `python -m black --check src/inv_man_intake/extraction/providers/pdf_primary.py src/inv_man_intake/v1_smoke.py tests/extraction/test_pdf_primary_provider.py tests/extraction/test_document_byte_provider.py tests/test_v1_acceptance_smoke.py`
+  - `python -m mypy src/inv_man_intake/extraction/providers/pdf_primary.py src/inv_man_intake/v1_smoke.py`
+  - `python -m pytest tests/extraction/test_pdf_primary_provider.py tests/extraction/test_document_byte_provider.py tests/test_v1_acceptance_smoke.py --no-cov`
+- Next action:
+  - Push the remediation commit, resolve the four code/fixture Copilot threads and disposition the `workloop-state.md` thread, then re-check CI. If checks pass and no new review debt appears, merge `#399` and apply `verify:compare` in a future closer round.
+
 ## 2026-05-07T06:05:28Z - opener lane PR materialization
 
 - Automation: `pd-workloop-resume` (codex opener lane).
