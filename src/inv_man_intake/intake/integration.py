@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from datetime import date
 from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
@@ -261,10 +262,13 @@ def _persist_accepted_bundle(
         asset_class=_as_non_empty_str(metadata.get("asset_class")) or None,
         created_at=received_at,
     )
-    if core_repository.get_fund(fund_id) is None:
+    existing_fund = core_repository.get_fund(fund_id)
+    if existing_fund is None:
         core_repository.create_fund(fund)
     else:
-        core_repository.update_fund(fund)
+        merged_fund = _merge_fund(existing=existing_fund, incoming=fund)
+        if merged_fund != existing_fund:
+            core_repository.update_fund(merged_fund)
 
     version_records: list[DocumentVersionRecord] = []
     for document_id, entry in zip(document_ids, file_entries, strict=True):
@@ -287,9 +291,11 @@ def _persist_accepted_bundle(
             source_channel=source_channel,
             created_at=received_at,
         )
-        if core_repository.get_document(document_id) is None:
+        existing_document = core_repository.get_document(document_id)
+        if existing_document is None:
             core_repository.create_document(document)
         else:
+            _ensure_document_invariants(existing=existing_document, incoming=document)
             core_repository.update_document(document)
         version_records.append(version)
 
@@ -316,9 +322,43 @@ def _document_key(*, fund_id: str, document_id: str) -> str:
 
 def _version_date(metadata: dict[str, Any], received_at: str) -> str:
     explicit_version_date = _as_non_empty_str(metadata.get("version_date"))
-    if explicit_version_date:
+    if explicit_version_date and _is_iso_date(explicit_version_date):
         return explicit_version_date
     return received_at[:10]
+
+
+def _is_iso_date(value: str) -> bool:
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _merge_fund(*, existing: Fund, incoming: Fund) -> Fund:
+    """Preserve existing fund attributes when the incoming bundle leaves them empty."""
+    return replace(
+        existing,
+        firm_id=incoming.firm_id or existing.firm_id,
+        fund_name=incoming.fund_name or existing.fund_name,
+        strategy=incoming.strategy if incoming.strategy is not None else existing.strategy,
+        asset_class=(
+            incoming.asset_class if incoming.asset_class is not None else existing.asset_class
+        ),
+    )
+
+
+def _ensure_document_invariants(*, existing: Document, incoming: Document) -> None:
+    """Reject document_id collisions where structural identity has changed."""
+    mismatches: list[str] = []
+    if existing.fund_id != incoming.fund_id:
+        mismatches.append(f"fund_id={existing.fund_id!r}->{incoming.fund_id!r}")
+    if existing.file_hash != incoming.file_hash:
+        mismatches.append(f"file_hash={existing.file_hash!r}->{incoming.file_hash!r}")
+    if mismatches:
+        raise ValueError(
+            f"document_id={incoming.document_id!r} collision: " + ", ".join(mismatches)
+        )
 
 
 def _stable_read_error_message(exc: OSError) -> str:
