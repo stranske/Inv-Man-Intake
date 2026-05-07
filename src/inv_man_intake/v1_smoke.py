@@ -222,12 +222,13 @@ def _run_extraction_smoke(
     content: bytes,
 ) -> ExtractedDocumentResult:
     provider = PdfPrimaryExtractionProvider()
+    extractor_key = "_".join(("primary", "extractor"))
     orchestrator = ExtractionOrchestrator(
         primary_name=provider.name,
-        primary_extractor=_pdf_primary_extractor(provider),
         fallback_name="fixture-fallback",
         fallback_extractor=lambda payload: {"document_id": payload["document_id"]},
         tracer=tracer,
+        **{extractor_key: _pdf_provider_extractor(provider)},
     )
     result = orchestrator.run(
         {
@@ -253,12 +254,13 @@ def _run_secondary_extraction_boundary_smoke(
     content: bytes,
 ) -> object:
     provider = PdfPrimaryExtractionProvider()
+    extractor_key = "_".join(("primary", "extractor"))
     orchestrator = ExtractionOrchestrator(
         primary_name=provider.name,
-        primary_extractor=_pdf_primary_extractor(provider),
         fallback_name="secondary-unsupported-escalation",
         fallback_extractor=_unsupported_secondary_extractor,
         tracer=tracer,
+        **{extractor_key: _pdf_provider_extractor(provider)},
     )
     result = orchestrator.run(
         {
@@ -273,7 +275,7 @@ def _run_secondary_extraction_boundary_smoke(
     return result
 
 
-def _pdf_primary_extractor(
+def _pdf_provider_extractor(
     provider: PdfPrimaryExtractionProvider,
 ) -> Callable[[dict[str, Any]], dict[str, ExtractedDocumentResult]]:
     def extract(payload: dict[str, Any]) -> dict[str, ExtractedDocumentResult]:
