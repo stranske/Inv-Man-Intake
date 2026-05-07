@@ -219,6 +219,15 @@ class CoreRepository:
             for row in rows
         )
 
+    def count_core_rows(self) -> tuple[int, int, int]:
+        """Return deterministic (firms, funds, documents) row counts for smoke assertions."""
+        firm_count = int(self._connection.execute("SELECT COUNT(*) FROM firms").fetchone()[0])
+        fund_count = int(self._connection.execute("SELECT COUNT(*) FROM funds").fetchone()[0])
+        document_count = int(
+            self._connection.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+        )
+        return firm_count, fund_count, document_count
+
     def list_provenance_rows(self, document_id: str) -> tuple[tuple[str, str, int], ...]:
         """Return provenance rows when extracted_fields table exists, else empty tuple."""
         table_exists = self._connection.execute(

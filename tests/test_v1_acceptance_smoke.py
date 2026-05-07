@@ -39,14 +39,20 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path(v1_smoke_artifacts
     assert record.firm_id == "firm_summit_arc_advisors"
     assert record.fund_id == "fund_summit_arc_special_situations"
     assert record.document_ids == _EXPECTED_DOCUMENT_IDS
+    assert repository.count_core_rows() == (1, 1, 4)
     assert repository.get_firm(record.firm_id) is not None
     assert repository.get_fund(record.fund_id) is not None
     for document_id in _EXPECTED_DOCUMENT_IDS:
         document = repository.get_document(document_id)
         assert document is not None
         assert document.fund_id == record.fund_id
+        assert document.file_name
+        assert document.file_hash
+        assert document.received_at == "2026-03-04T08:20:00+00:00"
         assert document.source_channel == "internal_forward"
-        assert store.list_versions(f"{record.fund_id}/{document_id}")
+        versions = store.list_versions(f"{record.fund_id}/{document_id}")
+        assert versions
+        assert versions[0].file_hash == document.file_hash
 
     threshold_decision = artifacts.threshold_decision
     extraction_with_thresholds = artifacts.extraction_with_thresholds
