@@ -4,14 +4,18 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
 
 from inv_man_intake.contracts.intake_contract import IntakeValidationIssue, validate_intake_payload
+from inv_man_intake.data.models import Document, Firm, Fund
+from inv_man_intake.data.repository import CoreRepository
 from inv_man_intake.intake.models import IngestStatus, IntakeFile
 from inv_man_intake.intake.service import IngestionService
+from inv_man_intake.storage.document_store import DocumentStore, DocumentVersionRecord
 
 
 @dataclass(frozen=True)
@@ -23,11 +27,15 @@ class IntakeRegistrationResult:
     status: IngestStatus | None
     errors: tuple[IntakeValidationIssue, ...]
     warnings: tuple[IntakeValidationIssue, ...]
+    persisted_documents: tuple[DocumentVersionRecord, ...] = ()
 
 
 def register_intake_bundle(
     bundle: dict[str, Any],
     service: IngestionService,
+    core_repository: CoreRepository | None = None,
+    document_store: DocumentStore | None = None,
+    content_resolver: DocumentContentResolver | None = None,
 ) -> IntakeRegistrationResult:
     """Validate and register one intake bundle with deterministic errors."""
 
@@ -74,14 +82,15 @@ def register_intake_bundle(
         )
 
     metadata = bundle["metadata"]
+    file_entries = [entry for entry in bundle["files"] if isinstance(entry, dict)]
     files = [
         IntakeFile(
             file_name=_as_non_empty_str(entry.get("file_name")),
             role=_as_non_empty_str(entry.get("role")),
             source_ref=_as_non_empty_str(entry.get("source_ref")) or None,
+            document_id=_as_non_empty_str(entry.get("document_id")) or None,
         )
-        for entry in bundle["files"]
-        if isinstance(entry, dict)
+        for entry in file_entries
     ]
 
     try:
@@ -115,18 +124,36 @@ def register_intake_bundle(
             warnings=validation.warnings,
         )
 
+    persisted_documents: tuple[DocumentVersionRecord, ...] = ()
+    if core_repository is not None and document_store is not None:
+        persisted_documents = _persist_accepted_bundle(
+            core_repository=core_repository,
+            document_store=document_store,
+            content_resolver=content_resolver or deterministic_fixture_content,
+            package_id=record.package_id,
+            firm_id=record.firm_id,
+            fund_id=record.fund_id,
+            document_ids=record.document_ids,
+            metadata=metadata,
+            file_entries=file_entries,
+        )
+
     return IntakeRegistrationResult(
         accepted=True,
         package_id=record.package_id,
         status=record.status,
         errors=(),
         warnings=validation.warnings,
+        persisted_documents=persisted_documents,
     )
 
 
 def register_intake_bundle_file(
     path: Path | str,
     service: IngestionService,
+    core_repository: CoreRepository | None = None,
+    document_store: DocumentStore | None = None,
+    content_resolver: DocumentContentResolver | None = None,
 ) -> IntakeRegistrationResult:
     """Load, validate, and register an intake bundle from disk."""
 
@@ -180,7 +207,93 @@ def register_intake_bundle_file(
             warnings=(),
         )
 
-    return register_intake_bundle(parsed, service)
+    return register_intake_bundle(
+        parsed,
+        service,
+        core_repository=core_repository,
+        document_store=document_store,
+        content_resolver=content_resolver,
+    )
+
+
+type DocumentContentResolver = Callable[[dict[str, Any], str], bytes]
+
+
+def deterministic_fixture_content(entry: dict[str, Any], package_id: str) -> bytes:
+    """Resolve deterministic bytes for fixture-style intake bundles."""
+    file_name = _as_non_empty_str(entry.get("file_name"))
+    source_ref = _as_non_empty_str(entry.get("source_ref"))
+    return f"{package_id}\n{file_name}\n{source_ref}\n".encode()
+
+
+def _persist_accepted_bundle(
+    *,
+    core_repository: CoreRepository,
+    document_store: DocumentStore,
+    content_resolver: DocumentContentResolver,
+    package_id: str,
+    firm_id: str,
+    fund_id: str,
+    document_ids: tuple[str, ...],
+    metadata: dict[str, Any],
+    file_entries: list[dict[str, Any]],
+) -> tuple[DocumentVersionRecord, ...]:
+    core_repository.ensure_core_schema()
+    received_at = _as_non_empty_str(metadata.get("received_at"))
+    source_channel = _as_non_empty_str(metadata.get("source_channel"))
+    version_date = _version_date(metadata, received_at)
+
+    if core_repository.get_firm(firm_id) is None:
+        core_repository.create_firm(
+            Firm(
+                firm_id=firm_id,
+                legal_name=_as_non_empty_str(metadata.get("firm_name")) or firm_id,
+                aliases_json=None,
+                created_at=received_at,
+            )
+        )
+
+    fund = Fund(
+        fund_id=fund_id,
+        firm_id=firm_id,
+        fund_name=_as_non_empty_str(metadata.get("fund_name")) or fund_id,
+        strategy=_as_non_empty_str(metadata.get("strategy")) or None,
+        asset_class=_as_non_empty_str(metadata.get("asset_class")) or None,
+        created_at=received_at,
+    )
+    if core_repository.get_fund(fund_id) is None:
+        core_repository.create_fund(fund)
+    else:
+        core_repository.update_fund(fund)
+
+    version_records: list[DocumentVersionRecord] = []
+    for document_id, entry in zip(document_ids, file_entries, strict=True):
+        file_name = _as_non_empty_str(entry.get("file_name"))
+        document_key = _document_key(fund_id=fund_id, document_id=document_id)
+        content = content_resolver(entry, package_id)
+        version = document_store.put(
+            document_key=document_key,
+            file_name=file_name,
+            content=content,
+            received_at=received_at,
+        )
+        document = Document(
+            document_id=document_id,
+            fund_id=fund_id,
+            file_name=file_name,
+            file_hash=version.file_hash,
+            received_at=version.received_at,
+            version_date=version_date,
+            source_channel=source_channel,
+            created_at=received_at,
+        )
+        if core_repository.get_document(document_id) is None:
+            core_repository.create_document(document)
+        else:
+            core_repository.update_document(document)
+        version_records.append(version)
+
+    return tuple(version_records)
 
 
 def _as_non_empty_str(value: Any) -> str:
@@ -195,6 +308,17 @@ def _stable_identifier(preferred: Any, fallback: Any, prefix: str) -> str:
     fallback_value = _as_non_empty_str(fallback).lower()
     slug = re.sub(r"[^a-z0-9]+", "_", fallback_value).strip("_")
     return f"{prefix}_{slug or 'unknown'}"
+
+
+def _document_key(*, fund_id: str, document_id: str) -> str:
+    return f"{fund_id}/{document_id}"
+
+
+def _version_date(metadata: dict[str, Any], received_at: str) -> str:
+    explicit_version_date = _as_non_empty_str(metadata.get("version_date"))
+    if explicit_version_date:
+        return explicit_version_date
+    return received_at[:10]
 
 
 def _stable_read_error_message(exc: OSError) -> str:

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
+from inv_man_intake.data.repository import CoreRepository
 from inv_man_intake.extraction.confidence import (
     ThresholdConfig,
     attach_threshold_summary,
@@ -45,11 +47,14 @@ from inv_man_intake.scoring.explainability import (
     build_explainability_payload,
     format_explainability_payload,
 )
+from inv_man_intake.storage.document_store import InMemoryDocumentStore
 
 
 @dataclass(frozen=True)
 class V1SmokeArtifacts:
     service: IngestionService
+    core_repository: CoreRepository
+    document_store: InMemoryDocumentStore
     registration: object
     record: object
     sink: InMemoryTraceSink
@@ -79,6 +84,8 @@ def run_v1_smoke_pipeline(
     trace_context = new_trace_context(tags={"package_id": package_id, "stage": "intake"})
 
     service = IngestionService()
+    core_repository = CoreRepository(sqlite3.connect(":memory:"))
+    document_store = InMemoryDocumentStore()
     with tracer.start_span(
         name="v1_acceptance.intake_register",
         context=trace_context,
@@ -87,6 +94,8 @@ def run_v1_smoke_pipeline(
         registration = register_intake_bundle_file(
             fixture_root / "pdf_primary_mixed_bundle.json",
             service,
+            core_repository=core_repository,
+            document_store=document_store,
         )
 
     record = _assert_registered_package_state(
@@ -195,6 +204,8 @@ def run_v1_smoke_pipeline(
 
     return V1SmokeArtifacts(
         service=service,
+        core_repository=core_repository,
+        document_store=document_store,
         registration=registration,
         record=record,
         sink=sink,

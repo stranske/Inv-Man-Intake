@@ -74,7 +74,6 @@
 - Commit: `f55eb63` (`Issue #380: prove real-byte extraction smoke path`).
 - PR: `#399` (`https://github.com/stranske/Inv-Man-Intake/pull/399`), ready for review, branch `codex/issue-380-real-byte-extraction`, labels `agent:codex`, `agents:keepalive`, `autofix`.
 - Relay event emitted: `pr_opened active.source_pr=399 active.next_action=wait_for_keepalive`.
-- Next action: keepalive owns CI/review follow-up; opener should move to the next eligible issue on a future run if cap allows.
 
 ## 2026-03-08 04:10:27 CDT
 - Automation: pd-workloop-resume

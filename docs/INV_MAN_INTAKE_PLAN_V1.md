@@ -100,6 +100,10 @@ This section replaces previous provisional assumptions with confirmed decisions.
 - Land multi-format ingestion (PDF, PPTX, XLSX, DOCX, email notes).
 - Build document versioning with hash + received date.
 - Persist provenance metadata (document/page pointers).
+- Accepted fixture-style bundles can now opt into local persistence by passing a
+  `CoreRepository` and `DocumentStore` to `register_intake_bundle_file(...)`. The default
+  in-memory intake lifecycle remains unchanged, while the persistence path writes firm, fund, and
+  document rows plus idempotent document versions for offline validation.
 
 2. Extraction and parsing quality pipeline
 - Add OCR/layout + table/image extraction with retry fallback.
@@ -162,3 +166,9 @@ through intake registration, stable document identifiers, confidence-gated extra
 normalization, conflict audit and analyst queue evidence, asset-class scoring, explainability output,
 and cross-stage trace propagation. This is the acceptance check for the v1 intake-to-scoring design
 commitment; focused unit tests still own the narrower component contracts.
+
+Registry persistence is covered by:
+
+```bash
+python -m pytest tests/intake/test_ingest_core_registry.py tests/intake/test_ingest_integration.py tests/data/test_repository_core.py --no-cov
+```
