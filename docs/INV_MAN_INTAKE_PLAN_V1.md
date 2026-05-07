@@ -26,6 +26,10 @@ Build the first production-capable intake-to-scoring pipeline for investment man
 - Primary: PDF, PPTX
 - Secondary: XLSX, email notes, Word docs
 
+Current smoke coverage uses a deterministic text-bearing PDF provider for real primary bytes.
+Secondary bytes are accepted through the extraction boundary and escalated deterministically when no
+format-specific parser exists.
+
 ### Processing and Review Stance
 - Fully automated default path where possible.
 - Human review queue exists for rough edges, exceptions, and conflict resolution.

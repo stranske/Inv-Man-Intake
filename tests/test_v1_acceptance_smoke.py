@@ -53,6 +53,9 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path() -> None:
 
     assert extraction_fields["strategy.asset_class"].source_doc_id in record.document_ids
     assert extraction_fields["strategy.asset_class"].source_page == 2
+    assert extraction_with_thresholds.provider_name == "pdf-primary"
+    assert artifacts.secondary_extraction_result.resolved is False
+    assert artifacts.secondary_extraction_result.escalation_route == "ops_review"
     assert threshold_decision.auto_pass_document is False
     assert threshold_decision.escalate is True
     assert threshold_decision.escalation_reason == "low_key_field_coverage"
