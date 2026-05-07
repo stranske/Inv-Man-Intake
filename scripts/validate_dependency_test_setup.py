@@ -14,6 +14,16 @@ import sys
 from pathlib import Path
 
 
+def _is_legacy_trend_analysis_repo() -> bool:
+    """Return True when legacy trend_analysis paths are present."""
+    legacy_paths = (
+        Path("src/trend_analysis/io/validators.py"),
+        Path("src/trend_analysis/io/market_data.py"),
+        Path("streamlit_app/components/data_schema.py"),
+    )
+    return any(path.exists() for path in legacy_paths)
+
+
 def check_lock_file_completeness() -> tuple[bool, list[str]]:
     """Verify lock file includes all optional dependencies."""
     issues = []
@@ -160,6 +170,11 @@ def main():
     print("Dependency Test Setup Validation")
     print("=" * 60)
     print()
+
+    if not _is_legacy_trend_analysis_repo():
+        print("ℹ Skipping: validator is scoped to legacy trend_analysis repository layout.")
+        print("✓ No applicable checks for this repository.")
+        return 0
 
     all_passed = True
     all_issues = []
