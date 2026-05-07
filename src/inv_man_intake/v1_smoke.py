@@ -228,7 +228,7 @@ def _run_extraction_smoke(
         fallback_name="fixture-fallback",
         fallback_extractor=lambda payload: {"document_id": payload["document_id"]},
         tracer=tracer,
-        **{extractor_key: _pdf_provider_extractor(provider)},
+        **{extractor_key: _pdf_provider_extractor(provider)},  # type: ignore[arg-type]
     )
     result = orchestrator.run(
         {
@@ -260,7 +260,7 @@ def _run_secondary_extraction_boundary_smoke(
         fallback_name="secondary-unsupported-escalation",
         fallback_extractor=_unsupported_secondary_extractor,
         tracer=tracer,
-        **{extractor_key: _pdf_provider_extractor(provider)},
+        **{extractor_key: _pdf_provider_extractor(provider)},  # type: ignore[arg-type]
     )
     result = orchestrator.run(
         {
