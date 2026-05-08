@@ -136,6 +136,11 @@ def load_weight_file(path: Path) -> ScoringWeightSet:
         raise ValueError(
             f"{path.name}: 'asset_class' value '{asset_class}' does not match filename stem '{path.stem}'"
         )
+    if asset_class not in LAUNCH_ASSET_CLASSES:
+        allowed = ", ".join(LAUNCH_ASSET_CLASSES)
+        raise ValueError(
+            f"{path.name}: unsupported launch asset_class '{asset_class}'; expected one of: {allowed}"
+        )
 
     version = payload.get("version", "v1")
     if not isinstance(version, str) or not version:

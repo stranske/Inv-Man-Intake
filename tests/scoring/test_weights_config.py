@@ -205,3 +205,15 @@ def test_load_weight_registry_rejects_asset_class_filename_mismatch(tmp_path: Pa
 
     with pytest.raises(ValueError, match="does not match filename stem"):
         load_weight_registry(config_dir)
+
+
+def test_load_weight_registry_rejects_non_launch_asset_class_file(tmp_path: Path) -> None:
+    config_dir = tmp_path / "scoring_weights"
+    for asset_class in LAUNCH_ASSET_CLASSES:
+        _write_weight_file(
+            config_dir, asset_class=asset_class, weights_block=_valid_weights_block()
+        )
+    _write_weight_file(config_dir, asset_class="real_assets", weights_block=_valid_weights_block())
+
+    with pytest.raises(ValueError, match="unsupported launch asset_class 'real_assets'"):
+        load_weight_registry(config_dir)
