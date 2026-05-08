@@ -1,9 +1,9 @@
-asset_class = "equity"
+asset_class = "equity_market_neutral"
 version = "v1"
 
 [weights]
 performance_consistency = 0.30
-risk_adjusted_returns = 0.30
+risk_adjusted_returns = 0.25
 operational_quality = 0.15
 transparency = 0.15
-team_experience = 0.10
+team_experience = 0.15

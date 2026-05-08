@@ -13,6 +13,7 @@ from inv_man_intake.scoring.regression import (
     detect_score_drift,
     rank_by_asset_class,
 )
+from inv_man_intake.scoring.weights import LAUNCH_ASSET_CLASSES
 
 
 def _load_fixture_entries() -> tuple[ScoreEntry, ...]:
@@ -26,11 +27,15 @@ def test_rankings_are_stable_for_launch_fixture_dataset() -> None:
 
     ranked = rank_by_asset_class(entries)
 
-    assert ranked["equity"] == ("eq_alpha", "eq_beta", "eq_gamma")
-    assert ranked["credit"] == ("cr_alpha", "cr_beta", "cr_gamma")
+    assert set(ranked) == set(LAUNCH_ASSET_CLASSES)
+    assert ranked["equity_market_neutral"] == ("emn_alpha", "emn_beta", "emn_gamma")
+    assert ranked["quant"] == ("qt_alpha", "qt_beta", "qt_gamma")
+    assert ranked["multi_strat"] == ("ms_alpha", "ms_beta", "ms_gamma")
+    assert ranked["credit_long_short"] == ("cls_alpha", "cls_beta", "cls_gamma")
     assert ranked["macro"] == ("ma_alpha", "ma_beta", "ma_gamma")
-    assert ranked["multi_strategy"] == ("ms_alpha", "ms_beta", "ms_gamma")
-    assert ranked["real_assets"] == ("ra_alpha", "ra_beta", "ra_gamma")
+    assert ranked["trend_following"] == ("tf_alpha", "tf_beta", "tf_gamma")
+    assert ranked["credit_relative_value"] == ("crv_alpha", "crv_beta", "crv_gamma")
+    assert ranked["activist"] == ("act_alpha", "act_beta", "act_gamma")
 
 
 def test_drift_report_alerts_when_thresholds_are_exceeded() -> None:
@@ -39,7 +44,7 @@ def test_drift_report_alerts_when_thresholds_are_exceeded() -> None:
         ScoreEntry(
             manager_id=entry.manager_id,
             asset_class=entry.asset_class,
-            score=(0.69 if entry.manager_id == "eq_alpha" else entry.score),
+            score=(0.69 if entry.manager_id == "emn_alpha" else entry.score),
         )
         for entry in baseline
     )
@@ -54,8 +59,8 @@ def test_drift_report_alerts_when_thresholds_are_exceeded() -> None:
     assert report.checked_count == len(baseline)
     assert len(report.alerts) == 1
     alert = report.alerts[0]
-    assert alert.manager_id == "eq_alpha"
-    assert alert.asset_class == "equity"
+    assert alert.manager_id == "emn_alpha"
+    assert alert.asset_class == "equity_market_neutral"
     assert alert.score_delta == pytest.approx(0.15)
     assert alert.rank_movement == 2
     assert alert.reasons == ("score_delta", "rank_movement")
@@ -67,7 +72,7 @@ def test_drift_report_respects_configurable_thresholds() -> None:
         ScoreEntry(
             manager_id=entry.manager_id,
             asset_class=entry.asset_class,
-            score=(entry.score - 0.04 if entry.manager_id == "ra_alpha" else entry.score),
+            score=(entry.score - 0.04 if entry.manager_id == "act_alpha" else entry.score),
         )
         for entry in baseline
     )
@@ -76,7 +81,7 @@ def test_drift_report_respects_configurable_thresholds() -> None:
     relaxed = detect_score_drift(baseline, candidate, max_score_delta=0.05, max_rank_movement=1)
 
     assert len(strict.alerts) == 1
-    assert strict.alerts[0].manager_id == "ra_alpha"
+    assert strict.alerts[0].manager_id == "act_alpha"
     assert strict.alerts[0].reasons == ("score_delta",)
     assert relaxed.alerts == ()
 
@@ -86,10 +91,10 @@ def test_calibration_stats_cover_each_asset_class_distribution() -> None:
 
     stats = build_calibration_stats(entries)
 
-    assert len(stats) == 5
+    assert len(stats) == len(LAUNCH_ASSET_CLASSES)
     by_class = {summary.asset_class: summary for summary in stats}
 
-    equity = by_class["equity"]
+    equity = by_class["equity_market_neutral"]
     assert equity.count == 3
     assert equity.minimum == pytest.approx(0.74)
     assert equity.p50 == pytest.approx(0.79)

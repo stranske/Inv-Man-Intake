@@ -1,0 +1,9 @@
+asset_class = "multi_strat"
+version = "v1"
+
+[weights]
+performance_consistency = 0.27
+risk_adjusted_returns = 0.23
+operational_quality = 0.20
+transparency = 0.12
+team_experience = 0.18

@@ -23,7 +23,7 @@ def _submission(asset_class: str) -> ScoreSubmission:
 
 
 def test_compute_score_is_deterministic_for_identical_inputs() -> None:
-    submission = _submission("equity")
+    submission = _submission("equity_market_neutral")
 
     first = compute_score(submission)
     second = compute_score(submission)
@@ -35,8 +35,8 @@ def test_compute_score_is_deterministic_for_identical_inputs() -> None:
 
 
 def test_asset_class_weight_sets_produce_materially_different_scores() -> None:
-    equity = compute_score(_submission("equity"))
-    credit = compute_score(_submission("credit"))
+    equity = compute_score(_submission("equity_market_neutral"))
+    credit = compute_score(_submission("credit_long_short"))
 
     assert equity.base_score == pytest.approx(0.705)
     assert credit.base_score == pytest.approx(0.715)
@@ -52,6 +52,7 @@ def test_red_flag_hook_can_cap_score() -> None:
     result = compute_score(_submission("equity"), red_flag_hook=CapHook())
 
     assert result.base_score == pytest.approx(0.705)
+    assert result.asset_class == "equity_market_neutral"
     assert result.final_score == pytest.approx(0.55)
     assert result.red_flag_applied is True
     assert result.red_flag_reason == "gating-breach"
@@ -69,3 +70,8 @@ def test_red_flag_hook_can_fully_block_score() -> None:
     assert result.final_score == pytest.approx(0.0)
     assert result.red_flag_applied is True
     assert result.red_flag_reason == "compliance-block"
+
+
+def test_compute_score_rejects_unmapped_asset_class() -> None:
+    with pytest.raises(ValueError, match="unknown asset class: real_assets"):
+        compute_score(_submission("real_assets"))

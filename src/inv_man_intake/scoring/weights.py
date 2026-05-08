@@ -17,11 +17,33 @@ COMPONENT_NAMES: tuple[str, ...] = (
     "team_experience",
 )
 LAUNCH_ASSET_CLASSES: tuple[str, ...] = (
-    "equity",
-    "credit",
+    "equity_market_neutral",
+    "quant",
+    "multi_strat",
+    "credit_long_short",
     "macro",
-    "multi_strategy",
-    "real_assets",
+    "trend_following",
+    "credit_relative_value",
+    "activist",
+)
+ASSET_CLASS_ALIASES: Mapping[str, str] = MappingProxyType(
+    {
+        "equity": "equity_market_neutral",
+        "equity_l_s": "equity_market_neutral",
+        "long_short_equity": "equity_market_neutral",
+        "equity_long_short": "equity_market_neutral",
+        "quantitative": "quant",
+        "multi_strategy": "multi_strat",
+        "multi_asset": "multi_strat",
+        "credit": "credit_long_short",
+        "credit_ls": "credit_long_short",
+        "credit_l_s": "credit_long_short",
+        "cta": "trend_following",
+        "managed_futures": "trend_following",
+        "relative_value_credit": "credit_relative_value",
+        "distressed_credit": "credit_relative_value",
+        "event_driven": "activist",
+    }
 )
 DEFAULT_CONFIG_DIR = Path(__file__).resolve().parents[3] / "config" / "scoring_weights"
 
@@ -64,14 +86,31 @@ def load_weight_registry(config_dir: Path | None = None) -> dict[str, ScoringWei
 def get_weight_set(asset_class: str, config_dir: Path | None = None) -> ScoringWeightSet:
     """Return one validated weight set for the requested asset class."""
 
+    canonical_asset_class = normalize_asset_class(asset_class)
     if config_dir is None:
         registry = _load_weight_registry_cached(str(DEFAULT_CONFIG_DIR.resolve()))
     else:
         registry = load_weight_registry(config_dir)
     try:
-        return registry[asset_class]
+        return registry[canonical_asset_class]
     except KeyError as exc:
-        raise ValueError(f"unknown asset class: {asset_class}") from exc
+        allowed = ", ".join(LAUNCH_ASSET_CLASSES)
+        raise ValueError(
+            f"unknown asset class: {asset_class}; expected one of: {allowed}"
+        ) from exc
+
+
+def normalize_asset_class(asset_class: str) -> str:
+    """Return the canonical v1 launch asset-class key for a label or alias."""
+
+    label = str(asset_class or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if not label:
+        raise ValueError("asset_class must be non-empty")
+    canonical = ASSET_CLASS_ALIASES.get(label, label)
+    if canonical not in LAUNCH_ASSET_CLASSES:
+        allowed = ", ".join(LAUNCH_ASSET_CLASSES)
+        raise ValueError(f"unknown asset class: {asset_class}; expected one of: {allowed}")
+    return canonical
 
 
 @lru_cache(maxsize=1)

@@ -1,0 +1,9 @@
+asset_class = "credit_relative_value"
+version = "v1"
+
+[weights]
+performance_consistency = 0.24
+risk_adjusted_returns = 0.26
+operational_quality = 0.22
+transparency = 0.14
+team_experience = 0.14
