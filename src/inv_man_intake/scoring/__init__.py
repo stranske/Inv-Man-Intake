@@ -28,14 +28,17 @@ from inv_man_intake.scoring.regression import (
     rank_by_asset_class,
 )
 from inv_man_intake.scoring.weights import (
+    ASSET_CLASS_ALIASES,
     COMPONENT_NAMES,
     LAUNCH_ASSET_CLASSES,
     ScoringWeightSet,
     get_weight_set,
     load_weight_registry,
+    normalize_asset_class,
 )
 
 __all__ = [
+    "ASSET_CLASS_ALIASES",
     "COMPONENT_NAMES",
     "CalibrationStats",
     "DriftAlert",
@@ -59,5 +62,6 @@ __all__ = [
     "format_explainability_payload",
     "get_weight_set",
     "load_weight_registry",
+    "normalize_asset_class",
     "rank_by_asset_class",
 ]

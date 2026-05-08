@@ -1,0 +1,9 @@
+asset_class = "quant"
+version = "v1"
+
+[weights]
+performance_consistency = 0.27
+risk_adjusted_returns = 0.30
+operational_quality = 0.12
+transparency = 0.16
+team_experience = 0.15

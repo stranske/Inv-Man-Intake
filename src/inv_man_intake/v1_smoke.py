@@ -197,7 +197,7 @@ def run_v1_smoke_pipeline(
             )
         )
         explainability = build_explainability_payload(
-            components=_explainability_inputs("credit", components),
+            components=_explainability_inputs(score.asset_class, components),
             overall_score=score.final_score,
         )
         formatted_explainability = format_explainability_payload(explainability)

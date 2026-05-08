@@ -7,10 +7,23 @@ from pathlib import Path
 import pytest
 
 from inv_man_intake.scoring.weights import (
+    ASSET_CLASS_ALIASES,
     COMPONENT_NAMES,
     LAUNCH_ASSET_CLASSES,
     get_weight_set,
     load_weight_registry,
+    normalize_asset_class,
+)
+
+EXPECTED_V1_LAUNCH_ASSET_CLASSES = (
+    "equity_market_neutral",
+    "quant",
+    "multi_strat",
+    "credit_long_short",
+    "macro",
+    "trend_following",
+    "credit_relative_value",
+    "activist",
 )
 
 
@@ -61,12 +74,40 @@ def test_load_weight_registry_returns_all_launch_asset_classes() -> None:
         assert sum(weight_set.weights.values()) == pytest.approx(1.0)
 
 
+def test_launch_asset_class_catalog_matches_v1_approved_classes() -> None:
+    assert LAUNCH_ASSET_CLASSES == EXPECTED_V1_LAUNCH_ASSET_CLASSES
+
+    registry = load_weight_registry()
+    for asset_class in EXPECTED_V1_LAUNCH_ASSET_CLASSES:
+        assert asset_class in registry
+
+
 def test_get_weight_set_returns_requested_asset_class() -> None:
-    weight_set = get_weight_set("equity")
-    assert weight_set.asset_class == "equity"
+    weight_set = get_weight_set("equity_market_neutral")
+    assert weight_set.asset_class == "equity_market_neutral"
     assert len(weight_set.ordered_weights()) == len(COMPONENT_NAMES)
     with pytest.raises(TypeError):
         weight_set.weights["performance_consistency"] = 0.9
+
+
+def test_asset_class_aliases_resolve_to_launch_classes() -> None:
+    assert normalize_asset_class("equity") == "equity_market_neutral"
+    assert normalize_asset_class("long-short-equity") == "equity_market_neutral"
+    assert normalize_asset_class("multi_strategy") == "multi_strat"
+    assert normalize_asset_class("credit") == "credit_long_short"
+    assert set(ASSET_CLASS_ALIASES.values()).issubset(set(LAUNCH_ASSET_CLASSES))
+    assert get_weight_set("multi_asset").asset_class == "multi_strat"
+
+
+def test_unknown_asset_class_rejected_with_launch_class_hint() -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "unknown asset class: real_assets; expected canonical one of: .*; "
+            "accepted aliases: .*"
+        ),
+    ):
+        normalize_asset_class("real_assets")
 
 
 def test_load_weight_registry_rejects_missing_launch_asset_class(tmp_path: Path) -> None:
@@ -163,4 +204,16 @@ def test_load_weight_registry_rejects_asset_class_filename_mismatch(tmp_path: Pa
     )
 
     with pytest.raises(ValueError, match="does not match filename stem"):
+        load_weight_registry(config_dir)
+
+
+def test_load_weight_registry_rejects_non_launch_asset_class_file(tmp_path: Path) -> None:
+    config_dir = tmp_path / "scoring_weights"
+    for asset_class in LAUNCH_ASSET_CLASSES:
+        _write_weight_file(
+            config_dir, asset_class=asset_class, weights_block=_valid_weights_block()
+        )
+    _write_weight_file(config_dir, asset_class="real_assets", weights_block=_valid_weights_block())
+
+    with pytest.raises(ValueError, match="unsupported launch asset_class 'real_assets'"):
         load_weight_registry(config_dir)

@@ -10,6 +10,7 @@ from inv_man_intake.scoring.contracts import (
     ScoreSubmission,
     freeze_mapping,
 )
+from inv_man_intake.scoring.weights import LAUNCH_ASSET_CLASSES, normalize_asset_class
 
 _COMPONENT_ORDER: tuple[str, ...] = (
     "performance_consistency",
@@ -31,14 +32,28 @@ def default_weights_by_asset_class() -> dict[str, dict[str, float]]:
     """Default launch weight sets keyed by asset class."""
 
     return {
-        "equity": {
+        "equity_market_neutral": {
             "performance_consistency": 0.30,
             "risk_adjusted_returns": 0.25,
             "operational_quality": 0.15,
             "transparency": 0.15,
             "team_experience": 0.15,
         },
-        "credit": {
+        "quant": {
+            "performance_consistency": 0.27,
+            "risk_adjusted_returns": 0.30,
+            "operational_quality": 0.12,
+            "transparency": 0.16,
+            "team_experience": 0.15,
+        },
+        "multi_strat": {
+            "performance_consistency": 0.27,
+            "risk_adjusted_returns": 0.23,
+            "operational_quality": 0.20,
+            "transparency": 0.12,
+            "team_experience": 0.18,
+        },
+        "credit_long_short": {
             "performance_consistency": 0.25,
             "risk_adjusted_returns": 0.30,
             "operational_quality": 0.20,
@@ -52,19 +67,26 @@ def default_weights_by_asset_class() -> dict[str, dict[str, float]]:
             "transparency": 0.10,
             "team_experience": 0.20,
         },
-        "multi_strategy": {
-            "performance_consistency": 0.27,
-            "risk_adjusted_returns": 0.23,
-            "operational_quality": 0.20,
-            "transparency": 0.12,
-            "team_experience": 0.18,
+        "trend_following": {
+            "performance_consistency": 0.22,
+            "risk_adjusted_returns": 0.33,
+            "operational_quality": 0.15,
+            "transparency": 0.15,
+            "team_experience": 0.15,
         },
-        "real_assets": {
+        "credit_relative_value": {
             "performance_consistency": 0.24,
-            "risk_adjusted_returns": 0.28,
+            "risk_adjusted_returns": 0.26,
             "operational_quality": 0.22,
             "transparency": 0.14,
-            "team_experience": 0.12,
+            "team_experience": 0.14,
+        },
+        "activist": {
+            "performance_consistency": 0.24,
+            "risk_adjusted_returns": 0.21,
+            "operational_quality": 0.20,
+            "transparency": 0.20,
+            "team_experience": 0.15,
         },
     }
 
@@ -83,6 +105,7 @@ def compute_score(
         raise ValueError("asset_class must be non-empty")
     if not submission.components:
         raise ValueError("components must be non-empty")
+    canonical_asset_class = normalize_asset_class(submission.asset_class)
 
     weight_sets = (
         default_weights_by_asset_class()
@@ -90,9 +113,14 @@ def compute_score(
         else weights_by_asset_class
     )
     try:
-        asset_weights = weight_sets[submission.asset_class]
+        asset_weights = weight_sets[canonical_asset_class]
     except KeyError as exc:
-        raise ValueError(f"unknown asset class: {submission.asset_class}") from exc
+        allowed = ", ".join(sorted(LAUNCH_ASSET_CLASSES))
+        raise ValueError(
+            "missing weight set for canonical asset class "
+            f"{canonical_asset_class!r} from input {submission.asset_class!r}; "
+            f"expected configured keys to include one of: {allowed}"
+        ) from exc
 
     _validate_weight_set(asset_weights)
     values = _normalize_components(submission)
@@ -121,7 +149,7 @@ def compute_score(
 
     return ScoreResult(
         manager_id=submission.manager_id,
-        asset_class=submission.asset_class,
+        asset_class=canonical_asset_class,
         base_score=base_score,
         final_score=final_score,
         contributions=freeze_mapping(contributions),

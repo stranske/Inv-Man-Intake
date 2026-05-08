@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import sqrt
 
+from inv_man_intake.scoring.weights import normalize_asset_class
+
 
 @dataclass(frozen=True)
 class ScoreEntry:
@@ -57,7 +59,7 @@ def rank_by_asset_class(entries: tuple[ScoreEntry, ...]) -> dict[str, tuple[str,
 
     grouped: dict[str, list[ScoreEntry]] = {}
     for entry in entries:
-        grouped.setdefault(entry.asset_class, []).append(entry)
+        grouped.setdefault(normalize_asset_class(entry.asset_class), []).append(entry)
 
     ranking: dict[str, tuple[str, ...]] = {}
     for asset_class, values in grouped.items():
@@ -127,7 +129,7 @@ def build_calibration_stats(entries: tuple[ScoreEntry, ...]) -> tuple[Calibratio
     _validate_entries(entries)
     grouped: dict[str, list[float]] = {}
     for entry in entries:
-        grouped.setdefault(entry.asset_class, []).append(entry.score)
+        grouped.setdefault(normalize_asset_class(entry.asset_class), []).append(entry.score)
 
     summaries: list[CalibrationStats] = []
     for asset_class in sorted(grouped):
@@ -154,26 +156,27 @@ def _validate_entries(entries: tuple[ScoreEntry, ...]) -> None:
     for entry in entries:
         if not entry.manager_id:
             raise ValueError("manager_id must be non-empty")
-        if not entry.asset_class:
-            raise ValueError("asset_class must be non-empty")
+        canonical_asset_class = normalize_asset_class(entry.asset_class)
         if not 0.0 <= entry.score <= 1.0:
             raise ValueError("score must be between 0 and 1")
-        key = (entry.manager_id, entry.asset_class)
+        key = (entry.manager_id, canonical_asset_class)
         if key in seen:
             raise ValueError(
-                f"duplicate score entry for manager={entry.manager_id}, asset_class={entry.asset_class}"
+                f"duplicate score entry for manager={entry.manager_id}, asset_class={canonical_asset_class}"
             )
         seen.add(key)
 
 
 def _build_lookup(entries: tuple[ScoreEntry, ...]) -> dict[tuple[str, str], ScoreEntry]:
-    return {(entry.manager_id, entry.asset_class): entry for entry in entries}
+    return {
+        (entry.manager_id, normalize_asset_class(entry.asset_class)): entry for entry in entries
+    }
 
 
 def _rank_positions(entries: tuple[ScoreEntry, ...]) -> dict[tuple[str, str], int]:
     grouped: dict[str, list[ScoreEntry]] = {}
     for entry in entries:
-        grouped.setdefault(entry.asset_class, []).append(entry)
+        grouped.setdefault(normalize_asset_class(entry.asset_class), []).append(entry)
 
     positions: dict[tuple[str, str], int] = {}
     for asset_class, values in grouped.items():

@@ -52,6 +52,24 @@ format-specific parser exists.
 - No external enrichment signals in v1.
 - Priority scoring must be asset-class-specific.
 - Score explainability is required.
+- Canonical launch asset-class keys for v1 scoring:
+  - `equity_market_neutral`
+  - `quant`
+  - `multi_strat`
+  - `credit_long_short`
+  - `macro`
+  - `trend_following`
+  - `credit_relative_value`
+  - `activist`
+- Accepted inbound aliases (normalized before scoring):
+  - `equity`, `equity_l_s`, `long_short_equity`, `equity_long_short` -> `equity_market_neutral`
+  - `quantitative` -> `quant`
+  - `multi_strategy`, `multi_asset` -> `multi_strat`
+  - `credit`, `credit_ls`, `credit_l_s` -> `credit_long_short`
+  - `cta`, `managed_futures` -> `trend_following`
+  - `relative_value_credit`, `distressed_credit` -> `credit_relative_value`
+  - `event_driven` -> `activist`
+- Unmapped labels are deterministic validation errors.
 
 ### Platform and Ops Decisions
 - One repository (single repo strategy).

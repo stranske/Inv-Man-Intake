@@ -2,8 +2,8 @@ asset_class = "macro"
 version = "v1"
 
 [weights]
-performance_consistency = 0.20
-risk_adjusted_returns = 0.30
+performance_consistency = 0.28
+risk_adjusted_returns = 0.27
 operational_quality = 0.15
-transparency = 0.20
-team_experience = 0.15
+transparency = 0.10
+team_experience = 0.20
