@@ -100,3 +100,19 @@ def test_calibration_stats_cover_each_asset_class_distribution() -> None:
     assert equity.p50 == pytest.approx(0.79)
     assert equity.p90 == pytest.approx(0.83)
     assert equity.maximum == pytest.approx(0.84)
+
+
+def test_regression_rejects_unmapped_asset_class_labels() -> None:
+    entries = (
+        ScoreEntry(manager_id="mgr_a", asset_class="real_assets", score=0.7),
+        ScoreEntry(manager_id="mgr_b", asset_class="quant", score=0.6),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "unknown asset class: real_assets; expected canonical one of: .*; "
+            "accepted aliases: .*"
+        ),
+    ):
+        rank_by_asset_class(entries)

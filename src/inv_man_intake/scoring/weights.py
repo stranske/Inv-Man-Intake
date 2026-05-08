@@ -48,6 +48,17 @@ ASSET_CLASS_ALIASES: Mapping[str, str] = MappingProxyType(
 DEFAULT_CONFIG_DIR = Path(__file__).resolve().parents[3] / "config" / "scoring_weights"
 
 
+def unknown_asset_class_message(asset_class: object) -> str:
+    """Return deterministic unknown asset-class validation message."""
+
+    allowed = ", ".join(sorted(LAUNCH_ASSET_CLASSES))
+    aliases = ", ".join(sorted(ASSET_CLASS_ALIASES))
+    return (
+        f"unknown asset class: {asset_class}; expected canonical one of: {allowed}; "
+        f"accepted aliases: {aliases}"
+    )
+
+
 @dataclass(frozen=True)
 class ScoringWeightSet:
     """Validated weight schema for one asset class."""
@@ -94,10 +105,7 @@ def get_weight_set(asset_class: str, config_dir: Path | None = None) -> ScoringW
     try:
         return registry[canonical_asset_class]
     except KeyError as exc:
-        allowed = ", ".join(LAUNCH_ASSET_CLASSES)
-        raise ValueError(
-            f"unknown asset class: {asset_class}; expected one of: {allowed}"
-        ) from exc
+        raise ValueError(unknown_asset_class_message(asset_class)) from exc
 
 
 def normalize_asset_class(asset_class: str) -> str:
@@ -108,8 +116,7 @@ def normalize_asset_class(asset_class: str) -> str:
         raise ValueError("asset_class must be non-empty")
     canonical = ASSET_CLASS_ALIASES.get(label, label)
     if canonical not in LAUNCH_ASSET_CLASSES:
-        allowed = ", ".join(LAUNCH_ASSET_CLASSES)
-        raise ValueError(f"unknown asset class: {asset_class}; expected one of: {allowed}")
+        raise ValueError(unknown_asset_class_message(asset_class))
     return canonical
 
 

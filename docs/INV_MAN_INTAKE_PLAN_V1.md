@@ -61,13 +61,15 @@ format-specific parser exists.
   - `trend_following`
   - `credit_relative_value`
   - `activist`
-- Accepted inbound aliases are explicit and normalize before scoring: `equity`,
-  `long_short_equity`, and `equity_long_short` map to `equity_market_neutral`;
-  `multi_strategy` and `multi_asset` map to `multi_strat`; `credit`,
-  `credit_ls`, and `credit_l_s` map to `credit_long_short`; `cta` and
-  `managed_futures` map to `trend_following`; `relative_value_credit` and
-  `distressed_credit` map to `credit_relative_value`; `event_driven` maps to
-  `activist`. Unmapped labels are validation errors.
+- Accepted inbound aliases (normalized before scoring):
+  - `equity`, `equity_l_s`, `long_short_equity`, `equity_long_short` -> `equity_market_neutral`
+  - `quantitative` -> `quant`
+  - `multi_strategy`, `multi_asset` -> `multi_strat`
+  - `credit`, `credit_ls`, `credit_l_s` -> `credit_long_short`
+  - `cta`, `managed_futures` -> `trend_following`
+  - `relative_value_credit`, `distressed_credit` -> `credit_relative_value`
+  - `event_driven` -> `activist`
+- Unmapped labels are deterministic validation errors.
 
 ### Platform and Ops Decisions
 - One repository (single repo strategy).

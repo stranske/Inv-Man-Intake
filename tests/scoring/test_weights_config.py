@@ -81,7 +81,13 @@ def test_asset_class_aliases_resolve_to_launch_classes() -> None:
 
 
 def test_unknown_asset_class_rejected_with_launch_class_hint() -> None:
-    with pytest.raises(ValueError, match="unknown asset class: real_assets; expected one of"):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "unknown asset class: real_assets; expected canonical one of: .*; "
+            "accepted aliases: .*"
+        ),
+    ):
         normalize_asset_class("real_assets")
 
 
