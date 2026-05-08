@@ -15,6 +15,17 @@ from inv_man_intake.scoring.weights import (
     normalize_asset_class,
 )
 
+EXPECTED_V1_LAUNCH_ASSET_CLASSES = (
+    "equity_market_neutral",
+    "quant",
+    "multi_strat",
+    "credit_long_short",
+    "macro",
+    "trend_following",
+    "credit_relative_value",
+    "activist",
+)
+
 
 def _write_weight_file(
     directory: Path,
@@ -61,6 +72,14 @@ def test_load_weight_registry_returns_all_launch_asset_classes() -> None:
         assert weight_set.version == "v1"
         assert set(weight_set.weights) == set(COMPONENT_NAMES)
         assert sum(weight_set.weights.values()) == pytest.approx(1.0)
+
+
+def test_launch_asset_class_catalog_matches_v1_approved_classes() -> None:
+    assert LAUNCH_ASSET_CLASSES == EXPECTED_V1_LAUNCH_ASSET_CLASSES
+
+    registry = load_weight_registry()
+    for asset_class in EXPECTED_V1_LAUNCH_ASSET_CLASSES:
+        assert asset_class in registry
 
 
 def test_get_weight_set_returns_requested_asset_class() -> None:
