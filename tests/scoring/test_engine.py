@@ -75,3 +75,14 @@ def test_red_flag_hook_can_fully_block_score() -> None:
 def test_compute_score_rejects_unmapped_asset_class() -> None:
     with pytest.raises(ValueError, match="unknown asset class: real_assets"):
         compute_score(_submission("real_assets"))
+
+
+def test_compute_score_reports_missing_canonical_weight_set_for_alias() -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            "missing weight set for canonical asset class 'equity_market_neutral' "
+            "from input 'equity'"
+        ),
+    ):
+        compute_score(_submission("equity"), weights_by_asset_class={"macro": {}})

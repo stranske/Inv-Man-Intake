@@ -10,7 +10,7 @@ from inv_man_intake.scoring.contracts import (
     ScoreSubmission,
     freeze_mapping,
 )
-from inv_man_intake.scoring.weights import normalize_asset_class
+from inv_man_intake.scoring.weights import LAUNCH_ASSET_CLASSES, normalize_asset_class
 
 _COMPONENT_ORDER: tuple[str, ...] = (
     "performance_consistency",
@@ -115,7 +115,12 @@ def compute_score(
     try:
         asset_weights = weight_sets[canonical_asset_class]
     except KeyError as exc:
-        raise ValueError(f"unknown asset class: {submission.asset_class}") from exc
+        allowed = ", ".join(sorted(LAUNCH_ASSET_CLASSES))
+        raise ValueError(
+            "missing weight set for canonical asset class "
+            f"{canonical_asset_class!r} from input {submission.asset_class!r}; "
+            f"expected configured keys to include one of: {allowed}"
+        ) from exc
 
     _validate_weight_set(asset_weights)
     values = _normalize_components(submission)
