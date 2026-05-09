@@ -6,6 +6,7 @@ import ast
 from pathlib import Path
 
 SMOKE_PATH = Path("src/inv_man_intake/v1_smoke.py")
+AUDIT_REPORT_PATH = Path("docs/reports/v1_smoke_contract_audit.md")
 
 
 def test_v1_smoke_contract_guard_accepts_current_smoke_path() -> None:
@@ -72,6 +73,57 @@ import inv_man_intake.queue.state_machine as state_machine
     assert smoke_contract_guard_violations(source) == [
         "v1 smoke must not import discarded inv_man_intake.queue.state_machine"
     ]
+
+
+def test_v1_smoke_contract_audit_includes_row_level_trace_evidence() -> None:
+    audit = AUDIT_REPORT_PATH.read_text()
+    required_evidence = {
+        "docs/contracts/intake_contract.md": (
+            "src/inv_man_intake/v1_smoke.py:94-99",
+            "tests/test_v1_acceptance_smoke.py:37-55",
+        ),
+        "docs/contracts/core_schema.md": (
+            "src/inv_man_intake/v1_smoke.py:87",
+            "tests/test_v1_acceptance_smoke.py:42-55",
+        ),
+        "docs/contracts/extraction_provider_contract.md": (
+            "src/inv_man_intake/v1_smoke.py:228-257",
+            "tests/test_v1_acceptance_smoke.py:67-69",
+        ),
+        "docs/contracts/extraction_thresholds.md": (
+            "src/inv_man_intake/v1_smoke.py:129-150",
+            "tests/test_v1_acceptance_smoke.py:70-75",
+        ),
+        "docs/contracts/performance_normalization.md": (
+            "src/inv_man_intake/v1_smoke.py:163-172",
+            "tests/test_v1_acceptance_smoke.py:81-89",
+        ),
+        "docs/contracts/queue_states.md": (
+            "src/inv_man_intake/v1_smoke.py:174-178",
+            "tests/test_v1_acceptance_smoke.py:91-99",
+        ),
+        "docs/contracts/queue_assignment_sla.md": (
+            "src/inv_man_intake/v1_smoke.py:174-178",
+            "tests/test_v1_acceptance_smoke.py:91-99",
+        ),
+        "docs/contracts/scoring_explainability.md": (
+            "src/inv_man_intake/v1_smoke.py:191-203",
+            "tests/test_v1_acceptance_smoke.py:104-108",
+        ),
+    }
+    for contract, anchors in required_evidence.items():
+        assert contract in audit
+        for anchor in anchors:
+            assert anchor in audit
+
+    not_exercised_contracts = (
+        "docs/contracts/core_schema_migration.md",
+        "docs/contracts/provenance_history.md",
+        "docs/contracts/agent-runner-output.md",
+    )
+    for contract in not_exercised_contracts:
+        assert contract in audit
+    assert "not-exercised" in audit
 
 
 def smoke_contract_guard_violations(source: str) -> list[str]:
