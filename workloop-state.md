@@ -1,5 +1,29 @@
 # Workloop State
 
+## 2026-05-09T15:07:41Z - opener lane issue #401 PR materialization
+
+- Automation: `pd-workloop-resume` (codex opener lane).
+- Source repo: `stranske/Inv-Man-Intake`.
+- Source issue: `#401` (`Wire real LangSmith trace export so the documented runbook actually emits spans`, `priority:normal`, `repo-review-approved`).
+- Branch: `codex/issue-401-langsmith-trace-export`.
+- Selection:
+  - ACTION A succeeded from the neutral Code workspace and full fleet discovery ran across supported repos.
+  - Cap-health after infra repair reported `total_opener_owned=4`, `raw_cap_reached=false`, `normal_cap_reached=false`, and `non_drainable_cap_blocker=false`.
+  - Skipped `Workflows#2073` as an operational auth-expiry alert and `Inv-Man-Intake#381` because it was already served by merged PR `#400` and is now a verifier/closer lane.
+  - Selected `Inv-Man-Intake#401` as the next actionable issue; no existing open PR was found for this issue/title.
+- Implementation:
+  - Added `LangSmithTraceSink`, wired `Tracer.from_env(...)` to select it when tracing is enabled and `LANGSMITH_API_KEY` is present, and kept `InMemoryTraceSink` as the offline fallback with a warning.
+  - Added runtime `langsmith` dependency and re-exported LangSmith sink/constants from `inv_man_intake.observability`.
+  - Extended setup validation with `--probe` / `probe_emit=True` using an injectable mocked client for tests and a real `langsmith.Client` at runtime.
+  - Updated the LangSmith runbook and README to document real export plus the probe command.
+- Validation passed:
+  - `python -m pytest tests/observability/ tests/test_v1_acceptance_smoke.py --no-cov` (44 passed).
+  - `python -m ruff check src/inv_man_intake/observability tests/observability docs/runbooks/langsmith_tracing.md README.md pyproject.toml`.
+  - `python -m mypy src/inv_man_intake/observability`.
+  - `PYTHONPATH=src python -c 'import langsmith; import inv_man_intake.observability.langsmith_sink'`.
+  - `git diff --check`.
+- Next action: open a ready-for-review PR with `agent:codex`, `agents:keepalive`, and `autofix`; then keepalive's Codex runner takes over for CI fixups or review-comment work.
+
 ## 2026-05-09T09:28:09Z - closer lane PR #403 review-thread remediation
 
 - Automation: `imi-merge-verify-closer` (codex closer lane).

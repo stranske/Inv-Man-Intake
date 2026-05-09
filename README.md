@@ -17,7 +17,7 @@ The v1 design target is documented in
 - Performance normalization, metric calculation, and source-conflict escalation.
 - Analyst-first validation queue states, ownership, SLA, audit, and API contracts.
 - Configurable scoring weights, score explainability, red-flag hooks, and regression fixtures.
-- Observability helpers for tracing, logging, metrics, and setup validation.
+- Observability helpers for tracing, LangSmith export, logging, metrics, and setup validation.
 
 ## Quick Start
 
