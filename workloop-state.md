@@ -5,6 +5,7 @@
 - Automation: `pd-workloop-resume` (codex opener lane).
 - Source repo: `stranske/Inv-Man-Intake`.
 - Source issue: `#382` (`Audit and remediate v1-readiness fixture-vs-real-design drift across intake persistence, extraction, and queue contracts`, `priority:normal`, `repo-review-approved`, `repo-review-meta-audit`).
+- Source PR: `#403` (`https://github.com/stranske/Inv-Man-Intake/pull/403`), non-draft, labels `agent:codex` + `agents:keepalive` + `autofix`.
 - Branch/worktree: `codex/issue-382-v1-smoke-contract-audit` at `/Users/teacher/Library/CloudStorage/Dropbox/Learning/Code/Inv-Man-Intake-issue-382`.
 - Selection:
   - ACTION A succeeded from the neutral Code workspace.
@@ -21,7 +22,8 @@
   - `python -m ruff check docs/reports/v1_smoke_contract_audit.md tests/v1/test_smoke_contract_coverage.py`.
   - `python -m mypy tests/v1/test_smoke_contract_coverage.py`.
   - `git diff --check`.
-- Next action: commit, push, open a ready-for-review PR with `agent:codex`, `agents:keepalive`, and `autofix`, then emit the `pr_opened` relay event.
+- Relay event emitted: `pr_opened active.source_repo=stranske/Inv-Man-Intake active.source_issue=382 active.source_pr=403 active.next_action=wait_for_keepalive`.
+- Next action: keepalive's Codex runner takes over for any CI fixups or review-comment work; opener is done with this lane.
 
 ## 2026-05-07T07:50:00Z - opener lane PR #400 materialized
 
