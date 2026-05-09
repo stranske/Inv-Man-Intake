@@ -1,5 +1,28 @@
 # Workloop State
 
+## 2026-05-09T09:13:00Z - opener lane issue #382 PR materialization
+
+- Automation: `pd-workloop-resume` (codex opener lane).
+- Source repo: `stranske/Inv-Man-Intake`.
+- Source issue: `#382` (`Audit and remediate v1-readiness fixture-vs-real-design drift across intake persistence, extraction, and queue contracts`, `priority:normal`, `repo-review-approved`, `repo-review-meta-audit`).
+- Branch/worktree: `codex/issue-382-v1-smoke-contract-audit` at `/Users/teacher/Library/CloudStorage/Dropbox/Learning/Code/Inv-Man-Intake-issue-382`.
+- Selection:
+  - ACTION A succeeded from the neutral Code workspace.
+  - Live priority discovery ran for `priority:high`, `priority:normal`, and `priority:low` across supported repos.
+  - Cap-health initially found 4 opener-owned PRs with one stale blocking label on `Counter_Risk#573`; opener infra repair removed `agent:needs-attention`, added `agent:retry`, and fresh cap-health reported 4 drainable opener-owned PRs with no non-drainable blockers.
+  - Skipped `Workflows#2073` as a credential/auth-expiration alert, `Inv-Man-Intake#381` as already served by merged PR `#400`, and older normal candidates already linked to open or merged verifier-hold PRs (`Counter_Risk#476/#477/#552`, `Trend_Model_Project#5169/#5170/#5172`, `Manager-Database#910`).
+  - Selected `Inv-Man-Intake#382` as the next oldest actionable normal-priority issue.
+- Implementation:
+  - Added `docs/reports/v1_smoke_contract_audit.md`, classifying v1-smoke-relevant contracts and linking the already converged per-instance fixes: #379/#393, #380/#399, and #381/#400.
+  - Added `tests/v1/test_smoke_contract_coverage.py`, an AST/source regression guard that rejects fixture-primary extraction providers, dict-only intake registration calls, and imports from the discarded `inv_man_intake.queue.state_machine` module.
+  - No new follow-up issues were filed because the observed v1-smoke-relevant non-end-to-end drift is already covered by the existing converged issue/PR set above.
+- Validation passed:
+  - `python -m pytest tests/v1/test_smoke_contract_coverage.py tests/test_v1_acceptance_smoke.py --no-cov` (9 passed).
+  - `python -m ruff check docs/reports/v1_smoke_contract_audit.md tests/v1/test_smoke_contract_coverage.py`.
+  - `python -m mypy tests/v1/test_smoke_contract_coverage.py`.
+  - `git diff --check`.
+- Next action: commit, push, open a ready-for-review PR with `agent:codex`, `agents:keepalive`, and `autofix`, then emit the `pr_opened` relay event.
+
 ## 2026-05-07T07:50:00Z - opener lane PR #400 materialized
 
 - Automation: `pd-workloop-resume` (claude_code opener lane, scheduled run).
