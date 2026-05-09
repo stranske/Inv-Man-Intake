@@ -123,6 +123,24 @@ def test_tracer_from_env_does_not_construct_client_when_disabled(monkeypatch) ->
         pass
 
 
+def test_tracer_from_env_requires_repo_toggle_for_langsmith_export(monkeypatch) -> None:
+    def _client_factory() -> FakeLangSmithClient:
+        raise AssertionError("LangSmith client should not be constructed")
+
+    monkeypatch.setattr(
+        "inv_man_intake.observability.langsmith_sink._default_client_factory",
+        _client_factory,
+    )
+    env = {
+        LANGSMITH_API_KEY_ENV_KEY: "lsv2_pt_x",
+        LANGSMITH_PROJECT_ENV_KEY: "inv-man-intake-dev",
+        LANGCHAIN_TRACE_ENABLED_ENV_KEY: "true",
+    }
+
+    tracer = Tracer.from_env(env=env)
+    assert isinstance(tracer._sink, InMemoryTraceSink)
+
+
 def test_tracer_from_env_falls_back_to_memory_sink_without_api_key() -> None:
     env = {
         LANGSMITH_API_KEY_ENV_KEY: "",

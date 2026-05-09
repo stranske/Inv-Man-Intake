@@ -159,10 +159,13 @@ class Tracer:
         source = env if env is not None else os.environ
         enabled = tracing_enabled_from_env(env=env, default_enabled=default_enabled)
         if sink is None and enabled:
-            if source.get(LANGSMITH_API_KEY_ENV_KEY, "").strip():
+            api_key = source.get(LANGSMITH_API_KEY_ENV_KEY, "").strip()
+            if api_key and langsmith_export_enabled_from_env(env=source):
                 from .langsmith_sink import LangSmithTraceSink
 
                 sink = LangSmithTraceSink.from_env(env=source)
+            elif api_key:
+                sink = InMemoryTraceSink()
             else:
                 warnings.warn(
                     f"{LANGSMITH_API_KEY_ENV_KEY} is empty; using InMemoryTraceSink.",
@@ -374,6 +377,19 @@ def tracing_enabled_from_env(
         if parsed is not None:
             return parsed
     return default_enabled
+
+
+def langsmith_export_enabled_from_env(env: Mapping[str, str] | None = None) -> bool:
+    """Return whether repo-specific toggles permit LangSmith export."""
+    source = env if env is not None else os.environ
+    for key in (TRACE_ENABLED_ENV_KEY, LANGSMITH_TRACE_ENABLED_ENV_KEY):
+        value = source.get(key)
+        if value is None:
+            continue
+        parsed = _parse_toggle(value)
+        if parsed is not None:
+            return parsed
+    return False
 
 
 def _parse_toggle(value: str) -> bool | None:

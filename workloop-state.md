@@ -1,5 +1,19 @@
 # Workloop State
 
+## 2026-05-09T15:43:30Z - opener lane PR #404 export toggle remediation
+
+- Source repo: `stranske/Inv-Man-Intake`.
+- Source issue: `#401`.
+- Source PR: `#404`, branch `codex/issue-401-langsmith-trace-export`.
+- Blockers addressed:
+  - Review thread on `Tracer.from_env(...)`: `LANGCHAIN_TRACING_V2=true` plus an API key no longer selects `LangSmithTraceSink` by itself; LangSmith export now also requires `INV_MAN_TRACING_ENABLED=true` or `LANGSMITH_TRACING_ENABLED=true`.
+  - CI lint-format remained covered by the exact Black command.
+- Validation passed:
+  - `uv run black --check --line-length 100 --exclude '(\.venv|\.workflows-lib|node_modules)' .`.
+  - `uv run pytest tests/observability/test_langsmith_export.py tests/observability/test_setup_validation.py tests/observability/test_tracing_toggle.py --no-cov` (33 passed).
+  - `uv run ruff check src/inv_man_intake/observability/tracing.py src/inv_man_intake/observability/setup_validation.py tests/observability/test_langsmith_export.py`.
+- Next action: push this branch update, then re-check PR `#404` for fresh CI and review-thread state.
+
 ## 2026-05-09T15:27:18Z - closer lane PR #404 lint-format remediation
 
 - Automation: `imi-merge-verify-closer` (codex closer lane).
@@ -22,7 +36,9 @@
   - `python -m pytest tests/observability/ tests/test_v1_acceptance_smoke.py --no-cov` (45 passed).
   - `python -m ruff check src/inv_man_intake/observability/setup_validation.py tests/observability/test_langsmith_export.py`.
 - Post-action state:
-  - Formatting remediation is ready to commit and push to PR `#404`.
+  - Pushed formatting remediation commit `402cf0e` to PR `#404`.
+  - Posted PR comment `https://github.com/stranske/Inv-Man-Intake/pull/404#issuecomment-4412869367` with the validation evidence.
+  - Immediate post-push check read showed fresh checks queued/pending, including `Observability Smoke`, `Python CI / Validate inputs`, `Resolve review target`, `classify changed paths`, and `guard`.
   - No terminal merge/verify event fired for PR `#404` in this round.
 - Next action: after push, re-check PR `#404`; if fresh checks are green and no unresolved review threads appear, merge it and apply `verify:compare`.
 
