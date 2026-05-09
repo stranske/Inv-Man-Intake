@@ -14,6 +14,7 @@ from inv_man_intake.observability.tracing import (
     TRACE_ENABLED_ENV_KEY,
     InMemoryTraceSink,
     Tracer,
+    child_trace_context,
     new_trace_context,
 )
 
@@ -54,6 +55,22 @@ def test_langsmith_sink_emits_create_and_update_payloads() -> None:
     update_run_id, update_payload = client.update_calls[0]
     assert update_run_id == create_payload["id"]
     assert update_payload["end_time"] is not None
+
+
+def test_langsmith_sink_records_parent_linkage_for_child_run() -> None:
+    client = FakeLangSmithClient()
+    sink = LangSmithTraceSink(client=client, project_name="inv-man-intake-dev")
+    tracer = Tracer(enabled=True, sink=sink)
+    root_context = new_trace_context(tags={"stage": "root"})
+    child_context = child_trace_context(root_context, parent_span_id="run_parent_1")
+
+    with tracer.start_run(name="score_pipeline", context=child_context):
+        pass
+
+    create_payload = client.create_calls[0]
+    assert create_payload["run_type"] == "chain"
+    assert create_payload["parent_run_id"] is not None
+    assert create_payload["extra"]["trace"]["parent_span_id"] == "run_parent_1"
 
 
 def test_tracer_from_env_uses_langsmith_sink_when_enabled_with_api_key(
