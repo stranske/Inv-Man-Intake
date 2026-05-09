@@ -5,6 +5,7 @@
 - Automation: `pd-workloop-resume` (codex opener lane).
 - Source repo: `stranske/Inv-Man-Intake`.
 - Source issue: `#401` (`Wire real LangSmith trace export so the documented runbook actually emits spans`, `priority:normal`, `repo-review-approved`).
+- Source PR: `#404` (`https://github.com/stranske/Inv-Man-Intake/pull/404`), non-draft, labels `agent:codex` + `agents:keepalive` + `autofix`.
 - Branch: `codex/issue-401-langsmith-trace-export`.
 - Selection:
   - ACTION A succeeded from the neutral Code workspace and full fleet discovery ran across supported repos.
@@ -22,7 +23,8 @@
   - `python -m mypy src/inv_man_intake/observability`.
   - `PYTHONPATH=src python -c 'import langsmith; import inv_man_intake.observability.langsmith_sink'`.
   - `git diff --check`.
-- Next action: open a ready-for-review PR with `agent:codex`, `agents:keepalive`, and `autofix`; then keepalive's Codex runner takes over for CI fixups or review-comment work.
+- Relay event emitted: `pr_opened active.source_repo=stranske/Inv-Man-Intake active.source_issue=401 active.source_pr=404 active.next_action=wait_for_keepalive`.
+- Next action: keepalive's Codex runner takes over for CI fixups or review-comment work; opener is done with this lane.
 
 ## 2026-05-09T09:28:09Z - closer lane PR #403 review-thread remediation
 
