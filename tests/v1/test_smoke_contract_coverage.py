@@ -55,6 +55,15 @@ from inv_man_intake.queue.state_machine import create_queue_item
     ]
 
 
+def test_v1_smoke_contract_guard_rejects_orphan_queue_state_from_package_import() -> None:
+    source = """
+from inv_man_intake.queue import state_machine
+"""
+    assert smoke_contract_guard_violations(source) == [
+        "v1 smoke must not import discarded inv_man_intake.queue.state_machine"
+    ]
+
+
 def test_v1_smoke_contract_guard_deduplicates_repeated_violations() -> None:
     source = """
 from inv_man_intake.queue.state_machine import create_queue_item
@@ -72,13 +81,20 @@ def smoke_contract_guard_violations(source: str) -> list[str]:
 
     tree = ast.parse(source)
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module == "inv_man_intake.queue.state_machine":
-            violations.append(
-                "v1 smoke must not import discarded inv_man_intake.queue.state_machine"
-            )
+        if isinstance(node, ast.ImportFrom):
+            if _is_orphan_queue_module(node.module):
+                violations.append(
+                    "v1 smoke must not import discarded inv_man_intake.queue.state_machine"
+                )
+            if node.module == "inv_man_intake.queue":
+                for alias in node.names:
+                    if alias.name == "state_machine":
+                        violations.append(
+                            "v1 smoke must not import discarded inv_man_intake.queue.state_machine"
+                        )
         if isinstance(node, ast.Import):
             for alias in node.names:
-                if alias.name == "inv_man_intake.queue.state_machine":
+                if _is_orphan_queue_module(alias.name):
                     violations.append(
                         "v1 smoke must not import discarded inv_man_intake.queue.state_machine"
                     )
@@ -103,3 +119,7 @@ def _call_name(node: ast.expr) -> str:
     if isinstance(node, ast.Attribute):
         return node.attr
     return ""
+
+
+def _is_orphan_queue_module(module_name: str | None) -> bool:
+    return bool(module_name) and module_name.startswith("inv_man_intake.queue.state_machine")
