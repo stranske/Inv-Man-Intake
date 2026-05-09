@@ -23,7 +23,11 @@
   - `python -m ruff check tests/v1/test_smoke_contract_coverage.py workloop-state.md`.
   - `python -m black --target-version py312 --check tests/v1/test_smoke_contract_coverage.py`.
   - `git diff --check`.
-- Next action: push this remediation commit, resolve the three Copilot review threads, then re-check fresh CI/review state before merging.
+- Post-action state:
+  - Pushed remediation commit `6058466` and resolved all three Copilot review threads.
+  - Posted PR comment `https://github.com/stranske/Inv-Man-Intake/pull/403#issuecomment-4412162631` with validation evidence.
+  - Fresh post-push checks are pending and GitHub still reports the PR as `BLOCKED` until those checks settle.
+- Next action: re-check PR `#403`; if fresh checks are green and no new review threads appear, merge it and apply `verify:compare`.
 
 ## 2026-05-09T09:13:00Z - opener lane issue #382 PR materialization
 
