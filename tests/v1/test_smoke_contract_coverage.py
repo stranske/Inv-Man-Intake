@@ -7,6 +7,7 @@ from pathlib import Path
 
 SMOKE_PATH = Path("src/inv_man_intake/v1_smoke.py")
 AUDIT_REPORT_PATH = Path("docs/reports/v1_smoke_contract_audit.md")
+PR_DESCRIPTION_PATH = Path("docs/reports/pr-403-description.md")
 
 
 def test_v1_smoke_contract_guard_accepts_current_smoke_path() -> None:
@@ -147,6 +148,14 @@ def test_v1_smoke_contract_audit_includes_row_level_trace_evidence() -> None:
     for contract in not_exercised_contracts:
         assert contract in audit
     assert "not-exercised" in audit
+
+
+def test_pr_description_references_audit_and_followup_issues() -> None:
+    description = PR_DESCRIPTION_PATH.read_text()
+    assert "docs/reports/v1_smoke_contract_audit.md" in description
+    assert "#379" in description
+    assert "#380" in description
+    assert "#381" in description
 
 
 def smoke_contract_guard_violations(source: str) -> list[str]:
