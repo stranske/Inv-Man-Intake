@@ -1,5 +1,31 @@
 # Workloop State
 
+## 2026-05-09T15:27:18Z - closer lane PR #404 lint-format remediation
+
+- Automation: `imi-merge-verify-closer` (codex closer lane).
+- Source repo: `stranske/Inv-Man-Intake`.
+- Source issue: `#401` (`Wire real LangSmith trace export so the documented runbook actually emits spans`, `priority:normal`, `repo-review-approved`).
+- Source PR: `#404` (`https://github.com/stranske/Inv-Man-Intake/pull/404`), branch `codex/issue-401-langsmith-trace-export`.
+- Batch-safe sweep before selection:
+  - Closed `stranske/Trend_Model_Project#5238` after merged PR `#5263` had a durable Provider Comparison Report with OpenAI PASS and Anthropic PASS, and GraphQL review-thread audit showed 0 unresolved threads.
+  - Recorded `issue_closed`, recorded the batch sweep, then ran one deferred `reset-chain`.
+- Selection:
+  - Full fleet discovery ran across supported repos despite the single-slot sentinel active lane.
+  - PR `#404` was selected as the one complex lane because it was open, non-draft, issue-linked to `#401`, in-scope agent work, and CI had a concrete `Python CI / lint-format` failure.
+- Blocker found:
+  - CI job `Python CI / lint-format` on run `25604595641`, job `75164218682`, failed only because Black would reformat `src/inv_man_intake/observability/setup_validation.py`.
+- Action taken:
+  - Fast-forwarded the local PR worktree to `origin/codex/issue-401-langsmith-trace-export` at `75f4fd1`.
+  - Ran Black on `src/inv_man_intake/observability/setup_validation.py`; the only source change is the expected blank line before `SetupValidationResult`.
+- Validation passed:
+  - `python -m black --check --line-length 100 --exclude '(\.venv|\.workflows-lib|node_modules)' .` (184 files left unchanged).
+  - `python -m pytest tests/observability/ tests/test_v1_acceptance_smoke.py --no-cov` (45 passed).
+  - `python -m ruff check src/inv_man_intake/observability/setup_validation.py tests/observability/test_langsmith_export.py`.
+- Post-action state:
+  - Formatting remediation is ready to commit and push to PR `#404`.
+  - No terminal merge/verify event fired for PR `#404` in this round.
+- Next action: after push, re-check PR `#404`; if fresh checks are green and no unresolved review threads appear, merge it and apply `verify:compare`.
+
 ## 2026-05-09T15:07:41Z - opener lane issue #401 PR materialization
 
 - Automation: `pd-workloop-resume` (codex opener lane).

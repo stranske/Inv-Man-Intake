@@ -31,6 +31,7 @@ __all__ = [
     "main",
 ]
 
+
 @dataclass(frozen=True)
 class SetupValidationResult:
     """Validation result for LangSmith tracing setup."""
