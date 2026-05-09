@@ -173,3 +173,25 @@ def test_main_probe_uses_mocked_client(capsys: pytest.CaptureFixture[str]) -> No
 
     assert exit_code == 0
     assert "LangSmith setup validation passed." in captured.out
+
+
+def test_main_probe_returns_failure_when_no_run_recorded(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    env = {
+        LANGSMITH_API_KEY_ENV_KEY: "lsv2_pt_123456",
+        LANGSMITH_PROJECT_ENV_KEY: "inv-man-intake-dev",
+        TRACE_ENABLED_ENV_KEY: "true",
+        LANGCHAIN_TRACE_ENABLED_ENV_KEY: "true",
+    }
+
+    exit_code = main(
+        argv=["--probe"],
+        env=env,
+        client_factory=lambda: FakeLangSmithClient(record_create=False),
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "ERROR:" in captured.out
+    assert "probe emitted no run" in captured.out
