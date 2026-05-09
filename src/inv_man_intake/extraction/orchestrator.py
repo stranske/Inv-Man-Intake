@@ -72,7 +72,7 @@ class ExtractionOrchestrator:
         self._fallback = _Provider(name=fallback_name, extractor=fallback_extractor)
         self._policy = policy or RetryPolicy()
         self._metrics_hook = metrics_hook
-        self._tracer = tracer or Tracer(enabled=False)
+        self._tracer = tracer or Tracer.from_env()
 
     def run(
         self, payload: dict[str, Any], trace_context: TraceContext | None = None

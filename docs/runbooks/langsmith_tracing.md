@@ -9,6 +9,7 @@ Provide reusable tracing wrappers that can be enabled or disabled without changi
 - `TraceContext`: trace ID + parent span + tags
 - `Tracer`: starts spans when enabled
 - `InMemoryTraceSink`: local sink for tests/dev
+- `LangSmithTraceSink`: runtime sink that exports spans through `langsmith.Client`
 - `NoopSpan`: safe no-op when tracing is disabled
 
 ## Usage Pattern
@@ -21,8 +22,7 @@ Provide reusable tracing wrappers that can be enabled or disabled without changi
 ## Example
 
 ```python
-sink = InMemoryTraceSink()
-tracer = Tracer(enabled=True, sink=sink)
+tracer = Tracer.from_env()
 ctx = new_trace_context(tags={"stage": "intake"})
 
 with tracer.start_span(name="ingest", context=ctx, metadata={"package_id": "pkg_1"}):
@@ -77,11 +77,13 @@ export LANGSMITH_TRACING_ENABLED="true"
    - `env | rg 'LANGSMITH_API_KEY|LANGSMITH_PROJECT|LANGCHAIN_TRACING_V2|INV_MAN_TRACING_ENABLED'`
 2. Run setup validator (fails fast if required values are missing/disabled):
    - `python -m inv_man_intake.observability.setup_validation --require-project`
-3. Run tracing tests:
-   - `pytest tests/observability/test_tracing_toggle.py -m "not slow"`
-4. Validate disabled mode behavior still works by setting:
+3. Run the probe validator to emit one span through the configured LangSmith client:
+   - `python -m inv_man_intake.observability.setup_validation --require-project --probe`
+4. Run tracing export tests:
+   - `pytest tests/observability/test_langsmith_export.py tests/observability/test_tracing_toggle.py -m "not slow"`
+5. Validate disabled mode behavior still works by setting:
    - `INV_MAN_TRACING_ENABLED=false`
-5. Validate enabled mode by setting:
+6. Validate enabled mode by setting:
    - `INV_MAN_TRACING_ENABLED=true`
    - `LANGCHAIN_TRACING_V2=true`
 
@@ -89,11 +91,11 @@ export LANGSMITH_TRACING_ENABLED="true"
 
 1. Validate shell env before startup:
    - `env | rg 'LANGSMITH_API_KEY|LANGSMITH_PROJECT|LANGCHAIN_TRACING_V2|INV_MAN_TRACING_ENABLED'`
-2. Re-run setup validation:
-   - `python -m inv_man_intake.observability.setup_validation --require-project`
-3. Confirm toggles resolve as enabled in tests:
-   - `pytest -q tests/observability/test_setup_validation.py tests/observability/test_tracing_toggle.py --no-cov`
-4. Verify application code uses `Tracer.from_env(...)` or `Tracer(enabled=True, ...)` with a sink.
+2. Re-run setup validation with the probe enabled:
+   - `python -m inv_man_intake.observability.setup_validation --require-project --probe`
+3. Confirm toggles and mocked client export resolve as enabled in tests:
+   - `pytest -q tests/observability/test_setup_validation.py tests/observability/test_langsmith_export.py tests/observability/test_tracing_toggle.py --no-cov`
+4. Verify application code uses `Tracer.from_env(...)`; local/offline smoke code may still pass an explicit `InMemoryTraceSink`.
 
 ## Missing Metrics Troubleshooting
 
@@ -101,5 +103,5 @@ export LANGSMITH_TRACING_ENABLED="true"
 2. Run fallback/escalation regression coverage:
    - `pytest -q tests/test_extraction_orchestrator.py --no-cov`
 3. Validate observability smoke target locally:
-   - `pytest -q tests/observability/test_setup_validation.py tests/observability/test_tracing_toggle.py --no-cov`
+   - `pytest -q tests/observability/test_setup_validation.py tests/observability/test_langsmith_export.py tests/observability/test_tracing_toggle.py --no-cov`
 4. If CI passes but runtime metrics are absent, verify runtime logging/metrics sink wiring and deployment env toggles.

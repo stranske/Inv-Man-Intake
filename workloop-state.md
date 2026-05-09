@@ -1,5 +1,73 @@
 # Workloop State
 
+## 2026-05-09T15:43:30Z - opener lane PR #404 export toggle remediation
+
+- Source repo: `stranske/Inv-Man-Intake`.
+- Source issue: `#401`.
+- Source PR: `#404`, branch `codex/issue-401-langsmith-trace-export`.
+- Blockers addressed:
+  - Review thread on `Tracer.from_env(...)`: `LANGCHAIN_TRACING_V2=true` plus an API key no longer selects `LangSmithTraceSink` by itself; LangSmith export now also requires `INV_MAN_TRACING_ENABLED=true` or `LANGSMITH_TRACING_ENABLED=true`.
+  - CI lint-format remained covered by the exact Black command.
+- Validation passed:
+  - `uv run black --check --line-length 100 --exclude '(\.venv|\.workflows-lib|node_modules)' .`.
+  - `uv run pytest tests/observability/test_langsmith_export.py tests/observability/test_setup_validation.py tests/observability/test_tracing_toggle.py --no-cov` (33 passed).
+  - `uv run ruff check src/inv_man_intake/observability/tracing.py src/inv_man_intake/observability/setup_validation.py tests/observability/test_langsmith_export.py`.
+- Next action: push this branch update, then re-check PR `#404` for fresh CI and review-thread state.
+
+## 2026-05-09T15:27:18Z - closer lane PR #404 lint-format remediation
+
+- Automation: `imi-merge-verify-closer` (codex closer lane).
+- Source repo: `stranske/Inv-Man-Intake`.
+- Source issue: `#401` (`Wire real LangSmith trace export so the documented runbook actually emits spans`, `priority:normal`, `repo-review-approved`).
+- Source PR: `#404` (`https://github.com/stranske/Inv-Man-Intake/pull/404`), branch `codex/issue-401-langsmith-trace-export`.
+- Batch-safe sweep before selection:
+  - Closed `stranske/Trend_Model_Project#5238` after merged PR `#5263` had a durable Provider Comparison Report with OpenAI PASS and Anthropic PASS, and GraphQL review-thread audit showed 0 unresolved threads.
+  - Recorded `issue_closed`, recorded the batch sweep, then ran one deferred `reset-chain`.
+- Selection:
+  - Full fleet discovery ran across supported repos despite the single-slot sentinel active lane.
+  - PR `#404` was selected as the one complex lane because it was open, non-draft, issue-linked to `#401`, in-scope agent work, and CI had a concrete `Python CI / lint-format` failure.
+- Blocker found:
+  - CI job `Python CI / lint-format` on run `25604595641`, job `75164218682`, failed only because Black would reformat `src/inv_man_intake/observability/setup_validation.py`.
+- Action taken:
+  - Fast-forwarded the local PR worktree to `origin/codex/issue-401-langsmith-trace-export` at `75f4fd1`.
+  - Ran Black on `src/inv_man_intake/observability/setup_validation.py`; the only source change is the expected blank line before `SetupValidationResult`.
+- Validation passed:
+  - `python -m black --check --line-length 100 --exclude '(\.venv|\.workflows-lib|node_modules)' .` (184 files left unchanged).
+  - `python -m pytest tests/observability/ tests/test_v1_acceptance_smoke.py --no-cov` (45 passed).
+  - `python -m ruff check src/inv_man_intake/observability/setup_validation.py tests/observability/test_langsmith_export.py`.
+- Post-action state:
+  - Pushed formatting remediation commit `402cf0e` to PR `#404`.
+  - Posted PR comment `https://github.com/stranske/Inv-Man-Intake/pull/404#issuecomment-4412869367` with the validation evidence.
+  - Immediate post-push check read showed fresh checks queued/pending, including `Observability Smoke`, `Python CI / Validate inputs`, `Resolve review target`, `classify changed paths`, and `guard`.
+  - No terminal merge/verify event fired for PR `#404` in this round.
+- Next action: after push, re-check PR `#404`; if fresh checks are green and no unresolved review threads appear, merge it and apply `verify:compare`.
+
+## 2026-05-09T15:07:41Z - opener lane issue #401 PR materialization
+
+- Automation: `pd-workloop-resume` (codex opener lane).
+- Source repo: `stranske/Inv-Man-Intake`.
+- Source issue: `#401` (`Wire real LangSmith trace export so the documented runbook actually emits spans`, `priority:normal`, `repo-review-approved`).
+- Source PR: `#404` (`https://github.com/stranske/Inv-Man-Intake/pull/404`), non-draft, labels `agent:codex` + `agents:keepalive` + `autofix`.
+- Branch: `codex/issue-401-langsmith-trace-export`.
+- Selection:
+  - ACTION A succeeded from the neutral Code workspace and full fleet discovery ran across supported repos.
+  - Cap-health after infra repair reported `total_opener_owned=4`, `raw_cap_reached=false`, `normal_cap_reached=false`, and `non_drainable_cap_blocker=false`.
+  - Skipped `Workflows#2073` as an operational auth-expiry alert and `Inv-Man-Intake#381` because it was already served by merged PR `#400` and is now a verifier/closer lane.
+  - Selected `Inv-Man-Intake#401` as the next actionable issue; no existing open PR was found for this issue/title.
+- Implementation:
+  - Added `LangSmithTraceSink`, wired `Tracer.from_env(...)` to select it when tracing is enabled and `LANGSMITH_API_KEY` is present, and kept `InMemoryTraceSink` as the offline fallback with a warning.
+  - Added runtime `langsmith` dependency and re-exported LangSmith sink/constants from `inv_man_intake.observability`.
+  - Extended setup validation with `--probe` / `probe_emit=True` using an injectable mocked client for tests and a real `langsmith.Client` at runtime.
+  - Updated the LangSmith runbook and README to document real export plus the probe command.
+- Validation passed:
+  - `python -m pytest tests/observability/ tests/test_v1_acceptance_smoke.py --no-cov` (44 passed).
+  - `python -m ruff check src/inv_man_intake/observability tests/observability docs/runbooks/langsmith_tracing.md README.md pyproject.toml`.
+  - `python -m mypy src/inv_man_intake/observability`.
+  - `PYTHONPATH=src python -c 'import langsmith; import inv_man_intake.observability.langsmith_sink'`.
+  - `git diff --check`.
+- Relay event emitted: `pr_opened active.source_repo=stranske/Inv-Man-Intake active.source_issue=401 active.source_pr=404 active.next_action=wait_for_keepalive`.
+- Next action: keepalive's Codex runner takes over for CI fixups or review-comment work; opener is done with this lane.
+
 ## 2026-05-09T09:28:09Z - closer lane PR #403 review-thread remediation
 
 - Automation: `imi-merge-verify-closer` (codex closer lane).

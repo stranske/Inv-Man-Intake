@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import warnings
 from collections.abc import Callable, Mapping, MutableMapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -20,6 +21,8 @@ TAGS_KEY = f"{TRACE_CONTEXT_PREFIX}tags"
 TRACE_ENABLED_ENV_KEY = "INV_MAN_TRACING_ENABLED"
 LANGSMITH_TRACE_ENABLED_ENV_KEY = "LANGSMITH_TRACING_ENABLED"
 LANGCHAIN_TRACE_ENABLED_ENV_KEY = "LANGCHAIN_TRACING_V2"
+LANGSMITH_API_KEY_ENV_KEY = "LANGSMITH_API_KEY"
+LANGSMITH_PROJECT_ENV_KEY = "LANGSMITH_PROJECT"
 P = ParamSpec("P")
 R = TypeVar("R")
 
@@ -153,7 +156,23 @@ class Tracer:
         default_enabled: bool = False,
     ) -> Tracer:
         """Construct tracer using environment-based enable toggles."""
+        source = env if env is not None else os.environ
         enabled = tracing_enabled_from_env(env=env, default_enabled=default_enabled)
+        if sink is None and enabled:
+            api_key = source.get(LANGSMITH_API_KEY_ENV_KEY, "").strip()
+            if api_key and langsmith_export_enabled_from_env(env=source):
+                from .langsmith_sink import LangSmithTraceSink
+
+                sink = LangSmithTraceSink.from_env(env=source)
+            elif api_key:
+                sink = InMemoryTraceSink()
+            else:
+                warnings.warn(
+                    f"{LANGSMITH_API_KEY_ENV_KEY} is empty; using InMemoryTraceSink.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                sink = InMemoryTraceSink()
         return cls(enabled=enabled, sink=sink)
 
     def start_span(
@@ -358,6 +377,19 @@ def tracing_enabled_from_env(
         if parsed is not None:
             return parsed
     return default_enabled
+
+
+def langsmith_export_enabled_from_env(env: Mapping[str, str] | None = None) -> bool:
+    """Return whether repo-specific toggles permit LangSmith export."""
+    source = env if env is not None else os.environ
+    for key in (TRACE_ENABLED_ENV_KEY, LANGSMITH_TRACE_ENABLED_ENV_KEY):
+        value = source.get(key)
+        if value is None:
+            continue
+        parsed = _parse_toggle(value)
+        if parsed is not None:
+            return parsed
+    return False
 
 
 def _parse_toggle(value: str) -> bool | None:

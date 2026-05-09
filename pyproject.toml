@@ -20,7 +20,9 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
-dependencies = []
+dependencies = [
+    "langsmith>=0.4.59",
+]
 
 [project.optional-dependencies]
 dev = [

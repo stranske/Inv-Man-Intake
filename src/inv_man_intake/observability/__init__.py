@@ -1,5 +1,6 @@
 """Observability utilities for trace and metric instrumentation."""
 
+from .langsmith_sink import LangSmithTraceSink
 from .logging import (
     CORRELATION_ID_KEY,
     LogContext,
@@ -19,6 +20,8 @@ from .metrics import (
 )
 from .tracing import (
     LANGCHAIN_TRACE_ENABLED_ENV_KEY,
+    LANGSMITH_API_KEY_ENV_KEY,
+    LANGSMITH_PROJECT_ENV_KEY,
     LANGSMITH_TRACE_ENABLED_ENV_KEY,
     TRACE_ENABLED_ENV_KEY,
     InMemoryTraceSink,
@@ -42,6 +45,9 @@ __all__ = [
     "FALLBACK_COUNT",
     "InMemoryMetrics",
     "InMemoryTraceSink",
+    "LANGSMITH_API_KEY_ENV_KEY",
+    "LANGSMITH_PROJECT_ENV_KEY",
+    "LangSmithTraceSink",
     "LANGCHAIN_TRACE_ENABLED_ENV_KEY",
     "LANGSMITH_TRACE_ENABLED_ENV_KEY",
     "LATENCY_MS",

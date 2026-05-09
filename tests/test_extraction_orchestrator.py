@@ -304,3 +304,27 @@ def test_orchestrator_emits_trace_events_for_fallback_attempt() -> None:
     ]
     assert sink.events[1].metadata["provider"] == "primary-provider"
     assert sink.events[3].metadata["provider"] == "fallback-provider"
+
+
+def test_orchestrator_defaults_to_tracer_from_env(monkeypatch) -> None:
+    tracer = Tracer(enabled=False)
+    calls = {"count": 0}
+
+    def _fake_from_env() -> Tracer:
+        calls["count"] += 1
+        return tracer
+
+    monkeypatch.setattr(
+        "inv_man_intake.extraction.orchestrator.Tracer.from_env",
+        staticmethod(_fake_from_env),
+    )
+
+    orchestrator = ExtractionOrchestrator(
+        primary_name="primary-provider",
+        primary_extractor=lambda payload: payload,
+        fallback_name="fallback-provider",
+        fallback_extractor=lambda payload: payload,
+    )
+
+    assert calls["count"] == 1
+    assert orchestrator._tracer is tracer

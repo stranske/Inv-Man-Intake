@@ -14,6 +14,7 @@ from inv_man_intake.scoring.engine import compute_score
 from inv_man_intake.v1_smoke import (
     _assert_registered_package_state,
     _score_components,
+    run_v1_smoke_pipeline,
 )
 
 _FIXTURE_ROOT = Path("tests/fixtures/intake")
@@ -169,6 +170,20 @@ def test_v1_acceptance_smoke_fails_when_conflict_case_lacks_queue_or_audit_evide
             audit_entries=(),
             queue_item_id=None,
         )
+
+
+def test_v1_smoke_pipeline_uses_inmemory_sink_even_with_langsmith_env(monkeypatch) -> None:
+    monkeypatch.setenv("INV_MAN_TRACING_ENABLED", "true")
+    monkeypatch.setenv("LANGCHAIN_TRACING_V2", "true")
+    monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_pt_test")
+
+    artifacts = run_v1_smoke_pipeline(
+        fixture_root=_FIXTURE_ROOT,
+        package_id=_SMOKE_PACKAGE_ID,
+        expected_document_ids=_EXPECTED_DOCUMENT_IDS,
+    )
+
+    assert isinstance(artifacts.sink, InMemoryTraceSink)
 
 
 def _start_event(sink: InMemoryTraceSink, name: str):
