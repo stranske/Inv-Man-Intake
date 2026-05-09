@@ -156,6 +156,7 @@ def test_pr_description_references_audit_and_followup_issues() -> None:
     assert "#379" in description
     assert "#380" in description
     assert "#381" in description
+    assert "Additional per-instance follow-up issues created by this audit: none." in description
 
 
 def smoke_contract_guard_violations(source: str) -> list[str]:
