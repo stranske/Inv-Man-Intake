@@ -1,12 +1,37 @@
 # Workloop State
 
+## 2026-05-09T09:28:09Z - closer lane PR #403 review-thread remediation
+
+- Automation: `imi-merge-verify-closer` (codex closer lane).
+- Source repo: `stranske/Inv-Man-Intake`.
+- Source issue: `#382` (`Audit and remediate v1-readiness fixture-vs-real-design drift across intake persistence, extraction, and queue contracts`, `priority:normal`, `repo-review-approved`, `repo-review-meta-audit`).
+- Source PR: `#403` (`https://github.com/stranske/Inv-Man-Intake/pull/403`), branch `codex/issue-382-v1-smoke-contract-audit`.
+- Selection:
+  - ACTION A succeeded from the neutral Code workspace and full fleet discovery ran across supported repos.
+  - Batch-safe sweep closed `stranske/Counter_Risk#552`, merged `stranske/Counter_Risk#573`, applied `verify:compare`, and reopened issue `#477` for verifier sequencing.
+  - This PR was selected as the one complex lane because it was the sentinel active lane, remained open/non-draft, had green checks and `CLEAN` merge state, but had three unresolved Copilot review threads.
+- Blockers found:
+  - `tests/v1/test_smoke_contract_coverage.py` treated `core_repository` / `document_store` as missing when passed positionally to `register_intake_bundle[_file]()`.
+  - The guard needed to continue catching `from inv_man_intake.queue import state_machine`, which the branch already covered before this closer patch.
+  - `workloop-state.md` recorded a machine-specific absolute worktree path in durable repo state.
+- Action taken:
+  - Added regression coverage for positional and mixed positional/keyword persistence arguments.
+  - Reworked the guard to count the third and fourth positional arguments as `core_repository` and `document_store` for both intake registration helpers.
+  - Generalized the durable worktree note to avoid a machine-specific absolute path.
+- Validation passed:
+  - `python -m pytest tests/v1/test_smoke_contract_coverage.py tests/test_v1_acceptance_smoke.py --no-cov` (14 passed).
+  - `python -m ruff check tests/v1/test_smoke_contract_coverage.py workloop-state.md`.
+  - `python -m black --target-version py312 --check tests/v1/test_smoke_contract_coverage.py`.
+  - `git diff --check`.
+- Next action: push this remediation commit, resolve the three Copilot review threads, then re-check fresh CI/review state before merging.
+
 ## 2026-05-09T09:13:00Z - opener lane issue #382 PR materialization
 
 - Automation: `pd-workloop-resume` (codex opener lane).
 - Source repo: `stranske/Inv-Man-Intake`.
 - Source issue: `#382` (`Audit and remediate v1-readiness fixture-vs-real-design drift across intake persistence, extraction, and queue contracts`, `priority:normal`, `repo-review-approved`, `repo-review-meta-audit`).
 - Source PR: `#403` (`https://github.com/stranske/Inv-Man-Intake/pull/403`), non-draft, labels `agent:codex` + `agents:keepalive` + `autofix`.
-- Branch/worktree: `codex/issue-382-v1-smoke-contract-audit` at `/Users/teacher/Library/CloudStorage/Dropbox/Learning/Code/Inv-Man-Intake-issue-382`.
+- Branch/worktree: `codex/issue-382-v1-smoke-contract-audit` in the selected repo worktree.
 - Selection:
   - ACTION A succeeded from the neutral Code workspace.
   - Live priority discovery ran for `priority:high`, `priority:normal`, and `priority:low` across supported repos.

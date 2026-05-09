@@ -47,6 +47,29 @@ def run(bundle, service):
     ]
 
 
+def test_v1_smoke_contract_guard_accepts_positional_persistence_args() -> None:
+    source = """
+def run(bundle, service, core_repository, document_store):
+    register_intake_bundle(bundle, service, core_repository, document_store)
+    register_intake_bundle_file(path, service, core_repository, document_store)
+"""
+    assert smoke_contract_guard_violations(source) == []
+
+
+def test_v1_smoke_contract_guard_accepts_mixed_persistence_args() -> None:
+    source = """
+def run(bundle, service, core_repository, document_store):
+    register_intake_bundle(bundle, service, core_repository, document_store=document_store)
+    register_intake_bundle_file(
+        path,
+        service,
+        core_repository=core_repository,
+        document_store=document_store,
+    )
+"""
+    assert smoke_contract_guard_violations(source) == []
+
+
 def test_v1_smoke_contract_guard_rejects_orphan_queue_state_module() -> None:
     source = """
 from inv_man_intake.queue.state_machine import create_queue_item
@@ -154,12 +177,10 @@ def smoke_contract_guard_violations(source: str) -> list[str]:
             "register_intake_bundle",
             "register_intake_bundle_file",
         }:
-            keywords = {keyword.arg for keyword in node.keywords if keyword.arg is not None}
-            missing = {"core_repository", "document_store"} - keywords
+            call_name = _call_name(node.func)
+            missing = _missing_persistence_args(call_name, node)
             if missing:
-                violations.append(
-                    f"{_call_name(node.func)} must pass core_repository and document_store"
-                )
+                violations.append(f"{call_name} must pass core_repository and document_store")
 
     # Keep stable order while suppressing duplicate hits from multi-import variants.
     return list(dict.fromkeys(violations))
@@ -175,3 +196,16 @@ def _call_name(node: ast.expr) -> str:
 
 def _is_orphan_queue_module(module_name: str | None) -> bool:
     return bool(module_name) and module_name.startswith("inv_man_intake.queue.state_machine")
+
+
+def _missing_persistence_args(call_name: str, node: ast.Call) -> set[str]:
+    keywords = {keyword.arg for keyword in node.keywords if keyword.arg is not None}
+    required_positions = {
+        "register_intake_bundle": {"core_repository": 3, "document_store": 4},
+        "register_intake_bundle_file": {"core_repository": 3, "document_store": 4},
+    }[call_name]
+    return {
+        name
+        for name, position in required_positions.items()
+        if name not in keywords and len(node.args) < position
+    }
