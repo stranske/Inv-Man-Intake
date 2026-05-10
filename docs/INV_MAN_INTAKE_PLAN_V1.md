@@ -190,3 +190,12 @@ Registry persistence is covered by:
 ```bash
 python -m pytest tests/intake/test_ingest_core_registry.py tests/intake/test_ingest_integration.py tests/data/test_repository_core.py --no-cov
 ```
+
+Same-business-day throughput readiness is covered by:
+
+```bash
+python -m inv_man_intake.readiness.throughput --output reports/readiness/throughput_readiness.json
+```
+
+The readiness report records package count, per-stage timing, score count, escalation count,
+and bottleneck warnings against the 10 to 15 packages/week and same-business-day targets.
