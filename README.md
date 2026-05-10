@@ -64,6 +64,7 @@ Inv-Man-Intake/
 ```bash
 pytest
 pytest tests/observability/test_pipeline_smoke.py --no-cov
+python -m inv_man_intake.readiness.throughput --output reports/readiness/throughput_readiness.json
 ruff check src/ tests/
 mypy
 ```

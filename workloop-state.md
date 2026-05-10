@@ -1,5 +1,29 @@
 # Workloop State
 
+## 2026-05-10T04:20:00Z - opener lane issue #313 PR materialization
+
+- Automation: `pd-workloop-resume` (codex opener lane).
+- Source repo: `stranske/Inv-Man-Intake`.
+- Source issue: `#313` (`Add same-business-day throughput readiness check`, `priority:low`, `repo-review-approved`).
+- Branch: `codex/issue-313-throughput-readiness`.
+- Selection:
+  - ACTION A succeeded from the neutral Code workspace and full fleet discovery ran across supported repos using `priority:high`, `priority:normal`, and `priority:low`.
+  - Cap-health after infra repair reported `total_opener_owned=3`, `raw_cap_reached=false`, `normal_cap_reached=false`, and `non_drainable_cap_blocker=false`.
+  - Skipped `Workflows#2073` as an operational auth-expiry alert, `Inv-Man-Intake#381/#382`, `Manager-Database#910`, `Trend_Model_Project#5168/#5169/#5170/#5172`, `Counter_Risk#476`, and `Pension-Data#320/#321` because they are already linked to existing PRs or verifier/closer disposition.
+  - Selected `Inv-Man-Intake#313` as the oldest remaining eligible low-priority implementation issue with no linked PR.
+- Implementation:
+  - Added `inv_man_intake.readiness.throughput`, a local deterministic CLI that runs the offline v1 fixture batch and writes `reports/readiness/throughput_readiness.json`.
+  - Added threshold-handling and queue/audit timing spans to the v1 smoke pipeline while preserving the existing scoring parent-span contract.
+  - Added readiness tests for successful report generation, failure on missing stage/scoring evidence, and CLI exit behavior.
+  - Documented the command in the v1 plan, README, and `docs/runbooks/throughput_readiness.md`; ignored the generated readiness report path.
+- Validation passed:
+  - `UV_CACHE_DIR=/private/tmp/uv-cache-inv-313 uv run --extra dev python -m inv_man_intake.readiness.throughput --output reports/readiness/throughput_readiness.json`.
+  - `UV_CACHE_DIR=/private/tmp/uv-cache-inv-313 uv run --extra dev python -m pytest tests/readiness/test_throughput_readiness.py tests/test_v1_acceptance_smoke.py --no-cov` (9 passed).
+  - `UV_CACHE_DIR=/private/tmp/uv-cache-inv-313 uv run --extra dev ruff check src/inv_man_intake/readiness src/inv_man_intake/v1_smoke.py tests/readiness/test_throughput_readiness.py`.
+  - `UV_CACHE_DIR=/private/tmp/uv-cache-inv-313 uv run --extra dev black --check src/inv_man_intake/readiness src/inv_man_intake/v1_smoke.py tests/readiness/test_throughput_readiness.py`.
+  - `UV_CACHE_DIR=/private/tmp/uv-cache-inv-313 uv run --extra dev mypy src/inv_man_intake/readiness src/inv_man_intake/v1_smoke.py`.
+- Next action: commit, push, open a ready-for-review PR with `agent:codex`, `agents:keepalive`, and `autofix`.
+
 ## 2026-05-09T15:43:30Z - opener lane PR #404 export toggle remediation
 
 - Source repo: `stranske/Inv-Man-Intake`.

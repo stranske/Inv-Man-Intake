@@ -126,28 +126,33 @@ def run_v1_smoke_pipeline(
         source_doc_id=record.document_ids[1],
         content=_fixture_bytes(fixture_root=fixture_root, file_name="summit_arc_track_record.xlsx"),
     )
-    threshold_config = ThresholdConfig(
-        field_auto_accept_min=0.85,
-        key_field_confidence_min=0.75,
-        document_key_field_coverage_min=0.80,
-        mandatory_field_min=0.60,
-        mandatory_fields=("operations.aum",),
-    )
-    threshold_decision = evaluate_thresholds(
-        result=extraction_result,
-        key_fields=(
-            "strategy.asset_class",
-            "terms.management_fee",
-            "performance.net_return_1y",
-            "operations.aum",
-            "team.key_person_risk",
-        ),
-        config=threshold_config,
-    )
-    extraction_with_thresholds = attach_threshold_summary(
-        result=extraction_result,
-        decision=threshold_decision,
-    )
+    with tracer.start_span(
+        name="v1_acceptance.threshold_handling",
+        context=extraction_context,
+        metadata={"package_id": record.package_id},
+    ):
+        threshold_config = ThresholdConfig(
+            field_auto_accept_min=0.85,
+            key_field_confidence_min=0.75,
+            document_key_field_coverage_min=0.80,
+            mandatory_field_min=0.60,
+            mandatory_fields=("operations.aum",),
+        )
+        threshold_decision = evaluate_thresholds(
+            result=extraction_result,
+            key_fields=(
+                "strategy.asset_class",
+                "terms.management_fee",
+                "performance.net_return_1y",
+                "operations.aum",
+                "team.key_person_risk",
+            ),
+            config=threshold_config,
+        )
+        extraction_with_thresholds = attach_threshold_summary(
+            result=extraction_result,
+            decision=threshold_decision,
+        )
 
     extraction_start = _start_event(sink, "extraction_orchestrator.run")
     performance_context = child_trace_context(
@@ -171,13 +176,23 @@ def run_v1_smoke_pipeline(
             benchmark_monthly=benchmark_series,
         )
 
-    queue_assignment = create_analyst_first_assignment(
-        item_id=f"{record.package_id}:validation:performance_conflict",
-        analyst_id="analyst_001",
-        created_at=datetime(2026, 3, 4, 10, 0, tzinfo=UTC),
-    )
-
     performance_start = _start_event(sink, "v1_acceptance.performance_normalize")
+    queue_context = child_trace_context(
+        performance_context,
+        parent_span_id=performance_start.span_id,
+        tags={"stage": "queue"},
+    )
+    with tracer.start_span(
+        name="v1_acceptance.queue_audit_output",
+        context=queue_context,
+        metadata={"package_id": record.package_id},
+    ):
+        queue_assignment = create_analyst_first_assignment(
+            item_id=f"{record.package_id}:validation:performance_conflict",
+            analyst_id="analyst_001",
+            created_at=datetime(2026, 3, 4, 10, 0, tzinfo=UTC),
+        )
+
     scoring_context = child_trace_context(
         performance_context,
         parent_span_id=performance_start.span_id,
