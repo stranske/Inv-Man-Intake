@@ -238,6 +238,40 @@ def test_v1_smoke_contract_audit_uses_required_disposition_labels() -> None:
         assert disposition in allowed
 
 
+def test_v1_smoke_contract_audit_rows_trace_to_smoke_or_explicit_absence() -> None:
+    audit = AUDIT_REPORT_PATH.read_text()
+    matrix_section = audit.split("## Contract Row Matrix", maxsplit=1)[1].split(
+        "## Regression Gate Details",
+        maxsplit=1,
+    )[0]
+    matrix_lines = [
+        line
+        for line in matrix_section.splitlines()
+        if line.startswith("| `") and "Contract row" not in line and " --- " not in line
+    ]
+
+    for line in matrix_lines:
+        columns = [column.strip() for column in line.split("|")]
+        row_token = columns[1]
+        disposition = columns[3]
+        evidence = columns[4]
+
+        if disposition in {"end-to-end", "fixture-stand-in", "orphan-only"}:
+            assert (
+                "src/inv_man_intake/v1_smoke.py" in evidence
+                or "tests/test_v1_acceptance_smoke.py" in evidence
+                or "tests/v1/test_smoke_contract_coverage.py" in evidence
+            ), f"{row_token} is missing smoke trace evidence"
+        if disposition == "not-exercised":
+            assert (
+                "no call site" in evidence.lower()
+                or "has no" in evidence.lower()
+                or "does not" in evidence.lower()
+                or " not " in evidence.lower()
+                or "outside the v1 smoke claim" in evidence.lower()
+            ), f"{row_token} must explain non-exercised absence"
+
+
 def test_pr_description_references_audit_and_followup_issues() -> None:
     description = PR_DESCRIPTION_PATH.read_text()
     assert "docs/reports/v1_smoke_contract_audit.md" in description
