@@ -15,6 +15,24 @@ This audit covers the local v1 acceptance smoke path from accepted package intak
 
 The audit does not claim coverage for standalone migration runners, append-only provenance correction history, external agent-runner output artifacts, full queue operations reassignment, or SLA scheduling. Those contracts are recorded as outside the v1 smoke claim so they are not misreported as smoke regressions. No issue is filed from this audit for an outside-scope row unless that row exposes a concrete v1 smoke acceptance gap.
 
+## Contract File Inventory
+
+The v1 smoke audit enumerates every contract under `docs/contracts/` and marks whether it is in scope for this smoke evidence pass.
+
+| Contract file | In v1 smoke audit scope | Notes |
+| --- | --- | --- |
+| `docs/contracts/intake_contract.md` | yes | Canonical intake payload and metadata/file requirements. |
+| `docs/contracts/core_schema.md` | yes | Repository hierarchy and document linkage used by smoke persistence checks. |
+| `docs/contracts/extraction_provider_contract.md` | yes | Primary provider identity/result shape and secondary boundary handling. |
+| `docs/contracts/queue_states.md` | yes | Canonical queue-state path and orphan-module exclusion. |
+| `docs/contracts/queue_assignment_sla.md` | yes | Analyst-first queue assignment exercised; ops/SLA scheduling rows scoped out. |
+| `docs/contracts/performance_normalization.md` | yes | Period normalization, conflict resolution, and benchmark correlation. |
+| `docs/contracts/scoring_explainability.md` | yes | Final score and explainability payload checks. |
+| `docs/contracts/extraction_thresholds.md` | yes | Threshold evaluation and escalation evidence. |
+| `docs/contracts/provenance_history.md` | yes | Source-location trace row in scope; correction history row outside v1 smoke. |
+| `docs/contracts/core_schema_migration.md` | yes | Audited as outside v1 smoke because migration runner is not invoked. |
+| `docs/contracts/agent-runner-output.md` | yes | Audited as outside v1 smoke because runner artifact contract is not invoked. |
+
 ## Converged Follow-Up Mapping
 
 | Finding family | Issue | PR | Current disposition |

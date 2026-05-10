@@ -104,6 +104,7 @@ def test_v1_smoke_contract_audit_includes_row_level_trace_evidence() -> None:
     required_sections = (
         "## Verifier Disposition",
         "## Audit Scope Boundary",
+        "## Contract File Inventory",
         "## Converged Follow-Up Mapping",
         "## Contract Row Matrix",
         "## Regression Gate Details",
@@ -160,6 +161,25 @@ def test_v1_smoke_contract_audit_includes_row_level_trace_evidence() -> None:
         assert contract in audit
     assert "outside v1 smoke" in audit
     assert "No issue filed from this audit" in audit
+
+
+def test_v1_smoke_contract_audit_enumerates_contract_files_in_scope() -> None:
+    audit = AUDIT_REPORT_PATH.read_text()
+    expected_contract_files = (
+        "docs/contracts/intake_contract.md",
+        "docs/contracts/core_schema.md",
+        "docs/contracts/extraction_provider_contract.md",
+        "docs/contracts/queue_states.md",
+        "docs/contracts/queue_assignment_sla.md",
+        "docs/contracts/performance_normalization.md",
+        "docs/contracts/scoring_explainability.md",
+        "docs/contracts/extraction_thresholds.md",
+        "docs/contracts/provenance_history.md",
+        "docs/contracts/core_schema_migration.md",
+        "docs/contracts/agent-runner-output.md",
+    )
+    for contract_file in expected_contract_files:
+        assert contract_file in audit
 
 
 def test_v1_smoke_contract_audit_has_verifier_row_matrix_depth() -> None:
