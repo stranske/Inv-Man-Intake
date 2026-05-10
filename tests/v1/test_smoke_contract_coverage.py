@@ -256,12 +256,17 @@ def test_v1_smoke_contract_audit_rows_trace_to_smoke_or_explicit_absence() -> No
         disposition = columns[3]
         evidence = columns[4]
 
-        if disposition in {"end-to-end", "fixture-stand-in", "orphan-only"}:
+        if disposition in {"end-to-end", "fixture-stand-in"}:
             assert (
                 "src/inv_man_intake/v1_smoke.py" in evidence
-                or "tests/test_v1_acceptance_smoke.py" in evidence
-                or "tests/v1/test_smoke_contract_coverage.py" in evidence
-            ), f"{row_token} is missing smoke trace evidence"
+            ), f"{row_token} must reference the v1 smoke call site"
+            assert (
+                "tests/test_v1_acceptance_smoke.py" in evidence
+            ), f"{row_token} must reference the v1 acceptance assertion"
+        if disposition == "orphan-only":
+            assert (
+                "tests/v1/test_smoke_contract_coverage.py" in evidence
+            ), f"{row_token} must reference the guard assertion path"
         if disposition == "not-exercised":
             assert (
                 "no call site" in evidence.lower()
