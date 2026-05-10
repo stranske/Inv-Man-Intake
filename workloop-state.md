@@ -5,6 +5,7 @@
 - Automation: `pd-workloop-resume` (codex opener lane).
 - Source repo: `stranske/Inv-Man-Intake`.
 - Source issue: `#313` (`Add same-business-day throughput readiness check`, `priority:low`, `repo-review-approved`).
+- Source PR: `#406` (`https://github.com/stranske/Inv-Man-Intake/pull/406`), non-draft, labels `agent:codex` + `agents:keepalive` + `autofix`; `agent:retry` added by infra repair after initial dispatch evidence was missing.
 - Branch: `codex/issue-313-throughput-readiness`.
 - Selection:
   - ACTION A succeeded from the neutral Code workspace and full fleet discovery ran across supported repos using `priority:high`, `priority:normal`, and `priority:low`.
@@ -22,7 +23,9 @@
   - `UV_CACHE_DIR=/private/tmp/uv-cache-inv-313 uv run --extra dev ruff check src/inv_man_intake/readiness src/inv_man_intake/v1_smoke.py tests/readiness/test_throughput_readiness.py`.
   - `UV_CACHE_DIR=/private/tmp/uv-cache-inv-313 uv run --extra dev black --check src/inv_man_intake/readiness src/inv_man_intake/v1_smoke.py tests/readiness/test_throughput_readiness.py`.
   - `UV_CACHE_DIR=/private/tmp/uv-cache-inv-313 uv run --extra dev mypy src/inv_man_intake/readiness src/inv_man_intake/v1_smoke.py`.
-- Next action: commit, push, open a ready-for-review PR with `agent:codex`, `agents:keepalive`, and `autofix`.
+- Relay event emitted: `pr_opened active.source_repo=stranske/Inv-Man-Intake active.source_issue=313 active.source_pr=406 active.next_action=wait_for_keepalive`.
+- Post-open cap-health: infra repair added `agent:retry` and dispatched Gate Followups; fresh cap-health at `2026-05-10T04:11:10Z` reported `#406` as `draining` with an active Gate run, `total_opener_owned=4`, `raw_cap_reached=false`, `normal_cap_reached=false`, and `non_drainable_cap_blocker=false`.
+- Next action: keepalive's Codex runner takes over for CI fixups or review-comment work; opener is done with this lane.
 
 ## 2026-05-09T15:43:30Z - opener lane PR #404 export toggle remediation
 
