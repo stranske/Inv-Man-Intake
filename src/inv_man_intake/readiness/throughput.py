@@ -193,15 +193,16 @@ def _report_payload(report: ReadinessReport) -> dict[str, Any]:
 def _duration_for_events(trace_events: list[TraceEvent], names: tuple[str, ...]) -> float:
     durations = []
     for name in names:
-        duration = _first_completed_duration_ms(trace_events, name)
+        duration = _total_completed_duration_ms(trace_events, name)
         if duration <= 0:
             return 0.0
         durations.append(duration)
     return round(sum(durations), 3)
 
 
-def _first_completed_duration_ms(trace_events: list[TraceEvent], name: str) -> float:
+def _total_completed_duration_ms(trace_events: list[TraceEvent], name: str) -> float:
     starts_by_span_id: dict[str, list[TraceEvent]] = {}
+    total_duration = 0.0
     for event in trace_events:
         if event.name != name:
             continue
@@ -216,8 +217,8 @@ def _first_completed_duration_ms(trace_events: list[TraceEvent], name: str) -> f
         ended_at = datetime.fromisoformat(event.ended_at)
         duration = (ended_at - started_at).total_seconds() * 1000
         if duration > 0:
-            return duration
-    return 0.0
+            total_duration += duration
+    return round(total_duration, 3)
 
 
 def _escalation_count(

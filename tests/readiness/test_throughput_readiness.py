@@ -47,7 +47,7 @@ def test_throughput_readiness_fails_when_stage_output_is_missing(tmp_path: Path)
     assert any("missing timing evidence" in warning for warning in report.bottleneck_warnings)
 
 
-def test_duration_for_events_pairs_repeated_span_names_by_span_id() -> None:
+def test_duration_for_events_sums_completed_spans_by_name() -> None:
     events = [
         _trace_event("shared-stage", "span-a", "2026-05-10T00:00:00+00:00"),
         _trace_event("shared-stage", "span-b", "2026-05-10T00:00:10+00:00"),
@@ -59,7 +59,7 @@ def test_duration_for_events_pairs_repeated_span_names_by_span_id() -> None:
         ),
     ]
 
-    assert _duration_for_events(events, ("shared-stage",)) == 1000.0
+    assert _duration_for_events(events, ("shared-stage",)) == 31000.0
 
 
 def test_bottleneck_warning_projects_business_day_capacity_to_weekly_target() -> None:
