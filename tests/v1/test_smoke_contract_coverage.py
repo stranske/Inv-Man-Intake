@@ -101,38 +101,50 @@ import inv_man_intake.queue.state_machine as state_machine
 
 def test_v1_smoke_contract_audit_includes_row_level_trace_evidence() -> None:
     audit = AUDIT_REPORT_PATH.read_text()
+    required_sections = (
+        "## Verifier Disposition",
+        "## Audit Scope Boundary",
+        "## Contract File Inventory",
+        "## Converged Follow-Up Mapping",
+        "## Contract Row Matrix",
+        "## Regression Gate Details",
+        "## No New Follow-Up Rationale",
+    )
+    for section in required_sections:
+        assert section in audit
+
     required_evidence = {
         "docs/contracts/intake_contract.md": (
-            "src/inv_man_intake/v1_smoke.py:94-99",
-            "tests/test_v1_acceptance_smoke.py:37-55",
+            "src/inv_man_intake/v1_smoke.py:95-100",
+            "tests/test_v1_acceptance_smoke.py:38-56",
         ),
         "docs/contracts/core_schema.md": (
-            "src/inv_man_intake/v1_smoke.py:87",
-            "tests/test_v1_acceptance_smoke.py:42-55",
+            "src/inv_man_intake/v1_smoke.py:88",
+            "tests/test_v1_acceptance_smoke.py:43-56",
         ),
         "docs/contracts/extraction_provider_contract.md": (
-            "src/inv_man_intake/v1_smoke.py:228-257",
-            "tests/test_v1_acceptance_smoke.py:67-69",
+            "src/inv_man_intake/v1_smoke.py:244-273",
+            "tests/test_v1_acceptance_smoke.py:66-70",
         ),
         "docs/contracts/extraction_thresholds.md": (
-            "src/inv_man_intake/v1_smoke.py:129-150",
+            "src/inv_man_intake/v1_smoke.py:130-156",
             "tests/test_v1_acceptance_smoke.py:70-75",
         ),
         "docs/contracts/performance_normalization.md": (
-            "src/inv_man_intake/v1_smoke.py:163-172",
-            "tests/test_v1_acceptance_smoke.py:81-89",
+            "src/inv_man_intake/v1_smoke.py:164-178",
+            "tests/test_v1_acceptance_smoke.py:78-90",
         ),
         "docs/contracts/queue_states.md": (
-            "src/inv_man_intake/v1_smoke.py:174-178",
-            "tests/test_v1_acceptance_smoke.py:91-99",
+            "src/inv_man_intake/v1_smoke.py:186-195",
+            "tests/test_v1_acceptance_smoke.py:92-100",
         ),
         "docs/contracts/queue_assignment_sla.md": (
-            "src/inv_man_intake/v1_smoke.py:174-178",
-            "tests/test_v1_acceptance_smoke.py:91-99",
+            "src/inv_man_intake/v1_smoke.py:186-195",
+            "tests/test_v1_acceptance_smoke.py:92-100",
         ),
         "docs/contracts/scoring_explainability.md": (
-            "src/inv_man_intake/v1_smoke.py:191-203",
-            "tests/test_v1_acceptance_smoke.py:104-108",
+            "src/inv_man_intake/v1_smoke.py:202-219",
+            "tests/test_v1_acceptance_smoke.py:102-109",
         ),
     }
     for contract, anchors in required_evidence.items():
@@ -148,6 +160,121 @@ def test_v1_smoke_contract_audit_includes_row_level_trace_evidence() -> None:
     for contract in not_exercised_contracts:
         assert contract in audit
     assert "not-exercised" in audit
+    assert "No issue filed from this audit" in audit
+
+
+def test_v1_smoke_contract_audit_enumerates_contract_files_in_scope() -> None:
+    audit = AUDIT_REPORT_PATH.read_text()
+    expected_contract_files = (
+        "docs/contracts/intake_contract.md",
+        "docs/contracts/core_schema.md",
+        "docs/contracts/extraction_provider_contract.md",
+        "docs/contracts/queue_states.md",
+        "docs/contracts/queue_assignment_sla.md",
+        "docs/contracts/performance_normalization.md",
+        "docs/contracts/scoring_explainability.md",
+        "docs/contracts/extraction_thresholds.md",
+        "docs/contracts/provenance_history.md",
+        "docs/contracts/core_schema_migration.md",
+        "docs/contracts/agent-runner-output.md",
+    )
+    for contract_file in expected_contract_files:
+        assert contract_file in audit
+
+
+def test_v1_smoke_contract_audit_has_verifier_row_matrix_depth() -> None:
+    audit = AUDIT_REPORT_PATH.read_text()
+    row_tokens = (
+        "intake.metadata.required_fields",
+        "intake.files.roles_and_source_refs",
+        "core_schema.repository_hierarchy",
+        "core_schema.document_store_linkage",
+        "core_schema.versioned_documents",
+        "core_schema_migration.apply_rollback",
+        "extraction.provider_identity",
+        "extraction.canonical_result_fields",
+        "extraction.secondary_fallback_route",
+        "extraction_thresholds.low_key_field_coverage",
+        "extraction_thresholds.document_escalation",
+        "performance_normalization.input_periods",
+        "performance_normalization.conflict_resolution",
+        "performance_normalization.benchmark_correlation",
+        "queue_states.validation_queue_state",
+        "queue_states.orphan_state_machine_absence",
+        "queue_assignment_sla.analyst_first_assignment",
+        "queue_assignment_sla.ops_reassignment",
+        "queue_assignment_sla.sla_breach_scheduling",
+        "scoring_explainability.final_score",
+        "scoring_explainability.driver_payload",
+        "provenance_history.source_location_trace",
+        "provenance_history.field_corrections",
+        "agent-runner-output.workflow_call_outputs",
+        "smoke_trace.continuity",
+    )
+    for token in row_tokens:
+        assert token in audit
+
+    assert audit.count("| `") >= len(row_tokens)
+    assert audit.count("No issue filed from this audit") >= 5
+
+
+def test_v1_smoke_contract_audit_uses_required_disposition_labels() -> None:
+    audit = AUDIT_REPORT_PATH.read_text()
+    allowed = {"end-to-end", "fixture-stand-in", "not-exercised", "orphan-only"}
+    matrix_section = audit.split("## Contract Row Matrix", maxsplit=1)[1].split(
+        "## Regression Gate Details",
+        maxsplit=1,
+    )[0]
+    matrix_lines = [
+        line
+        for line in matrix_section.splitlines()
+        if line.startswith("| `") and "Contract row" not in line and " --- " not in line
+    ]
+    dispositions = [line.split("|")[3].strip() for line in matrix_lines]
+    assert dispositions
+    assert "fixture-stand-in" in dispositions
+    assert "orphan-only" in dispositions
+    for disposition in dispositions:
+        assert disposition in allowed
+
+
+def test_v1_smoke_contract_audit_rows_trace_to_smoke_or_explicit_absence() -> None:
+    audit = AUDIT_REPORT_PATH.read_text()
+    matrix_section = audit.split("## Contract Row Matrix", maxsplit=1)[1].split(
+        "## Regression Gate Details",
+        maxsplit=1,
+    )[0]
+    matrix_lines = [
+        line
+        for line in matrix_section.splitlines()
+        if line.startswith("| `") and "Contract row" not in line and " --- " not in line
+    ]
+
+    for line in matrix_lines:
+        columns = [column.strip() for column in line.split("|")]
+        row_token = columns[1]
+        disposition = columns[3]
+        evidence = columns[4]
+
+        if disposition in {"end-to-end", "fixture-stand-in"}:
+            assert (
+                "src/inv_man_intake/v1_smoke.py" in evidence
+            ), f"{row_token} must reference the v1 smoke call site"
+            assert (
+                "tests/test_v1_acceptance_smoke.py" in evidence
+            ), f"{row_token} must reference the v1 acceptance assertion"
+        if disposition == "orphan-only":
+            assert (
+                "tests/v1/test_smoke_contract_coverage.py" in evidence
+            ), f"{row_token} must reference the guard assertion path"
+        if disposition == "not-exercised":
+            assert (
+                "no call site" in evidence.lower()
+                or "has no" in evidence.lower()
+                or "does not" in evidence.lower()
+                or " not " in evidence.lower()
+                or "outside the v1 smoke claim" in evidence.lower()
+            ), f"{row_token} must explain non-exercised absence"
 
 
 def test_pr_description_references_audit_and_followup_issues() -> None:
