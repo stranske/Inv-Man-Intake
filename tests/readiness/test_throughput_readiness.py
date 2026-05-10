@@ -22,10 +22,10 @@ def test_throughput_readiness_writes_report_with_required_fields(tmp_path: Path)
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert report.passed is True
     assert payload["status"] == "pass"
-    assert payload["package_count"] == 1
-    assert payload["document_count"] == 4
-    assert payload["score_count"] == 1
-    assert payload["escalation_count"] == 3
+    assert payload["package_count"] == 2
+    assert payload["document_count"] == 7
+    assert payload["score_count"] == 2
+    assert payload["escalation_count"] == 6
     assert {item["stage"] for item in payload["stage_timings"]} == set(STAGE_EVENT_NAMES)
     assert all(item["duration_ms"] > 0 for item in payload["stage_timings"])
     assert payload["target_packages_per_week"] == "10-15"
@@ -51,8 +51,12 @@ def test_duration_for_events_pairs_repeated_span_names_by_span_id() -> None:
     events = [
         _trace_event("shared-stage", "span-a", "2026-05-10T00:00:00+00:00"),
         _trace_event("shared-stage", "span-b", "2026-05-10T00:00:10+00:00"),
-        _trace_event("shared-stage", "span-b", "2026-05-10T00:00:10+00:00", "2026-05-10T00:00:11+00:00"),
-        _trace_event("shared-stage", "span-a", "2026-05-10T00:00:00+00:00", "2026-05-10T00:00:30+00:00"),
+        _trace_event(
+            "shared-stage", "span-b", "2026-05-10T00:00:10+00:00", "2026-05-10T00:00:11+00:00"
+        ),
+        _trace_event(
+            "shared-stage", "span-a", "2026-05-10T00:00:00+00:00", "2026-05-10T00:00:30+00:00"
+        ),
     ]
 
     assert _duration_for_events(events, ("shared-stage",)) == 1000.0

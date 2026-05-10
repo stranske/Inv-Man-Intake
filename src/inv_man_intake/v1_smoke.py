@@ -76,6 +76,7 @@ class V1SmokeArtifacts:
 def run_v1_smoke_pipeline(
     *,
     fixture_root: Path,
+    intake_bundle_file: str = "pdf_primary_mixed_bundle.json",
     package_id: str,
     expected_document_ids: tuple[str, ...],
 ) -> V1SmokeArtifacts:
@@ -89,10 +90,10 @@ def run_v1_smoke_pipeline(
     with tracer.start_span(
         name="v1_acceptance.intake_register",
         context=trace_context,
-        metadata={"fixture": "pdf_primary_mixed_bundle.json"},
+        metadata={"fixture": intake_bundle_file},
     ):
         registration = register_intake_bundle_file(
-            fixture_root / "pdf_primary_mixed_bundle.json",
+            fixture_root / intake_bundle_file,
             service,
             core_repository=core_repository,
             document_store=document_store,

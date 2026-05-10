@@ -13,12 +13,26 @@ from inv_man_intake.observability import TraceEvent
 from inv_man_intake.v1_smoke import run_v1_smoke_pipeline
 
 DEFAULT_FIXTURE_ROOT = Path("tests/fixtures/intake")
-DEFAULT_PACKAGE_ID = "pkg_pdf_mixed_001"
-DEFAULT_DOCUMENT_IDS = (
-    "pkg_pdf_mixed_001:doc:0",
-    "pkg_pdf_mixed_001:doc:1",
-    "pkg_pdf_mixed_001:doc:2",
-    "pkg_pdf_mixed_001:doc:3",
+DEFAULT_BATCH_PACKAGES = (
+    {
+        "intake_bundle_file": "pdf_primary_mixed_bundle.json",
+        "package_id": "pkg_pdf_mixed_001",
+        "expected_document_ids": (
+            "pkg_pdf_mixed_001:doc:0",
+            "pkg_pdf_mixed_001:doc:1",
+            "pkg_pdf_mixed_001:doc:2",
+            "pkg_pdf_mixed_001:doc:3",
+        ),
+    },
+    {
+        "intake_bundle_file": "pptx_primary_mixed_bundle.json",
+        "package_id": "pkg_pptx_mixed_001",
+        "expected_document_ids": (
+            "pkg_pptx_mixed_001:doc:0",
+            "pkg_pptx_mixed_001:doc:1",
+            "pkg_pptx_mixed_001:doc:2",
+        ),
+    },
 )
 DEFAULT_OUTPUT_PATH = Path("reports/readiness/throughput_readiness.json")
 MIN_PACKAGES_PER_WEEK = 10
@@ -70,26 +84,42 @@ class ReadinessReport:
 def run_readiness_check(output_path: Path = DEFAULT_OUTPUT_PATH) -> ReadinessReport:
     """Run the offline v1 fixture batch and write an ephemeral readiness report."""
 
-    artifacts = run_v1_smoke_pipeline(
-        fixture_root=DEFAULT_FIXTURE_ROOT,
-        package_id=DEFAULT_PACKAGE_ID,
-        expected_document_ids=DEFAULT_DOCUMENT_IDS,
-    )
-    record = cast(Any, artifacts.record)
-    score = cast(Any, artifacts.score)
-    threshold_decision = cast(Any, artifacts.threshold_decision)
-    conflict_result = cast(Any, artifacts.conflict_result)
-    secondary_extraction_result = cast(Any, artifacts.secondary_extraction_result)
-    report = build_readiness_report(
-        trace_events=artifacts.sink.events,
-        document_count=len(record.document_ids),
-        score_count=1 if score.final_score is not None else 0,
-        escalation_count=_escalation_count(
+    artifacts_batch = [
+        run_v1_smoke_pipeline(
+            fixture_root=DEFAULT_FIXTURE_ROOT,
+            intake_bundle_file=cast(str, package["intake_bundle_file"]),
+            package_id=cast(str, package["package_id"]),
+            expected_document_ids=cast(tuple[str, ...], package["expected_document_ids"]),
+        )
+        for package in DEFAULT_BATCH_PACKAGES
+    ]
+
+    trace_events: list[TraceEvent] = []
+    document_count = 0
+    score_count = 0
+    escalation_count = 0
+    for artifacts in artifacts_batch:
+        record = cast(Any, artifacts.record)
+        score = cast(Any, artifacts.score)
+        threshold_decision = cast(Any, artifacts.threshold_decision)
+        conflict_result = cast(Any, artifacts.conflict_result)
+        secondary_extraction_result = cast(Any, artifacts.secondary_extraction_result)
+        trace_events.extend(artifacts.sink.events)
+        document_count += len(record.document_ids)
+        score_count += 1 if score.final_score is not None else 0
+        escalation_count += _escalation_count(
             extraction_escalates=threshold_decision.escalate,
             conflict_escalates=conflict_result.escalate,
             secondary_escalates=not secondary_extraction_result.resolved,
-        ),
+        )
+
+    report = build_readiness_report(
+        trace_events=trace_events,
+        document_count=document_count,
+        score_count=score_count,
+        escalation_count=escalation_count,
         output_path=output_path,
+        package_count=len(DEFAULT_BATCH_PACKAGES),
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(_report_payload(report), indent=2) + "\n", encoding="utf-8")
@@ -103,6 +133,7 @@ def build_readiness_report(
     score_count: int,
     escalation_count: int,
     output_path: Path,
+    package_count: int = 1,
 ) -> ReadinessReport:
     """Build a readiness report from v1 smoke trace events."""
 
@@ -125,7 +156,7 @@ def build_readiness_report(
     status = "pass" if not bottleneck_warnings else "fail"
     return ReadinessReport(
         status=status,
-        package_count=1,
+        package_count=package_count,
         document_count=document_count,
         score_count=score_count,
         escalation_count=escalation_count,
