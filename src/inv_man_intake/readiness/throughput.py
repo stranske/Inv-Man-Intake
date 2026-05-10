@@ -23,6 +23,7 @@ DEFAULT_DOCUMENT_IDS = (
 DEFAULT_OUTPUT_PATH = Path("reports/readiness/throughput_readiness.json")
 MIN_PACKAGES_PER_WEEK = 10
 TARGET_PACKAGES_PER_WEEK = 15
+BUSINESS_DAYS_PER_WEEK = 5
 SAME_BUSINESS_DAY_SECONDS = 8 * 60 * 60
 STAGE_EVENT_NAMES = {
     "intake": ("v1_acceptance.intake_register",),
@@ -161,20 +162,31 @@ def _report_payload(report: ReadinessReport) -> dict[str, Any]:
 def _duration_for_events(trace_events: list[TraceEvent], names: tuple[str, ...]) -> float:
     durations = []
     for name in names:
-        start = next(
-            (event for event in trace_events if event.name == name and event.ended_at is None),
-            None,
-        )
-        end = next(
-            (event for event in trace_events if event.name == name and event.ended_at is not None),
-            None,
-        )
-        if start is None or end is None:
+        duration = _first_completed_duration_ms(trace_events, name)
+        if duration <= 0:
             return 0.0
-        started_at = datetime.fromisoformat(start.started_at)
-        ended_at = datetime.fromisoformat(end.ended_at or "")
-        durations.append((ended_at - started_at).total_seconds() * 1000)
+        durations.append(duration)
     return round(sum(durations), 3)
+
+
+def _first_completed_duration_ms(trace_events: list[TraceEvent], name: str) -> float:
+    starts_by_span_id: dict[str, list[TraceEvent]] = {}
+    for event in trace_events:
+        if event.name != name:
+            continue
+        if event.ended_at is None:
+            starts_by_span_id.setdefault(event.span_id, []).append(event)
+            continue
+        starts = starts_by_span_id.get(event.span_id)
+        if not starts:
+            continue
+        start = starts.pop(0)
+        started_at = datetime.fromisoformat(start.started_at)
+        ended_at = datetime.fromisoformat(event.ended_at)
+        duration = (ended_at - started_at).total_seconds() * 1000
+        if duration > 0:
+            return duration
+    return 0.0
 
 
 def _escalation_count(
@@ -212,8 +224,9 @@ def _bottleneck_warnings(
         warnings.append("readiness run produced no measurable elapsed time")
     if observed_total_seconds > SAME_BUSINESS_DAY_SECONDS:
         warnings.append("fixture batch exceeds same-business-day target")
-    if projected_packages_per_business_day < MIN_PACKAGES_PER_WEEK:
-        warnings.append("projected same-day capacity is below 10 packages/week target")
+    projected_packages_per_week = projected_packages_per_business_day * BUSINESS_DAYS_PER_WEEK
+    if projected_packages_per_week < MIN_PACKAGES_PER_WEEK:
+        warnings.append("projected weekly capacity is below 10 packages/week target")
     return warnings
 
 

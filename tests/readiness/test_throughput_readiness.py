@@ -3,8 +3,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from inv_man_intake.observability import TraceEvent
 from inv_man_intake.readiness.throughput import (
     STAGE_EVENT_NAMES,
+    _bottleneck_warnings,
+    _duration_for_events,
     build_readiness_report,
     main,
     run_readiness_check,
@@ -44,6 +47,28 @@ def test_throughput_readiness_fails_when_stage_output_is_missing(tmp_path: Path)
     assert any("missing timing evidence" in warning for warning in report.bottleneck_warnings)
 
 
+def test_duration_for_events_pairs_repeated_span_names_by_span_id() -> None:
+    events = [
+        _trace_event("shared-stage", "span-a", "2026-05-10T00:00:00+00:00"),
+        _trace_event("shared-stage", "span-b", "2026-05-10T00:00:10+00:00"),
+        _trace_event("shared-stage", "span-b", "2026-05-10T00:00:10+00:00", "2026-05-10T00:00:11+00:00"),
+        _trace_event("shared-stage", "span-a", "2026-05-10T00:00:00+00:00", "2026-05-10T00:00:30+00:00"),
+    ]
+
+    assert _duration_for_events(events, ("shared-stage",)) == 1000.0
+
+
+def test_bottleneck_warning_projects_business_day_capacity_to_weekly_target() -> None:
+    warnings = _bottleneck_warnings(
+        missing_stages=[],
+        score_count=1,
+        observed_total_seconds=1,
+        projected_packages_per_business_day=2,
+    )
+
+    assert "projected weekly capacity is below 10 packages/week target" not in warnings
+
+
 def test_throughput_readiness_cli_returns_success(tmp_path: Path, capsys) -> None:
     output_path = tmp_path / "cli_readiness.json"
 
@@ -53,3 +78,23 @@ def test_throughput_readiness_cli_returns_success(tmp_path: Path, capsys) -> Non
     assert exit_code == 0
     assert output_path.exists()
     assert '"status": "pass"' in captured.out
+
+
+def _trace_event(
+    name: str,
+    span_id: str,
+    started_at: str,
+    ended_at: str | None = None,
+) -> TraceEvent:
+    return TraceEvent(
+        kind="span",
+        span_id=span_id,
+        trace_id="trace-1",
+        run_id=None,
+        name=name,
+        parent_run_id=None,
+        parent_span_id=None,
+        metadata={},
+        started_at=started_at,
+        ended_at=ended_at,
+    )
