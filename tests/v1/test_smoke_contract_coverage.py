@@ -159,7 +159,7 @@ def test_v1_smoke_contract_audit_includes_row_level_trace_evidence() -> None:
     )
     for contract in not_exercised_contracts:
         assert contract in audit
-    assert "outside v1 smoke" in audit
+    assert "not-exercised" in audit
     assert "No issue filed from this audit" in audit
 
 
@@ -216,6 +216,26 @@ def test_v1_smoke_contract_audit_has_verifier_row_matrix_depth() -> None:
 
     assert audit.count("| `") >= len(row_tokens)
     assert audit.count("No issue filed from this audit") >= 5
+
+
+def test_v1_smoke_contract_audit_uses_required_disposition_labels() -> None:
+    audit = AUDIT_REPORT_PATH.read_text()
+    allowed = {"end-to-end", "fixture-stand-in", "not-exercised", "orphan-only"}
+    matrix_section = audit.split("## Contract Row Matrix", maxsplit=1)[1].split(
+        "## Regression Gate Details",
+        maxsplit=1,
+    )[0]
+    matrix_lines = [
+        line
+        for line in matrix_section.splitlines()
+        if line.startswith("| `") and "Contract row" not in line and " --- " not in line
+    ]
+    dispositions = [line.split("|")[3].strip() for line in matrix_lines]
+    assert dispositions
+    assert "fixture-stand-in" in dispositions
+    assert "orphan-only" in dispositions
+    for disposition in dispositions:
+        assert disposition in allowed
 
 
 def test_pr_description_references_audit_and_followup_issues() -> None:
