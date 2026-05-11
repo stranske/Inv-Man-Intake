@@ -191,7 +191,21 @@ def test_main_success_with_epic_task_links_validation(tmp_path: Path) -> None:
     assert exit_code == 0
 
 
-def test_main_fix_epic_task_links_requires_issues_dir() -> None:
+def test_main_fix_epic_task_links_requires_issues_dir(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Force the remote fetch path to fail so the test is hermetic and does not
+    # depend on the real-world state of stranske/Inv-Man-Intake#7. Without local
+    # files, `--fix-epic-task-links` must surface exit code 2 on fetch error.
+    from urllib.error import URLError
+
+    import scripts.validate_child_issues as module
+
+    def _raise_url_error(**_kwargs: object) -> str:
+        raise URLError("offline test")
+
+    monkeypatch.setattr(module, "_load_issue_body_from_github", _raise_url_error)
+
     exit_code = main(["--check-epic-task-links", "--fix-epic-task-links"])
     assert exit_code == 2
 
