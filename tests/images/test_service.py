@@ -87,6 +87,45 @@ def test_extract_and_classify_visual_artifacts_is_deterministic() -> None:
     ]
 
 
+def test_extract_and_classify_visual_artifacts_is_deterministic_for_positive_and_negative_examples() -> (
+    None
+):
+    content = (
+        b"1 0 obj\n<< /Type /Page /Resources << /XObject << /Im0 5 0 R /Im1 6 0 R >> >> >>\nendobj\n"
+        b"5 0 obj\n<< /Subtype /Image /Filter /DCTDecode /Length 86 >>\n"
+        b"stream\nPerformance chart Q2 2026 portfolio return benchmark 9.1% exposure risk table\n"
+        b"endstream\nendobj\n"
+        b"6 0 obj\n<< /Subtype /Image /Filter /DCTDecode /Length 78 >>\n"
+        b"stream\nConfidential. For professional investors. Terms of use. All rights reserved.\n"
+        b"endstream\nendobj\n"
+    )
+    first = extract_and_classify_visual_artifacts(
+        source_doc_id="doc_pdf_dual",
+        file_name="manager_dual.pdf",
+        content=content,
+    )
+    second = extract_and_classify_visual_artifacts(
+        source_doc_id="doc_pdf_dual",
+        file_name="manager_dual.pdf",
+        content=content,
+    )
+
+    assert len(first) == 2
+    assert [item.classification.label for item in first] == ["informative", "boilerplate"]
+    assert [item.classification.label for item in first] == [
+        item.classification.label for item in second
+    ]
+    assert [item.classification.reason_codes for item in first] == [
+        item.classification.reason_codes for item in second
+    ]
+    assert [item.classification.confidence for item in first] == [
+        item.classification.confidence for item in second
+    ]
+    assert [item.classification.rationale for item in first] == [
+        item.classification.rationale for item in second
+    ]
+
+
 def test_classify_visual_artifacts_is_deterministic_for_positive_and_negative_examples() -> None:
     artifacts = (
         _artifact(
