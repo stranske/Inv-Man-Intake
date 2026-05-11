@@ -232,12 +232,13 @@ Plain-text restatement of the edges (the source of truth if the Mermaid block fa
 
 Sequential critical path: **#8 -> #11 -> #9 -> (#12 || #14) -> #13**.
 
-- **Milestone A wave (parallel):** #8 (intake/registry) and #11 (core schema). These two
-  workstreams negotiate persistence contracts; do them together so the registry writes
-  against the agreed schema instead of being refactored after the fact.
-- **Milestone B wave (parallel once A is in):** #9 (extraction confidence), #10 (image
-  intelligence), and #14 (validation queue). #9 unblocks #10 and #14 at the contract level;
-  the three can proceed in parallel once #9's confidence/routing contract is published.
+- **Milestone A gate:** #8 (intake/registry) publishes the document identity, versioning,
+  and provenance contract that #11 (core schema) formalizes. Start #11 design review
+  alongside #8, but do not merge #11 until #8's registry contract is stable enough to
+  avoid downstream schema churn.
+- **Milestone B wave (parallel after contract gates):** #9 (extraction confidence) lands
+  the confidence/routing contract first, then #10 (image intelligence) and #14 (validation
+  queue) can proceed in parallel against that published interface.
 - **Milestone C wave:** #12 (performance normalization). Sequenced after #11 lands the
   return-series schema and #9 produces extracted performance fields.
 - **Milestone D wave:** #13 (asset-class scoring + explainability). Last, because it consumes
