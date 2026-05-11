@@ -171,7 +171,92 @@ This supports parallel execution without losing traceability between high-level 
 - Milestone C: Performance normalization and conflict policy automation
 - Milestone D: Asset-class scoring, explainability, and triage outputs
 
-## 6) V1 Readiness Smoke
+## 6) Dependency Graph and Execution Order
+
+The v1 epic (#7) decomposes into eight workstream children (#8 - #15), one per section-3
+workstream. Their dependency relationships are inherent in the pipeline shape: ingestion has
+to land before downstream stages can read documents, the core schema (#11) is the shared
+data contract every persistent stage writes to, and scoring (#13) is the last functional stage
+because it consumes normalized performance and explainability metadata. The graph below
+captures which issues block which, so child work can be sequenced and parallelized without
+guessing.
+
+### Issue-to-workstream map
+
+| Issue | Workstream (section 3) | Milestone | Capability |
+|-------|------------------------|-----------|------------|
+| [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)  | 1. Intake and document registry          | A | Multi-format ingest, versioning, provenance |
+| [#9](https://github.com/stranske/Inv-Man-Intake/issues/9)  | 2. Extraction and parsing quality        | B | OCR/layout, confidence, fallback routing |
+| [#10](https://github.com/stranske/Inv-Man-Intake/issues/10) | 3. Image intelligence and feedback loop | B | Boilerplate-vs-informative, feedback capture |
+| [#11](https://github.com/stranske/Inv-Man-Intake/issues/11) | 4. Data model and storage contracts     | A | firm -> fund -> document schema, field-level provenance |
+| [#12](https://github.com/stranske/Inv-Man-Intake/issues/12) | 5. Performance normalization + conflict | C | Frequency normalization, metric calc, >5% conflict rules |
+| [#13](https://github.com/stranske/Inv-Man-Intake/issues/13) | 6. Asset-class scoring + explainability | D | Weight sets, score breakdown, queue artifacts |
+| [#14](https://github.com/stranske/Inv-Man-Intake/issues/14) | 7. Validation queue + workflow states   | B | Queue states, analyst-first ownership, triage exports |
+| [#15](https://github.com/stranske/Inv-Man-Intake/issues/15) | 8. LangSmith tracing + ops baseline     | cross-cutting | Cross-stage trace propagation, CI posture |
+
+### Blocking relationships
+
+```mermaid
+flowchart LR
+    I8[#8 Intake / registry] --> I11[#11 Core schema]
+    I8 --> I9[#9 Extraction confidence]
+    I11 --> I9
+    I11 --> I12[#12 Performance normalization]
+    I11 --> I14[#14 Validation queue]
+    I9 --> I10[#10 Image intelligence]
+    I9 --> I12
+    I9 --> I14
+    I12 --> I13[#13 Asset-class scoring]
+    I11 --> I13
+    I14 --> I13
+    I15[#15 LangSmith tracing] -.cross-cutting.-> I8
+    I15 -.cross-cutting.-> I9
+    I15 -.cross-cutting.-> I12
+    I15 -.cross-cutting.-> I13
+```
+
+Plain-text restatement of the edges (the source of truth if the Mermaid block fails to render):
+
+- #8 blocks #11, #9 (nothing can be persisted or extracted until ingestion lands documents).
+- #11 blocks #9, #12, #13, #14 (every downstream stage reads or writes the core schema).
+- #9 blocks #10, #12, #14 (image classification, performance normalization, and the validation
+  queue all consume extraction outputs and confidence signals).
+- #12 blocks #13 (asset-class scoring requires normalized return series and conflict-resolved
+  metrics).
+- #14 blocks #13 (scoring artifacts feed the queue, and the queue's state machine has to exist
+  before scoring can route queue-ready outputs).
+- #15 is cross-cutting (tracing wraps every stage but does not gate functional delivery; it
+  can land incrementally alongside #8, #9, #12, and #13).
+
+### Recommended execution order
+
+Sequential critical path: **#8 -> #11 -> #9 -> (#12 || #14) -> #13**.
+
+- **Milestone A gate:** #8 (intake/registry) publishes the document identity, versioning,
+  and provenance contract that #11 (core schema) formalizes. Start #11 design review
+  alongside #8, but do not merge #11 until #8's registry contract is stable enough to
+  avoid downstream schema churn.
+- **Milestone B wave (parallel after contract gates):** #9 (extraction confidence) lands
+  the confidence/routing contract first, then #10 (image intelligence) and #14 (validation
+  queue) can proceed in parallel against that published interface.
+- **Milestone C wave:** #12 (performance normalization). Sequenced after #11 lands the
+  return-series schema and #9 produces extracted performance fields.
+- **Milestone D wave:** #13 (asset-class scoring + explainability). Last, because it consumes
+  every upstream signal and produces the analyst-facing queue summary.
+- **Cross-cutting throughout:** #15 (LangSmith tracing). Plan tracing additions inside each
+  workstream PR rather than batching them; this keeps tracing aligned with each stage's
+  span boundaries.
+
+### Parallelization gates
+
+- A wave merges before B begins: schema churn after B is in flight forces rework across #9,
+  #10, and #14.
+- B wave merges before C begins: #12 needs stable extraction output shapes to define
+  normalization rules; partial B causes #12 to chase moving targets.
+- C and D do not parallelize: #13 reads normalized metrics from #12 and cannot be scored
+  against unnormalized inputs without inventing throwaway shims.
+
+## 7) V1 Readiness Smoke
 
 The repo-level v1 readiness check is:
 
