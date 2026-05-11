@@ -22,7 +22,11 @@
   - `UV_CACHE_DIR=/private/tmp/uv-cache-inv-25 uv run ruff check src/inv_man_intake/images tests/images/test_classifier.py tests/images/test_extractor.py`.
   - `UV_CACHE_DIR=/private/tmp/uv-cache-inv-25 uv run mypy src/inv_man_intake/images`.
   - `git diff --check`.
-- Next action: push the branch, open a ready PR with `agent:codex`, `agents:keepalive`, and `autofix`, then hand off to keepalive.
+- Post-open recovery:
+  - PR `#412` opened non-draft with `agent:codex`, `agents:keepalive`, and `autofix`; opener emitted `pr_opened`.
+  - Cap-health reported raw cap reached and `#412` as `needs-dispatch-evidence`; infra repair added `agent:retry` and dispatched Gate Followups.
+  - Direct checks then showed a branch-local `Python CI / lint-format` failure. Reproduced locally with `uv run black --check src/inv_man_intake/images tests/images/test_classifier.py`, formatted `tests/images/test_classifier.py`, and reran style/type/tests successfully.
+- Next action: push the formatting recovery commit; keepalive takes over for remaining asynchronous checks.
 
 ## 2026-05-10T04:20:00Z - opener lane issue #313 PR materialization
 

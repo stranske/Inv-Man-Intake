@@ -50,7 +50,9 @@ def test_classifier_labels_logo_and_disclaimer_payload_as_boilerplate() -> None:
 
 
 def test_classifier_uses_low_density_fallback_for_decorative_payloads() -> None:
-    result = classify_visual_artifact(_artifact(content=b"\x89PNG\r\n\x1a\n", source_ref="banner-1"))
+    result = classify_visual_artifact(
+        _artifact(content=b"\x89PNG\r\n\x1a\n", source_ref="banner-1")
+    )
 
     assert result.label == "boilerplate"
     assert "low_information_density" in result.reason_codes
