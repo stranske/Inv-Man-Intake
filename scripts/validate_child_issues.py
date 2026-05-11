@@ -318,6 +318,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "issue range, then exit."
         ),
     )
+    parser.add_argument(
+        "--print-fixed-epic-body",
+        action="store_true",
+        help=(
+            "When --check-epic-task-links finds missing links, print the fully patched epic body "
+            "to stdout to simplify manual issue updates."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -334,6 +342,9 @@ def main(argv: list[str] | None = None) -> int:
             "--epic-body-file requires --check-epic-task-links or --fix-epic-task-links",
             file=sys.stderr,
         )
+        return 2
+    if args.print_fixed_epic_body and not args.check_epic_task_links:
+        print("--print-fixed-epic-body requires --check-epic-task-links", file=sys.stderr)
         return 2
     if args.epic_links_only and not args.check_epic_task_links:
         print("--epic-links-only requires --check-epic-task-links", file=sys.stderr)
@@ -410,6 +421,21 @@ def main(argv: list[str] | None = None) -> int:
             end_issue=args.end_issue,
         )
         if not epic_result.is_valid:
+            if args.print_fixed_epic_body:
+                try:
+                    fixed_body, _ = ensure_epic_task_links(
+                        epic_issue_body=epic_body,
+                        owner=args.owner,
+                        repo=args.repo,
+                        start_issue=args.start_issue,
+                        end_issue=args.end_issue,
+                    )
+                except ValueError as exc:
+                    print(f"ERROR: Unable to render fixed epic issue body: {exc}", file=sys.stderr)
+                    return 2
+                print("\n--- BEGIN FIXED EPIC BODY ---")
+                print(fixed_body)
+                print("--- END FIXED EPIC BODY ---")
             if args.fix_epic_task_links:
                 fixed_body, added_issue_links = ensure_epic_task_links(
                     epic_issue_body=epic_body,

@@ -313,3 +313,33 @@ def test_main_print_epic_task_links_checklist_default_range(capsys: CaptureFixtu
     assert len(lines) == 8
     assert lines[0] == "- [ ] [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)"
     assert lines[-1] == "- [ ] [#15](https://github.com/stranske/Inv-Man-Intake/issues/15)"
+
+
+def test_main_print_fixed_epic_body_requires_check_flag() -> None:
+    exit_code = main(["--print-fixed-epic-body"])
+    assert exit_code == 2
+
+
+def test_main_print_fixed_epic_body_outputs_patched_content(
+    tmp_path: Path, capsys: CaptureFixture[str]
+) -> None:
+    _write_issue_files(tmp_path, _issue_body_with_sections())
+    _write_epic_issue(
+        tmp_path,
+        "## Why\nx\n\n## Tasks\n- [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)\n",
+    )
+    exit_code = main(
+        [
+            "--issues-dir",
+            str(tmp_path),
+            "--check-epic-task-links",
+            "--epic-links-only",
+            "--print-fixed-epic-body",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "--- BEGIN FIXED EPIC BODY ---" in captured.out
+    assert "--- END FIXED EPIC BODY ---" in captured.out
+    for issue in range(8, 16):
+        assert f"https://github.com/stranske/Inv-Man-Intake/issues/{issue}" in captured.out
