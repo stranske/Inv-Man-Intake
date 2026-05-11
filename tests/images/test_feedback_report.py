@@ -10,6 +10,7 @@ from inv_man_intake.data.migrations.core_schema import apply_core_schema
 from inv_man_intake.data.provenance import VisualArtifactRecord
 from inv_man_intake.data.repository import VisualArtifactRepository
 from inv_man_intake.images.feedback_report import (
+    feedback_summary_metric_definitions,
     generate_feedback_summary_report,
     render_feedback_summary_csv,
     render_feedback_summary_json,
@@ -159,3 +160,20 @@ def test_feedback_summary_filters_by_review_timestamp_and_renders_exports() -> N
     assert payload["artifacts"][0]["artifact_id"] == "va_2"
     assert "artifact_id,feedback_count,reviewer_count" in csv_payload
     assert "va_2,1,1,0,1,0.0000,1.00" in csv_payload
+
+
+def test_feedback_summary_metric_definitions_cover_required_summary_metrics() -> None:
+    definitions = feedback_summary_metric_definitions()
+    by_key = {definition.key: definition for definition in definitions}
+
+    assert tuple(by_key) == (
+        "informative_rate",
+        "quality_rank_distribution",
+        "disagreement_rate",
+    )
+    assert by_key["informative_rate"].formula == "informative_count / feedback_count"
+    assert by_key["quality_rank_distribution"].level == "report,artifact"
+    assert (
+        by_key["disagreement_rate"].formula
+        == "disagreement_artifact_count / multi_reviewer_artifact_count"
+    )

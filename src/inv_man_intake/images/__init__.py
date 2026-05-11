@@ -8,7 +8,9 @@ from inv_man_intake.images.classifier import (
 from inv_man_intake.images.extractor import UnsupportedVisualSourceError, extract_visual_artifacts
 from inv_man_intake.images.feedback_report import (
     ArtifactFeedbackSummary,
+    FeedbackMetricDefinition,
     FeedbackSummaryReport,
+    feedback_summary_metric_definitions,
     generate_feedback_summary_report,
     render_feedback_summary_csv,
     render_feedback_summary_json,
@@ -29,6 +31,7 @@ __all__ = [
     "ArtifactFeedbackSummary",
     "ClassifiedVisualArtifact",
     "FeedbackWriteResult",
+    "FeedbackMetricDefinition",
     "FeedbackSummaryReport",
     "UnsupportedVisualSourceError",
     "VisualArtifactFeedbackService",
@@ -39,6 +42,7 @@ __all__ = [
     "classify_visual_artifacts",
     "extract_visual_artifacts",
     "extract_and_classify_visual_artifacts",
+    "feedback_summary_metric_definitions",
     "generate_feedback_summary_report",
     "render_feedback_summary_csv",
     "render_feedback_summary_json",

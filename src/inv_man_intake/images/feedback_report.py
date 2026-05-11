@@ -53,6 +53,47 @@ class FeedbackSummaryReport:
     artifacts: tuple[ArtifactFeedbackSummary, ...]
 
 
+@dataclass(frozen=True)
+class FeedbackMetricDefinition:
+    """Canonical definition for one summary metric in feedback reports."""
+
+    key: str
+    description: str
+    level: str
+    formula: str
+
+
+SUMMARY_METRIC_DEFINITIONS: tuple[FeedbackMetricDefinition, ...] = (
+    FeedbackMetricDefinition(
+        key="informative_rate",
+        description="Share of feedback records marked informative.",
+        level="report,artifact",
+        formula="informative_count / feedback_count",
+    ),
+    FeedbackMetricDefinition(
+        key="quality_rank_distribution",
+        description="Count of feedback records by quality rank bucket (1-5).",
+        level="report,artifact",
+        formula="count(records where quality_rank == bucket) for each bucket",
+    ),
+    FeedbackMetricDefinition(
+        key="disagreement_rate",
+        description=(
+            "Share of multi-reviewer artifacts where reviewers disagree on informativeness "
+            "or differ by 2+ quality-rank points."
+        ),
+        level="report",
+        formula="disagreement_artifact_count / multi_reviewer_artifact_count",
+    ),
+)
+
+
+def feedback_summary_metric_definitions() -> tuple[FeedbackMetricDefinition, ...]:
+    """Return the canonical summary-metric definitions used by report consumers."""
+
+    return SUMMARY_METRIC_DEFINITIONS
+
+
 def generate_feedback_summary_report(
     repository: VisualArtifactRepository,
     *,
