@@ -1,5 +1,34 @@
 # Workloop State
 
+## 2026-05-11T02:34:30Z - opener lane issue #26 PR materialization
+
+- Automation: `pd-workloop-resume` (codex opener lane).
+- Source repo: `stranske/Inv-Man-Intake`.
+- Source issue: `#26` (`Image feedback capture contract and service`, `priority:normal`).
+- Source PR: `#413` (`https://github.com/stranske/Inv-Man-Intake/pull/413`), non-draft, labels `agent:codex` + `agents:keepalive` + `autofix`.
+- Branch: `codex/issue-26-image-feedback`.
+- Selection:
+  - ACTION A succeeded from the neutral Code workspace; sentinel `active.*` pointed at closer/verifier state and was treated as cross-lane informational state only.
+  - Required discovery ran across `repo-review-approved`, `priority:high`, `priority:normal`, and `priority:low`.
+  - High-priority `trip-planner#1130` and `trip-planner#1129` were skipped because both are reopened for verifier sequencing after existing merged PRs.
+  - Cap-health after infra repair reported `total_opener_owned=2`, `raw_cap_reached=false`, `normal_cap_reached=false`, and `non_drainable_cap_blocker=false`; helper execution required Python 3.12 in `PATH` because the default Python 3.9 cannot import `datetime.UTC`.
+- Implementation:
+  - Added `ImageFeedbackRecord` with required-field, ISO timestamp, and 1-5 quality-rank validation.
+  - Added visual-artifact feedback persistence keyed by `(artifact_id, reviewer)` so repeated reviews update the previous row.
+  - Added `VisualArtifactFeedbackService` for create/read/list feedback operations and re-exported it from `inv_man_intake.images`.
+  - Documented feedback governance and the rank scale in `docs/runbooks/visual_artifact_extraction.md`.
+- Validation passed:
+  - `python -m pytest tests/images/test_feedback_service.py tests/data/test_visual_artifact_repository.py tests/images/test_service.py --no-cov` (`12 passed`).
+  - `python -m ruff check src/inv_man_intake/contracts/image_feedback_contract.py src/inv_man_intake/images/feedback_service.py src/inv_man_intake/data/provenance.py src/inv_man_intake/data/repository.py src/inv_man_intake/images/__init__.py tests/images/test_feedback_service.py`.
+  - `python -m black --check --line-length 100 src/inv_man_intake/contracts/image_feedback_contract.py src/inv_man_intake/images/feedback_service.py src/inv_man_intake/data/provenance.py src/inv_man_intake/data/repository.py src/inv_man_intake/images/__init__.py tests/images/test_feedback_service.py`.
+  - `python -m mypy src/inv_man_intake/contracts/image_feedback_contract.py src/inv_man_intake/images/feedback_service.py src/inv_man_intake/data/provenance.py src/inv_man_intake/data/repository.py`.
+  - `git diff --check`.
+- Relay event emitted: `pr_opened active.source_repo=stranske/Inv-Man-Intake active.source_issue=26 active.source_pr=413 active.next_action=wait_for_keepalive`.
+- Post-open state:
+  - PR `#413` is open and non-draft with required routing labels.
+  - Initial checks are mostly pending; one synthetic `Gate / gate` row reported `fail` because path classification was cancelled while newer Gate/CI jobs were still queued/pending.
+- Next action: keepalive's Codex runner takes over for CI fixups or review-comment work; opener is done with this lane.
+
 ## 2026-05-11T01:05:15Z - opener lane issue #25 PR materialization
 
 - Automation: `pd-workloop-resume` (codex opener lane).

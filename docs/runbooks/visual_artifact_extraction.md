@@ -38,6 +38,30 @@ override path.
 - `byte_size`
 - `extracted_at`
 
+`VisualArtifactRepository.ensure_feedback_schema()` also creates
+`visual_artifact_feedback` for human quality review. Feedback is keyed by
+`artifact_id` + `reviewer`, so a reviewer can update the same artifact without
+duplicating rows. Each record stores:
+- `artifact_id`
+- `is_informative`
+- `quality_rank`
+- `reviewer`
+- `reviewed_at`
+- `notes`
+
+## Feedback Governance
+
+Use `ImageFeedbackRecord` and `VisualArtifactFeedbackService` to capture analyst
+review. `quality_rank` is an integer scale from 1 to 5:
+- `1`: unusable or misleading visual
+- `2`: low usefulness; mostly decorative or too unclear
+- `3`: usable context but not decision-grade
+- `4`: useful evidence with minor limitations
+- `5`: high-value visual evidence for review or tuning
+
+Repeated reviews from the same reviewer update the prior record. Preserve notes
+when they explain disagreements between the classifier output and human judgment.
+
 ## Limitations And Fallback Behavior
 
 - PDF parsing is stream/object oriented and does not decode embedded image compression.
