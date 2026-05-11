@@ -72,3 +72,33 @@ def test_classifier_sets_high_text_density_feature_for_long_textual_payloads() -
     assert result.label == "informative"
     assert "text_density_high" in result.reason_codes
     assert "text_density_low" not in result.reason_codes
+
+
+def test_classifier_prefers_informative_on_mixed_signals_with_chart_evidence() -> None:
+    result = classify_visual_artifact(
+        _artifact(
+            content=(
+                b"Confidential for institutional use only. Performance attribution table "
+                b"Q4 2025 return 11.2% benchmark 8.4% risk and exposure summary."
+            ),
+            source_ref="slide-content",
+        )
+    )
+
+    assert result.label == "informative"
+    assert result.reason_codes[:2] == ("informative_terms", "boilerplate_terms")
+    assert "chart_indicators" in result.reason_codes
+    assert result.rationale.startswith("Informative visual signals:")
+
+
+def test_classifier_boilerplate_reasoning_for_short_disclaimer_banner() -> None:
+    result = classify_visual_artifact(
+        _artifact(
+            content=b"Confidential. Terms of use. Trademark.",
+            source_ref="masthead-banner",
+        )
+    )
+
+    assert result.label == "boilerplate"
+    assert result.reason_codes == ("boilerplate_terms", "text_density_low", "logo_banner_pattern")
+    assert result.rationale.startswith("Boilerplate visual signals:")
