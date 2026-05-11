@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import sqlite3
+from typing import Any
 
 from inv_man_intake.data.models import Document, Firm, Fund
 from inv_man_intake.data.provenance import (
     CorrectionRecord,
     ExtractedFieldRecord,
+    VisualArtifactFeedbackRecord,
     VisualArtifactRecord,
 )
 
@@ -376,9 +378,41 @@ class VisualArtifactRepository:
             """)
         self._connection.commit()
 
+    def ensure_feedback_schema(self) -> None:
+        if not self._visual_artifacts_table_exists():
+            raise RuntimeError(
+                "visual_artifacts table missing; apply visual artifact schema before feedback schema"
+            )
+        self._connection.executescript("""
+            CREATE TABLE IF NOT EXISTS visual_artifact_feedback (
+                artifact_id TEXT NOT NULL,
+                reviewer TEXT NOT NULL,
+                is_informative INTEGER NOT NULL CHECK (is_informative IN (0, 1)),
+                quality_rank INTEGER NOT NULL CHECK (quality_rank BETWEEN 1 AND 5),
+                reviewed_at TEXT NOT NULL,
+                notes TEXT,
+                PRIMARY KEY (artifact_id, reviewer),
+                FOREIGN KEY (artifact_id) REFERENCES visual_artifacts (artifact_id)
+                    ON DELETE CASCADE
+            );
+
+            DROP INDEX IF EXISTS idx_visual_artifact_feedback_artifact_id;
+            CREATE INDEX IF NOT EXISTS idx_visual_artifact_feedback_artifact_reviewed_at
+                ON visual_artifact_feedback (artifact_id, reviewed_at, reviewer);
+            CREATE INDEX IF NOT EXISTS idx_visual_artifact_feedback_reviewed_at
+                ON visual_artifact_feedback (reviewed_at);
+            """)
+        self._connection.commit()
+
     def _documents_table_exists(self) -> bool:
         row = self._connection.execute(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'documents'"
+        ).fetchone()
+        return row is not None
+
+    def _visual_artifacts_table_exists(self) -> bool:
+        row = self._connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'visual_artifacts'"
         ).fetchone()
         return row is not None
 
@@ -431,3 +465,59 @@ class VisualArtifactRepository:
             )
             for row in rows
         )
+
+    def upsert_feedback(self, record: VisualArtifactFeedbackRecord) -> None:
+        self._connection.execute(
+            (
+                "INSERT INTO visual_artifact_feedback (artifact_id, reviewer, is_informative, "
+                "quality_rank, reviewed_at, notes) VALUES (?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(artifact_id, reviewer) DO UPDATE SET "
+                "is_informative = excluded.is_informative, "
+                "quality_rank = excluded.quality_rank, "
+                "reviewed_at = excluded.reviewed_at, "
+                "notes = excluded.notes"
+            ),
+            (
+                record.artifact_id,
+                record.reviewer,
+                1 if record.is_informative else 0,
+                record.quality_rank,
+                record.reviewed_at,
+                record.notes,
+            ),
+        )
+        self._connection.commit()
+
+    def get_feedback(self, artifact_id: str, reviewer: str) -> VisualArtifactFeedbackRecord | None:
+        row = self._connection.execute(
+            (
+                "SELECT artifact_id, is_informative, quality_rank, reviewer, reviewed_at, notes "
+                "FROM visual_artifact_feedback WHERE artifact_id = ? AND reviewer = ?"
+            ),
+            (artifact_id, reviewer),
+        ).fetchone()
+        if row is None:
+            return None
+        return _feedback_from_row(row)
+
+    def list_feedback(self, artifact_id: str) -> tuple[VisualArtifactFeedbackRecord, ...]:
+        rows = self._connection.execute(
+            (
+                "SELECT artifact_id, is_informative, quality_rank, reviewer, reviewed_at, notes "
+                "FROM visual_artifact_feedback WHERE artifact_id = ? "
+                "ORDER BY reviewed_at ASC, reviewer ASC"
+            ),
+            (artifact_id,),
+        ).fetchall()
+        return tuple(_feedback_from_row(row) for row in rows)
+
+
+def _feedback_from_row(row: sqlite3.Row | tuple[Any, ...]) -> VisualArtifactFeedbackRecord:
+    return VisualArtifactFeedbackRecord(
+        artifact_id=str(row[0]),
+        is_informative=bool(row[1]),
+        quality_rank=int(row[2]),
+        reviewer=str(row[3]),
+        reviewed_at=str(row[4]),
+        notes=None if row[5] is None else str(row[5]),
+    )

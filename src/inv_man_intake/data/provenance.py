@@ -46,3 +46,15 @@ class VisualArtifactRecord:
     mime_type: str
     byte_size: int
     extracted_at: str
+
+
+@dataclass(frozen=True)
+class VisualArtifactFeedbackRecord:
+    """Persisted reviewer feedback for one visual artifact."""
+
+    artifact_id: str
+    is_informative: bool
+    quality_rank: int
+    reviewer: str
+    reviewed_at: str
+    notes: str | None

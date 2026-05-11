@@ -6,6 +6,10 @@ from inv_man_intake.images.classifier import (
     classify_visual_artifact,
 )
 from inv_man_intake.images.extractor import UnsupportedVisualSourceError, extract_visual_artifacts
+from inv_man_intake.images.feedback_service import (
+    FeedbackWriteResult,
+    VisualArtifactFeedbackService,
+)
 from inv_man_intake.images.models import ArtifactSource, VisualArtifact
 from inv_man_intake.images.service import (
     ClassifiedVisualArtifact,
@@ -16,7 +20,9 @@ from inv_man_intake.images.service import (
 __all__ = [
     "ArtifactSource",
     "ClassifiedVisualArtifact",
+    "FeedbackWriteResult",
     "UnsupportedVisualSourceError",
+    "VisualArtifactFeedbackService",
     "VisualArtifactClassification",
     "VisualClassificationLabel",
     "VisualArtifact",
