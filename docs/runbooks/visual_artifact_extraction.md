@@ -14,6 +14,16 @@ Each extracted artifact includes:
 - Source linkage (`page_number` for PDF, `slide_number` for PPTX, plus `source_ref`)
 - Deterministic `storage_path` suggestion for downstream persistence
 
+## Classification
+
+`inv_man_intake.images.classifier.classify_visual_artifact` provides the baseline
+informative-vs-boilerplate label for extracted artifacts. The classifier returns a
+label, confidence score, stable reason codes, and rationale for downstream review
+queue filtering.
+
+See `docs/contracts/image_classification.md` for the heuristic contract and human
+override path.
+
 ## Persistence Contract
 
 `VisualArtifactRepository` stores artifact catalog entries in `visual_artifacts` with:
