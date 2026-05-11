@@ -53,6 +53,8 @@ def validate_image_feedback(record: ImageFeedbackRecord) -> None:
 
 def _normalize_timestamp(value: str) -> str:
     normalized = value.strip()
+    if not normalized:
+        raise ValueError("timestamp is required")
     normalized = normalized.removesuffix("Z") + "+00:00" if normalized.endswith("Z") else normalized
     try:
         parsed = datetime.fromisoformat(normalized)
