@@ -19,6 +19,13 @@ Each classification returns:
 
 ## Heuristic Signals
 
+Feature set (deterministic, extracted from artifact preview metadata/text):
+
+- `text_density_high`: token count is at least 18
+- `text_density_low`: token count is 5 or fewer, or artifact byte size is 512 bytes or smaller
+- `has_chart_indicators`: preview text contains quarter/year/fiscal-year/percent markers
+- `has_logo_banner_pattern`: source reference includes logo/banner/footer/masthead markers
+
 Informative signals include:
 
 - chart, table, benchmark, performance, risk, return, exposure, and related
@@ -32,6 +39,15 @@ Boilerplate signals include:
   language
 - source references such as logo, banner, footer, or masthead
 - very low text density or very small payloads
+
+Typical `reason_codes` include:
+
+- `informative_terms`
+- `boilerplate_terms`
+- `chart_indicators`
+- `text_density_high`
+- `text_density_low`
+- `logo_banner_pattern`
 
 ## Override Path
 

@@ -23,7 +23,8 @@ def test_classifier_labels_chart_like_performance_content_as_informative() -> No
         _artifact(
             content=(
                 b"Performance chart Q1 2026 portfolio return alpha volatility benchmark "
-                b"sector exposure table drawdown sharpe 12.4% 8.1% -2.0%"
+                b"sector exposure table drawdown sharpe attribution monthly index returns "
+                b"12.4% 8.1% -2.0%"
             )
         )
     )
@@ -31,7 +32,7 @@ def test_classifier_labels_chart_like_performance_content_as_informative() -> No
     assert result.label == "informative"
     assert result.confidence >= 0.75
     assert "informative_terms" in result.reason_codes
-    assert "chart_numeric_markers" in result.reason_codes
+    assert "chart_indicators" in result.reason_codes
     assert result.rationale
 
 
@@ -46,7 +47,7 @@ def test_classifier_labels_logo_and_disclaimer_payload_as_boilerplate() -> None:
     assert result.label == "boilerplate"
     assert result.confidence >= 0.7
     assert "boilerplate_terms" in result.reason_codes
-    assert "boilerplate_source_ref" in result.reason_codes
+    assert "logo_banner_pattern" in result.reason_codes
 
 
 def test_classifier_uses_low_density_fallback_for_decorative_payloads() -> None:
@@ -55,5 +56,19 @@ def test_classifier_uses_low_density_fallback_for_decorative_payloads() -> None:
     )
 
     assert result.label == "boilerplate"
-    assert "low_information_density" in result.reason_codes
+    assert "text_density_low" in result.reason_codes
     assert result.artifact_id == "va_test"
+
+
+def test_classifier_sets_high_text_density_feature_for_long_textual_payloads() -> None:
+    long_text = (
+        b"Portfolio return benchmark exposure risk alpha volatility attribution monthly "
+        b"sector positioning table drawdown sharpe correlation index performance gross "
+        b"net leverage allocation factors scenario stress testing outlook commentary "
+        b"portfolio return benchmark exposure risk alpha volatility attribution monthly "
+    )
+    result = classify_visual_artifact(_artifact(content=long_text, source_ref="content-panel"))
+
+    assert result.label == "informative"
+    assert "text_density_high" in result.reason_codes
+    assert "text_density_low" not in result.reason_codes

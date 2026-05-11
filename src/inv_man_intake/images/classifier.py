@@ -47,6 +47,18 @@ _BOILERPLATE_TERMS = {
 }
 _CHART_PATTERN = re.compile(r"\b(?:q[1-4]|20\d{2}|fy\d{2}|[0-9]+(?:\.[0-9]+)?%)\b", re.I)
 _TOKEN_PATTERN = re.compile(r"[a-zA-Z][a-zA-Z0-9_%.-]*")
+_LOGO_BANNER_SOURCE_MARKERS = ("logo", "banner", "footer", "masthead")
+
+
+@dataclass(frozen=True)
+class HeuristicFeatureSet:
+    """Derived deterministic features used for visual artifact classification."""
+
+    token_count: int
+    text_density_high: bool
+    text_density_low: bool
+    has_chart_indicators: bool
+    has_logo_banner_pattern: bool
 
 
 @dataclass(frozen=True)
@@ -65,8 +77,7 @@ def classify_visual_artifact(artifact: VisualArtifact) -> VisualArtifactClassifi
 
     text = _decode_preview_text(artifact.content)
     lowered = text.lower()
-    tokens = tuple(token.lower() for token in _TOKEN_PATTERN.findall(text))
-    token_count = len(tokens)
+    features = _derive_features(artifact=artifact, text=text)
 
     informative_hits = tuple(term for term in sorted(_INFORMATIVE_TERMS) if term in lowered)
     boilerplate_hits = tuple(term for term in sorted(_BOILERPLATE_TERMS) if term in lowered)
@@ -82,21 +93,19 @@ def classify_visual_artifact(artifact: VisualArtifact) -> VisualArtifactClassifi
         boilerplate_score += min(4, len(boilerplate_hits)) * 2
         reasons.append("boilerplate_terms")
 
-    if _CHART_PATTERN.search(text):
+    if features.has_chart_indicators:
         informative_score += 3
-        reasons.append("chart_numeric_markers")
-    if token_count >= 18:
+        reasons.append("chart_indicators")
+    if features.text_density_high:
         informative_score += 2
-        reasons.append("text_density")
-    elif artifact.byte_size <= 512 or token_count <= 5:
+        reasons.append("text_density_high")
+    elif features.text_density_low:
         boilerplate_score += 2
-        reasons.append("low_information_density")
+        reasons.append("text_density_low")
 
-    if artifact.source.source_ref is not None:
-        source_ref = artifact.source.source_ref.lower()
-        if any(marker in source_ref for marker in ("logo", "banner", "footer", "masthead")):
-            boilerplate_score += 3
-            reasons.append("boilerplate_source_ref")
+    if features.has_logo_banner_pattern:
+        boilerplate_score += 3
+        reasons.append("logo_banner_pattern")
 
     if informative_score >= boilerplate_score:
         label: VisualClassificationLabel = "informative"
@@ -123,6 +132,22 @@ def _decode_preview_text(content: bytes) -> str:
     return content[:8192].decode("utf-8", errors="ignore")
 
 
+def _derive_features(*, artifact: VisualArtifact, text: str) -> HeuristicFeatureSet:
+    tokens = tuple(token.lower() for token in _TOKEN_PATTERN.findall(text))
+    token_count = len(tokens)
+
+    source_ref = artifact.source.source_ref.lower() if artifact.source.source_ref else ""
+    has_logo_banner_pattern = any(marker in source_ref for marker in _LOGO_BANNER_SOURCE_MARKERS)
+
+    return HeuristicFeatureSet(
+        token_count=token_count,
+        text_density_high=token_count >= 18,
+        text_density_low=token_count <= 5 or (token_count < 18 and artifact.byte_size <= 512),
+        has_chart_indicators=bool(_CHART_PATTERN.search(text)),
+        has_logo_banner_pattern=has_logo_banner_pattern,
+    )
+
+
 def _confidence(base: float, margin: int, total_score: int) -> float:
     score = base + min(0.25, margin * 0.04) + min(0.12, total_score * 0.01)
     return round(min(0.95, score), 2)
@@ -138,8 +163,8 @@ def _rationale(
         return f"Informative visual signals: {', '.join(informative_hits[:4])}."
     if label == "boilerplate" and boilerplate_hits:
         return f"Boilerplate visual signals: {', '.join(boilerplate_hits[:4])}."
-    if "chart_numeric_markers" in reasons:
+    if "chart_indicators" in reasons:
         return "Numeric chart or period markers indicate review-relevant content."
-    if "low_information_density" in reasons:
+    if "text_density_low" in reasons:
         return "Low text density and small payload suggest decorative or repeated boilerplate."
     return f"Defaulted to {label} based on balanced content heuristics."
