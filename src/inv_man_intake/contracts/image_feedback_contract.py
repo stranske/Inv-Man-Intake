@@ -23,8 +23,12 @@ class ImageFeedbackRecord:
     def __post_init__(self) -> None:
         object.__setattr__(self, "artifact_id", self.artifact_id.strip())
         object.__setattr__(self, "reviewer", self.reviewer.strip())
-        object.__setattr__(self, "timestamp", _normalize_timestamp(self.timestamp))
+        object.__setattr__(self, "timestamp", self.timestamp.strip())
+        # Required-field validation runs first so blank strings surface the
+        # "X is required" message; normalization then canonicalizes the
+        # timestamp to a stable UTC ISO-8601 form for TEXT-column sort order.
         validate_image_feedback(self)
+        object.__setattr__(self, "timestamp", _normalize_timestamp(self.timestamp))
 
 
 def validate_image_feedback(record: ImageFeedbackRecord) -> None:
