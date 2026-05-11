@@ -146,6 +146,21 @@ def test_ensure_epic_task_links_requires_tasks_header() -> None:
         )
 
 
+def test_ensure_epic_task_links_creates_tasks_header_when_requested() -> None:
+    updated, added = ensure_epic_task_links(
+        epic_issue_body="## Why\nx\n",
+        owner="stranske",
+        repo="Inv-Man-Intake",
+        start_issue=8,
+        end_issue=15,
+        create_tasks_section_if_missing=True,
+    )
+    assert added == tuple(range(8, 16))
+    assert "## Tasks" in updated
+    for issue in range(8, 16):
+        assert f"https://github.com/stranske/Inv-Man-Intake/issues/{issue}" in updated
+
+
 def test_main_failure_when_epic_task_links_missing(tmp_path: Path) -> None:
     _write_issue_files(tmp_path, _issue_body_with_sections())
     _write_epic_issue(
@@ -215,6 +230,28 @@ def test_main_fix_epic_task_links_updates_epic_body_file(tmp_path: Path) -> None
     )
     assert exit_code == 0
     updated_epic = epic_body_file.read_text(encoding="utf-8")
+    for issue in range(8, 16):
+        assert f"https://github.com/stranske/Inv-Man-Intake/issues/{issue}" in updated_epic
+
+
+def test_main_fix_epic_task_links_creates_missing_tasks_section(tmp_path: Path) -> None:
+    _write_issue_files(tmp_path, _issue_body_with_sections())
+    epic_body_file = tmp_path / "epic-body.md"
+    epic_body_file.write_text("<!-- bootstrap for codex on issue #7 -->\n", encoding="utf-8")
+    exit_code = main(
+        [
+            "--issues-dir",
+            str(tmp_path),
+            "--check-epic-task-links",
+            "--fix-epic-task-links",
+            "--create-missing-tasks-section",
+            "--epic-body-file",
+            str(epic_body_file),
+        ]
+    )
+    assert exit_code == 0
+    updated_epic = epic_body_file.read_text(encoding="utf-8")
+    assert "## Tasks" in updated_epic
     for issue in range(8, 16):
         assert f"https://github.com/stranske/Inv-Man-Intake/issues/{issue}" in updated_epic
 

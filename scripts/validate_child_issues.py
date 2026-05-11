@@ -148,11 +148,25 @@ def ensure_epic_task_links(
     repo: str,
     start_issue: int,
     end_issue: int,
+    create_tasks_section_if_missing: bool = False,
 ) -> tuple[str, tuple[int, ...]]:
     """Insert missing child-issue links into the epic issue's ## Tasks section."""
     bounds = _tasks_section_bounds(epic_issue_body)
     if bounds is None:
-        raise ValueError("Epic issue body does not contain a ## Tasks section")
+        if not create_tasks_section_if_missing:
+            raise ValueError("Epic issue body does not contain a ## Tasks section")
+        section = render_epic_tasks_section(
+            owner=owner,
+            repo=repo,
+            start_issue=start_issue,
+            end_issue=end_issue,
+        )
+        normalized_body = epic_issue_body.rstrip()
+        if normalized_body:
+            normalized_body = f"{normalized_body}\n\n{section}\n"
+        else:
+            normalized_body = f"{section}\n"
+        return normalized_body, tuple(range(start_issue, end_issue + 1))
 
     section_start, section_end = bounds
     tasks_section = epic_issue_body[section_start:section_end]
@@ -331,6 +345,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--create-missing-tasks-section",
+        action="store_true",
+        help=(
+            "When used with --fix-epic-task-links, create a ## Tasks section if the epic body "
+            "does not already contain one."
+        ),
+    )
+    parser.add_argument(
         "--print-epic-task-links-checklist",
         action="store_true",
         help=(
@@ -481,6 +503,7 @@ def main(argv: list[str] | None = None) -> int:
                     repo=args.repo,
                     start_issue=args.start_issue,
                     end_issue=args.end_issue,
+                    create_tasks_section_if_missing=args.create_missing_tasks_section,
                 )
                 if args.epic_body_file:
                     args.epic_body_file.write_text(fixed_body, encoding="utf-8")
