@@ -162,10 +162,7 @@ def ensure_epic_task_links(
             end_issue=end_issue,
         )
         normalized_body = epic_issue_body.rstrip()
-        if normalized_body:
-            normalized_body = f"{normalized_body}\n\n{section}\n"
-        else:
-            normalized_body = f"{section}\n"
+        normalized_body = f"{normalized_body}\n\n{section}\n" if normalized_body else f"{section}\n"
         return normalized_body, tuple(range(start_issue, end_issue + 1))
 
     section_start, section_end = bounds
