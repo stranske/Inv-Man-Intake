@@ -165,6 +165,74 @@ def test_main_fix_epic_task_links_updates_epic_file(tmp_path: Path) -> None:
         assert f"https://github.com/stranske/Inv-Man-Intake/issues/{issue}" in updated_epic
 
 
+def test_main_fix_epic_task_links_updates_epic_body_file(tmp_path: Path) -> None:
+    _write_issue_files(tmp_path, _issue_body_with_sections())
+    epic_body_file = tmp_path / "epic-body.md"
+    epic_body_file.write_text(
+        "## Tasks\n- [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)\n",
+        encoding="utf-8",
+    )
+    exit_code = main(
+        [
+            "--issues-dir",
+            str(tmp_path),
+            "--check-epic-task-links",
+            "--fix-epic-task-links",
+            "--epic-body-file",
+            str(epic_body_file),
+        ]
+    )
+    assert exit_code == 0
+    updated_epic = epic_body_file.read_text(encoding="utf-8")
+    for issue in range(8, 16):
+        assert f"https://github.com/stranske/Inv-Man-Intake/issues/{issue}" in updated_epic
+
+
+def test_main_epic_body_file_requires_check_or_fix(tmp_path: Path) -> None:
+    _write_issue_files(tmp_path, _issue_body_with_sections())
+    epic_body_file = tmp_path / "epic-body.md"
+    epic_body_file.write_text("## Tasks\n", encoding="utf-8")
+    exit_code = main(["--issues-dir", str(tmp_path), "--epic-body-file", str(epic_body_file)])
+    assert exit_code == 2
+
+
+def test_main_epic_body_file_missing_path_errors() -> None:
+    exit_code = main(
+        [
+            "--epic-body-file",
+            "does-not-exist.md",
+            "--check-epic-task-links",
+        ]
+    )
+    assert exit_code == 2
+
+
+def test_main_epic_links_only_requires_check_flag() -> None:
+    exit_code = main(["--epic-links-only"])
+    assert exit_code == 2
+
+
+def test_main_epic_links_only_fixes_epic_body_without_issue_files(tmp_path: Path) -> None:
+    epic_body_file = tmp_path / "epic-body.md"
+    epic_body_file.write_text(
+        "## Tasks\n- [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)\n",
+        encoding="utf-8",
+    )
+    exit_code = main(
+        [
+            "--check-epic-task-links",
+            "--fix-epic-task-links",
+            "--epic-links-only",
+            "--epic-body-file",
+            str(epic_body_file),
+        ]
+    )
+    assert exit_code == 0
+    updated_epic = epic_body_file.read_text(encoding="utf-8")
+    for issue in range(8, 16):
+        assert f"https://github.com/stranske/Inv-Man-Intake/issues/{issue}" in updated_epic
+
+
 def test_main_fix_epic_task_links_remote_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     issue_body = _issue_body_with_sections()
     epic_body = "## Tasks\n- [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)\n"
@@ -192,9 +260,7 @@ def test_main_fix_epic_task_links_remote_with_token(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr("scripts.validate_child_issues._load_issue_body_from_github", fake_loader)
     monkeypatch.setattr("scripts.validate_child_issues._patch_issue_body_on_github", fake_patcher)
-    exit_code = main(
-        ["--check-epic-task-links", "--fix-epic-task-links", "--token", "test-token"]
-    )
+    exit_code = main(["--check-epic-task-links", "--fix-epic-task-links", "--token", "test-token"])
     assert exit_code == 0
     for issue in range(8, 16):
         assert f"https://github.com/stranske/Inv-Man-Intake/issues/{issue}" in patched["body"]

@@ -264,6 +264,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Local directory containing issue body files for offline validation.",
     )
     parser.add_argument(
+        "--epic-body-file",
+        type=Path,
+        default=None,
+        help=(
+            "Path to a local markdown file containing the epic issue body. "
+            "Used for --check-epic-task-links / --fix-epic-task-links."
+        ),
+    )
+    parser.add_argument(
         "--token",
         default=os.environ.get("GITHUB_TOKEN"),
         help="GitHub token (defaults to GITHUB_TOKEN env var if set).",
@@ -283,6 +292,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Validate that the epic issue's ## Tasks section contains links to every child issue "
             "in the configured issue range."
+        ),
+    )
+    parser.add_argument(
+        "--epic-links-only",
+        action="store_true",
+        help=(
+            "Only validate/fix epic task links and skip child issue section validation for "
+            f"#{DEFAULT_START_ISSUE}-#{DEFAULT_END_ISSUE}."
         ),
     )
     parser.add_argument(
@@ -309,6 +326,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.start_issue > args.end_issue:
         print("--start-issue must be <= --end-issue", file=sys.stderr)
         return 2
+    if args.epic_body_file and not args.epic_body_file.is_file():
+        print(f"--epic-body-file does not exist: {args.epic_body_file}", file=sys.stderr)
+        return 2
+    if args.epic_body_file and not (args.check_epic_task_links or args.fix_epic_task_links):
+        print(
+            "--epic-body-file requires --check-epic-task-links or --fix-epic-task-links",
+            file=sys.stderr,
+        )
+        return 2
+    if args.epic_links_only and not args.check_epic_task_links:
+        print("--epic-links-only requires --check-epic-task-links", file=sys.stderr)
+        return 2
     if args.print_epic_task_links_checklist:
         print(
             render_epic_task_links_checklist(
@@ -321,42 +350,45 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     issue_numbers = range(args.start_issue, args.end_issue + 1)
-    validations: list[IssueValidationResult] = []
+    if not args.epic_links_only:
+        validations: list[IssueValidationResult] = []
 
-    print(
-        f"Validating issue sections for #{args.start_issue}-#{args.end_issue} "
-        f"({'local files' if args.issues_dir else f'{args.owner}/{args.repo}'})"
-    )
+        print(
+            f"Validating issue sections for #{args.start_issue}-#{args.end_issue} "
+            f"({'local files' if args.issues_dir else f'{args.owner}/{args.repo}'})"
+        )
 
-    for issue_number in issue_numbers:
-        try:
-            if args.issues_dir:
-                body = _load_issue_body_from_directory(args.issues_dir, issue_number)
-            else:
-                body = _load_issue_body_from_github(
-                    owner=args.owner,
-                    repo=args.repo,
-                    issue_number=issue_number,
-                    token=args.token,
-                )
-        except (FileNotFoundError, ValueError, HTTPError, URLError) as exc:
-            print(f"ERROR: Unable to load issue #{issue_number}: {exc}", file=sys.stderr)
-            return 2
+        for issue_number in issue_numbers:
+            try:
+                if args.issues_dir:
+                    body = _load_issue_body_from_directory(args.issues_dir, issue_number)
+                else:
+                    body = _load_issue_body_from_github(
+                        owner=args.owner,
+                        repo=args.repo,
+                        issue_number=issue_number,
+                        token=args.token,
+                    )
+            except (FileNotFoundError, ValueError, HTTPError, URLError) as exc:
+                print(f"ERROR: Unable to load issue #{issue_number}: {exc}", file=sys.stderr)
+                return 2
 
-        result = validate_issue_body(issue_number, body)
-        validations.append(result)
+            result = validate_issue_body(issue_number, body)
+            validations.append(result)
 
-    failures = [result for result in validations if not result.is_valid]
-    if failures:
-        print("\nMissing required sections detected:")
-        for failure in failures:
-            missing = ", ".join(failure.missing_sections)
-            print(f"- #{failure.issue_number}: {missing}")
-        return 1
+        failures = [result for result in validations if not result.is_valid]
+        if failures:
+            print("\nMissing required sections detected:")
+            for failure in failures:
+                missing = ", ".join(failure.missing_sections)
+                print(f"- #{failure.issue_number}: {missing}")
+            return 1
 
     if args.check_epic_task_links:
         try:
-            if args.issues_dir:
+            if args.epic_body_file:
+                epic_body = args.epic_body_file.read_text(encoding="utf-8")
+            elif args.issues_dir:
                 epic_body = _load_issue_body_from_directory(args.issues_dir, args.epic_issue)
             else:
                 epic_body = _load_issue_body_from_github(
@@ -386,7 +418,9 @@ def main(argv: list[str] | None = None) -> int:
                     start_issue=args.start_issue,
                     end_issue=args.end_issue,
                 )
-                if args.issues_dir:
+                if args.epic_body_file:
+                    args.epic_body_file.write_text(fixed_body, encoding="utf-8")
+                elif args.issues_dir:
                     epic_path = _resolve_issue_path_from_directory(args.issues_dir, args.epic_issue)
                     if epic_path is None:
                         print(
@@ -429,9 +463,10 @@ def main(argv: list[str] | None = None) -> int:
                         f"\nEpic issue #{args.epic_issue} contains child issue links in ## Tasks "
                         f"for #{args.start_issue}-#{args.end_issue}."
                     )
-                    print("\nAll issues contain required sections:")
-                    for issue_number in issue_numbers:
-                        print(f"- #{issue_number}: OK")
+                    if not args.epic_links_only:
+                        print("\nAll issues contain required sections:")
+                        for issue_number in issue_numbers:
+                            print(f"- #{issue_number}: OK")
                     return 0
             missing_links = ", ".join(f"#{issue}" for issue in epic_result.missing_issue_links)
             print(
@@ -445,9 +480,10 @@ def main(argv: list[str] | None = None) -> int:
             f"for #{args.start_issue}-#{args.end_issue}."
         )
 
-    print("\nAll issues contain required sections:")
-    for issue_number in issue_numbers:
-        print(f"- #{issue_number}: OK")
+    if not args.epic_links_only:
+        print("\nAll issues contain required sections:")
+        for issue_number in issue_numbers:
+            print(f"- #{issue_number}: OK")
     return 0
 
 
