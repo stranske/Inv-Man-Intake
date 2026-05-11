@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from inv_man_intake.images.classifier import classify_visual_artifact
 from inv_man_intake.images.models import ArtifactSource, VisualArtifact
 
@@ -102,3 +104,33 @@ def test_classifier_boilerplate_reasoning_for_short_disclaimer_banner() -> None:
     assert result.label == "boilerplate"
     assert result.reason_codes == ("boilerplate_terms", "text_density_low", "logo_banner_pattern")
     assert result.rationale.startswith("Boilerplate visual signals:")
+
+
+@pytest.mark.parametrize(
+    ("content", "source_ref", "expected_label", "expected_reason"),
+    [
+        (
+            b"Portfolio benchmark performance chart Q2 2026 return 9.1% exposure risk table.",
+            "slide-main",
+            "informative",
+            "chart_indicators",
+        ),
+        (
+            b"Confidential. For professional investors. Terms of use. All rights reserved.",
+            "footer-banner",
+            "boilerplate",
+            "logo_banner_pattern",
+        ),
+    ],
+)
+def test_classifier_common_examples_are_deterministic(
+    content: bytes, source_ref: str, expected_label: str, expected_reason: str
+) -> None:
+    first = classify_visual_artifact(_artifact(content=content, source_ref=source_ref))
+    second = classify_visual_artifact(_artifact(content=content, source_ref=source_ref))
+
+    assert first.label == expected_label
+    assert second.label == expected_label
+    assert expected_reason in first.reason_codes
+    assert first.reason_codes == second.reason_codes
+    assert first.rationale == second.rationale
