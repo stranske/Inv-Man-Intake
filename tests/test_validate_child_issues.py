@@ -8,8 +8,8 @@ from scripts.validate_child_issues import (
     REQUIRED_SECTIONS,
     ensure_epic_task_links,
     main,
-    render_epic_tasks_section,
     render_epic_task_links_checklist,
+    render_epic_tasks_section,
     validate_epic_task_links,
     validate_issue_body,
 )
