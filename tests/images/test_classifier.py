@@ -134,3 +134,17 @@ def test_classifier_common_examples_are_deterministic(
     assert expected_reason in first.reason_codes
     assert first.reason_codes == second.reason_codes
     assert first.rationale == second.rationale
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        b"Performance summary: portfolio return 12.4% net of fees.",
+        b"Drawdown -2.0% in monthly attribution review.",
+        b"Sector exposure benchmark 8.1%, 11.2% headline read.",
+    ],
+)
+def test_classifier_detects_percentage_chart_markers(content: bytes) -> None:
+    result = classify_visual_artifact(_artifact(content=content, source_ref="slide-panel"))
+
+    assert "chart_indicators" in result.reason_codes

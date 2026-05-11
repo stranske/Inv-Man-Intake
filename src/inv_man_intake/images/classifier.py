@@ -45,7 +45,12 @@ _BOILERPLATE_TERMS = {
     "terms of use",
     "trademark",
 }
-_CHART_PATTERN = re.compile(r"\b(?:q[1-4]|20\d{2}|fy\d{2}|[0-9]+(?:\.[0-9]+)?%)\b", re.I)
+_INFORMATIVE_TERMS_SORTED = tuple(sorted(_INFORMATIVE_TERMS))
+_BOILERPLATE_TERMS_SORTED = tuple(sorted(_BOILERPLATE_TERMS))
+_CHART_PATTERN = re.compile(
+    r"\b(?:q[1-4]|20\d{2}|fy\d{2})\b|(?<![A-Za-z0-9])-?[0-9]+(?:\.[0-9]+)?%",
+    re.I,
+)
 _TOKEN_PATTERN = re.compile(r"[a-zA-Z][a-zA-Z0-9_%.-]*")
 _LOGO_BANNER_SOURCE_MARKERS = ("logo", "banner", "footer", "masthead")
 
@@ -79,8 +84,8 @@ def classify_visual_artifact(artifact: VisualArtifact) -> VisualArtifactClassifi
     lowered = text.lower()
     features = _derive_features(artifact=artifact, text=text)
 
-    informative_hits = tuple(term for term in sorted(_INFORMATIVE_TERMS) if term in lowered)
-    boilerplate_hits = tuple(term for term in sorted(_BOILERPLATE_TERMS) if term in lowered)
+    informative_hits = tuple(term for term in _INFORMATIVE_TERMS_SORTED if term in lowered)
+    boilerplate_hits = tuple(term for term in _BOILERPLATE_TERMS_SORTED if term in lowered)
 
     informative_score = 0
     boilerplate_score = 0
