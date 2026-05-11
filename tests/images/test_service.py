@@ -85,3 +85,35 @@ def test_extract_and_classify_visual_artifacts_is_deterministic() -> None:
     assert [item.classification.rationale for item in first] == [
         item.classification.rationale for item in second
     ]
+
+
+def test_classify_visual_artifacts_is_deterministic_for_positive_and_negative_examples() -> None:
+    artifacts = (
+        _artifact(
+            artifact_id="va_info",
+            content=b"Portfolio benchmark performance chart Q2 2026 return 9.1% exposure risk table.",
+            source_ref="slide-main",
+        ),
+        _artifact(
+            artifact_id="va_boiler",
+            content=b"Confidential. For professional investors. Terms of use. All rights reserved.",
+            source_ref="footer-banner",
+        ),
+    )
+
+    first = classify_visual_artifacts(artifacts)
+    second = classify_visual_artifacts(artifacts)
+
+    assert [item.classification.label for item in first] == ["informative", "boilerplate"]
+    assert [item.classification.label for item in first] == [
+        item.classification.label for item in second
+    ]
+    assert [item.classification.reason_codes for item in first] == [
+        item.classification.reason_codes for item in second
+    ]
+    assert [item.classification.confidence for item in first] == [
+        item.classification.confidence for item in second
+    ]
+    assert [item.classification.rationale for item in first] == [
+        item.classification.rationale for item in second
+    ]
