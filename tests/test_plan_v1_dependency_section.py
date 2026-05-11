@@ -30,15 +30,14 @@ def section6_text(plan_text: str) -> str:
 
 # --- Task 1: issue-to-workstream map ---
 
+
 def test_section6_exists(section6_text: str) -> None:
     assert "Dependency Graph" in section6_text or "Execution Order" in section6_text
 
 
 def test_issue_to_workstream_table_covers_all_child_issues(section6_text: str) -> None:
     for issue_number in _CHILD_ISSUE_NUMBERS:
-        assert f"#{issue_number}" in section6_text, (
-            f"Issue #{issue_number} missing from Section 6"
-        )
+        assert f"#{issue_number}" in section6_text, f"Issue #{issue_number} missing from Section 6"
 
 
 def test_issue_to_workstream_table_includes_milestone_column(section6_text: str) -> None:
@@ -46,6 +45,7 @@ def test_issue_to_workstream_table_includes_milestone_column(section6_text: str)
 
 
 # --- Task 2: blocking relationships (Mermaid + plain text) ---
+
 
 def test_blocking_relationships_mermaid_block_present(section6_text: str) -> None:
     assert "```mermaid" in section6_text, "Mermaid diagram block missing from Section 6"
@@ -57,6 +57,7 @@ def test_blocking_relationships_plain_text_present(section6_text: str) -> None:
 
 # --- Task 3: recommended execution order ---
 
+
 def test_recommended_execution_order_present(section6_text: str) -> None:
     assert "execution order" in section6_text.lower() or "critical path" in section6_text.lower()
 
@@ -67,6 +68,7 @@ def test_milestone_waves_described(section6_text: str) -> None:
 
 
 # --- Task 4: parallelization gates ---
+
 
 def test_parallelization_gates_section_present(section6_text: str) -> None:
     assert "parallelization" in section6_text.lower() or "gates" in section6_text.lower()
