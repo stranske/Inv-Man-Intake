@@ -1,5 +1,39 @@
 # Workloop State
 
+## 2026-05-11T03:18:00Z - opener lane issue #27 feedback report materialization
+
+- Automation: `pd-workloop-resume` (codex opener lane).
+- Source repo: `stranske/Inv-Man-Intake`.
+- Source issue: `#27` (`Image feedback summary export and tuning report`, `priority:normal`).
+- Source PR: `#415` (`https://github.com/stranske/Inv-Man-Intake/pull/415`), non-draft, labels `agent:codex` + `agents:keepalive` + `autofix`.
+- Branch: `codex/issue-27-feedback-report`.
+- Selection:
+  - ACTION A succeeded from the neutral Code workspace; sentinel `active.*` pointed at closer/verifier state and was treated as cross-lane informational state only.
+  - Required priority discovery ran across supported repos. High-priority only contained the Workflows auth-expiry ops alert, which was skipped. `Inv-Man-Intake#27` was selected as the oldest actionable normal-priority issue after dependency PR `#413/#26` merged to main at `2026-05-11T02:53:23Z`.
+  - Cap-health after infra repair reported `total_opener_owned=2`, `raw_cap_reached=false`, `normal_cap_reached=false`, and `non_drainable_cap_blocker=false`. The repair helper removed stale `agent:needs-attention` from `#411`.
+- Implementation:
+  - Added repository-wide feedback listing with optional timestamp bounds.
+  - Added feedback summary aggregation for informative rate, rank distribution, timestamp range, reviewer count, and disagreement rate.
+  - Added JSON and artifact-level CSV renderers plus `scripts/image_feedback_report.py` for manual report generation.
+  - Added `docs/runbooks/image_feedback_tuning.md` and linked it from the visual artifact extraction runbook.
+- Validation passed:
+  - `python -m pytest tests/images/test_feedback_report.py tests/images/test_feedback_service.py tests/data/test_visual_artifact_repository.py --no-cov` (`12 passed`).
+  - `python -m ruff check src/inv_man_intake/images/feedback_report.py src/inv_man_intake/images/__init__.py src/inv_man_intake/data/repository.py tests/images/test_feedback_report.py scripts/image_feedback_report.py`.
+  - `python -m black --check --line-length 100 src/inv_man_intake/images/feedback_report.py src/inv_man_intake/images/__init__.py src/inv_man_intake/data/repository.py tests/images/test_feedback_report.py scripts/image_feedback_report.py`.
+  - `python -m mypy src/inv_man_intake/images/feedback_report.py src/inv_man_intake/images/__init__.py src/inv_man_intake/data/repository.py`.
+- Relay event emitted: `pr_opened active.source_repo=stranske/Inv-Man-Intake active.source_issue=27 active.source_pr=415 active.next_action=wait_for_keepalive`.
+- Next action: keepalive's Codex runner takes over for CI fixups or review-comment work; opener is done with this lane.
+
+## 2026-05-11T03:05:00Z - closer merged #413 (feedback service) and #411 (epic delivery container)
+
+- Automation: `imi-merge-verify-closer` (claude_code closer lane, user-directed "take care of remaining Inv-Man-Intake work").
+- Two PRs merged this round:
+  - **`#413/#26`** (visual artifact feedback service) MERGED at `2026-05-11T02:53:23Z` (commit `0f813ce`). Resolved 4 Copilot review threads. Pushed `35f60e4 Fix #413: validate required fields before timestamp normalization` to fix a test that codex's prior commit had broken (whitespace timestamp now needs to surface "is required" not "must be ISO-8601"). Applied `verify:compare`; emitted `pr_merged` + `verify_label_applied`; reopened `#26` with sequencing comment.
+  - **`#411/#7`** (epic v1 delivery container) MERGED at `2026-05-11T03:03:56Z` (commit `fc57ef8`). Updated issue #7 body to add child-issue task links (validator confirmed). Pushed `4896e25 Fix #411: make epic-task-links test hermetic` to monkeypatch `_load_issue_body_from_github` (the test was implicitly depending on remote state of issue #7, which I just fixed). Rebased on main; merged on CLEAN. Applied `verify:compare`; emitted `pr_merged` + `verify_label_applied`; removed `agent:codex` from #7 then reopened with sequencing + remaining-human-deferred comment.
+- Remaining human-deferred work on `#7`: AC `docs/INV_MAN_INTAKE_PLAN_V1.md` section "Dependency Graph" or "Execution Order" with dependency arrows between #8-#15. This explicitly requires a technical lead / architect decision per the issue body.
+- Relay events: `pr_merged` x2, `verify_label_applied` x2, `record-batch-sweep`.
+- Next closer action: watch verifier on `#413` and `#411`. For `#413`, close `#26` on PASS/PASS. For `#411`, even with verifier PASS, leave `#7` open until the human-deferred dependency-graph AC is addressed.
+
 ## 2026-05-11T02:34:30Z - opener lane issue #26 PR materialization
 
 - Automation: `pd-workloop-resume` (codex opener lane).

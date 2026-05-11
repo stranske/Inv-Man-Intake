@@ -62,6 +62,10 @@ review. `quality_rank` is an integer scale from 1 to 5:
 Repeated reviews from the same reviewer update the prior record. Preserve notes
 when they explain disagreements between the classifier output and human judgment.
 
+Generate tuning exports with `scripts/image_feedback_report.py`. The report summarizes
+informative rate, rank distribution, timestamp range, and reviewer disagreement for stored
+feedback records; see `docs/runbooks/image_feedback_tuning.md` for JSON and CSV commands.
+
 ## Limitations And Fallback Behavior
 
 - PDF parsing is stream/object oriented and does not decode embedded image compression.

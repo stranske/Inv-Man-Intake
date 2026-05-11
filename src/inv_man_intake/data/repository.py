@@ -511,6 +511,31 @@ class VisualArtifactRepository:
         ).fetchall()
         return tuple(_feedback_from_row(row) for row in rows)
 
+    def list_all_feedback(
+        self, *, reviewed_from: str | None = None, reviewed_to: str | None = None
+    ) -> tuple[VisualArtifactFeedbackRecord, ...]:
+        """Return feedback records across artifacts, optionally filtered by review time."""
+
+        predicates: list[str] = []
+        params: list[str] = []
+        if reviewed_from is not None:
+            predicates.append("reviewed_at >= ?")
+            params.append(reviewed_from)
+        if reviewed_to is not None:
+            predicates.append("reviewed_at <= ?")
+            params.append(reviewed_to)
+
+        where_clause = f" WHERE {' AND '.join(predicates)}" if predicates else ""
+        rows = self._connection.execute(
+            (
+                "SELECT artifact_id, is_informative, quality_rank, reviewer, reviewed_at, notes "
+                f"FROM visual_artifact_feedback{where_clause} "
+                "ORDER BY reviewed_at ASC, artifact_id ASC, reviewer ASC"
+            ),
+            tuple(params),
+        ).fetchall()
+        return tuple(_feedback_from_row(row) for row in rows)
+
 
 def _feedback_from_row(row: sqlite3.Row | tuple[Any, ...]) -> VisualArtifactFeedbackRecord:
     return VisualArtifactFeedbackRecord(
