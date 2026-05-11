@@ -165,6 +165,41 @@ def test_main_fix_epic_task_links_updates_epic_file(tmp_path: Path) -> None:
         assert f"https://github.com/stranske/Inv-Man-Intake/issues/{issue}" in updated_epic
 
 
+def test_main_fix_epic_task_links_remote_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    issue_body = _issue_body_with_sections()
+    epic_body = "## Tasks\n- [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)\n"
+
+    def fake_loader(owner: str, repo: str, issue_number: int, token: str | None) -> str:
+        return issue_body if issue_number != 7 else epic_body
+
+    monkeypatch.setattr("scripts.validate_child_issues._load_issue_body_from_github", fake_loader)
+    exit_code = main(["--check-epic-task-links", "--fix-epic-task-links", "--token", ""])
+    assert exit_code == 2
+
+
+def test_main_fix_epic_task_links_remote_with_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    issue_body = _issue_body_with_sections()
+    epic_body = "## Tasks\n- [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)\n"
+    patched: dict[str, str] = {}
+
+    def fake_loader(owner: str, repo: str, issue_number: int, token: str | None) -> str:
+        return issue_body if issue_number != 7 else epic_body
+
+    def fake_patcher(
+        owner: str, repo: str, issue_number: int, body: str, token: str | None
+    ) -> None:
+        patched["body"] = body
+
+    monkeypatch.setattr("scripts.validate_child_issues._load_issue_body_from_github", fake_loader)
+    monkeypatch.setattr("scripts.validate_child_issues._patch_issue_body_on_github", fake_patcher)
+    exit_code = main(
+        ["--check-epic-task-links", "--fix-epic-task-links", "--token", "test-token"]
+    )
+    assert exit_code == 0
+    for issue in range(8, 16):
+        assert f"https://github.com/stranske/Inv-Man-Intake/issues/{issue}" in patched["body"]
+
+
 def test_render_epic_task_links_checklist() -> None:
     output = render_epic_task_links_checklist(
         owner="stranske",

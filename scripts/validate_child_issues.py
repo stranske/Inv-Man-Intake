@@ -206,6 +206,26 @@ def _fetch_issue_json(
     return cast(dict[str, Any], payload)
 
 
+def _patch_issue_body_on_github(
+    owner: str, repo: str, issue_number: int, body: str, token: str | None
+) -> None:
+    if not token:
+        raise ValueError("GitHub token is required to update remote issue bodies")
+
+    url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}"
+    payload = json.dumps({"body": body}).encode("utf-8")
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "inv-man-intake-issue-validator",
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    request = Request(url=url, data=payload, headers=headers, method="PATCH")
+    with urlopen(request, timeout=30):  # noqa: S310 - fixed GitHub API URL
+        return
+
+
 def _load_issue_body_from_github(
     owner: str, repo: str, issue_number: int, token: str | None
 ) -> str:
@@ -289,9 +309,6 @@ def main(argv: list[str] | None = None) -> int:
     if args.start_issue > args.end_issue:
         print("--start-issue must be <= --end-issue", file=sys.stderr)
         return 2
-    if args.fix_epic_task_links and not args.issues_dir:
-        print("--fix-epic-task-links requires --issues-dir", file=sys.stderr)
-        return 2
     if args.print_epic_task_links_checklist:
         print(
             render_epic_task_links_checklist(
@@ -361,15 +378,7 @@ def main(argv: list[str] | None = None) -> int:
             end_issue=args.end_issue,
         )
         if not epic_result.is_valid:
-            if args.fix_epic_task_links and args.issues_dir:
-                epic_path = _resolve_issue_path_from_directory(args.issues_dir, args.epic_issue)
-                if epic_path is None:
-                    print(
-                        f"ERROR: Unable to locate epic issue #{args.epic_issue} for update "
-                        f"in {args.issues_dir}",
-                        file=sys.stderr,
-                    )
-                    return 2
+            if args.fix_epic_task_links:
                 fixed_body, added_issue_links = ensure_epic_task_links(
                     epic_issue_body=epic_body,
                     owner=args.owner,
@@ -377,7 +386,31 @@ def main(argv: list[str] | None = None) -> int:
                     start_issue=args.start_issue,
                     end_issue=args.end_issue,
                 )
-                epic_path.write_text(fixed_body, encoding="utf-8")
+                if args.issues_dir:
+                    epic_path = _resolve_issue_path_from_directory(args.issues_dir, args.epic_issue)
+                    if epic_path is None:
+                        print(
+                            f"ERROR: Unable to locate epic issue #{args.epic_issue} for update "
+                            f"in {args.issues_dir}",
+                            file=sys.stderr,
+                        )
+                        return 2
+                    epic_path.write_text(fixed_body, encoding="utf-8")
+                else:
+                    try:
+                        _patch_issue_body_on_github(
+                            owner=args.owner,
+                            repo=args.repo,
+                            issue_number=args.epic_issue,
+                            body=fixed_body,
+                            token=args.token,
+                        )
+                    except (ValueError, HTTPError, URLError) as exc:
+                        print(
+                            f"ERROR: Unable to update epic issue #{args.epic_issue}: {exc}",
+                            file=sys.stderr,
+                        )
+                        return 2
                 added_links_display = ", ".join(f"#{issue}" for issue in added_issue_links)
                 print(
                     f"\nUpdated epic issue #{args.epic_issue} ## Tasks with child issue links: "
