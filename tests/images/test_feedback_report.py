@@ -177,3 +177,75 @@ def test_feedback_summary_metric_definitions_cover_required_summary_metrics() ->
         by_key["disagreement_rate"].formula
         == "disagreement_artifact_count / multi_reviewer_artifact_count"
     )
+
+
+def test_feedback_summary_aggregation_on_synthetic_dataset() -> None:
+    repo = _repository()
+    service = VisualArtifactFeedbackService(repo)
+    repo.insert_artifact(
+        VisualArtifactRecord(
+            artifact_id="va_3",
+            document_id="doc_1",
+            source_type="pdf",
+            source_page=4,
+            source_slide=None,
+            source_ref="pdf-object-4",
+            storage_path="artifacts/doc_1/pdf/page-4/object.bin",
+            sha256="hash-va_3",
+            mime_type="image/jpeg",
+            byte_size=1440,
+            extracted_at="2026-03-01T09:20:00Z",
+        )
+    )
+
+    for record in (
+        ImageFeedbackRecord(
+            artifact_id="va_1",
+            is_informative=True,
+            quality_rank=4,
+            reviewer="analyst-a",
+            timestamp="2026-03-01T10:00:00Z",
+        ),
+        ImageFeedbackRecord(
+            artifact_id="va_1",
+            is_informative=True,
+            quality_rank=5,
+            reviewer="analyst-b",
+            timestamp="2026-03-01T10:01:00Z",
+        ),
+        ImageFeedbackRecord(
+            artifact_id="va_2",
+            is_informative=False,
+            quality_rank=2,
+            reviewer="analyst-a",
+            timestamp="2026-03-01T10:02:00Z",
+        ),
+        ImageFeedbackRecord(
+            artifact_id="va_2",
+            is_informative=False,
+            quality_rank=3,
+            reviewer="analyst-b",
+            timestamp="2026-03-01T10:03:00Z",
+        ),
+        ImageFeedbackRecord(
+            artifact_id="va_3",
+            is_informative=True,
+            quality_rank=1,
+            reviewer="analyst-c",
+            timestamp="2026-03-01T10:04:00Z",
+        ),
+    ):
+        service.record_feedback(record)
+
+    report = generate_feedback_summary_report(repo, generated_at="2026-03-01T12:00:00Z")
+
+    assert report.total_feedback_records == 5
+    assert report.unique_artifacts_reviewed == 3
+    assert report.reviewer_count == 3
+    assert report.informative_count == 3
+    assert report.boilerplate_count == 2
+    assert report.informative_rate == 3 / 5
+    assert report.quality_rank_distribution == {1: 1, 2: 1, 3: 1, 4: 1, 5: 1}
+    assert report.multi_reviewer_artifact_count == 2
+    assert report.disagreement_artifact_count == 0
+    assert report.disagreement_rate == 0.0
