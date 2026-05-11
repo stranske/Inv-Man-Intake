@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from inv_man_intake.data.provenance import VisualArtifactFeedbackRecord
 from inv_man_intake.images.report import (
-    FeedbackSummary,
     aggregate_feedback,
     render_csv,
     render_json,
@@ -207,7 +204,7 @@ def test_render_csv_data_row_values_are_correct() -> None:
     lines = rendered.strip().splitlines()
     headers = lines[0].split(",")
     values = lines[1].split(",")
-    data = dict(zip(headers, values))
+    data = dict(zip(headers, values, strict=False))
 
     assert data["total_feedback_records"] == "1"
     assert data["informative_rate"] == "1.0"

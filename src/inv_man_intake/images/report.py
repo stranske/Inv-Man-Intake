@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import csv
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from io import StringIO
-from typing import Sequence
 
 from inv_man_intake.data.provenance import VisualArtifactFeedbackRecord
 
