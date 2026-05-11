@@ -113,3 +113,32 @@ def test_image_feedback_report_bundle_writes_json_and_csv(tmp_path: Path) -> Non
     payload = json.loads(json_files[0].read_text(encoding="utf-8"))
     assert payload["summary"]["total_feedback_records"] == 1
     assert "artifact_id,feedback_count,reviewer_count" in csv_files[0].read_text(encoding="utf-8")
+
+
+def test_image_feedback_report_scheduled_daily_defaults_to_last_24_hours(tmp_path: Path) -> None:
+    database_path = tmp_path / "feedback.sqlite"
+    _seed_database(database_path)
+    bundle_dir = tmp_path / "scheduled"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/image_feedback_report.py",
+            "--database",
+            str(database_path),
+            "--scheduled-daily",
+            "--bundle-dir",
+            str(bundle_dir),
+            "--reviewed-to",
+            "2026-03-01T11:00:00Z",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    payload = json.loads(sorted(bundle_dir.glob("image-feedback-*.json"))[0].read_text("utf-8"))
+    assert payload["reviewed_from"] == "2026-02-28T11:00:00Z"
+    assert payload["reviewed_to"] == "2026-03-01T11:00:00Z"
+    assert payload["summary"]["total_feedback_records"] == 1

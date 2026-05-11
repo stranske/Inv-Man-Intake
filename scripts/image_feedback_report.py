@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import sqlite3
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -58,19 +58,47 @@ def build_parser() -> argparse.ArgumentParser:
             "Writes both JSON and CSV exports with generated-at timestamp names."
         ),
     )
+    parser.add_argument(
+        "--scheduled-daily",
+        action="store_true",
+        help=(
+            "Run in scheduled mode with bundle output and a default 24-hour review window "
+            "ending at generated_at unless reviewed-from/reviewed-to are explicitly provided."
+        ),
+    )
     return parser
+
+
+def _parse_iso8601(value: str) -> datetime:
+    normalized = value.replace("Z", "+00:00")
+    parsed = datetime.fromisoformat(normalized)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def main() -> int:
     args = build_parser().parse_args()
+    generated_at = datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    reviewed_from = args.reviewed_from
+    reviewed_to = args.reviewed_to
+
+    if args.scheduled_daily:
+        if args.bundle_dir is None:
+            raise SystemExit("--scheduled-daily requires --bundle-dir")
+        window_end = _parse_iso8601(reviewed_to) if reviewed_to else _parse_iso8601(generated_at)
+        if reviewed_from is None:
+            reviewed_from = (window_end - timedelta(hours=24)).isoformat().replace("+00:00", "Z")
+        if reviewed_to is None:
+            reviewed_to = window_end.isoformat().replace("+00:00", "Z")
 
     with sqlite3.connect(args.database) as connection:
         repository = VisualArtifactRepository(connection)
         report = generate_feedback_summary_report(
             repository,
-            generated_at=datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
-            reviewed_from=args.reviewed_from,
-            reviewed_to=args.reviewed_to,
+            generated_at=generated_at,
+            reviewed_from=reviewed_from,
+            reviewed_to=reviewed_to,
         )
 
     if args.bundle_dir is not None:
