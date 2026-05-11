@@ -35,7 +35,7 @@ class VisualArtifactFeedbackService:
                 is_informative=record.is_informative,
                 quality_rank=record.quality_rank,
                 reviewer=record.reviewer,
-                timestamp=record.timestamp,
+                reviewed_at=record.timestamp,
                 notes=record.notes,
             )
         )
@@ -63,6 +63,6 @@ def _to_contract_record(record: VisualArtifactFeedbackRecord) -> ImageFeedbackRe
         is_informative=record.is_informative,
         quality_rank=record.quality_rank,
         reviewer=record.reviewer,
-        timestamp=record.timestamp,
+        timestamp=record.reviewed_at,
         notes=record.notes,
     )

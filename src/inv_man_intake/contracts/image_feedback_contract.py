@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 MIN_QUALITY_RANK = 1
 MAX_QUALITY_RANK = 5
@@ -21,6 +21,9 @@ class ImageFeedbackRecord:
     notes: str | None = None
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "artifact_id", self.artifact_id.strip())
+        object.__setattr__(self, "reviewer", self.reviewer.strip())
+        object.__setattr__(self, "timestamp", _normalize_timestamp(self.timestamp))
         validate_image_feedback(self)
 
 
@@ -41,14 +44,16 @@ def validate_image_feedback(record: ImageFeedbackRecord) -> None:
         raise ValueError("notes must be a string when provided")
     if not MIN_QUALITY_RANK <= record.quality_rank <= MAX_QUALITY_RANK:
         raise ValueError(f"quality_rank must be between {MIN_QUALITY_RANK} and {MAX_QUALITY_RANK}")
-    _parse_timestamp(record.timestamp)
+    _normalize_timestamp(record.timestamp)
 
 
-def _parse_timestamp(value: str) -> None:
-    normalized = value.removesuffix("Z") + "+00:00" if value.endswith("Z") else value
+def _normalize_timestamp(value: str) -> str:
+    normalized = value.strip()
+    normalized = normalized.removesuffix("Z") + "+00:00" if normalized.endswith("Z") else normalized
     try:
         parsed = datetime.fromisoformat(normalized)
     except ValueError as exc:
         raise ValueError("timestamp must be ISO-8601") from exc
     if parsed.tzinfo is None:
         raise ValueError("timestamp must include timezone information")
+    return parsed.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")

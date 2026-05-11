@@ -56,5 +56,5 @@ class VisualArtifactFeedbackRecord:
     is_informative: bool
     quality_rank: int
     reviewer: str
-    timestamp: str
+    reviewed_at: str
     notes: str | None

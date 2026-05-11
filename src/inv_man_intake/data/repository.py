@@ -396,8 +396,9 @@ class VisualArtifactRepository:
                     ON DELETE CASCADE
             );
 
-            CREATE INDEX IF NOT EXISTS idx_visual_artifact_feedback_artifact_id
-                ON visual_artifact_feedback (artifact_id);
+            DROP INDEX IF EXISTS idx_visual_artifact_feedback_artifact_id;
+            CREATE INDEX IF NOT EXISTS idx_visual_artifact_feedback_artifact_reviewed_at
+                ON visual_artifact_feedback (artifact_id, reviewed_at, reviewer);
             CREATE INDEX IF NOT EXISTS idx_visual_artifact_feedback_reviewed_at
                 ON visual_artifact_feedback (reviewed_at);
             """)
@@ -481,7 +482,7 @@ class VisualArtifactRepository:
                 record.reviewer,
                 1 if record.is_informative else 0,
                 record.quality_rank,
-                record.timestamp,
+                record.reviewed_at,
                 record.notes,
             ),
         )
@@ -517,6 +518,6 @@ def _feedback_from_row(row: sqlite3.Row | tuple[Any, ...]) -> VisualArtifactFeed
         is_informative=bool(row[1]),
         quality_rank=int(row[2]),
         reviewer=str(row[3]),
-        timestamp=str(row[4]),
+        reviewed_at=str(row[4]),
         notes=None if row[5] is None else str(row[5]),
     )

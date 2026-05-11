@@ -120,6 +120,49 @@ def test_repeated_reviewer_feedback_updates_without_duplicate_rows() -> None:
     assert service.list_feedback("va_1") == (update,)
 
 
+def test_feedback_normalizes_identity_and_review_time_before_persistence() -> None:
+    service = VisualArtifactFeedbackService(_repository())
+    record = ImageFeedbackRecord(
+        artifact_id=" va_1 ",
+        is_informative=True,
+        quality_rank=5,
+        reviewer=" analyst-a ",
+        timestamp="2026-03-01T05:00:00-05:00",
+        notes="Useful exposure chart.",
+    )
+
+    result = service.record_feedback(record)
+
+    assert result.replaced_existing is False
+    assert result.record.artifact_id == "va_1"
+    assert result.record.reviewer == "analyst-a"
+    assert result.record.timestamp == "2026-03-01T10:00:00Z"
+    assert service.get_feedback("va_1", "analyst-a") == result.record
+
+
+def test_feedback_list_sorts_by_normalized_review_time() -> None:
+    service = VisualArtifactFeedbackService(_repository())
+    later = ImageFeedbackRecord(
+        artifact_id="va_1",
+        is_informative=True,
+        quality_rank=5,
+        reviewer="analyst-b",
+        timestamp="2026-03-01T10:30:00Z",
+    )
+    earlier = ImageFeedbackRecord(
+        artifact_id="va_1",
+        is_informative=True,
+        quality_rank=4,
+        reviewer="analyst-a",
+        timestamp="2026-03-01T05:00:00-05:00",
+    )
+
+    service.record_feedback(later)
+    service.record_feedback(earlier)
+
+    assert service.list_feedback("va_1") == (earlier, later)
+
+
 def test_feedback_validation_enforces_rank_scale_required_fields_and_fk() -> None:
     with pytest.raises(ValueError, match="quality_rank must be between 1 and 5"):
         ImageFeedbackRecord(
