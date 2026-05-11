@@ -59,6 +59,17 @@ def render_epic_task_links_checklist(
     )
 
 
+def render_epic_tasks_section(owner: str, repo: str, start_issue: int, end_issue: int) -> str:
+    """Render a complete ## Tasks section for epic issue bodies."""
+    checklist = render_epic_task_links_checklist(
+        owner=owner,
+        repo=repo,
+        start_issue=start_issue,
+        end_issue=end_issue,
+    )
+    return f"## Tasks\n{checklist}"
+
+
 def _build_section_pattern(section: str) -> re.Pattern[str]:
     return re.compile(rf"^\s*##\s+{re.escape(section)}\s*$", re.MULTILINE)
 
@@ -328,6 +339,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--print-epic-tasks-section",
+        action="store_true",
+        help=(
+            "Print a complete ## Tasks section containing checklist links for the configured issue "
+            "range, then exit."
+        ),
+    )
+    parser.add_argument(
         "--print-fixed-epic-body",
         action="store_true",
         help=(
@@ -361,6 +380,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.print_epic_task_links_checklist:
         print(
             render_epic_task_links_checklist(
+                owner=args.owner,
+                repo=args.repo,
+                start_issue=args.start_issue,
+                end_issue=args.end_issue,
+            )
+        )
+        return 0
+    if args.print_epic_tasks_section:
+        print(
+            render_epic_tasks_section(
                 owner=args.owner,
                 repo=args.repo,
                 start_issue=args.start_issue,

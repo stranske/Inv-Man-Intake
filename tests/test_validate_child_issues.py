@@ -8,6 +8,7 @@ from scripts.validate_child_issues import (
     REQUIRED_SECTIONS,
     ensure_epic_task_links,
     main,
+    render_epic_tasks_section,
     render_epic_task_links_checklist,
     validate_epic_task_links,
     validate_issue_body,
@@ -343,6 +344,45 @@ def test_main_print_epic_task_links_checklist_default_range(capsys: CaptureFixtu
     assert len(lines) == 8
     assert lines[0] == "- [ ] [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)"
     assert lines[-1] == "- [ ] [#15](https://github.com/stranske/Inv-Man-Intake/issues/15)"
+
+
+def test_render_epic_tasks_section() -> None:
+    output = render_epic_tasks_section(
+        owner="stranske",
+        repo="Inv-Man-Intake",
+        start_issue=8,
+        end_issue=9,
+    )
+    assert output == "\n".join(
+        [
+            "## Tasks",
+            "- [ ] [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)",
+            "- [ ] [#9](https://github.com/stranske/Inv-Man-Intake/issues/9)",
+        ]
+    )
+
+
+def test_main_print_epic_tasks_section(capsys: CaptureFixture[str]) -> None:
+    exit_code = main(
+        [
+            "--owner",
+            "stranske",
+            "--repo",
+            "Inv-Man-Intake",
+            "--start-issue",
+            "8",
+            "--end-issue",
+            "9",
+            "--print-epic-tasks-section",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert (
+        captured.out.strip() == "## Tasks\n"
+        "- [ ] [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)\n"
+        "- [ ] [#9](https://github.com/stranske/Inv-Man-Intake/issues/9)"
+    )
 
 
 def test_main_print_fixed_epic_body_requires_check_flag() -> None:
