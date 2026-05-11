@@ -49,6 +49,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional output file. Defaults to stdout.",
     )
+    parser.add_argument(
+        "--bundle-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Optional output directory for schedule/manual bundles. "
+            "Writes both JSON and CSV exports with generated-at timestamp names."
+        ),
+    )
     return parser
 
 
@@ -63,6 +72,19 @@ def main() -> int:
             reviewed_from=args.reviewed_from,
             reviewed_to=args.reviewed_to,
         )
+
+    if args.bundle_dir is not None:
+        bundle_stamp = report.generated_at.replace(":", "").replace("-", "")
+        args.bundle_dir.mkdir(parents=True, exist_ok=True)
+        (args.bundle_dir / f"image-feedback-{bundle_stamp}.json").write_text(
+            render_feedback_summary_json(report),
+            encoding="utf-8",
+        )
+        (args.bundle_dir / f"image-feedback-{bundle_stamp}.csv").write_text(
+            render_feedback_summary_csv(report),
+            encoding="utf-8",
+        )
+        return 0
 
     rendered = (
         render_feedback_summary_json(report)

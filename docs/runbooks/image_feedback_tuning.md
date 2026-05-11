@@ -15,6 +15,15 @@ Generate artifact-level CSV:
 python scripts/image_feedback_report.py --database path/to/intake.sqlite --format csv --output reports/image-feedback.csv
 ```
 
+Generate a schedule/manual bundle (JSON + CSV in one run):
+
+```bash
+python scripts/image_feedback_report.py --database path/to/intake.sqlite --bundle-dir reports/image-feedback/
+```
+
+This creates timestamped files (`image-feedback-<generated_at>.json` and
+`image-feedback-<generated_at>.csv`) suitable for cron or nightly job archives.
+
 Use `--reviewed-from` and `--reviewed-to` with UTC ISO-8601 timestamps to limit the report
 window. The JSON summary includes informative rate, quality-rank distribution, reviewer
 counts, timestamp range, and disagreement rate. An artifact is counted as a disagreement
