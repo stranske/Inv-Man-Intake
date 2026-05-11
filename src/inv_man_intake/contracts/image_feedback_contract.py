@@ -27,12 +27,18 @@ class ImageFeedbackRecord:
 def validate_image_feedback(record: ImageFeedbackRecord) -> None:
     """Validate required feedback fields and the supported rank scale."""
 
+    if isinstance(record.is_informative, bool) is False:
+        raise ValueError("is_informative must be a boolean")
+    if isinstance(record.quality_rank, bool) or isinstance(record.quality_rank, int) is False:
+        raise ValueError("quality_rank must be an integer")
     if not record.artifact_id.strip():
         raise ValueError("artifact_id is required")
     if not record.reviewer.strip():
         raise ValueError("reviewer is required")
     if not record.timestamp.strip():
         raise ValueError("timestamp is required")
+    if record.notes is not None and isinstance(record.notes, str) is False:
+        raise ValueError("notes must be a string when provided")
     if not MIN_QUALITY_RANK <= record.quality_rank <= MAX_QUALITY_RANK:
         raise ValueError(f"quality_rank must be between {MIN_QUALITY_RANK} and {MAX_QUALITY_RANK}")
     _parse_timestamp(record.timestamp)
@@ -41,6 +47,8 @@ def validate_image_feedback(record: ImageFeedbackRecord) -> None:
 def _parse_timestamp(value: str) -> None:
     normalized = value.removesuffix("Z") + "+00:00" if value.endswith("Z") else value
     try:
-        datetime.fromisoformat(normalized)
+        parsed = datetime.fromisoformat(normalized)
     except ValueError as exc:
         raise ValueError("timestamp must be ISO-8601") from exc
+    if parsed.tzinfo is None:
+        raise ValueError("timestamp must include timezone information")
