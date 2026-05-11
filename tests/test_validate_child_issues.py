@@ -101,6 +101,23 @@ def test_validate_epic_task_links_reports_missing_link() -> None:
     assert result.missing_issue_links == (12,)
 
 
+def test_validate_epic_task_links_requires_markdown_links() -> None:
+    plain_links = "\n".join(
+        f"- https://github.com/stranske/Inv-Man-Intake/issues/{issue}" for issue in range(8, 16)
+    )
+    body = f"## Why\nx\n\n## Tasks\n{plain_links}\n\n## Acceptance Criteria\ny"
+    result = validate_epic_task_links(
+        epic_issue_number=7,
+        epic_issue_body=body,
+        owner="stranske",
+        repo="Inv-Man-Intake",
+        start_issue=8,
+        end_issue=15,
+    )
+    assert not result.is_valid
+    assert result.missing_issue_links == tuple(range(8, 16))
+
+
 def test_ensure_epic_task_links_adds_missing_link() -> None:
     body = _epic_body_with_task_links().replace(
         "https://github.com/stranske/Inv-Man-Intake/issues/12",
@@ -133,6 +150,19 @@ def test_main_failure_when_epic_task_links_missing(tmp_path: Path) -> None:
     _write_epic_issue(
         tmp_path,
         "## Tasks\n- [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)\n",
+    )
+    exit_code = main(["--issues-dir", str(tmp_path), "--check-epic-task-links"])
+    assert exit_code == 1
+
+
+def test_main_failure_when_epic_task_links_are_not_markdown(tmp_path: Path) -> None:
+    _write_issue_files(tmp_path, _issue_body_with_sections())
+    plain_links = "\n".join(
+        f"- https://github.com/stranske/Inv-Man-Intake/issues/{issue}" for issue in range(8, 16)
+    )
+    _write_epic_issue(
+        tmp_path,
+        f"## Tasks\n{plain_links}\n",
     )
     exit_code = main(["--issues-dir", str(tmp_path), "--check-epic-task-links"])
     assert exit_code == 1

@@ -102,6 +102,15 @@ def _contains_exact_issue_url(body: str, owner: str, repo: str, issue_number: in
     return re.search(rf"{re.escape(issue_url)}(?!\d)", body) is not None
 
 
+def _contains_task_markdown_issue_link(body: str, owner: str, repo: str, issue_number: int) -> bool:
+    issue_url = _issue_url(owner, repo, issue_number)
+    link_pattern = re.compile(
+        rf"\[[^\]]*#{issue_number}[^\]]*\]\(\s*{re.escape(issue_url)}\s*\)",
+        re.IGNORECASE,
+    )
+    return link_pattern.search(body) is not None
+
+
 def validate_epic_task_links(
     epic_issue_number: int,
     epic_issue_body: str,
@@ -114,7 +123,7 @@ def validate_epic_task_links(
     missing_issue_links = tuple(
         issue_number
         for issue_number in range(start_issue, end_issue + 1)
-        if not _contains_exact_issue_url(tasks_section, owner, repo, issue_number)
+        if not _contains_task_markdown_issue_link(tasks_section, owner, repo, issue_number)
     )
     return EpicTaskLinksValidationResult(
         epic_issue_number=epic_issue_number,
@@ -139,7 +148,7 @@ def ensure_epic_task_links(
     missing_issue_links = tuple(
         issue_number
         for issue_number in range(start_issue, end_issue + 1)
-        if not _contains_exact_issue_url(tasks_section, owner, repo, issue_number)
+        if not _contains_task_markdown_issue_link(tasks_section, owner, repo, issue_number)
     )
     if not missing_issue_links:
         return epic_issue_body, ()
