@@ -1,5 +1,33 @@
 # Workloop State
 
+## 2026-05-11T01:05:15Z - opener lane issue #25 PR materialization
+
+- Automation: `pd-workloop-resume` (codex opener lane).
+- Source repo: `stranske/Inv-Man-Intake`.
+- Source issue: `#25` (`Baseline informative-vs-boilerplate image classifier`, `priority:normal`).
+- Branch: `codex/issue-25-image-classifier`.
+- Selection:
+  - ACTION A succeeded from the neutral Code workspace; sentinel `active.*` pointed at closer/verifier state and was treated as informational.
+  - Required priority discovery ran across supported repos. High-priority issues were skipped because they were already represented by existing PR/verifier lanes or explicit operational skips.
+  - Cap-health before selection reported `total_opener_owned=4`, `raw_cap_reached=false`, `normal_cap_reached=false`, and `non_drainable_cap_blocker=false`.
+  - Infra repair removed stale `agent:needs-attention` from PR `#411`; post-repair cap-health reported `#411` draining and raw cap still below 5.
+- Implementation:
+  - Added `inv_man_intake.images.classifier.classify_visual_artifact`, returning deterministic `label`, `confidence`, `reason_codes`, and `rationale`.
+  - Added heuristic signals for chart/performance terms, numeric chart markers, text density, logo/disclaimer boilerplate terms, source-ref markers, and low-density fallback handling.
+  - Re-exported the classifier API from `inv_man_intake.images`.
+  - Added `docs/contracts/image_classification.md` with the classifier contract, limitations, and human override path.
+  - Updated `docs/runbooks/visual_artifact_extraction.md` to link extraction output to the classification contract.
+- Validation passed:
+  - `UV_CACHE_DIR=/private/tmp/uv-cache-inv-25 uv run pytest tests/images/test_classifier.py tests/images/test_extractor.py --no-cov` (`8 passed`).
+  - `UV_CACHE_DIR=/private/tmp/uv-cache-inv-25 uv run ruff check src/inv_man_intake/images tests/images/test_classifier.py tests/images/test_extractor.py`.
+  - `UV_CACHE_DIR=/private/tmp/uv-cache-inv-25 uv run mypy src/inv_man_intake/images`.
+  - `git diff --check`.
+- Post-open recovery:
+  - PR `#412` opened non-draft with `agent:codex`, `agents:keepalive`, and `autofix`; opener emitted `pr_opened`.
+  - Cap-health reported raw cap reached and `#412` as `needs-dispatch-evidence`; infra repair added `agent:retry` and dispatched Gate Followups.
+  - Direct checks then showed a branch-local `Python CI / lint-format` failure. Reproduced locally with `uv run black --check src/inv_man_intake/images tests/images/test_classifier.py`, formatted `tests/images/test_classifier.py`, and reran style/type/tests successfully.
+- Next action: push the formatting recovery commit; keepalive takes over for remaining asynchronous checks.
+
 ## 2026-05-10T04:20:00Z - opener lane issue #313 PR materialization
 
 - Automation: `pd-workloop-resume` (codex opener lane).
