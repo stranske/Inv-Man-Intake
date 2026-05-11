@@ -302,3 +302,14 @@ def test_main_print_epic_task_links_checklist(capsys: CaptureFixture[str]) -> No
         captured.out.strip() == "- [ ] [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)\n"
         "- [ ] [#9](https://github.com/stranske/Inv-Man-Intake/issues/9)"
     )
+
+
+def test_main_print_epic_task_links_checklist_default_range(capsys: CaptureFixture[str]) -> None:
+    exit_code = main(["--print-epic-task-links-checklist"])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+
+    lines = captured.out.strip().splitlines()
+    assert len(lines) == 8
+    assert lines[0] == "- [ ] [#8](https://github.com/stranske/Inv-Man-Intake/issues/8)"
+    assert lines[-1] == "- [ ] [#15](https://github.com/stranske/Inv-Man-Intake/issues/15)"
