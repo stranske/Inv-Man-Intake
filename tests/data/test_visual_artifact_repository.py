@@ -7,7 +7,7 @@ import sqlite3
 import pytest
 
 from inv_man_intake.data.migrations.core_schema import apply_core_schema
-from inv_man_intake.data.provenance import VisualArtifactRecord
+from inv_man_intake.data.provenance import VisualArtifactFeedbackRecord, VisualArtifactRecord
 from inv_man_intake.data.repository import VisualArtifactRepository
 
 
@@ -146,3 +146,108 @@ def test_visual_artifact_repository_insert_is_idempotent_for_same_artifact() -> 
 
     rows = repo.list_artifacts("doc_1")
     assert [row.artifact_id for row in rows] == ["va_dup_1"]
+
+
+def _seed_feedback_for_bound_tests(repo: VisualArtifactRepository) -> None:
+    repo.ensure_schema()
+    repo.ensure_feedback_schema()
+    repo.insert_artifact(
+        VisualArtifactRecord(
+            artifact_id="va_bound_1",
+            document_id="doc_1",
+            source_type="pdf",
+            source_page=1,
+            source_slide=None,
+            source_ref="pdf-object-1",
+            storage_path="artifacts/doc_1/pdf/page-1/object.bin",
+            sha256="hash-bound-1",
+            mime_type="image/jpeg",
+            byte_size=1024,
+            extracted_at="2026-03-01T09:00:00Z",
+        )
+    )
+    for reviewed_at, reviewer in (
+        ("2026-03-01T09:30:00Z", "analyst-a"),
+        ("2026-03-01T10:30:00Z", "analyst-b"),
+        ("2026-03-01T11:30:00Z", "analyst-c"),
+    ):
+        repo.upsert_feedback(
+            VisualArtifactFeedbackRecord(
+                artifact_id="va_bound_1",
+                is_informative=True,
+                quality_rank=3,
+                reviewer=reviewer,
+                reviewed_at=reviewed_at,
+                notes=None,
+            )
+        )
+
+
+def test_list_all_feedback_normalizes_offset_bounds_to_canonical_utc() -> None:
+    repo = VisualArtifactRepository(_connection())
+    _seed_feedback_for_bound_tests(repo)
+
+    # Stored values are canonical `...Z`. Bounds passed as `+00:00` would
+    # otherwise lose the 10:30:00Z row to a raw TEXT comparison, since
+    # "2026-03-01T10:00:00+00:00" > "2026-03-01T10:00:00Z" lexicographically.
+    rows = repo.list_all_feedback(
+        reviewed_from="2026-03-01T10:00:00+00:00",
+        reviewed_to="2026-03-01T11:00:00+00:00",
+    )
+
+    assert [row.reviewer for row in rows] == ["analyst-b"]
+
+
+def test_list_all_feedback_normalizes_non_utc_offset_to_utc() -> None:
+    repo = VisualArtifactRepository(_connection())
+    _seed_feedback_for_bound_tests(repo)
+
+    # 11:30+02:00 == 09:30Z, 13:30+02:00 == 11:30Z; full inclusive range covers
+    # all three stored rows (09:30Z, 10:30Z, 11:30Z). The point of the test is
+    # that the +02:00 bounds are normalized rather than text-compared against
+    # the canonical `...Z` stored values.
+    rows = repo.list_all_feedback(
+        reviewed_from="2026-03-01T11:30:00+02:00",
+        reviewed_to="2026-03-01T13:30:00+02:00",
+    )
+
+    assert [row.reviewer for row in rows] == ["analyst-a", "analyst-b", "analyst-c"]
+
+    # Narrower window: 12:00+02:00 == 10:00Z, 13:00+02:00 == 11:00Z → only analyst-b.
+    rows = repo.list_all_feedback(
+        reviewed_from="2026-03-01T12:00:00+02:00",
+        reviewed_to="2026-03-01T13:00:00+02:00",
+    )
+
+    assert [row.reviewer for row in rows] == ["analyst-b"]
+
+
+def test_list_all_feedback_rejects_invalid_iso8601_bound() -> None:
+    repo = VisualArtifactRepository(_connection())
+    repo.ensure_schema()
+    repo.ensure_feedback_schema()
+
+    with pytest.raises(ValueError, match="reviewed_from must be ISO-8601"):
+        repo.list_all_feedback(reviewed_from="not-a-timestamp")
+    with pytest.raises(ValueError, match="reviewed_to must be ISO-8601"):
+        repo.list_all_feedback(reviewed_to="2026-13-99T99:99:99Z")
+
+
+def test_list_all_feedback_rejects_naive_bound() -> None:
+    repo = VisualArtifactRepository(_connection())
+    repo.ensure_schema()
+    repo.ensure_feedback_schema()
+
+    with pytest.raises(ValueError, match="reviewed_from must include timezone"):
+        repo.list_all_feedback(reviewed_from="2026-03-01T10:00:00")
+    with pytest.raises(ValueError, match="reviewed_to must include timezone"):
+        repo.list_all_feedback(reviewed_to="2026-03-01T11:00:00")
+
+
+def test_list_all_feedback_rejects_empty_bound() -> None:
+    repo = VisualArtifactRepository(_connection())
+    repo.ensure_schema()
+    repo.ensure_feedback_schema()
+
+    with pytest.raises(ValueError, match="reviewed_from must be a non-empty"):
+        repo.list_all_feedback(reviewed_from="   ")
