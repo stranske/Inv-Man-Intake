@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from datetime import UTC, datetime
 from typing import Any
 
 from inv_man_intake.data.models import Document, Firm, Fund
@@ -514,16 +515,24 @@ class VisualArtifactRepository:
     def list_all_feedback(
         self, *, reviewed_from: str | None = None, reviewed_to: str | None = None
     ) -> tuple[VisualArtifactFeedbackRecord, ...]:
-        """Return feedback records across artifacts, optionally filtered by review time."""
+        """Return feedback records across artifacts, optionally filtered by review time.
+
+        ``reviewed_from`` and ``reviewed_to`` are normalized to the canonical
+        UTC ``...Z`` form used by stored ``reviewed_at`` values before being
+        compared, so callers can pass any ISO-8601 timestamp with timezone
+        information (e.g. ``2026-03-01T10:00:00+00:00``) without producing
+        silently incorrect TEXT comparisons. Invalid ISO-8601 or naive
+        timestamps raise ``ValueError``.
+        """
 
         predicates: list[str] = []
         params: list[str] = []
         if reviewed_from is not None:
             predicates.append("reviewed_at >= ?")
-            params.append(reviewed_from)
+            params.append(_normalize_reviewed_bound(reviewed_from, field="reviewed_from"))
         if reviewed_to is not None:
             predicates.append("reviewed_at <= ?")
-            params.append(reviewed_to)
+            params.append(_normalize_reviewed_bound(reviewed_to, field="reviewed_to"))
 
         where_clause = f" WHERE {' AND '.join(predicates)}" if predicates else ""
         rows = self._connection.execute(
@@ -546,3 +555,17 @@ def _feedback_from_row(row: sqlite3.Row | tuple[Any, ...]) -> VisualArtifactFeed
         reviewed_at=str(row[4]),
         notes=None if row[5] is None else str(row[5]),
     )
+
+
+def _normalize_reviewed_bound(value: str, *, field: str) -> str:
+    candidate = value.strip()
+    if not candidate:
+        raise ValueError(f"{field} must be a non-empty ISO-8601 timestamp")
+    iso = candidate.removesuffix("Z") + "+00:00" if candidate.endswith("Z") else candidate
+    try:
+        parsed = datetime.fromisoformat(iso)
+    except ValueError as exc:
+        raise ValueError(f"{field} must be ISO-8601 (got {value!r})") from exc
+    if parsed.tzinfo is None:
+        raise ValueError(f"{field} must include timezone information (got {value!r})")
+    return parsed.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
