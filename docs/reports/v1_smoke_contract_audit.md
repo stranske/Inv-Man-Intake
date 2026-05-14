@@ -32,6 +32,7 @@ The v1 smoke audit enumerates every contract under `docs/contracts/` and marks w
 | `docs/contracts/provenance_history.md` | yes | Source-location trace row in scope; correction history row outside v1 smoke. |
 | `docs/contracts/core_schema_migration.md` | yes | Audited as outside v1 smoke because migration runner is not invoked. |
 | `docs/contracts/agent-runner-output.md` | yes | Audited as outside v1 smoke because runner artifact contract is not invoked. |
+| `docs/contracts/image_classification.md` | yes | Audited as not-exercised by v1 acceptance smoke; dedicated coverage lives in `tests/images/` for classifier, feedback, extractor, service, and report behavior. |
 
 ## Converged Follow-Up Mapping
 

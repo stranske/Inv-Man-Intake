@@ -177,6 +177,7 @@ def test_v1_smoke_contract_audit_enumerates_contract_files_in_scope() -> None:
         "docs/contracts/provenance_history.md",
         "docs/contracts/core_schema_migration.md",
         "docs/contracts/agent-runner-output.md",
+        "docs/contracts/image_classification.md",
     )
     for contract_file in expected_contract_files:
         assert contract_file in audit
