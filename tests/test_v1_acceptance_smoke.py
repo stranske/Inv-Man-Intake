@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -135,6 +136,10 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path(v1_smoke_artifacts
     assert all(
         item["domain"]["correlation_id"] == artifacts.correlation_id for item in fleet_records
     )
+    assert artifacts.langsmith_fleet_artifact_path.name == "langsmith-fleet.ndjson"
+    emitted_lines = artifacts.langsmith_fleet_artifact_path.read_text(encoding="utf-8").splitlines()
+    assert len(emitted_lines) == len(fleet_records)
+    assert [json.loads(line) for line in emitted_lines] == fleet_records
     assert artifacts.secondary_extraction_result.correlation_id == artifacts.correlation_id
     assert artifacts.secondary_extraction_result.escalation_payload["correlation_id"] == (
         artifacts.correlation_id

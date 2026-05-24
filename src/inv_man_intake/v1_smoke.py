@@ -23,6 +23,7 @@ from inv_man_intake.intake.integration import register_intake_bundle_file
 from inv_man_intake.intake.models import IngestRecord
 from inv_man_intake.intake.service import IngestionService
 from inv_man_intake.observability import (
+    ARTIFACT_NAME,
     FleetRunContext,
     InMemoryTraceSink,
     TraceContext,
@@ -35,6 +36,7 @@ from inv_man_intake.observability import (
     extract_trace_context,
     inject_trace_context,
     new_trace_context,
+    write_fleet_records,
 )
 from inv_man_intake.performance.conflict_resolver import resolve_source_conflicts
 from inv_man_intake.performance.contracts import (
@@ -103,6 +105,7 @@ class V1SmokeArtifacts:
     score: object
     formatted_explainability: dict[str, object]
     langsmith_fleet_records: list[dict[str, Any]]
+    langsmith_fleet_artifact_path: Path
 
 
 def run_v1_smoke_pipeline(
@@ -302,6 +305,10 @@ def run_v1_smoke_pipeline(
         summary=fleet_summary,
         artifact_ref="artifact:langsmith-fleet.ndjson",
     )
+    langsmith_fleet_artifact_path = write_fleet_records(
+        Path(ARTIFACT_NAME),
+        langsmith_fleet_records,
+    )
 
     return V1SmokeArtifacts(
         service=service,
@@ -325,6 +332,7 @@ def run_v1_smoke_pipeline(
         score=score,
         formatted_explainability=formatted_explainability,
         langsmith_fleet_records=langsmith_fleet_records,
+        langsmith_fleet_artifact_path=langsmith_fleet_artifact_path,
     )
 
 
