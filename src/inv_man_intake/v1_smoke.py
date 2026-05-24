@@ -292,6 +292,12 @@ def run_v1_smoke_pipeline(
             repository=core_repository, document_ids=record.document_ids
         ),
     )
+    error_category = (
+        threshold_decision.escalation_reason or "unknown_escalation_reason"
+        if threshold_decision.escalate
+        else "none"
+    )
+
     langsmith_fleet_records = build_fleet_records(
         context=FleetRunContext(
             run_id=trace_context.run_id or trace_context.trace_id,
@@ -304,9 +310,7 @@ def run_v1_smoke_pipeline(
             latency_ms=_pipeline_latency_ms(
                 sink=sink, root_span_name="v1_acceptance.intake_register"
             ),
-            error_category=(
-                threshold_decision.escalation_reason if threshold_decision.escalate else "none"
-            ),
+            error_category=error_category,
         ),
         summary=fleet_summary,
         artifact_ref="artifact:langsmith-fleet.ndjson",
