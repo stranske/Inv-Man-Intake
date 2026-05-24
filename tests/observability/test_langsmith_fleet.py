@@ -54,10 +54,20 @@ def test_build_fleet_records_use_inv_man_project_and_no_secret_fallback(
     assert all(record["surface"] == "intake-extraction" for record in records)
     assert all(record["github_issue"] == "stranske/Inv-Man-Intake#438" for record in records)
     assert all(record["domain"]["package_id"] == "pkg_pdf_mixed_001" for record in records)
+    assert all(
+        record["domain"]["document_id"] == "pkg_pdf_mixed_001:doc:0" for record in records
+    )
     assert all(record["domain"]["trace_refs"] == ["trace:trace-123"] for record in records)
     assert all(
         record["domain"]["redaction_status"] == "redacted_metadata_only" for record in records
     )
+    assert all(record["domain"]["extraction_count"] == 12 for record in records)
+    assert all(record["domain"]["validation_status"] == "escalated" for record in records)
+    assert all(record["domain"]["confidence_state"] == "escalated" for record in records)
+    assert all(record["domain"]["escalation_state"] == "ops_review" for record in records)
+    assert all(record["domain"]["retry_count"] == 1 for record in records)
+    assert all(record["domain"]["score_count"] == 5 for record in records)
+    assert all(record["domain"]["review_queue_outcome"] == "analyst" for record in records)
     assert all("raw" not in json.dumps(record).lower() for record in records)
 
 
@@ -131,6 +141,7 @@ def _valid_record_for(operation: str = "package-intake") -> dict[str, object]:
         "error_category": "none",
         "domain": {
             "package_id": "pkg-1",
+            "document_id": "doc-1",
             "correlation_id": "corr-1",
             "document_count": 1,
             "document_ids": ["doc-1"],
@@ -138,6 +149,12 @@ def _valid_record_for(operation: str = "package-intake") -> dict[str, object]:
             "redaction_status": "redacted_metadata_only",
             "trace_refs": ["trace:trace-123"],
             "validation_status": "accepted",
+            "extraction_count": 1,
+            "confidence_state": "accepted",
+            "escalation_state": "none",
+            "retry_count": 0,
+            "score_count": 1,
+            "review_queue_outcome": "none",
         },
     }
 

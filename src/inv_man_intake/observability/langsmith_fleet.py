@@ -39,13 +39,20 @@ REQUIRED_TOP_LEVEL_FIELDS: Final = frozenset(
 REQUIRED_DOMAIN_FIELDS: Final = frozenset(
     {
         "package_id",
+        "document_id",
         "correlation_id",
         "document_count",
         "document_ids",
         "document_types",
         "redaction_status",
+        "extraction_count",
         "trace_refs",
         "validation_status",
+        "confidence_state",
+        "escalation_state",
+        "retry_count",
+        "score_count",
+        "review_queue_outcome",
     }
 )
 ALLOWED_STATUS: Final = frozenset({"success", "error", "fallback", "no_secret", "skipped"})
@@ -366,8 +373,10 @@ def _validate_no_sensitive_payload(*, index: int, record: Mapping[str, Any]) -> 
 
 
 def _shared_domain(*, context: FleetRunContext, summary: IntakeFleetSummary) -> dict[str, Any]:
+    document_id = summary.document_ids[0] if summary.document_ids else "none"
     return {
         "package_id": context.package_id,
+        "document_id": document_id,
         "correlation_id": context.correlation_id or "none",
         "document_count": len(summary.document_ids),
         "document_ids": list(summary.document_ids),
@@ -375,6 +384,12 @@ def _shared_domain(*, context: FleetRunContext, summary: IntakeFleetSummary) -> 
         "redaction_status": summary.redaction_status,
         "trace_refs": list(summary.trace_refs),
         "validation_status": summary.validation_status,
+        "extraction_count": summary.extraction_count,
+        "confidence_state": summary.confidence_state,
+        "escalation_state": summary.escalation_state,
+        "retry_count": summary.retry_count,
+        "score_count": summary.score_count,
+        "review_queue_outcome": summary.review_queue_outcome,
     }
 
 
