@@ -128,6 +128,15 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path(v1_smoke_artifacts
     assert all(record["repo"] == "stranske/Inv-Man-Intake" for record in fleet_records)
     assert all(record["trace_id"] == trace_context.trace_id for record in fleet_records)
     assert all(
+        record["trace_url"] == f"https://smith.langchain.com/r/{trace_context.trace_id}"
+        for record in fleet_records
+    )
+    assert all(record["model"] == "deterministic-pdf-parser" for record in fleet_records)
+    assert all(
+        isinstance(record["latency_ms"], int) and record["latency_ms"] >= 0
+        for record in fleet_records
+    )
+    assert all(
         item["domain"]["trace_refs"] == [f"trace:{trace_context.trace_id}"]
         for item in fleet_records
     )

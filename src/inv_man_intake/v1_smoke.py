@@ -31,6 +31,7 @@ from inv_man_intake.observability import (
     build_fleet_records,
     build_summary_from_pipeline,
     child_trace_context,
+    derive_trace_url,
     ensure_correlation_id,
     extract_trace_context,
     inject_trace_context,
@@ -296,8 +297,16 @@ def run_v1_smoke_pipeline(
             run_id=trace_context.run_id or trace_context.trace_id,
             package_id=record.package_id,
             provider=extraction_with_thresholds.provider_name,
+            model="deterministic-pdf-parser",
             trace_id=trace_context.trace_id,
+            trace_url=derive_trace_url(trace_context.trace_id),
             correlation_id=correlation_id,
+            latency_ms=_pipeline_latency_ms(
+                sink=sink, root_span_name="v1_acceptance.intake_register"
+            ),
+            error_category=(
+                threshold_decision.escalation_reason if threshold_decision.escalate else "none"
+            ),
         ),
         summary=fleet_summary,
         artifact_ref="artifact:langsmith-fleet.ndjson",
@@ -519,6 +528,27 @@ def _derive_document_types(
         suffix = Path(document.file_name).suffix.lstrip(".").lower()
         types.append(suffix or "unknown")
     return tuple(sorted(set(types)))
+
+
+def _pipeline_latency_ms(*, sink: InMemoryTraceSink, root_span_name: str) -> int | None:
+    start_event = _start_event(sink, root_span_name)
+    end_matches = [
+        event
+        for event in sink.events
+        if event.name == root_span_name
+        and event.span_id == start_event.span_id
+        and event.ended_at is not None
+    ]
+    if not end_matches:
+        return None
+    started_at = _parse_iso_timestamp(start_event.started_at)
+    ended_at = _parse_iso_timestamp(str(end_matches[0].ended_at))
+    duration_ms = int((ended_at - started_at).total_seconds() * 1000)
+    return max(duration_ms, 0)
+
+
+def _parse_iso_timestamp(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 def _assert_registered_package_state(

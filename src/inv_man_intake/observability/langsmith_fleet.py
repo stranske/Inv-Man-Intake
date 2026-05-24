@@ -16,6 +16,7 @@ SURFACE: Final = "intake-extraction"
 GITHUB_ISSUE: Final = "stranske/Inv-Man-Intake#438"
 ARTIFACT_NAME: Final = "langsmith-fleet.ndjson"
 DEFAULT_PROJECT: Final = "inv-man-intake"
+LANGSMITH_TRACE_URL_BASE: Final = "https://smith.langchain.com/r/"
 ENV_LANGSMITH_KEY: Final = "LANGSMITH_API_KEY"
 ENV_LANGCHAIN_PROJECT: Final = "LANGCHAIN_PROJECT"
 ENV_LANGSMITH_PROJECT: Final = "LANGSMITH_PROJECT"
@@ -123,6 +124,17 @@ def ensure_langsmith_project_defaults(
     target.setdefault(ENV_LANGSMITH_PROJECT, DEFAULT_PROJECT)
     target.setdefault(ENV_LANGCHAIN_API_KEY, api_key)
     return True
+
+
+def derive_trace_url(trace_id: str | None) -> str | None:
+    """Return a LangSmith trace URL for a non-empty trace ID."""
+
+    if trace_id is None:
+        return None
+    normalized = trace_id.strip()
+    if not normalized:
+        return None
+    return f"{LANGSMITH_TRACE_URL_BASE}{normalized}"
 
 
 def build_fleet_records(

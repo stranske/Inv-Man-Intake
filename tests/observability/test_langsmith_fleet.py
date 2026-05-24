@@ -107,6 +107,17 @@ def test_build_fleet_records_enable_langsmith_defaults_when_key_exists(
     assert langsmith_fleet.os.environ[langsmith_fleet.ENV_LANGCHAIN_API_KEY] == "test-key"
 
 
+def test_derive_trace_url_returns_none_for_empty_values() -> None:
+    assert langsmith_fleet.derive_trace_url(None) is None
+    assert langsmith_fleet.derive_trace_url("  ") is None
+
+
+def test_derive_trace_url_builds_clickable_url() -> None:
+    assert (
+        langsmith_fleet.derive_trace_url("trace-123") == "https://smith.langchain.com/r/trace-123"
+    )
+
+
 def _valid_record_for(operation: str = "package-intake") -> dict[str, object]:
     return {
         "schema_version": langsmith_fleet.SCHEMA_VERSION,
