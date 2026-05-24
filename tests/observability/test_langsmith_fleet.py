@@ -54,9 +54,7 @@ def test_build_fleet_records_use_inv_man_project_and_no_secret_fallback(
     assert all(record["surface"] == "intake-extraction" for record in records)
     assert all(record["github_issue"] == "stranske/Inv-Man-Intake#438" for record in records)
     assert all(record["domain"]["package_id"] == "pkg_pdf_mixed_001" for record in records)
-    assert all(
-        record["domain"]["document_id"] == "pkg_pdf_mixed_001:doc:0" for record in records
-    )
+    assert all(record["domain"]["document_id"] == "pkg_pdf_mixed_001:doc:0" for record in records)
     assert all(record["domain"]["trace_refs"] == ["trace:trace-123"] for record in records)
     assert all(
         record["domain"]["redaction_status"] == "redacted_metadata_only" for record in records
