@@ -45,6 +45,7 @@ def test_primary_success_skips_fallback() -> None:
             "provider_used": "primary-provider",
             "retry_count": 0,
             "failure_count": 0,
+            "correlation_id": None,
         }
     ]
 
@@ -88,6 +89,7 @@ def test_primary_failure_retries_once_with_fallback() -> None:
             "provider_used": "fallback-provider",
             "retry_count": 1,
             "failure_count": 1,
+            "correlation_id": None,
         }
     ]
 
@@ -129,6 +131,7 @@ def test_guardrail_blocks_repeated_fallback_attempts() -> None:
         "escalation_reason": "fallback-provider: fallback failed",
         "retry_count": 1,
         "failure_count": 2,
+        "correlation_id": None,
         "failed_providers": ["primary-provider", "fallback-provider"],
         "errors": [
             "primary-provider: primary failed",
@@ -141,6 +144,7 @@ def test_guardrail_blocks_repeated_fallback_attempts() -> None:
             "provider_used": None,
             "retry_count": 1,
             "failure_count": 2,
+            "correlation_id": None,
         }
     ]
 
@@ -238,6 +242,7 @@ def test_primary_failure_routes_to_pending_triage_when_fallback_is_disabled() ->
         "escalation_reason": "primary-provider: primary failed",
         "retry_count": 0,
         "failure_count": 1,
+        "correlation_id": None,
         "failed_providers": ["primary-provider"],
         "errors": ["primary-provider: primary failed"],
     }

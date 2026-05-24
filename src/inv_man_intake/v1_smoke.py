@@ -286,6 +286,9 @@ def run_v1_smoke_pipeline(
             "artifact:extraction/threshold-summary.json",
             "artifact:scoring/explainability.json",
         ),
+        document_types=_derive_document_types(
+            repository=core_repository, document_ids=record.document_ids
+        ),
     )
     langsmith_fleet_records = build_fleet_records(
         context=FleetRunContext(
@@ -501,6 +504,20 @@ def _start_event(sink: InMemoryTraceSink, name: str) -> TraceEvent:
     matches = [event for event in sink.events if event.name == name and event.ended_at is None]
     assert matches, f"missing trace start event {name}"
     return matches[0]
+
+
+def _derive_document_types(
+    *, repository: CoreRepository, document_ids: tuple[str, ...]
+) -> tuple[str, ...]:
+    types: list[str] = []
+    for document_id in document_ids:
+        document = repository.get_document(document_id)
+        if document is None:
+            types.append("unknown")
+            continue
+        suffix = Path(document.file_name).suffix.lstrip(".").lower()
+        types.append(suffix or "unknown")
+    return tuple(sorted(set(types)))
 
 
 def _assert_registered_package_state(

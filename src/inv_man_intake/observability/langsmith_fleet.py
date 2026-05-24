@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, MutableMapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -58,18 +58,22 @@ class IntakeFleetSummary:
     error_category: str | None = None
 
 
-def ensure_langsmith_project_defaults(env: Mapping[str, str] | None = None) -> bool:
-    """Apply Inv-Man-Intake LangSmith defaults when a key is present."""
+def ensure_langsmith_project_defaults(
+    env: MutableMapping[str, str] | None = None,
+) -> bool:
+    """Apply Inv-Man-Intake LangSmith defaults to ``env`` (defaults to ``os.environ``).
 
-    if env is not None and env is not os.environ:
-        return bool(env.get(ENV_LANGSMITH_KEY, "").strip())
-    api_key = os.environ.get(ENV_LANGSMITH_KEY, "").strip()
+    Returns True when an API key is present and defaults were applied to ``env``.
+    """
+
+    target: MutableMapping[str, str] = env if env is not None else os.environ
+    api_key = target.get(ENV_LANGSMITH_KEY, "").strip()
     if not api_key:
         return False
-    os.environ.setdefault(ENV_LANGCHAIN_TRACING_V2, "true")
-    os.environ.setdefault(ENV_LANGCHAIN_PROJECT, DEFAULT_PROJECT)
-    os.environ.setdefault(ENV_LANGSMITH_PROJECT, DEFAULT_PROJECT)
-    os.environ.setdefault(ENV_LANGCHAIN_API_KEY, api_key)
+    target.setdefault(ENV_LANGCHAIN_TRACING_V2, "true")
+    target.setdefault(ENV_LANGCHAIN_PROJECT, DEFAULT_PROJECT)
+    target.setdefault(ENV_LANGSMITH_PROJECT, DEFAULT_PROJECT)
+    target.setdefault(ENV_LANGCHAIN_API_KEY, api_key)
     return True
 
 
@@ -148,17 +152,26 @@ def build_summary_from_pipeline(
     score_count: int,
     review_queue_outcome: str,
     artifact_refs: Iterable[str] = (),
+    document_types: Iterable[str] | None = None,
 ) -> IntakeFleetSummary:
-    """Create dashboard-safe domain metadata from pipeline outputs."""
+    """Create dashboard-safe domain metadata from pipeline outputs.
+
+    ``document_types`` should be supplied by the caller when known (e.g. derived
+    from per-document file metadata). When not provided, an empty tuple is used
+    so the dashboard reports ``unknown`` rather than a fixed placeholder.
+    """
 
     extraction_fields = tuple(getattr(extraction, "fields", ()))
     confidence_escalation = _field_value(extraction_fields, "confidence.document.escalation")
     escalation_reason = _field_value(extraction_fields, "confidence.document.escalation_reason")
     secondary_retry_count = getattr(secondary_extraction, "retry_count", 0)
     secondary_route = getattr(secondary_extraction, "escalation_route", None)
+    derived_types: tuple[str, ...] = (
+        tuple(str(item) for item in document_types) if document_types is not None else ()
+    )
     return IntakeFleetSummary(
         document_ids=tuple(str(item) for item in document_ids),
-        document_types=("pdf", "xlsx", "unsupported"),
+        document_types=derived_types,
         extraction_count=len(extraction_fields),
         validation_status=validation_status,
         redaction_status="redacted_metadata_only",
