@@ -247,12 +247,12 @@ def write_fleet_records(path: Path, records: Iterable[Mapping[str, Any]]) -> Pat
     sensitive-payload-bearing, or unsafe-artifact-reference records.
     """
 
-    path.parent.mkdir(parents=True, exist_ok=True)
     materialized = [dict(record) for record in records]
     validate_fleet_records(materialized)
     lines = [
         json.dumps(dict(record), sort_keys=True, separators=(",", ":")) for record in materialized
     ]
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
     return path
 
@@ -270,13 +270,25 @@ def validate_fleet_records(records: Iterable[Mapping[str, Any]]) -> None:
         if missing:
             raise ValueError(f"fleet record {index} missing top-level fields: {', '.join(missing)}")
         if record["schema_version"] != SCHEMA_VERSION:
-            raise ValueError(f"fleet record {index} has invalid schema_version")
+            raise ValueError(
+                f"fleet record {index} has invalid schema_version: "
+                f"expected {SCHEMA_VERSION!r}, got {record['schema_version']!r}"
+            )
         if record["repo"] != REPO:
-            raise ValueError(f"fleet record {index} has invalid repo")
+            raise ValueError(
+                f"fleet record {index} has invalid repo: expected {REPO!r}, got {record['repo']!r}"
+            )
         if record["surface"] != SURFACE:
-            raise ValueError(f"fleet record {index} has invalid surface")
+            raise ValueError(
+                f"fleet record {index} has invalid surface: "
+                f"expected {SURFACE!r}, got {record['surface']!r}"
+            )
         if record["status"] not in ALLOWED_STATUS:
-            raise ValueError(f"fleet record {index} has invalid status")
+            expected = ", ".join(sorted(ALLOWED_STATUS))
+            raise ValueError(
+                f"fleet record {index} has invalid status: "
+                f"expected one of {{{expected}}}, got {record['status']!r}"
+            )
         domain = record["domain"]
         if not isinstance(domain, Mapping):
             raise ValueError(f"fleet record {index} domain must be an object")

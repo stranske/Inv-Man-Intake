@@ -243,9 +243,11 @@ def test_build_fleet_records_emits_top_level_error_category_and_latency_ms(
 
 
 def test_write_fleet_records_rejects_records_with_unsafe_artifact_ref(tmp_path: Path) -> None:
-    path = tmp_path / langsmith_fleet.ARTIFACT_NAME
+    artifact_dir = tmp_path / "artifacts"
+    path = artifact_dir / langsmith_fleet.ARTIFACT_NAME
     record = _valid_record_for()
     record["artifact_ref"] = "artifact:/etc/passwd"
     with pytest.raises(ValueError, match="artifact_ref"):
         langsmith_fleet.write_fleet_records(path, [record])
     assert not path.exists()
+    assert not artifact_dir.exists()
