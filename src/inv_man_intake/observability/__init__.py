@@ -14,6 +14,7 @@ from .langsmith_fleet import (
     ensure_langsmith_project_defaults,
     write_fleet_records,
 )
+from .entrypoints import PipelineEntrypoint, audit_intake_extraction_entrypoints
 from .langsmith_sink import LangSmithTraceSink
 from .logging import (
     CORRELATION_ID_KEY,
@@ -75,12 +76,14 @@ __all__ = [
     "REPO",
     "SCHEMA_VERSION",
     "SURFACE",
+    "PipelineEntrypoint",
     "TRACE_ENABLED_ENV_KEY",
     "TraceContext",
     "TraceEvent",
     "Tracer",
     "build_fleet_records",
     "build_summary_from_pipeline",
+    "audit_intake_extraction_entrypoints",
     "build_log_record",
     "child_run_context",
     "child_trace_context",
