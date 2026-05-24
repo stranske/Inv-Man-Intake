@@ -1,5 +1,29 @@
 # Workloop State
 
+## 2026-05-24T04:20:00Z - opener lane issue #438 LangSmith fleet metadata
+
+- Automation: `pd-workloop-resume` (codex opener lane).
+- Source repo: `stranske/Inv-Man-Intake`.
+- Source issue: `#438` (`Ensure extraction pipeline exports useful LangSmith metadata`).
+- Source PR: `#454` (`https://github.com/stranske/Inv-Man-Intake/pull/454`), non-draft, labels `agent:codex` + `agents:keepalive` + `autofix`.
+- Branch: `codex/issue-438-langsmith-intake-metadata`.
+- Selection:
+  - ACTION A succeeded from the neutral Code workspace.
+  - Required priority searches found only the Workflows auth-expiry ops alert, skipped as operational maintenance.
+  - Approved issue queue remains empty/stale for `2026-05-23`; open supported-repo issue sweep found remaining LangSmith child issues.
+  - Cap-health after infra repair reported `total_opener_owned=2`, `raw_cap_reached=false`, `normal_cap_reached=false`, and `non_drainable_cap_blocker=false`; existing PRs `Workflows#2151` and `Counter_Risk#629` were draining.
+- Implementation:
+  - Added `inv_man_intake.observability.langsmith_fleet` for Workflows-compatible `langsmith-fleet/v1` NDJSON records covering package intake, document extraction, validation/escalation, and scoring summary operations.
+  - Defaulted LangSmith project metadata to repo-specific `inv-man-intake` when `LANGSMITH_API_KEY` is present, while preserving clean `no_secret` behavior without credentials.
+  - Wired the v1 smoke pipeline artifacts to expose dashboard-safe fleet records with trace ID, package/document identifiers, redaction status, extraction count, validation/confidence state, retry count, score count, and review queue outcome.
+  - Updated the LangSmith runbook and README with fleet artifact validation guidance.
+- Validation passed:
+  - `python -m pytest tests/observability/test_langsmith_fleet.py tests/observability/test_langsmith_export.py tests/test_v1_acceptance_smoke.py -q --no-cov` (`15 passed`).
+  - `python -m ruff check src/inv_man_intake/observability/langsmith_fleet.py src/inv_man_intake/observability/langsmith_sink.py src/inv_man_intake/observability/tracing.py src/inv_man_intake/observability/__init__.py src/inv_man_intake/v1_smoke.py tests/observability/test_langsmith_fleet.py tests/test_v1_acceptance_smoke.py`.
+  - `git diff --check`.
+- Relay event emitted: `pr_opened active.source_repo=stranske/Inv-Man-Intake active.source_issue=438 active.source_pr=454 active.next_action=wait_for_keepalive`.
+- Next action: keepalive's Codex runner takes over for CI fixups or review-comment work; opener is done with this lane.
+
 ## 2026-05-11T03:18:00Z - opener lane issue #27 feedback report materialization
 
 - Automation: `pd-workloop-resume` (codex opener lane).

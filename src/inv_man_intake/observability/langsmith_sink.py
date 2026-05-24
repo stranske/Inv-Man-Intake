@@ -7,6 +7,7 @@ from collections.abc import Callable, Mapping
 from typing import Any, Literal, Protocol
 from uuid import NAMESPACE_URL, UUID, uuid5
 
+from .langsmith_fleet import DEFAULT_PROJECT
 from .tracing import LANGSMITH_PROJECT_ENV_KEY, TraceEvent
 
 
@@ -46,7 +47,7 @@ class LangSmithTraceSink:
     def from_env(cls, env: Mapping[str, str] | None = None) -> LangSmithTraceSink:
         """Create a sink using the LangSmith project configured in env."""
         source = env if env is not None else os.environ
-        project_name = source.get(LANGSMITH_PROJECT_ENV_KEY, "").strip() or None
+        project_name = source.get(LANGSMITH_PROJECT_ENV_KEY, "").strip() or DEFAULT_PROJECT
         return cls(project_name=project_name)
 
     def on_span_start(self, event: TraceEvent) -> None:

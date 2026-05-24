@@ -43,6 +43,7 @@ class OrchestrationResult:
     attempts: list[AttemptRecord]
     retry_count: int
     failure_count: int
+    correlation_id: str | None = None
     escalation_route: str | None = None
     escalation_reason: str | None = None
     escalation_payload: dict[str, Any] | None = None
@@ -82,16 +83,17 @@ class ExtractionOrchestrator:
         fallback_attempts = 0
         last_error: str | None = None
         context = trace_context or new_trace_context(tags={"pipeline_stage": "extract"})
+        correlation_id = self._resolve_correlation_id(payload=payload, context=context)
 
         with self._tracer.start_run(
             name="extraction_orchestrator.run",
             context=context,
-            metadata={"item_id": payload.get("id")},
+            metadata={"item_id": payload.get("id"), "correlation_id": correlation_id},
         ):
             with self._tracer.start_span(
                 name="extraction_orchestrator.primary_attempt",
                 context=context,
-                metadata={"provider": self._primary.name},
+                metadata={"provider": self._primary.name, "correlation_id": correlation_id},
             ):
                 primary_result, primary_error = self._attempt(self._primary, payload)
             attempts.append(
@@ -109,6 +111,7 @@ class ExtractionOrchestrator:
                     attempts=attempts,
                     retry_count=retry_count,
                     failure_count=0,
+                    correlation_id=correlation_id,
                 )
                 self._emit_metrics(result)
                 return result
@@ -122,6 +125,7 @@ class ExtractionOrchestrator:
                     attempts=attempts,
                     retry_count=retry_count,
                     reason=last_error,
+                    correlation_id=correlation_id,
                 )
                 self._emit_metrics(result)
                 return result
@@ -132,7 +136,7 @@ class ExtractionOrchestrator:
                 with self._tracer.start_span(
                     name="extraction_orchestrator.fallback_attempt",
                     context=context,
-                    metadata={"provider": self._fallback.name},
+                    metadata={"provider": self._fallback.name, "correlation_id": correlation_id},
                 ):
                     fallback_result, fallback_error = self._attempt(self._fallback, payload)
                 fallback_attempts += 1
@@ -153,6 +157,7 @@ class ExtractionOrchestrator:
                         attempts=attempts,
                         retry_count=retry_count,
                         failure_count=len(failed_attempts),
+                        correlation_id=correlation_id,
                     )
                     self._emit_metrics(result)
                     return result
@@ -163,6 +168,7 @@ class ExtractionOrchestrator:
                 attempts=attempts,
                 retry_count=retry_count,
                 reason=last_error,
+                correlation_id=correlation_id,
             )
             self._emit_metrics(result)
             return result
@@ -193,6 +199,7 @@ class ExtractionOrchestrator:
         attempts: list[AttemptRecord],
         retry_count: int,
         reason: str | None,
+        correlation_id: str | None,
     ) -> OrchestrationResult:
         escalation_reason = reason or "extraction-unresolved"
         escalation_route = ExtractionOrchestrator._resolve_escalation_route(attempts=attempts)
@@ -203,6 +210,7 @@ class ExtractionOrchestrator:
             attempts=attempts,
             retry_count=retry_count,
             failure_count=len(attempts),
+            correlation_id=correlation_id,
             escalation_route=escalation_route,
             escalation_reason=escalation_reason,
             escalation_payload=ExtractionOrchestrator._build_escalation_payload(
@@ -211,6 +219,7 @@ class ExtractionOrchestrator:
                 retry_count=retry_count,
                 escalation_route=escalation_route,
                 escalation_reason=escalation_reason,
+                correlation_id=correlation_id,
             ),
         )
 
@@ -222,6 +231,7 @@ class ExtractionOrchestrator:
         retry_count: int,
         escalation_route: str,
         escalation_reason: str,
+        correlation_id: str | None,
     ) -> dict[str, Any]:
         failed_attempts = [attempt for attempt in attempts if not attempt.success]
         return {
@@ -231,9 +241,20 @@ class ExtractionOrchestrator:
             "escalation_reason": escalation_reason,
             "retry_count": retry_count,
             "failure_count": len(failed_attempts),
+            "correlation_id": correlation_id,
             "failed_providers": [attempt.provider for attempt in failed_attempts],
             "errors": [attempt.error for attempt in failed_attempts if attempt.error],
         }
+
+    @staticmethod
+    def _resolve_correlation_id(*, payload: dict[str, Any], context: TraceContext) -> str | None:
+        from_payload = payload.get("correlation_id")
+        if isinstance(from_payload, str) and from_payload.strip():
+            return from_payload.strip()
+        from_tags = context.tags.get("correlation_id")
+        if isinstance(from_tags, str) and from_tags.strip():
+            return from_tags.strip()
+        return None
 
     @staticmethod
     def _resolve_escalation_route(*, attempts: list[AttemptRecord]) -> str:
@@ -253,5 +274,6 @@ class ExtractionOrchestrator:
                 "provider_used": result.provider_used,
                 "retry_count": result.retry_count,
                 "failure_count": result.failure_count,
+                "correlation_id": result.correlation_id,
             }
         )

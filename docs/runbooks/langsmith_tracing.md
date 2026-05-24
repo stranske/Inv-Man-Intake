@@ -10,6 +10,8 @@ Provide reusable tracing wrappers that can be enabled or disabled without changi
 - `Tracer`: starts spans when enabled
 - `InMemoryTraceSink`: local sink for tests/dev
 - `LangSmithTraceSink`: runtime sink that exports spans through `langsmith.Client`
+- `langsmith_fleet`: builds dashboard-safe `langsmith-fleet/v1` records for
+  package-level intake, extraction, validation/escalation, and scoring summaries
 - `NoopSpan`: safe no-op when tracing is disabled
 
 ## Usage Pattern
@@ -60,10 +62,29 @@ Example shell setup:
 
 ```bash
 export LANGSMITH_API_KEY="lsv2_pt_..."
-export LANGSMITH_PROJECT="inv-man-intake-dev"
+export LANGSMITH_PROJECT="inv-man-intake"
 export LANGCHAIN_TRACING_V2="true"
 export INV_MAN_TRACING_ENABLED="true"
 ```
+
+When `LANGSMITH_API_KEY` is present, the repository defaults `LANGSMITH_PROJECT`
+and `LANGCHAIN_PROJECT` to `inv-man-intake` and mirrors the key into
+`LANGCHAIN_API_KEY` for LangChain-compatible clients. Without a key, tracing
+and fleet record creation stay offline-safe and records use status `no_secret`.
+
+## Fleet Dashboard Artifact
+
+Package-level runs can emit `langsmith-fleet.ndjson` records that match the
+Workflows-owned `langsmith-fleet/v1` contract for
+`stranske/Inv-Man-Intake#438`. Records include shared fields (`repo`, `surface`,
+`operation`, `run_id`, `status`, `trace_id`) plus a `domain` block with package,
+document, redaction, extraction-count, validation, confidence/escalation, retry,
+score, and review queue outcome fields.
+
+The artifact intentionally avoids raw manager documents, source text, extracted
+values, prompts, or model outputs. Use stable document/package identifiers,
+counts, statuses, trace references, and `artifact:<relative-path>` pointers
+instead.
 
 Optional explicit toggle (equivalent behavior):
 
@@ -94,7 +115,7 @@ export LANGSMITH_TRACING_ENABLED="true"
 2. Re-run setup validation with the probe enabled:
    - `python -m inv_man_intake.observability.setup_validation --require-project --probe`
 3. Confirm toggles and mocked client export resolve as enabled in tests:
-   - `pytest -q tests/observability/test_setup_validation.py tests/observability/test_langsmith_export.py tests/observability/test_tracing_toggle.py --no-cov`
+   - `pytest -q tests/observability/test_setup_validation.py tests/observability/test_langsmith_export.py tests/observability/test_langsmith_fleet.py tests/observability/test_tracing_toggle.py --no-cov`
 4. Verify application code uses `Tracer.from_env(...)`; local/offline smoke code may still pass an explicit `InMemoryTraceSink`.
 
 ## Missing Metrics Troubleshooting

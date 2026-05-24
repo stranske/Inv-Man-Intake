@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -22,11 +23,15 @@ from inv_man_intake.intake.integration import register_intake_bundle_file
 from inv_man_intake.intake.models import IngestRecord
 from inv_man_intake.intake.service import IngestionService
 from inv_man_intake.observability import (
+    FleetRunContext,
     InMemoryTraceSink,
     TraceContext,
     TraceEvent,
     Tracer,
+    build_fleet_records,
+    build_summary_from_pipeline,
     child_trace_context,
+    ensure_correlation_id,
     extract_trace_context,
     inject_trace_context,
     new_trace_context,
@@ -50,6 +55,31 @@ from inv_man_intake.scoring.explainability import (
 from inv_man_intake.storage.document_store import InMemoryDocumentStore
 
 
+class _FanoutTraceSink:
+    """Emit trace events to all sinks while keeping tracing non-blocking."""
+
+    def __init__(self, *sinks: object) -> None:
+        self._sinks = sinks
+
+    def on_span_start(self, event: TraceEvent) -> None:
+        for sink in self._sinks:
+            on_span_start = getattr(sink, "on_span_start", None)
+            if callable(on_span_start):
+                try:
+                    on_span_start(event)
+                except Exception:
+                    continue
+
+    def on_span_end(self, event: TraceEvent) -> None:
+        for sink in self._sinks:
+            on_span_end = getattr(sink, "on_span_end", None)
+            if callable(on_span_end):
+                try:
+                    on_span_end(event)
+                except Exception:
+                    continue
+
+
 @dataclass(frozen=True)
 class V1SmokeArtifacts:
     service: IngestionService
@@ -59,6 +89,7 @@ class V1SmokeArtifacts:
     record: object
     sink: InMemoryTraceSink
     trace_context: object
+    correlation_id: str
     intake_start: object
     extraction_start: object
     secondary_extraction_result: object
@@ -71,6 +102,7 @@ class V1SmokeArtifacts:
     queue_assignment: object
     score: object
     formatted_explainability: dict[str, object]
+    langsmith_fleet_records: list[dict[str, Any]]
 
 
 def run_v1_smoke_pipeline(
@@ -82,7 +114,26 @@ def run_v1_smoke_pipeline(
 ) -> V1SmokeArtifacts:
     sink = InMemoryTraceSink()
     tracer = Tracer(enabled=True, sink=sink)
-    trace_context = new_trace_context(tags={"package_id": package_id, "stage": "intake"})
+    if os.getenv("LANGSMITH_API_KEY", "").strip():
+        from inv_man_intake.observability.langsmith_fleet import ensure_langsmith_project_defaults
+        from inv_man_intake.observability.langsmith_sink import LangSmithTraceSink
+
+        ensure_langsmith_project_defaults()
+        tracer = Tracer(
+            enabled=True,
+            sink=_FanoutTraceSink(
+                sink,
+                LangSmithTraceSink.from_env(),
+            ),
+        )
+    correlation_id = ensure_correlation_id()
+    trace_context = new_trace_context(
+        tags={
+            "package_id": package_id,
+            "stage": "intake",
+            "correlation_id": correlation_id,
+        }
+    )
 
     service = IngestionService()
     core_repository = CoreRepository(sqlite3.connect(":memory:"))
@@ -120,12 +171,14 @@ def run_v1_smoke_pipeline(
         content=_fixture_bytes(
             fixture_root=fixture_root, file_name="summit_arc_investment_update.pdf"
         ),
+        correlation_id=correlation_id,
     )
     secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
         tracer=tracer,
         trace_context=extraction_context,
         source_doc_id=record.document_ids[1],
         content=_fixture_bytes(fixture_root=fixture_root, file_name="summit_arc_track_record.xlsx"),
+        correlation_id=correlation_id,
     )
     with tracer.start_span(
         name="v1_acceptance.threshold_handling",
@@ -189,7 +242,7 @@ def run_v1_smoke_pipeline(
         metadata={"package_id": record.package_id},
     ):
         queue_assignment = create_analyst_first_assignment(
-            item_id=f"{record.package_id}:validation:performance_conflict",
+            item_id=f"{record.package_id}:validation:performance_conflict:{correlation_id}",
             analyst_id="analyst_001",
             created_at=datetime(2026, 3, 4, 10, 0, tzinfo=UTC),
         )
@@ -202,7 +255,11 @@ def run_v1_smoke_pipeline(
     with tracer.start_span(
         name="v1_acceptance.scoring_compute",
         context=scoring_context,
-        metadata={"manager_id": record.fund_id, "queue_item_id": queue_assignment.item_id},
+        metadata={
+            "manager_id": record.fund_id,
+            "queue_item_id": queue_assignment.item_id,
+            "correlation_id": correlation_id,
+        },
     ):
         components = _score_components(metrics.benchmark_correlation)
         score = compute_score(
@@ -217,6 +274,34 @@ def run_v1_smoke_pipeline(
             overall_score=score.final_score,
         )
         formatted_explainability = format_explainability_payload(explainability)
+    fleet_summary = build_summary_from_pipeline(
+        document_ids=record.document_ids,
+        extraction=extraction_with_thresholds,
+        secondary_extraction=secondary_extraction_result,
+        validation_status="escalated" if threshold_decision.escalate else "accepted",
+        score_count=len(score.contributions),
+        review_queue_outcome=queue_assignment.owner_role,
+        artifact_refs=(
+            f"artifact:packages/{record.package_id}/metadata.json",
+            "artifact:extraction/threshold-summary.json",
+            "artifact:scoring/explainability.json",
+        ),
+        trace_refs=(f"trace:{trace_context.trace_id}",),
+        document_types=_derive_document_types(
+            repository=core_repository, document_ids=record.document_ids
+        ),
+    )
+    langsmith_fleet_records = build_fleet_records(
+        context=FleetRunContext(
+            run_id=trace_context.run_id or trace_context.trace_id,
+            package_id=record.package_id,
+            provider=extraction_with_thresholds.provider_name,
+            trace_id=trace_context.trace_id,
+            correlation_id=correlation_id,
+        ),
+        summary=fleet_summary,
+        artifact_ref="artifact:langsmith-fleet.ndjson",
+    )
 
     return V1SmokeArtifacts(
         service=service,
@@ -226,6 +311,7 @@ def run_v1_smoke_pipeline(
         record=record,
         sink=sink,
         trace_context=trace_context,
+        correlation_id=correlation_id,
         intake_start=intake_start,
         extraction_start=extraction_start,
         secondary_extraction_result=secondary_extraction_result,
@@ -238,6 +324,7 @@ def run_v1_smoke_pipeline(
         queue_assignment=queue_assignment,
         score=score,
         formatted_explainability=formatted_explainability,
+        langsmith_fleet_records=langsmith_fleet_records,
     )
 
 
@@ -247,6 +334,7 @@ def _run_extraction_smoke(
     trace_context: TraceContext,
     source_doc_id: str,
     content: bytes,
+    correlation_id: str,
 ) -> ExtractedDocumentResult:
     provider = PdfPrimaryExtractionProvider()
     extractor_key = "_".join(("primary", "extractor"))
@@ -262,6 +350,7 @@ def _run_extraction_smoke(
             "id": f"{source_doc_id}:extract",
             "document_id": source_doc_id,
             "content": content,
+            "correlation_id": correlation_id,
         },
         trace_context=trace_context,
     )
@@ -279,6 +368,7 @@ def _run_secondary_extraction_boundary_smoke(
     trace_context: TraceContext,
     source_doc_id: str,
     content: bytes,
+    correlation_id: str,
 ) -> object:
     provider = PdfPrimaryExtractionProvider()
     extractor_key = "_".join(("primary", "extractor"))
@@ -294,6 +384,7 @@ def _run_secondary_extraction_boundary_smoke(
             "id": f"{source_doc_id}:secondary-extract",
             "document_id": source_doc_id,
             "content": content,
+            "correlation_id": correlation_id,
         },
         trace_context=trace_context,
     )
@@ -414,6 +505,20 @@ def _start_event(sink: InMemoryTraceSink, name: str) -> TraceEvent:
     matches = [event for event in sink.events if event.name == name and event.ended_at is None]
     assert matches, f"missing trace start event {name}"
     return matches[0]
+
+
+def _derive_document_types(
+    *, repository: CoreRepository, document_ids: tuple[str, ...]
+) -> tuple[str, ...]:
+    types: list[str] = []
+    for document_id in document_ids:
+        document = repository.get_document(document_id)
+        if document is None:
+            types.append("unknown")
+            continue
+        suffix = Path(document.file_name).suffix.lstrip(".").lower()
+        types.append(suffix or "unknown")
+    return tuple(sorted(set(types)))
 
 
 def _assert_registered_package_state(

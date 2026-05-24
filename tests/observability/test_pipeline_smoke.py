@@ -41,13 +41,16 @@ def test_pipeline_smoke_tracing_enabled_keeps_correlation_ids_stable() -> None:
         tracer=tracer,
     )
 
-    trace_context = new_trace_context(tags={"stage": "extract-smoke"})
+    trace_context = new_trace_context(
+        tags={"stage": "extract-smoke", "correlation_id": "corr_smoke_trace_1"}
+    )
     result = orchestrator.run({"id": "SMOKE-TRACE-1"}, trace_context=trace_context)
 
     assert result.resolved is True
     assert result.provider_used == "fallback-provider"
     assert result.retry_count == 1
     assert result.failure_count == 1
+    assert result.correlation_id == "corr_smoke_trace_1"
 
     assert len(sink.events) == 6
     assert {event.trace_id for event in sink.events} == {trace_context.trace_id}
@@ -86,12 +89,14 @@ def test_pipeline_smoke_tracing_disabled_and_escalation_metrics_path() -> None:
         tracer=tracer,
     )
 
-    result = orchestrator.run({"id": "SMOKE-TRACE-2"})
+    result = orchestrator.run({"id": "SMOKE-TRACE-2", "correlation_id": "corr_smoke_trace_2"})
 
     assert result.resolved is False
     assert result.escalation_payload is not None
     assert result.retry_count == 1
     assert result.failure_count == 2
+    assert result.correlation_id == "corr_smoke_trace_2"
+    assert result.escalation_payload["correlation_id"] == "corr_smoke_trace_2"
     assert sink.events == []
     assert counters == {
         "total": 1,

@@ -152,17 +152,19 @@ class Tracer:
     def from_env(
         cls,
         sink: TraceSink | None = None,
-        env: Mapping[str, str] | None = None,
+        env: MutableMapping[str, str] | None = None,
         default_enabled: bool = False,
     ) -> Tracer:
         """Construct tracer using environment-based enable toggles."""
-        source = env if env is not None else os.environ
+        source: MutableMapping[str, str] = env if env is not None else os.environ
         enabled = tracing_enabled_from_env(env=env, default_enabled=default_enabled)
         if sink is None and enabled:
             api_key = source.get(LANGSMITH_API_KEY_ENV_KEY, "").strip()
             if api_key and langsmith_export_enabled_from_env(env=source):
+                from .langsmith_fleet import ensure_langsmith_project_defaults
                 from .langsmith_sink import LangSmithTraceSink
 
+                ensure_langsmith_project_defaults(env=source)
                 sink = LangSmithTraceSink.from_env(env=source)
             elif api_key:
                 sink = InMemoryTraceSink()
