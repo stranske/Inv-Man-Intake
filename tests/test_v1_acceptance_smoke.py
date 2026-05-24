@@ -114,6 +114,18 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path(v1_smoke_artifacts
     assert _start_event(sink, "v1_acceptance.scoring_compute").parent_span_id == (
         artifacts.performance_start.span_id
     )
+    fleet_records = artifacts.langsmith_fleet_records
+    assert {record["operation"] for record in fleet_records} == {
+        "package-intake",
+        "document-extraction",
+        "validation-escalation",
+        "scoring-summary",
+    }
+    assert all(record["schema_version"] == "langsmith-fleet/v1" for record in fleet_records)
+    assert all(record["repo"] == "stranske/Inv-Man-Intake" for record in fleet_records)
+    assert all(record["trace_id"] == trace_context.trace_id for record in fleet_records)
+    assert all(item["domain"]["package_id"] == record.package_id for item in fleet_records)
+    assert all("summit" not in str(item).lower() for item in fleet_records)
 
 
 def test_v1_acceptance_smoke_fails_when_intake_registration_is_bypassed() -> None:

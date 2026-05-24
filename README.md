@@ -17,7 +17,7 @@ The v1 design target is documented in
 - Performance normalization, metric calculation, and source-conflict escalation.
 - Analyst-first validation queue states, ownership, SLA, audit, and API contracts.
 - Configurable scoring weights, score explainability, red-flag hooks, and regression fixtures.
-- Observability helpers for tracing, LangSmith export, logging, metrics, and setup validation.
+- Observability helpers for tracing, LangSmith export, fleet dashboard records, logging, metrics, and setup validation.
 
 ## Quick Start
 
@@ -64,10 +64,14 @@ Inv-Man-Intake/
 ```bash
 pytest
 pytest tests/observability/test_pipeline_smoke.py --no-cov
+pytest tests/observability/test_langsmith_fleet.py --no-cov
 python -m inv_man_intake.readiness.throughput --output reports/readiness/throughput_readiness.json
 ruff check src/ tests/
 mypy
 ```
+
+LangSmith runtime setup and dashboard artifact fields are documented in
+[`docs/runbooks/langsmith_tracing.md`](docs/runbooks/langsmith_tracing.md).
 
 For the current implementation sequence and milestone traceability, see
 [`docs/ISSUE_EXECUTION_SEQUENCE.md`](docs/ISSUE_EXECUTION_SEQUENCE.md).

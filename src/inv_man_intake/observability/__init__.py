@@ -1,5 +1,19 @@
 """Observability utilities for trace and metric instrumentation."""
 
+from .langsmith_fleet import (
+    ARTIFACT_NAME,
+    DEFAULT_PROJECT,
+    GITHUB_ISSUE,
+    REPO,
+    SCHEMA_VERSION,
+    SURFACE,
+    FleetRunContext,
+    IntakeFleetSummary,
+    build_fleet_records,
+    build_summary_from_pipeline,
+    ensure_langsmith_project_defaults,
+    write_fleet_records,
+)
 from .langsmith_sink import LangSmithTraceSink
 from .logging import (
     CORRELATION_ID_KEY,
@@ -45,6 +59,11 @@ __all__ = [
     "FALLBACK_COUNT",
     "InMemoryMetrics",
     "InMemoryTraceSink",
+    "ARTIFACT_NAME",
+    "DEFAULT_PROJECT",
+    "FleetRunContext",
+    "GITHUB_ISSUE",
+    "IntakeFleetSummary",
     "LANGSMITH_API_KEY_ENV_KEY",
     "LANGSMITH_PROJECT_ENV_KEY",
     "LangSmithTraceSink",
@@ -53,14 +72,20 @@ __all__ = [
     "LATENCY_MS",
     "LogContext",
     "MetricPoint",
+    "REPO",
+    "SCHEMA_VERSION",
+    "SURFACE",
     "TRACE_ENABLED_ENV_KEY",
     "TraceContext",
     "TraceEvent",
     "Tracer",
+    "build_fleet_records",
+    "build_summary_from_pipeline",
     "build_log_record",
     "child_run_context",
     "child_trace_context",
     "ensure_correlation_id",
+    "ensure_langsmith_project_defaults",
     "extract_correlation_id",
     "extract_trace_context",
     "inject_correlation_id",
@@ -70,4 +95,5 @@ __all__ = [
     "traced_run",
     "traced_span",
     "tracing_enabled_from_env",
+    "write_fleet_records",
 ]

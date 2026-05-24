@@ -161,8 +161,10 @@ class Tracer:
         if sink is None and enabled:
             api_key = source.get(LANGSMITH_API_KEY_ENV_KEY, "").strip()
             if api_key and langsmith_export_enabled_from_env(env=source):
+                from .langsmith_fleet import ensure_langsmith_project_defaults
                 from .langsmith_sink import LangSmithTraceSink
 
+                ensure_langsmith_project_defaults()
                 sink = LangSmithTraceSink.from_env(env=source)
             elif api_key:
                 sink = InMemoryTraceSink()

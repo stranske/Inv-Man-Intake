@@ -22,10 +22,13 @@ from inv_man_intake.intake.integration import register_intake_bundle_file
 from inv_man_intake.intake.models import IngestRecord
 from inv_man_intake.intake.service import IngestionService
 from inv_man_intake.observability import (
+    FleetRunContext,
     InMemoryTraceSink,
     TraceContext,
     TraceEvent,
     Tracer,
+    build_fleet_records,
+    build_summary_from_pipeline,
     child_trace_context,
     extract_trace_context,
     inject_trace_context,
@@ -71,6 +74,7 @@ class V1SmokeArtifacts:
     queue_assignment: object
     score: object
     formatted_explainability: dict[str, object]
+    langsmith_fleet_records: list[dict[str, Any]]
 
 
 def run_v1_smoke_pipeline(
@@ -217,6 +221,29 @@ def run_v1_smoke_pipeline(
             overall_score=score.final_score,
         )
         formatted_explainability = format_explainability_payload(explainability)
+    fleet_summary = build_summary_from_pipeline(
+        document_ids=record.document_ids,
+        extraction=extraction_with_thresholds,
+        secondary_extraction=secondary_extraction_result,
+        validation_status="escalated" if threshold_decision.escalate else "accepted",
+        score_count=len(score.contributions),
+        review_queue_outcome=queue_assignment.owner_role,
+        artifact_refs=(
+            f"artifact:packages/{record.package_id}/metadata.json",
+            "artifact:extraction/threshold-summary.json",
+            "artifact:scoring/explainability.json",
+        ),
+    )
+    langsmith_fleet_records = build_fleet_records(
+        context=FleetRunContext(
+            run_id=trace_context.run_id or trace_context.trace_id,
+            package_id=record.package_id,
+            provider=extraction_with_thresholds.provider_name,
+            trace_id=trace_context.trace_id,
+        ),
+        summary=fleet_summary,
+        artifact_ref="artifact:langsmith-fleet.ndjson",
+    )
 
     return V1SmokeArtifacts(
         service=service,
@@ -238,6 +265,7 @@ def run_v1_smoke_pipeline(
         queue_assignment=queue_assignment,
         score=score,
         formatted_explainability=formatted_explainability,
+        langsmith_fleet_records=langsmith_fleet_records,
     )
 
 
