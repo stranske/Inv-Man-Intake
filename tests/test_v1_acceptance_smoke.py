@@ -128,6 +128,15 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path(v1_smoke_artifacts
     assert all(record["repo"] == "stranske/Inv-Man-Intake" for record in fleet_records)
     assert all(record["trace_id"] == trace_context.trace_id for record in fleet_records)
     assert all(
+        record["trace_url"] == f"https://smith.langchain.com/r/{trace_context.trace_id}"
+        for record in fleet_records
+    )
+    assert all(record["model"] == "deterministic-pdf-parser" for record in fleet_records)
+    assert all(
+        isinstance(record["latency_ms"], int) and record["latency_ms"] >= 0
+        for record in fleet_records
+    )
+    assert all(
         item["domain"]["trace_refs"] == [f"trace:{trace_context.trace_id}"]
         for item in fleet_records
     )
@@ -221,6 +230,7 @@ def test_v1_smoke_pipeline_uses_inmemory_sink_even_with_langsmith_env(monkeypatc
         _fake_client_factory,
     )
     monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_pt_test")
+    monkeypatch.setenv("LANGSMITH_PROJECT", "inv-man-intake-smoke")
 
     artifacts = run_v1_smoke_pipeline(
         fixture_root=_FIXTURE_ROOT,
@@ -231,6 +241,22 @@ def test_v1_smoke_pipeline_uses_inmemory_sink_even_with_langsmith_env(monkeypatc
     assert isinstance(artifacts.sink, InMemoryTraceSink)
     assert len(clients) == 1
     assert len(clients[0].create_calls) > 0
+    assert artifacts.trace_context.tags["langsmith_enabled"] == "true"
+    assert artifacts.trace_context.tags["langsmith_project"] == "inv-man-intake-smoke"
+
+
+def test_v1_smoke_pipeline_without_langsmith_key_uses_local_trace_context(monkeypatch) -> None:
+    monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.delenv("LANGSMITH_PROJECT", raising=False)
+
+    artifacts = run_v1_smoke_pipeline(
+        fixture_root=_FIXTURE_ROOT,
+        package_id=_SMOKE_PACKAGE_ID,
+        expected_document_ids=_EXPECTED_DOCUMENT_IDS,
+    )
+
+    assert "langsmith_enabled" not in artifacts.trace_context.tags
+    assert "langsmith_project" not in artifacts.trace_context.tags
 
 
 def _start_event(sink: InMemoryTraceSink, name: str):

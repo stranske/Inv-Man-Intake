@@ -12,7 +12,9 @@ from .langsmith_fleet import (
     IntakeFleetSummary,
     build_fleet_records,
     build_summary_from_pipeline,
+    derive_trace_url,
     ensure_langsmith_project_defaults,
+    validate_fleet_records,
     write_fleet_records,
 )
 from .langsmith_sink import LangSmithTraceSink
@@ -83,6 +85,7 @@ __all__ = [
     "Tracer",
     "build_fleet_records",
     "build_summary_from_pipeline",
+    "derive_trace_url",
     "audit_intake_extraction_entrypoints",
     "build_log_record",
     "child_run_context",
@@ -98,5 +101,6 @@ __all__ = [
     "traced_run",
     "traced_span",
     "tracing_enabled_from_env",
+    "validate_fleet_records",
     "write_fleet_records",
 ]

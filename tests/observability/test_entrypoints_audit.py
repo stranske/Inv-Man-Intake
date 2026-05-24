@@ -22,6 +22,7 @@ def test_audited_entrypoints_resolve_to_callables() -> None:
         module = import_module(entrypoint.module)
         target = getattr(module, entrypoint.function)
         assert callable(target)
+        assert entrypoint.verification == "verified"
 
 
 def test_audit_requires_intake_and_extraction_surfaces() -> None:
@@ -30,3 +31,4 @@ def test_audit_requires_intake_and_extraction_surfaces() -> None:
         assert "intake" in entrypoint.intake_surface
         assert entrypoint.extraction_surface
         assert "extract" in entrypoint.extraction_surface.casefold()
+        assert entrypoint.invocation.startswith("python ")

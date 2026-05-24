@@ -77,14 +77,48 @@ and fleet record creation stay offline-safe and records use status `no_secret`.
 Package-level runs can emit `langsmith-fleet.ndjson` records that match the
 Workflows-owned `langsmith-fleet/v1` contract for
 `stranske/Inv-Man-Intake#438`. Records include shared fields (`repo`, `surface`,
-`operation`, `run_id`, `status`, `trace_id`) plus a `domain` block with package,
-document, redaction, extraction-count, validation, confidence/escalation, retry,
-score, and review queue outcome fields.
+`operation`, `run_id`, `status`, `trace_id`, optional `latency_ms`, top-level
+`error_category`) plus a `domain` block with package, document, redaction,
+extraction-count, validation, confidence/escalation, retry, score, and review
+queue outcome fields.
 
 The artifact intentionally avoids raw manager documents, source text, extracted
 values, prompts, or model outputs. Use stable document/package identifiers,
 counts, statuses, trace references, and `artifact:<relative-path>` pointers
 instead.
+
+### Contract validation (local subset)
+
+`langsmith_fleet.write_fleet_records` invokes `validate_fleet_records` before
+writing NDJSON so the artifact cannot leave the runner with malformed,
+sensitive-payload-bearing, or unsafe-artifact-reference records. The validator
+enforces this subset of the Workflows fleet contract:
+
+- Required top-level fields: `schema_version`, `repo`, `surface`, `operation`,
+  `run_id`, `status`, `github_issue`, `recorded_at`, `domain`, `error_category`.
+  `schema_version`, `repo`, and `surface` must equal the repo-specific
+  constants; `status` must be one of `success`, `error`, `fallback`,
+  `no_secret`, `skipped`.
+- Required domain fields: `package_id`, `correlation_id`, `document_count`,
+  `document_ids`, `document_types`, `redaction_status`, `trace_refs`,
+  `validation_status`.
+- `artifact_ref` (top-level) and `artifact_refs` / `report_artifacts` (in
+  `domain`) must use safe `artifact:<relative-posix-path>` references — no
+  absolute paths, no drive-letter prefixes, no `..` segments, no backslashes.
+- No field anywhere in a record may have a name matching sensitive payload
+  tokens (e.g., `document_text`, `extracted_value`, `model_output`, `api_key`,
+  `pii`, `ssn`).
+
+### Artifact correlation
+
+Pair each LangSmith trace with operator-facing artifacts by emitting records
+whose `artifact_ref` (and `domain.artifact_refs` for the package-intake stage)
+point at the workflow artifacts an operator can download from the run summary:
+the package metadata snapshot, threshold/explainability artifacts, and the
+fleet NDJSON itself. `trace_refs` in `domain` then link the same record back to
+the LangSmith trace via `trace:<trace_id>` references, so operators can hop
+from a verifier report or dashboard row to the trace and back to the supporting
+artifact without seeing redacted content.
 
 Optional explicit toggle (equivalent behavior):
 

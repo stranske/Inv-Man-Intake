@@ -31,11 +31,13 @@ from inv_man_intake.observability import (
     build_fleet_records,
     build_summary_from_pipeline,
     child_trace_context,
+    derive_trace_url,
     ensure_correlation_id,
     extract_trace_context,
     inject_trace_context,
     new_trace_context,
 )
+from inv_man_intake.observability.langsmith_fleet import DEFAULT_PROJECT
 from inv_man_intake.performance.conflict_resolver import resolve_source_conflicts
 from inv_man_intake.performance.contracts import (
     PerformancePayload,
@@ -113,27 +115,15 @@ def run_v1_smoke_pipeline(
     expected_document_ids: tuple[str, ...],
 ) -> V1SmokeArtifacts:
     sink = InMemoryTraceSink()
-    tracer = Tracer(enabled=True, sink=sink)
-    if os.getenv("LANGSMITH_API_KEY", "").strip():
-        from inv_man_intake.observability.langsmith_fleet import ensure_langsmith_project_defaults
-        from inv_man_intake.observability.langsmith_sink import LangSmithTraceSink
-
-        ensure_langsmith_project_defaults()
-        tracer = Tracer(
-            enabled=True,
-            sink=_FanoutTraceSink(
-                sink,
-                LangSmithTraceSink.from_env(),
-            ),
-        )
+    tracer = _entrypoint_tracer(sink=sink)
     correlation_id = ensure_correlation_id()
-    trace_context = new_trace_context(
-        tags={
-            "package_id": package_id,
-            "stage": "intake",
-            "correlation_id": correlation_id,
-        }
-    )
+    trace_tags = {
+        "package_id": package_id,
+        "stage": "intake",
+        "correlation_id": correlation_id,
+    }
+    trace_tags.update(_langsmith_context_tags())
+    trace_context = new_trace_context(tags=trace_tags)
 
     service = IngestionService()
     core_repository = CoreRepository(sqlite3.connect(":memory:"))
@@ -291,13 +281,25 @@ def run_v1_smoke_pipeline(
             repository=core_repository, document_ids=record.document_ids
         ),
     )
+    error_category = (
+        threshold_decision.escalation_reason or "unknown_escalation_reason"
+        if threshold_decision.escalate
+        else "none"
+    )
+
     langsmith_fleet_records = build_fleet_records(
         context=FleetRunContext(
             run_id=trace_context.run_id or trace_context.trace_id,
             package_id=record.package_id,
             provider=extraction_with_thresholds.provider_name,
+            model="deterministic-pdf-parser",
             trace_id=trace_context.trace_id,
+            trace_url=derive_trace_url(trace_context.trace_id),
             correlation_id=correlation_id,
+            latency_ms=_pipeline_latency_ms(
+                sink=sink, root_span_name="v1_acceptance.intake_register"
+            ),
+            error_category=error_category,
         ),
         summary=fleet_summary,
         artifact_ref="artifact:langsmith-fleet.ndjson",
@@ -326,6 +328,33 @@ def run_v1_smoke_pipeline(
         formatted_explainability=formatted_explainability,
         langsmith_fleet_records=langsmith_fleet_records,
     )
+
+
+def _entrypoint_tracer(*, sink: InMemoryTraceSink) -> Tracer:
+    tracer = Tracer(enabled=True, sink=sink)
+    if not os.getenv("LANGSMITH_API_KEY", "").strip():
+        return tracer
+    from inv_man_intake.observability.langsmith_fleet import ensure_langsmith_project_defaults
+    from inv_man_intake.observability.langsmith_sink import LangSmithTraceSink
+
+    ensure_langsmith_project_defaults()
+    return Tracer(
+        enabled=True,
+        sink=_FanoutTraceSink(
+            sink,
+            LangSmithTraceSink.from_env(),
+        ),
+    )
+
+
+def _langsmith_context_tags() -> dict[str, str]:
+    if not os.getenv("LANGSMITH_API_KEY", "").strip():
+        return {}
+    project_name = os.getenv("LANGSMITH_PROJECT", "").strip() or DEFAULT_PROJECT
+    return {
+        "langsmith_enabled": "true",
+        "langsmith_project": project_name,
+    }
 
 
 def _run_extraction_smoke(
@@ -519,6 +548,27 @@ def _derive_document_types(
         suffix = Path(document.file_name).suffix.lstrip(".").lower()
         types.append(suffix or "unknown")
     return tuple(sorted(set(types)))
+
+
+def _pipeline_latency_ms(*, sink: InMemoryTraceSink, root_span_name: str) -> int | None:
+    start_event = _start_event(sink, root_span_name)
+    end_matches = [
+        event
+        for event in sink.events
+        if event.name == root_span_name
+        and event.span_id == start_event.span_id
+        and event.ended_at is not None
+    ]
+    if not end_matches:
+        return None
+    started_at = _parse_iso_timestamp(start_event.started_at)
+    ended_at = _parse_iso_timestamp(str(end_matches[0].ended_at))
+    duration_ms = int((ended_at - started_at).total_seconds() * 1000)
+    return max(duration_ms, 0)
+
+
+def _parse_iso_timestamp(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 def _assert_registered_package_state(

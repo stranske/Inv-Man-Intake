@@ -209,6 +209,32 @@ def test_tracer_from_env_uses_resolved_toggle() -> None:
     assert len(sink.events) == 2
 
 
+def test_tracer_start_span_injects_correlation_id_from_context_tags() -> None:
+    sink = InMemoryTraceSink()
+    tracer = Tracer(enabled=True, sink=sink)
+    context = new_trace_context(tags={"stage": "extract", "correlation_id": "corr_auto_1"})
+
+    with tracer.start_span(name="extract.parse", context=context):
+        pass
+
+    assert sink.events[0].metadata["correlation_id"] == "corr_auto_1"
+
+
+def test_tracer_start_span_keeps_explicit_correlation_id_over_context_value() -> None:
+    sink = InMemoryTraceSink()
+    tracer = Tracer(enabled=True, sink=sink)
+    context = new_trace_context(tags={"stage": "extract", "correlation_id": "corr_context"})
+
+    with tracer.start_span(
+        name="extract.parse",
+        context=context,
+        metadata={"correlation_id": "corr_explicit"},
+    ):
+        pass
+
+    assert sink.events[0].metadata["correlation_id"] == "corr_explicit"
+
+
 def test_traced_span_decorator_wraps_callable_with_span() -> None:
     sink = InMemoryTraceSink()
     tracer = Tracer(enabled=True, sink=sink)

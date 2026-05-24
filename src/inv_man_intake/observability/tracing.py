@@ -194,7 +194,7 @@ class Tracer:
             name=name,
             parent_run_id=context.parent_run_id,
             parent_span_id=context.parent_span_id,
-            metadata={} if metadata is None else dict(metadata),
+            metadata=_resolved_metadata(metadata=metadata, context=context),
             started_at=_utc_now_iso(),
         )
         return SpanHandle(self._sink, event)
@@ -217,7 +217,7 @@ class Tracer:
             name=name,
             parent_run_id=context.parent_run_id,
             parent_span_id=context.parent_span_id,
-            metadata={} if metadata is None else dict(metadata),
+            metadata=_resolved_metadata(metadata=metadata, context=context),
             started_at=_utc_now_iso(),
         )
         return RunHandle(self._sink, event)
@@ -401,3 +401,15 @@ def _parse_toggle(value: str) -> bool | None:
     if normalized in {"0", "false", "f", "no", "n", "off"}:
         return False
     return None
+
+
+def _resolved_metadata(*, metadata: dict[str, Any] | None, context: TraceContext) -> dict[str, Any]:
+    resolved: dict[str, Any] = {} if metadata is None else dict(metadata)
+    correlation_id = context.tags.get("correlation_id")
+    if (
+        "correlation_id" not in resolved
+        and isinstance(correlation_id, str)
+        and correlation_id.strip()
+    ):
+        resolved["correlation_id"] = correlation_id.strip()
+    return resolved
