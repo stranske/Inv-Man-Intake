@@ -1,5 +1,33 @@
 # Workloop State
 
+## 2026-05-24T11:55:00Z - closer lane issue #438 verifier-CONCERNS bounded follow-up
+
+- Automation: `imi-merge-verify-closer` (Claude Code closer lane).
+- Source repo: `stranske/Inv-Man-Intake`.
+- Source issue: `#438` (`Ensure extraction pipeline exports useful LangSmith metadata`), OPEN.
+- Prior merged PR: `#454` (`Issue #438: Add LangSmith fleet metadata`), merged 2026-05-24T05:23:16Z, dual-CONCERNS provider comparison.
+- Selection rationale:
+  - Batch-safe sweep merged `Counter_Risk#630`, applied `verify:compare`, reopened source `#610` pending verifier PASS. After the sweep, in-scope verifier debt remained for `Pension-Data#445` (1 follow-up already used and dual-CONCERNS again) and `Inv-Man-Intake#438` (no follow-up yet).
+  - Selected `Inv-Man-Intake#438` because no bounded follow-up has been opened yet and the dual-CONCERNS feedback names concrete, code-level acceptance-criteria gaps (no local contract validation, missing top-level error/latency metadata, no sensitive-payload guard, no artifact-reference safety check) that are bounded and within closer scope.
+- Implementation:
+  - Worktree: `/Users/teacher/.codex/automations/imi-merge-verify-closer/inv-man-438-followup` from `origin/main` at `5799e52 Issue #438: Add LangSmith fleet metadata (#454)`.
+  - Branch: `codex/issue-438-langsmith-followup`.
+  - Added `validate_fleet_records()` to `src/inv_man_intake/observability/langsmith_fleet.py` plus helpers `_validate_artifact_references`, `_is_safe_artifact_ref`, `_validate_no_sensitive_payload`.
+  - Added `REQUIRED_TOP_LEVEL_FIELDS`, `REQUIRED_DOMAIN_FIELDS`, `ALLOWED_STATUS`, `SENSITIVE_FIELD_TOKENS` constants to express the local Workflows fleet contract subset (matching the Counter_Risk#630 precedent).
+  - Promoted `error_category` to a top-level record field (default `"none"`); added optional `latency_ms` to `FleetRunContext` so trace runs can record observed latency in the fleet record.
+  - Wired `validate_fleet_records()` into `write_fleet_records()` so malformed, sensitive-payload-bearing, or unsafe-artifact-ref records never reach the NDJSON artifact.
+  - Exported `validate_fleet_records` from `src/inv_man_intake/observability/__init__.py`.
+  - Updated `docs/runbooks/langsmith_tracing.md` with the contract validation subset and an artifact-correlation guidance section.
+  - Added eight new tests in `tests/observability/test_langsmith_fleet.py` covering: full-contract acceptance, missing top-level/domain field rejection, invalid status rejection, parameterised unsafe artifact_ref rejection, unsafe artifact in `domain.artifact_refs`, parameterised sensitive payload field rejection, top-level error_category + latency_ms emission, and refusal to write records with unsafe artifact_ref.
+  - Updated `test_write_fleet_records_emits_deterministic_ndjson` to construct a contract-valid record with `recorded_at`, `error_category`, and `correlation_id`.
+- Validation passed:
+  - `python -m pytest tests/ -q --no-cov` (`542 passed, 6 warnings`).
+  - `python -m pytest tests/observability/test_langsmith_fleet.py tests/test_v1_acceptance_smoke.py -q --no-cov` (`30 passed`).
+  - `python -m ruff check src/inv_man_intake/observability/langsmith_fleet.py src/inv_man_intake/observability/__init__.py tests/observability/test_langsmith_fleet.py` (passed).
+  - `python -m black --check src/inv_man_intake/observability/langsmith_fleet.py src/inv_man_intake/observability/__init__.py tests/observability/test_langsmith_fleet.py` (passed).
+  - `python -m mypy src/inv_man_intake/observability/langsmith_fleet.py` (passed).
+- Next action: push branch, open bounded follow-up PR with `agent:codex` + `agents:keepalive` + `autofix`, emit `followup_pr_opened` and `record-followup` relay events, then end the round. Source issue `#438` stays OPEN until durable verifier PASS posts on the follow-up squash merge.
+
 ## 2026-05-24T04:20:00Z - opener lane issue #438 LangSmith fleet metadata
 
 - Automation: `pd-workloop-resume` (codex opener lane).

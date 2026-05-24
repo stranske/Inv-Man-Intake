@@ -13,6 +13,7 @@ from .langsmith_fleet import (
     build_fleet_records,
     build_summary_from_pipeline,
     ensure_langsmith_project_defaults,
+    validate_fleet_records,
     write_fleet_records,
 )
 from .langsmith_sink import LangSmithTraceSink
@@ -98,5 +99,6 @@ __all__ = [
     "traced_run",
     "traced_span",
     "tracing_enabled_from_env",
+    "validate_fleet_records",
     "write_fleet_records",
 ]

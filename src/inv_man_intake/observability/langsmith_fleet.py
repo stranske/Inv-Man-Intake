@@ -7,7 +7,7 @@ import os
 from collections.abc import Iterable, Mapping, MutableMapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Final, Literal
 
 SCHEMA_VERSION: Final = "langsmith-fleet/v1"
@@ -21,6 +21,51 @@ ENV_LANGCHAIN_PROJECT: Final = "LANGCHAIN_PROJECT"
 ENV_LANGSMITH_PROJECT: Final = "LANGSMITH_PROJECT"
 ENV_LANGCHAIN_TRACING_V2: Final = "LANGCHAIN_TRACING_V2"
 ENV_LANGCHAIN_API_KEY: Final = "LANGCHAIN_API_KEY"
+REQUIRED_TOP_LEVEL_FIELDS: Final = frozenset(
+    {
+        "schema_version",
+        "repo",
+        "surface",
+        "operation",
+        "run_id",
+        "status",
+        "github_issue",
+        "recorded_at",
+        "domain",
+        "error_category",
+    }
+)
+REQUIRED_DOMAIN_FIELDS: Final = frozenset(
+    {
+        "package_id",
+        "correlation_id",
+        "document_count",
+        "document_ids",
+        "document_types",
+        "redaction_status",
+        "trace_refs",
+        "validation_status",
+    }
+)
+ALLOWED_STATUS: Final = frozenset({"success", "error", "fallback", "no_secret", "skipped"})
+SENSITIVE_FIELD_TOKENS: Final = (
+    "payload",
+    "document_text",
+    "document_content",
+    "document_body",
+    "raw_document",
+    "raw_text",
+    "extracted_value",
+    "extracted_text",
+    "prompt",
+    "completion",
+    "model_output",
+    "secret",
+    "api_key",
+    "ssn",
+    "account_number",
+    "pii",
+)
 
 Status = Literal["success", "error", "fallback", "no_secret", "skipped"]
 
@@ -38,6 +83,8 @@ class FleetRunContext:
     correlation_id: str | None = None
     recorded_at: str | None = None
     github_pr: str | None = None
+    latency_ms: int | None = None
+    error_category: str = "none"
 
 
 @dataclass(frozen=True)
@@ -102,6 +149,7 @@ def build_fleet_records(
                 "artifact_refs": list(summary.artifact_refs),
             },
             artifact_ref=artifact_ref,
+            summary_error_category=summary.error_category,
         ),
         _record(
             context=context,
@@ -115,6 +163,7 @@ def build_fleet_records(
                 "retry_count": summary.retry_count,
             },
             artifact_ref=artifact_ref,
+            summary_error_category=summary.error_category,
         ),
         _record(
             context=context,
@@ -128,6 +177,7 @@ def build_fleet_records(
                 "review_queue_outcome": summary.review_queue_outcome,
             },
             artifact_ref=artifact_ref,
+            summary_error_category=summary.error_category,
         ),
         _record(
             context=context,
@@ -140,6 +190,7 @@ def build_fleet_records(
                 "review_queue_outcome": summary.review_queue_outcome,
             },
             artifact_ref=artifact_ref,
+            summary_error_category=summary.error_category,
         ),
     ]
 
@@ -189,12 +240,105 @@ def build_summary_from_pipeline(
 
 
 def write_fleet_records(path: Path, records: Iterable[Mapping[str, Any]]) -> Path:
-    """Write records as deterministic NDJSON and return the artifact path."""
+    """Write records as deterministic NDJSON and return the artifact path.
+
+    Records are validated against the local Workflows fleet contract subset
+    before being written, so dashboard ingestion never sees malformed,
+    sensitive-payload-bearing, or unsafe-artifact-reference records.
+    """
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    lines = [json.dumps(dict(record), sort_keys=True, separators=(",", ":")) for record in records]
+    materialized = [dict(record) for record in records]
+    validate_fleet_records(materialized)
+    lines = [
+        json.dumps(dict(record), sort_keys=True, separators=(",", ":")) for record in materialized
+    ]
     path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
     return path
+
+
+def validate_fleet_records(records: Iterable[Mapping[str, Any]]) -> None:
+    """Validate records against the local Workflows fleet contract subset.
+
+    Raises ``ValueError`` when a record is missing required top-level or
+    domain fields, has an invalid status, carries an unsafe artifact
+    reference, or carries a sensitive-payload field name.
+    """
+
+    for index, record in enumerate(records):
+        missing = sorted(REQUIRED_TOP_LEVEL_FIELDS.difference(record))
+        if missing:
+            raise ValueError(f"fleet record {index} missing top-level fields: {', '.join(missing)}")
+        if record["schema_version"] != SCHEMA_VERSION:
+            raise ValueError(f"fleet record {index} has invalid schema_version")
+        if record["repo"] != REPO:
+            raise ValueError(f"fleet record {index} has invalid repo")
+        if record["surface"] != SURFACE:
+            raise ValueError(f"fleet record {index} has invalid surface")
+        if record["status"] not in ALLOWED_STATUS:
+            raise ValueError(f"fleet record {index} has invalid status")
+        domain = record["domain"]
+        if not isinstance(domain, Mapping):
+            raise ValueError(f"fleet record {index} domain must be an object")
+        domain_missing = sorted(REQUIRED_DOMAIN_FIELDS.difference(domain))
+        if domain_missing:
+            raise ValueError(
+                f"fleet record {index} missing domain fields: {', '.join(domain_missing)}"
+            )
+        _validate_artifact_references(index=index, record=record)
+        _validate_no_sensitive_payload(index=index, record=record)
+
+
+def _validate_artifact_references(*, index: int, record: Mapping[str, Any]) -> None:
+    artifact_ref = record.get("artifact_ref")
+    if artifact_ref is not None and not _is_safe_artifact_ref(artifact_ref):
+        raise ValueError(f"fleet record {index} artifact_ref must be a safe artifact: reference")
+    domain = record["domain"]
+    for key in ("artifact_refs", "report_artifacts"):
+        artifacts = domain.get(key)
+        if artifacts is None:
+            continue
+        if not isinstance(artifacts, list):
+            raise ValueError(f"fleet record {index} domain.{key} must be a list")
+        for artifact in artifacts:
+            if not _is_safe_artifact_ref(artifact):
+                raise ValueError(
+                    f"fleet record {index} domain.{key} must contain safe artifact: references"
+                )
+
+
+def _is_safe_artifact_ref(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    if not value.startswith("artifact:"):
+        return False
+    suffix = value.removeprefix("artifact:")
+    if not suffix or suffix.strip() != suffix or "\\" in suffix:
+        return False
+    if suffix.startswith(("/", "\\")):
+        return False
+    path = PurePosixPath(suffix)
+    if path.is_absolute() or not path.parts:
+        return False
+    if path.parts[0].endswith(":"):
+        return False
+    return all(part not in {"", ".", ".."} for part in path.parts)
+
+
+def _validate_no_sensitive_payload(*, index: int, record: Mapping[str, Any]) -> None:
+    def walk(value: Any, path: str) -> None:
+        if isinstance(value, Mapping):
+            for key, nested in value.items():
+                key_text = str(key).casefold()
+                if any(token in key_text for token in SENSITIVE_FIELD_TOKENS):
+                    raise ValueError(f"fleet record {index} includes sensitive field {path}.{key}")
+                walk(nested, f"{path}.{key}")
+            return
+        if isinstance(value, list):
+            for item_index, nested in enumerate(value):
+                walk(nested, f"{path}[{item_index}]")
+
+    walk(record, "record")
 
 
 def _shared_domain(*, context: FleetRunContext, summary: IntakeFleetSummary) -> dict[str, Any]:
@@ -207,7 +351,6 @@ def _shared_domain(*, context: FleetRunContext, summary: IntakeFleetSummary) -> 
         "redaction_status": summary.redaction_status,
         "trace_refs": list(summary.trace_refs),
         "validation_status": summary.validation_status,
-        "error_category": summary.error_category or "none",
     }
 
 
@@ -219,6 +362,7 @@ def _record(
     recorded_at: str,
     domain: Mapping[str, Any],
     artifact_ref: str | None,
+    summary_error_category: str | None,
 ) -> dict[str, Any]:
     record: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
@@ -230,6 +374,7 @@ def _record(
         "github_issue": GITHUB_ISSUE,
         "recorded_at": recorded_at,
         "domain": dict(domain),
+        "error_category": summary_error_category or context.error_category or "none",
     }
     if context.github_pr:
         record["github_pr"] = context.github_pr
@@ -241,6 +386,8 @@ def _record(
         record["trace_id"] = context.trace_id
     if context.trace_url:
         record["trace_url"] = context.trace_url
+    if context.latency_ms is not None:
+        record["latency_ms"] = max(0, int(context.latency_ms))
     if artifact_ref:
         record["artifact_ref"] = artifact_ref
     return record
