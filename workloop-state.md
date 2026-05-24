@@ -5,6 +5,7 @@
 - Automation: `pd-workloop-resume` (codex opener lane).
 - Source repo: `stranske/Inv-Man-Intake`.
 - Source issue: `#438` (`Ensure extraction pipeline exports useful LangSmith metadata`).
+- Source PR: `#454` (`https://github.com/stranske/Inv-Man-Intake/pull/454`), non-draft, labels `agent:codex` + `agents:keepalive` + `autofix`.
 - Branch: `codex/issue-438-langsmith-intake-metadata`.
 - Selection:
   - ACTION A succeeded from the neutral Code workspace.
@@ -20,7 +21,8 @@
   - `python -m pytest tests/observability/test_langsmith_fleet.py tests/observability/test_langsmith_export.py tests/test_v1_acceptance_smoke.py -q --no-cov` (`15 passed`).
   - `python -m ruff check src/inv_man_intake/observability/langsmith_fleet.py src/inv_man_intake/observability/langsmith_sink.py src/inv_man_intake/observability/tracing.py src/inv_man_intake/observability/__init__.py src/inv_man_intake/v1_smoke.py tests/observability/test_langsmith_fleet.py tests/test_v1_acceptance_smoke.py`.
   - `git diff --check`.
-- Next action: commit, push, open a non-draft PR with `agent:codex`, `agents:keepalive`, and `autofix`; then keepalive owns any CI fixups or review-comment work.
+- Relay event emitted: `pr_opened active.source_repo=stranske/Inv-Man-Intake active.source_issue=438 active.source_pr=454 active.next_action=wait_for_keepalive`.
+- Next action: keepalive's Codex runner takes over for CI fixups or review-comment work; opener is done with this lane.
 
 ## 2026-05-11T03:18:00Z - opener lane issue #27 feedback report materialization
 
