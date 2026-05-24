@@ -91,7 +91,9 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path(v1_smoke_artifacts
     assert metrics.benchmark_correlation is not None
 
     queue_assignment = artifacts.queue_assignment
-    assert queue_assignment.item_id == f"{record.package_id}:validation:performance_conflict"
+    assert queue_assignment.item_id == (
+        f"{record.package_id}:validation:performance_conflict:{artifacts.correlation_id}"
+    )
     assert queue_assignment.owner_role == "analyst"
     assert queue_assignment.events[0].note == "analyst-first default assignment"
     _assert_conflict_escalation_has_evidence(
@@ -126,6 +128,13 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path(v1_smoke_artifacts
     assert all(record["repo"] == "stranske/Inv-Man-Intake" for record in fleet_records)
     assert all(record["trace_id"] == trace_context.trace_id for record in fleet_records)
     assert all(item["domain"]["package_id"] == record.package_id for item in fleet_records)
+    assert all(
+        item["domain"]["correlation_id"] == artifacts.correlation_id for item in fleet_records
+    )
+    assert artifacts.secondary_extraction_result.correlation_id == artifacts.correlation_id
+    assert artifacts.secondary_extraction_result.escalation_payload["correlation_id"] == (
+        artifacts.correlation_id
+    )
     assert all("summit" not in str(item).lower() for item in fleet_records)
 
 

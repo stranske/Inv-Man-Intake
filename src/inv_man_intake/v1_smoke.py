@@ -31,6 +31,7 @@ from inv_man_intake.observability import (
     build_fleet_records,
     build_summary_from_pipeline,
     child_trace_context,
+    ensure_correlation_id,
     extract_trace_context,
     inject_trace_context,
     new_trace_context,
@@ -88,6 +89,7 @@ class V1SmokeArtifacts:
     record: object
     sink: InMemoryTraceSink
     trace_context: object
+    correlation_id: str
     intake_start: object
     extraction_start: object
     secondary_extraction_result: object
@@ -124,7 +126,14 @@ def run_v1_smoke_pipeline(
                 LangSmithTraceSink.from_env(),
             ),
         )
-    trace_context = new_trace_context(tags={"package_id": package_id, "stage": "intake"})
+    correlation_id = ensure_correlation_id()
+    trace_context = new_trace_context(
+        tags={
+            "package_id": package_id,
+            "stage": "intake",
+            "correlation_id": correlation_id,
+        }
+    )
 
     service = IngestionService()
     core_repository = CoreRepository(sqlite3.connect(":memory:"))
@@ -162,12 +171,14 @@ def run_v1_smoke_pipeline(
         content=_fixture_bytes(
             fixture_root=fixture_root, file_name="summit_arc_investment_update.pdf"
         ),
+        correlation_id=correlation_id,
     )
     secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
         tracer=tracer,
         trace_context=extraction_context,
         source_doc_id=record.document_ids[1],
         content=_fixture_bytes(fixture_root=fixture_root, file_name="summit_arc_track_record.xlsx"),
+        correlation_id=correlation_id,
     )
     with tracer.start_span(
         name="v1_acceptance.threshold_handling",
@@ -231,7 +242,7 @@ def run_v1_smoke_pipeline(
         metadata={"package_id": record.package_id},
     ):
         queue_assignment = create_analyst_first_assignment(
-            item_id=f"{record.package_id}:validation:performance_conflict",
+            item_id=f"{record.package_id}:validation:performance_conflict:{correlation_id}",
             analyst_id="analyst_001",
             created_at=datetime(2026, 3, 4, 10, 0, tzinfo=UTC),
         )
@@ -244,7 +255,11 @@ def run_v1_smoke_pipeline(
     with tracer.start_span(
         name="v1_acceptance.scoring_compute",
         context=scoring_context,
-        metadata={"manager_id": record.fund_id, "queue_item_id": queue_assignment.item_id},
+        metadata={
+            "manager_id": record.fund_id,
+            "queue_item_id": queue_assignment.item_id,
+            "correlation_id": correlation_id,
+        },
     ):
         components = _score_components(metrics.benchmark_correlation)
         score = compute_score(
@@ -278,6 +293,7 @@ def run_v1_smoke_pipeline(
             package_id=record.package_id,
             provider=extraction_with_thresholds.provider_name,
             trace_id=trace_context.trace_id,
+            correlation_id=correlation_id,
         ),
         summary=fleet_summary,
         artifact_ref="artifact:langsmith-fleet.ndjson",
@@ -291,6 +307,7 @@ def run_v1_smoke_pipeline(
         record=record,
         sink=sink,
         trace_context=trace_context,
+        correlation_id=correlation_id,
         intake_start=intake_start,
         extraction_start=extraction_start,
         secondary_extraction_result=secondary_extraction_result,
@@ -313,6 +330,7 @@ def _run_extraction_smoke(
     trace_context: TraceContext,
     source_doc_id: str,
     content: bytes,
+    correlation_id: str,
 ) -> ExtractedDocumentResult:
     provider = PdfPrimaryExtractionProvider()
     extractor_key = "_".join(("primary", "extractor"))
@@ -328,6 +346,7 @@ def _run_extraction_smoke(
             "id": f"{source_doc_id}:extract",
             "document_id": source_doc_id,
             "content": content,
+            "correlation_id": correlation_id,
         },
         trace_context=trace_context,
     )
@@ -345,6 +364,7 @@ def _run_secondary_extraction_boundary_smoke(
     trace_context: TraceContext,
     source_doc_id: str,
     content: bytes,
+    correlation_id: str,
 ) -> object:
     provider = PdfPrimaryExtractionProvider()
     extractor_key = "_".join(("primary", "extractor"))
@@ -360,6 +380,7 @@ def _run_secondary_extraction_boundary_smoke(
             "id": f"{source_doc_id}:secondary-extract",
             "document_id": source_doc_id,
             "content": content,
+            "correlation_id": correlation_id,
         },
         trace_context=trace_context,
     )

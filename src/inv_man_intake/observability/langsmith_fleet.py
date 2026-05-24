@@ -35,6 +35,7 @@ class FleetRunContext:
     model: str | None = None
     trace_id: str | None = None
     trace_url: str | None = None
+    correlation_id: str | None = None
     recorded_at: str | None = None
     github_pr: str | None = None
 
@@ -180,11 +181,10 @@ def write_fleet_records(path: Path, records: Iterable[Mapping[str, Any]]) -> Pat
     return path
 
 
-def _shared_domain(
-    *, context: FleetRunContext, summary: IntakeFleetSummary
-) -> dict[str, Any]:
+def _shared_domain(*, context: FleetRunContext, summary: IntakeFleetSummary) -> dict[str, Any]:
     return {
         "package_id": context.package_id,
+        "correlation_id": context.correlation_id or "none",
         "document_count": len(summary.document_ids),
         "document_ids": list(summary.document_ids),
         "document_types": list(summary.document_types),
