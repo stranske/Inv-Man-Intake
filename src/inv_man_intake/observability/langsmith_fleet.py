@@ -55,6 +55,7 @@ class IntakeFleetSummary:
     score_count: int
     review_queue_outcome: str
     artifact_refs: tuple[str, ...] = ()
+    trace_refs: tuple[str, ...] = ()
     error_category: str | None = None
 
 
@@ -152,6 +153,7 @@ def build_summary_from_pipeline(
     score_count: int,
     review_queue_outcome: str,
     artifact_refs: Iterable[str] = (),
+    trace_refs: Iterable[str] = (),
     document_types: Iterable[str] | None = None,
 ) -> IntakeFleetSummary:
     """Create dashboard-safe domain metadata from pipeline outputs.
@@ -181,6 +183,7 @@ def build_summary_from_pipeline(
         score_count=score_count,
         review_queue_outcome=review_queue_outcome,
         artifact_refs=tuple(sorted(str(item) for item in artifact_refs if str(item).strip())),
+        trace_refs=tuple(sorted(str(item) for item in trace_refs if str(item).strip())),
         error_category=str(escalation_reason) if escalation_reason else None,
     )
 
@@ -202,6 +205,7 @@ def _shared_domain(*, context: FleetRunContext, summary: IntakeFleetSummary) -> 
         "document_ids": list(summary.document_ids),
         "document_types": list(summary.document_types),
         "redaction_status": summary.redaction_status,
+        "trace_refs": list(summary.trace_refs),
         "validation_status": summary.validation_status,
         "error_category": summary.error_category or "none",
     }

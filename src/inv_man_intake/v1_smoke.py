@@ -286,6 +286,7 @@ def run_v1_smoke_pipeline(
             "artifact:extraction/threshold-summary.json",
             "artifact:scoring/explainability.json",
         ),
+        trace_refs=(f"trace:{trace_context.trace_id}",),
         document_types=_derive_document_types(
             repository=core_repository, document_ids=record.document_ids
         ),

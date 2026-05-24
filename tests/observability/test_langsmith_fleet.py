@@ -32,6 +32,7 @@ def test_build_fleet_records_use_inv_man_project_and_no_secret_fallback(
         score_count=5,
         review_queue_outcome="analyst",
         artifact_refs=("artifact:extraction/threshold-summary.json",),
+        trace_refs=("trace:trace-123",),
         error_category="low_key_field_coverage",
     )
 
@@ -53,6 +54,7 @@ def test_build_fleet_records_use_inv_man_project_and_no_secret_fallback(
     assert all(record["surface"] == "intake-extraction" for record in records)
     assert all(record["github_issue"] == "stranske/Inv-Man-Intake#438" for record in records)
     assert all(record["domain"]["package_id"] == "pkg_pdf_mixed_001" for record in records)
+    assert all(record["domain"]["trace_refs"] == ["trace:trace-123"] for record in records)
     assert all(
         record["domain"]["redaction_status"] == "redacted_metadata_only" for record in records
     )
@@ -86,6 +88,7 @@ def test_build_fleet_records_enable_langsmith_defaults_when_key_exists(
             retry_count=0,
             score_count=5,
             review_queue_outcome="completed",
+            trace_refs=("trace:trace-123",),
         ),
     )
 
@@ -121,6 +124,7 @@ def test_write_fleet_records_emits_deterministic_ndjson(tmp_path: Path) -> None:
                 "document_ids": ["doc-1"],
                 "document_types": ["pdf"],
                 "redaction_status": "redacted_metadata_only",
+                "trace_refs": ["trace:trace-123"],
                 "validation_status": "accepted",
                 "error_category": "none",
             },

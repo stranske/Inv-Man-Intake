@@ -127,6 +127,10 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path(v1_smoke_artifacts
     assert all(record["schema_version"] == "langsmith-fleet/v1" for record in fleet_records)
     assert all(record["repo"] == "stranske/Inv-Man-Intake" for record in fleet_records)
     assert all(record["trace_id"] == trace_context.trace_id for record in fleet_records)
+    assert all(
+        item["domain"]["trace_refs"] == [f"trace:{trace_context.trace_id}"]
+        for item in fleet_records
+    )
     assert all(item["domain"]["package_id"] == _SMOKE_PACKAGE_ID for item in fleet_records)
     assert all(
         item["domain"]["correlation_id"] == artifacts.correlation_id for item in fleet_records
