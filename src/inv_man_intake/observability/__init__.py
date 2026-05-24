@@ -1,5 +1,6 @@
 """Observability utilities for trace and metric instrumentation."""
 
+from .entrypoints import PipelineEntrypoint, audit_intake_extraction_entrypoints
 from .langsmith_fleet import (
     ARTIFACT_NAME,
     DEFAULT_PROJECT,
@@ -14,7 +15,6 @@ from .langsmith_fleet import (
     ensure_langsmith_project_defaults,
     write_fleet_records,
 )
-from .entrypoints import PipelineEntrypoint, audit_intake_extraction_entrypoints
 from .langsmith_sink import LangSmithTraceSink
 from .logging import (
     CORRELATION_ID_KEY,
