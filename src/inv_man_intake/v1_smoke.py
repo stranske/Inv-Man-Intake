@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -53,6 +54,31 @@ from inv_man_intake.scoring.explainability import (
 from inv_man_intake.storage.document_store import InMemoryDocumentStore
 
 
+class _FanoutTraceSink:
+    """Emit trace events to all sinks while keeping tracing non-blocking."""
+
+    def __init__(self, *sinks: object) -> None:
+        self._sinks = sinks
+
+    def on_span_start(self, event: TraceEvent) -> None:
+        for sink in self._sinks:
+            on_span_start = getattr(sink, "on_span_start", None)
+            if callable(on_span_start):
+                try:
+                    on_span_start(event)
+                except Exception:
+                    continue
+
+    def on_span_end(self, event: TraceEvent) -> None:
+        for sink in self._sinks:
+            on_span_end = getattr(sink, "on_span_end", None)
+            if callable(on_span_end):
+                try:
+                    on_span_end(event)
+                except Exception:
+                    continue
+
+
 @dataclass(frozen=True)
 class V1SmokeArtifacts:
     service: IngestionService
@@ -86,6 +112,18 @@ def run_v1_smoke_pipeline(
 ) -> V1SmokeArtifacts:
     sink = InMemoryTraceSink()
     tracer = Tracer(enabled=True, sink=sink)
+    if os.getenv("LANGSMITH_API_KEY", "").strip():
+        from inv_man_intake.observability.langsmith_fleet import ensure_langsmith_project_defaults
+        from inv_man_intake.observability.langsmith_sink import LangSmithTraceSink
+
+        ensure_langsmith_project_defaults()
+        tracer = Tracer(
+            enabled=True,
+            sink=_FanoutTraceSink(
+                sink,
+                LangSmithTraceSink.from_env(),
+            ),
+        )
     trace_context = new_trace_context(tags={"package_id": package_id, "stage": "intake"})
 
     service = IngestionService()

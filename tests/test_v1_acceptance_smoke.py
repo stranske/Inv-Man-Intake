@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -185,8 +186,27 @@ def test_v1_acceptance_smoke_fails_when_conflict_case_lacks_queue_or_audit_evide
 
 
 def test_v1_smoke_pipeline_uses_inmemory_sink_even_with_langsmith_env(monkeypatch) -> None:
-    monkeypatch.setenv("INV_MAN_TRACING_ENABLED", "true")
-    monkeypatch.setenv("LANGCHAIN_TRACING_V2", "true")
+    class _FakeLangSmithClient:
+        def __init__(self) -> None:
+            self.create_calls: list[dict[str, Any]] = []
+
+        def create_run(self, **kwargs: Any) -> None:
+            self.create_calls.append(kwargs)
+
+        def update_run(self, run_id: Any, **kwargs: Any) -> None:
+            return None
+
+    clients: list[_FakeLangSmithClient] = []
+
+    def _fake_client_factory() -> _FakeLangSmithClient:
+        client = _FakeLangSmithClient()
+        clients.append(client)
+        return client
+
+    monkeypatch.setattr(
+        "inv_man_intake.observability.langsmith_sink._default_client_factory",
+        _fake_client_factory,
+    )
     monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_pt_test")
 
     artifacts = run_v1_smoke_pipeline(
@@ -196,6 +216,8 @@ def test_v1_smoke_pipeline_uses_inmemory_sink_even_with_langsmith_env(monkeypatc
     )
 
     assert isinstance(artifacts.sink, InMemoryTraceSink)
+    assert len(clients) == 1
+    assert len(clients[0].create_calls) > 0
 
 
 def _start_event(sink: InMemoryTraceSink, name: str):
