@@ -19,6 +19,7 @@ from inv_man_intake.extraction.providers.pdf_primary import (
     PdfPrimaryExtractionProvider,
     UnsupportedDocumentFormatError,
 )
+from inv_man_intake.extraction.providers.pptx_primary import PptxPrimaryExtractionProvider
 from inv_man_intake.extraction.providers.primary import PrimaryRegexExtractionProvider
 
 __all__ = [
@@ -31,6 +32,7 @@ __all__ = [
     "ExtractionProvider",
     "MultiModalExtractionProvider",
     "PdfPrimaryExtractionProvider",
+    "PptxPrimaryExtractionProvider",
     "PrimaryRegexExtractionProvider",
     "ProviderExtractionOutput",
     "SourceLocation",

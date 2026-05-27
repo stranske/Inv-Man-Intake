@@ -25,7 +25,7 @@ def test_throughput_readiness_writes_report_with_required_fields(tmp_path: Path)
     assert payload["package_count"] == 2
     assert payload["document_count"] == 7
     assert payload["score_count"] == 2
-    assert payload["escalation_count"] == 6
+    assert payload["escalation_count"] == 5
     assert {item["stage"] for item in payload["stage_timings"]} == set(STAGE_EVENT_NAMES)
     assert all(item["duration_ms"] > 0 for item in payload["stage_timings"])
     assert payload["target_packages_per_week"] == "10-15"
