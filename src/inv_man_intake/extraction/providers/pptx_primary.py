@@ -16,7 +16,7 @@ from inv_man_intake.extraction.providers.pdf_primary import UnsupportedDocumentF
 
 _DRAWINGML_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 _TEXT_TAG = f"{{{_DRAWINGML_NS}}}t"
-_SLIDE_NAME_PATTERN = re.compile(r"^ppt/slides/slide(?P<index>[0-9]+)\.xml$")
+_SLIDE_NAME_PATTERN = re.compile(r"^ppt/slides/slide(?P<index>[1-9][0-9]*)\.xml$")
 
 
 class PptxPrimaryExtractionProvider:
@@ -90,7 +90,12 @@ class PptxPrimaryExtractionProvider:
                 if slide_match is None:
                     continue
                 slide_index = int(slide_match.group("index"))
-                root = ET.fromstring(zf.read(name))
+                try:
+                    root = ET.fromstring(zf.read(name))
+                except (ET.ParseError, UnicodeDecodeError) as exc:
+                    raise UnsupportedDocumentFormatError(
+                        "pptx-primary only supports PPTX bytes"
+                    ) from exc
                 runs = [node.text or "" for node in root.iter(_TEXT_TAG)]
                 slides.append((slide_index, "\n".join(run for run in runs if run.strip())))
         slides.sort(key=lambda item: item[0])

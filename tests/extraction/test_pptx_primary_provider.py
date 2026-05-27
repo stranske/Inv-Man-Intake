@@ -65,3 +65,36 @@ def test_pptx_primary_provider_rejects_bare_zip_without_presentation_part() -> N
 
     with pytest.raises(UnsupportedDocumentFormatError, match="only supports PPTX bytes"):
         provider.extract(source_doc_id="doc_bare_zip", content=bare_zip)
+
+
+def test_pptx_primary_provider_rejects_malformed_slide_xml() -> None:
+    provider = PptxPrimaryExtractionProvider()
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("ppt/presentation.xml", "<presentation/>")
+        archive.writestr("ppt/slides/slide1.xml", "<broken")
+    malformed = buffer.getvalue()
+
+    with pytest.raises(UnsupportedDocumentFormatError, match="only supports PPTX bytes"):
+        provider.extract(source_doc_id="doc_bad_slide_xml", content=malformed)
+
+
+def test_pptx_primary_provider_ignores_zero_indexed_slide_for_one_based_provenance() -> None:
+    provider = PptxPrimaryExtractionProvider()
+    slide = (
+        '<sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+        "<a:t>strategy asset class: {value}</a:t></sld>"
+    )
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("ppt/presentation.xml", "<presentation/>")
+        archive.writestr("ppt/slides/slide0.xml", slide.format(value="zero"))
+        archive.writestr("ppt/slides/slide1.xml", slide.format(value="one"))
+    content = buffer.getvalue()
+
+    result = provider.extract(source_doc_id="doc_zero_slide", content=content)
+
+    fields = {field.key: field for field in result.fields}
+    assert fields["strategy.asset_class"].value == "one"
+    assert fields["strategy.asset_class"].source_page == 1
+    assert all(field.source_page >= 1 for field in result.fields)
