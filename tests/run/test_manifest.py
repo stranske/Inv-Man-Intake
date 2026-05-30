@@ -71,3 +71,18 @@ def test_build_manifest_rejects_unsafe_artifact_refs(tmp_path: Path) -> None:
     # A name that is itself a ``..`` segment yields an unsafe ``artifact:`` ref.
     with pytest.raises(ValueError):
         build_manifest("run-1", None, [tmp_path / "child" / ".."])
+
+    # An absolute path whose ``name`` is safe does not bypass the ``..`` check,
+    # but a path whose parts contain ``..`` is always rejected regardless of name.
+    with pytest.raises(ValueError):
+        build_manifest("run-1", None, [tmp_path / ".." / "escape.json"])
+
+
+def test_build_manifest_unknown_artifact_kind(tmp_path: Path) -> None:
+    # A file whose name is not in _KIND_BY_NAME falls back to kind "other".
+    custom = tmp_path / "report.pdf"
+    custom.write_bytes(b"binary content")
+    result = build_manifest("run-1", None, [custom])
+    entry = result["artifacts"][0]
+    assert entry["kind"] == "other"
+    assert entry["name"] == "report.pdf"
