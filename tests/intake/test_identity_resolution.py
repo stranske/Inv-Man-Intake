@@ -111,6 +111,42 @@ def test_distinct_firm_name_mints_fresh_entity() -> None:
     assert repository.count_core_rows() == (2, 2, 2)
 
 
+def test_explicit_ids_are_preserved_over_normalized_name_matches() -> None:
+    service = IngestionService()
+    repository, store = _registry()
+
+    register_intake_bundle(
+        _bundle(
+            package_id="pkg_summit_arc_001",
+            firm_name="Summit Arc Advisors",
+            fund_name="Summit Arc Special Situations",
+        ),
+        service,
+        core_repository=repository,
+        document_store=store,
+    )
+    explicit = _bundle(
+        package_id="pkg_summit_arc_002",
+        firm_name="Summit Arc Advisors LLC",
+        fund_name="Summit Arc Special Situations LP",
+    )
+    explicit["metadata"]["firm_id"] = "firm_custom_summit_arc"
+    explicit["metadata"]["fund_id"] = "fund_custom_special_situations"
+
+    result = register_intake_bundle(
+        explicit,
+        service,
+        core_repository=repository,
+        document_store=store,
+    )
+
+    assert result.accepted is True
+    assert service.get_record("pkg_summit_arc_002").firm_id == "firm_custom_summit_arc"
+    assert service.get_record("pkg_summit_arc_002").fund_id == "fund_custom_special_situations"
+    assert repository.get_firm("firm_custom_summit_arc") is not None
+    assert repository.get_fund("fund_custom_special_situations") is not None
+
+
 def test_normalize_entity_name_strips_common_legal_suffixes() -> None:
     assert normalize_entity_name("  Summit   Arc Advisors, L.L.C. ") == "summit arc advisors"
     assert normalize_entity_name("Summit Arc Special Situations L.P.") == (
