@@ -76,3 +76,32 @@ def test_read_only_operations_do_not_create_blob_directories(tmp_path: Path) -> 
     assert store.exists("fund_1/missing", "2026-03-01T09:00:00+00:00:abcd") is False
     blob_root = tmp_path / "document-store" / "blobs"
     assert list(blob_root.iterdir()) == []
+
+
+def test_register_to_path_reingest_is_idempotent(tmp_path: Path) -> None:
+    db_path = tmp_path / "core.sqlite"
+    store_root = tmp_path / "document-store"
+
+    first = register_intake_bundle_to_path(
+        _FIXTURE_ROOT / "pdf_primary_mixed_bundle.json",
+        db_path=db_path,
+        store_root=store_root,
+    )
+    second = register_intake_bundle_to_path(
+        _FIXTURE_ROOT / "pdf_primary_mixed_bundle.json",
+        db_path=db_path,
+        store_root=store_root,
+    )
+
+    assert first.accepted is True
+    assert second.accepted is True
+    assert first.package_id == second.package_id
+    assert len(first.persisted_documents) == len(second.persisted_documents) == 4
+    assert first.persisted_documents == second.persisted_documents
+
+    connection = sqlite3.connect(db_path)
+    repository = CoreRepository(connection)
+    try:
+        assert repository.count_core_rows() == (1, 1, 4)
+    finally:
+        connection.close()
