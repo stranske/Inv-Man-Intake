@@ -49,8 +49,44 @@ jobs:
 
   conformance:
     needs: emit-reference-run
-    uses: stranske/Workflows/.github/workflows/reusable-backplane-conformance.yml@main
-    with:
-      run_json_path: artifacts/reference/run.json
-      manifest_path: artifacts/reference/manifest.json
-    secrets: inherit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      # Download the artifact that emit-reference-run uploaded; the reusable
+      # workflow runs in a fresh runner and cannot share the emitter's workspace.
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: reference-run
+          path: artifacts/reference/
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          repository: stranske/Workflows
+          ref: main
+          path: .backplane-contract
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: '3.12'
+      - run: pip install jsonschema
+      - name: Validate run contract
+        run: |
+          set -euo pipefail
+          REPO="stranske/Inv-Man-Intake"
+          ARGS=( "artifacts/reference/run.json"
+                 --registry .backplane-contract/config/backplane_participants.json
+                 --schema-dir .backplane-contract/docs/contracts/schemas
+                 --repo "$REPO" )
+          if [ -f "artifacts/reference/manifest.json" ]; then
+            ARGS+=( --manifest "artifacts/reference/manifest.json" )
+          fi
+          python .backplane-contract/scripts/validate_run_contract.py "${ARGS[@]}" \
+            --report-json conformance-report.json \
+            --github-output "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: always()
+        with:
+          name: backplane-conformance-report
+          path: conformance-report.json
+          if-no-files-found: warn

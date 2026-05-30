@@ -22,7 +22,9 @@ enforces its own redaction denylist.
 from __future__ import annotations
 
 import json
+import platform
 from dataclasses import dataclass
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, cast
 
@@ -30,6 +32,7 @@ from inv_man_intake.extraction.confidence import ThresholdDecision
 from inv_man_intake.intake.integration import IntakeRegistrationResult
 from inv_man_intake.intake.models import IngestRecord
 from inv_man_intake.observability.tracing import TraceContext
+from inv_man_intake.run_manifest import MANIFEST_NAME, build_manifest
 from inv_man_intake.scoring.contracts import ScoreResult
 from inv_man_intake.v1_smoke import V1SmokeArtifacts, _pipeline_latency_ms, _run_pipeline_core
 
@@ -39,6 +42,7 @@ ARTIFACT_RUN = "run.json"
 ARTIFACT_METADATA = "metadata.json"
 ARTIFACT_THRESHOLD = "threshold-summary.json"
 ARTIFACT_EXPLAINABILITY = "explainability.json"
+ARTIFACT_MANIFEST = MANIFEST_NAME
 
 
 @dataclass(frozen=True)
@@ -62,23 +66,63 @@ class RunResult:
     provenance: dict[str, Any]
     trace_refs: list[str]
     artifact_refs: list[str]
+    manifest: str
 
     def to_json(self) -> dict[str, Any]:
         """Return the run record as a JSON-serializable dictionary."""
 
         return {
+            "schema_version": "run-contract/v1",
+            "repo": "stranske/Inv-Man-Intake",
+            "tool": "inv-man-ingest",
             "run_id": self.run_id,
-            "inputs": self.inputs,
+            "status": "success",
+            "github_issue": "stranske/Inv-Man-Intake#474",
+            "actor": {
+                "kind": "ci",
+                "id": "inv-man-ingest-reference-run",
+                "intent": "headless intake-to-score run",
+            },
+            "inputs": {
+                **self.inputs,
+                "validated": True,
+                "refs": [f"ref:package:{self.inputs['package_id']}"],
+            },
+            "outputs": {
+                "manifest_ref": self.manifest,
+                "artifact_ids": [Path(ref).name for ref in self.artifact_refs],
+                "summary": {
+                    "final_score": self.final_score,
+                    "escalation_reason": self.escalation_state["reason"],
+                    "field_count": len(self.fields),
+                },
+            },
             "fields": self.fields,
             "confidence_state": self.confidence_state,
             "escalation_state": self.escalation_state,
             "final_score": self.final_score,
             "explainability": self.explainability,
-            "warnings": self.warnings,
+            "warnings": [
+                {"code": warning, "severity": "warning", "message": warning}
+                for warning in self.warnings
+            ],
+            "evidence_refs": sorted(
+                {
+                    f"document:{field['source_doc_id']}#page={field['source_page']}"
+                    for field in self.fields
+                    if field.get("source_doc_id") and field.get("source_page") is not None
+                }
+            ),
+            "identity_refs": [
+                f"firm:{self.inputs['firm_id']}",
+                f"fund:{self.inputs['fund_id']}",
+            ],
             "latency_ms": self.latency_ms,
+            "latency": {"wall_ms": self.latency_ms or 0},
             "provenance": self.provenance,
             "trace_refs": self.trace_refs,
             "artifact_refs": self.artifact_refs,
+            "manifest": self.manifest,
         }
 
 
@@ -163,6 +207,9 @@ def _build_run_result(artifacts: V1SmokeArtifacts) -> RunResult:
         warnings=_collect_warnings(registration=registration, decision=decision),
         latency_ms=_pipeline_latency_ms(sink=artifacts.sink, root_span_name=_ROOT_SPAN_NAME),
         provenance={
+            "tool_version": _tool_version(),
+            "python_version": platform.python_version(),
+            "platform": platform.platform(),
             "tool": "inv-man-ingest",
             "provider": extraction.provider_name,
             "evidence": evidence,
@@ -174,6 +221,7 @@ def _build_run_result(artifacts: V1SmokeArtifacts) -> RunResult:
             ARTIFACT_THRESHOLD,
             ARTIFACT_EXPLAINABILITY,
         ],
+        manifest=f"artifact:{ARTIFACT_MANIFEST}",
     )
 
 
@@ -186,6 +234,13 @@ def _collect_warnings(
     if decision.escalate and decision.escalation_reason:
         warnings.append(f"threshold:{decision.escalation_reason}")
     return sorted(warnings)
+
+
+def _tool_version() -> str:
+    try:
+        return version("inv-man-intake")
+    except PackageNotFoundError:
+        return "0.0+local"
 
 
 def _build_metadata(artifacts: V1SmokeArtifacts) -> dict[str, Any]:
@@ -244,10 +299,26 @@ def _write_run_artifacts(
     output_dir: Path,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
-    _write_json(output_dir / ARTIFACT_RUN, result.to_json())
-    _write_json(output_dir / ARTIFACT_METADATA, _build_metadata(artifacts))
-    _write_json(output_dir / ARTIFACT_THRESHOLD, _build_threshold_summary(artifacts))
-    _write_json(output_dir / ARTIFACT_EXPLAINABILITY, dict(artifacts.formatted_explainability))
+    written = [
+        output_dir / ARTIFACT_RUN,
+        output_dir / ARTIFACT_METADATA,
+        output_dir / ARTIFACT_THRESHOLD,
+        output_dir / ARTIFACT_EXPLAINABILITY,
+    ]
+    _write_json(written[0], result.to_json())
+    _write_json(written[1], _build_metadata(artifacts))
+    _write_json(written[2], _build_threshold_summary(artifacts))
+    _write_json(written[3], dict(artifacts.formatted_explainability))
+
+    # Hash the artifacts as actually written (run.json already carries its
+    # ``manifest`` pointer), then record them in a deterministic manifest.json.
+    trace_context = cast(TraceContext, artifacts.trace_context)
+    manifest = build_manifest(
+        run_id=result.run_id,
+        trace_id=trace_context.trace_id,
+        artifacts=written,
+    )
+    _write_json(output_dir / ARTIFACT_MANIFEST, manifest)
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
