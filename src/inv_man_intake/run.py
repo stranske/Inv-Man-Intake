@@ -182,8 +182,10 @@ def _build_run_result(artifacts: V1SmokeArtifacts) -> RunResult:
         field.key: {
             "source_doc_id": field.source_doc_id,
             "source_page": field.source_page,
+            "confidence": field.confidence,
             "method": field.method,
             "location": _source_location_payload(field.location),
+            "snippet": field.snippet,
             "snippet_metadata": _snippet_metadata_payload(field.snippet_metadata),
         }
         for field in extraction.fields

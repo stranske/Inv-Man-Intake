@@ -8,7 +8,14 @@ from typing import Protocol, runtime_checkable
 
 @dataclass(frozen=True)
 class ExtractedField:
-    """One extracted field with confidence and source location metadata."""
+    """One extracted field with evidence metadata.
+
+    ``method`` identifies the provider or normalization path that produced the
+    field and must be non-empty. ``location`` carries structured source
+    provenance when available, while ``snippet`` and ``snippet_metadata`` carry
+    the replayable evidence excerpt exposed in field payloads and run-artifact
+    provenance.
+    """
 
     key: str
     value: str
