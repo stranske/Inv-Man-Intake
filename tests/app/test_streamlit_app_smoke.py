@@ -142,9 +142,12 @@ def test_live_verification_evidence_is_recorded() -> None:
 
 def test_stlite_mount_bundles_package_and_fixture_files() -> None:
     content = Path("app/index.html").read_text(encoding="utf-8")
+    stlite_lock = Path("requirements-stlite.lock").read_text(encoding="utf-8").strip()
 
     assert '"src/inv_man_intake/v1_smoke.py"' in content
     assert '"src/inv_man_intake/data/migrations/sql/0001_core_firm_fund_document.up.sql"' in content
     assert '"tests/fixtures/intake/pdf_primary_mixed_bundle.json"' in content
     assert "Object.fromEntries" in content
     assert '"langsmith>=0.4.59"' in content
+    assert stlite_lock == "@stlite/mountable==0.76.0"
+    assert "https://cdn.jsdelivr.net/npm/@stlite/mountable@0.76.0/build/stlite.js" in content

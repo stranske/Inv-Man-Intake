@@ -34,7 +34,8 @@ The synthetic intake demo can run in a local browser through `app/index.html`
 with stlite/Pyodide. It uses the committed Summit Arc fixture bundles in
 `tests/fixtures/intake/`, disables `LANGSMITH_API_KEY`, and executes the same
 deterministic `run_v1_smoke_pipeline` path locally so no proprietary payload is
-sent to LangSmith, an LLM provider, or an application server.
+sent to LangSmith, an LLM provider, or an application server. The pinned stlite
+runtime version is tracked in `requirements-stlite.lock`.
 
 Live verification gate (no terminal required for reviewer):
 
