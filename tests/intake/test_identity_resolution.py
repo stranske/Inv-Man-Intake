@@ -116,3 +116,7 @@ def test_normalize_entity_name_strips_common_legal_suffixes() -> None:
     assert normalize_entity_name("Summit Arc Special Situations L.P.") == (
         "summit arc special situations"
     )
+
+
+def test_normalize_entity_name_collapses_unicode_spacing_before_id_minting() -> None:
+    assert normalize_entity_name("Summit\u00a0Arc Advisors LLC") == "summit arc advisors"

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import date
@@ -88,14 +89,16 @@ def register_intake_bundle(
         )
 
     metadata = bundle["metadata"]
+    normalized_firm_name = _normalized_name(_as_non_empty_str(metadata.get("firm_name")))
+    normalized_fund_name = _normalized_name(_as_non_empty_str(metadata.get("fund_name")))
     firm_id = _stable_identifier(
         preferred=metadata.get("firm_id"),
-        fallback=metadata.get("firm_name"),
+        fallback=normalized_firm_name,
         prefix="firm",
     )
     fund_id = _stable_identifier(
         preferred=metadata.get("fund_id"),
-        fallback=metadata.get("fund_name"),
+        fallback=normalized_fund_name,
         prefix="fund",
     )
     if core_repository is not None and document_store is not None:
@@ -395,7 +398,7 @@ def _as_non_empty_str(value: Any) -> str:
 
 def normalize_entity_name(name: str) -> str:
     """Normalize a firm or fund name for deterministic local identity matching."""
-    normalized = re.sub(r"\s+", " ", name.casefold()).strip()
+    normalized = _normalized_name(name)
     previous = None
     while previous != normalized:
         previous = normalized
@@ -413,6 +416,10 @@ def _stable_identifier(preferred: Any, fallback: Any, prefix: str) -> str:
     fallback_value = normalize_entity_name(_as_non_empty_str(fallback))
     slug = re.sub(r"[^a-z0-9]+", "_", fallback_value).strip("_")
     return f"{prefix}_{slug or 'unknown'}"
+
+
+def _normalized_name(name: str) -> str:
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", name).casefold()).strip()
 
 
 def _document_key(*, fund_id: str, document_id: str) -> str:
