@@ -86,8 +86,12 @@ def run_pipeline(bundle_path: Path, *, output_dir: Path) -> RunResult:
     """Run the intake pipeline for ``bundle_path`` and write artifacts to ``output_dir``.
 
     Returns the :class:`RunResult`. Writes ``run.json`` plus the three named
-    artifact files into ``output_dir`` (created if missing). Raises
-    :class:`ValueError` for a structurally invalid or rejected bundle.
+    artifact files into ``output_dir`` (created if missing).
+
+    Raises:
+        ValueError: The bundle is malformed, declares no usable ``package_id``,
+            or is rejected by intake validation.
+        OSError: The bundle or output artifact paths cannot be read or written.
     """
 
     bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
