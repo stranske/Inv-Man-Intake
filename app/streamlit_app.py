@@ -49,11 +49,30 @@ class DemoResult:
     sink_type: str
 
 
+def _suppress_langsmith_env() -> dict[str, str]:
+    suppressed: dict[str, str] = {}
+    for key in (
+        "LANGSMITH_API_KEY",
+        "LANGCHAIN_API_KEY",
+        "LANGSMITH_TRACING_ENABLED",
+        "LANGCHAIN_TRACING_V2",
+    ):
+        value = os.environ.pop(key, None)
+        if value is not None:
+            suppressed[key] = value
+    return suppressed
+
+
+def _restore_env(values: dict[str, str]) -> None:
+    for key, value in values.items():
+        os.environ[key] = value
+
+
 def run_demo_fixture(fixture_name: str) -> DemoResult:
     """Run the real deterministic smoke pipeline for one committed fixture bundle."""
 
     package = PACKAGE_CONFIG_BY_FIXTURE[fixture_name]
-    previous_langsmith_key = os.environ.pop("LANGSMITH_API_KEY", None)
+    suppressed_env = _suppress_langsmith_env()
     try:
         artifacts = run_v1_smoke_pipeline(
             fixture_root=FIXTURE_ROOT,
@@ -62,8 +81,7 @@ def run_demo_fixture(fixture_name: str) -> DemoResult:
             expected_document_ids=package["expected_document_ids"],
         )
     finally:
-        if previous_langsmith_key is not None:
-            os.environ["LANGSMITH_API_KEY"] = previous_langsmith_key
+        _restore_env(suppressed_env)
 
     assert isinstance(artifacts.sink, InMemoryTraceSink)
     components = cast(list[dict[str, object]], artifacts.formatted_explainability["components"])
@@ -97,7 +115,7 @@ def render_app(st: StreamlitLike | None = None) -> DemoResult:
     st.table(result.components)
     st.subheader("Analyst queue")
     st.write({"owner_role": result.owner_role, "item_id": result.item_id})
-    st.success(f"Trace sink: {result.sink_type}; no LANGSMITH_API_KEY was used.")
+    st.success(f"Trace sink: {result.sink_type}; LangSmith and LangChain tracing env vars are off.")
     return result
 
 
