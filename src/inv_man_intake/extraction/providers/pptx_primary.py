@@ -10,6 +10,8 @@ from xml.etree import ElementTree as ET
 from inv_man_intake.extraction.providers.base import (
     ExtractedDocumentResult,
     ExtractedField,
+    SnippetMetadata,
+    SourceLocation,
     validate_extracted_document_result,
 )
 from inv_man_intake.extraction.providers.pdf_primary import UnsupportedDocumentFormatError
@@ -61,6 +63,17 @@ class PptxPrimaryExtractionProvider:
                         confidence=confidence,
                         source_doc_id=source_doc_id,
                         source_page=slide_index,
+                        method=self.name,
+                        location=SourceLocation(
+                            source_doc_id=source_doc_id,
+                            source_page=slide_index,
+                        ),
+                        snippet=match.group(0).strip(),
+                        snippet_metadata=SnippetMetadata(
+                            kind="regex-match",
+                            char_start=match.start(),
+                            char_end=match.end(),
+                        ),
                     )
                 )
 

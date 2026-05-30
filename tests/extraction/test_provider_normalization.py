@@ -44,11 +44,31 @@ def test_normalize_provider_output_builds_canonical_fields() -> None:
     assert result.provider_name == "dummy-provider"
     assert by_key["text.block.0"].value == "alpha"
     assert by_key["text.block.0"].confidence == 0.0
+    assert by_key["text.block.0"].method == "dummy-provider"
+    assert by_key["text.block.0"].location == location
+    assert by_key["text.block.0"].snippet == "alpha"
+    assert by_key["text.block.0"].snippet_metadata is not None
+    assert by_key["text.block.0"].snippet_metadata.kind == "text-block"
     assert by_key["table.0.r0.c0"].value == "A1"
     assert by_key["table.0.r0.c0"].confidence == 0.0
+    assert by_key["table.0.r0.c0"].method == "dummy-provider"
+    assert by_key["table.0.r0.c0"].location == location
+    assert by_key["table.0.r0.c0"].snippet == "A1"
+    assert by_key["table.0.r0.c0"].snippet_metadata is not None
+    assert by_key["table.0.r0.c0"].snippet_metadata.kind == "table-cell"
     assert by_key["table.0.r1.c0"].confidence == 0.67
     assert by_key["image.0.ocr_text"].value == "invoice number"
+    assert by_key["image.0.ocr_text"].method == "dummy-provider"
+    assert by_key["image.0.ocr_text"].location == location
+    assert by_key["image.0.ocr_text"].snippet == "invoice number"
+    assert by_key["image.0.ocr_text"].snippet_metadata is not None
+    assert by_key["image.0.ocr_text"].snippet_metadata.kind == "image-ocr"
     assert by_key["image.0.description"].value == "header image"
+    assert by_key["image.0.description"].method == "dummy-provider"
+    assert by_key["image.0.description"].location == location
+    assert by_key["image.0.description"].snippet == "header image"
+    assert by_key["image.0.description"].snippet_metadata is not None
+    assert by_key["image.0.description"].snippet_metadata.kind == "image-description"
 
     for field in result.fields:
         assert field.source_doc_id == "doc_1"

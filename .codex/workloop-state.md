@@ -1,5 +1,21 @@
 # Workloop State
 
+## 2026-05-30T21:07:18Z - opener materialized #476
+- Automation: pd-workloop-resume / opener lane (`codex`).
+- Issue selected: #476, "Add `method` + structured locator to the canonical `ExtractedField` evidence object".
+- Branch/worktree: `codex/issue-476-extractedfield-method` at `/Users/teacher/.codex/automations/pd-workloop-resume/worktrees/inv-man-476-extractedfield-method`.
+- Implemented:
+  - Added required `ExtractedField.method`, optional `location: SourceLocation`, and optional `snippet`.
+  - Extended `validate_extracted_document_result` to reject empty methods and validate structured field locations.
+  - Populated methods/locations/snippets from PDF, PPTX, regex, normalized multimodal providers, and threshold summary fields.
+  - Threaded `method`, structured `location`, and optional `snippet` into local `run.json` field/evidence payloads.
+  - Added provider contract tests for empty method rejection and location round-trip through threshold summary; extended v1 smoke provenance assertions to require method.
+- Validation:
+  - `python -m pytest tests/extraction/test_provider_contract_validation.py tests/extraction/test_pdf_primary_provider.py tests/extraction/test_pptx_primary_provider.py tests/extraction/test_thresholds.py tests/test_v1_acceptance_smoke.py -q --no-cov` -> 31 passed.
+  - `python -m ruff check ...` on changed source/tests -> passed.
+  - `python -m ruff format --check ...` on changed source/tests -> passed.
+  - `python -m mypy src/inv_man_intake/extraction/providers/base.py src/inv_man_intake/extraction/providers/pdf_primary.py src/inv_man_intake/extraction/providers/pptx_primary.py src/inv_man_intake/extraction/providers/primary.py src/inv_man_intake/extraction/providers/normalize.py src/inv_man_intake/extraction/confidence.py src/inv_man_intake/run.py` -> passed.
+
 ## 2026-03-08 04:10:27 CDT
 - Automation: pd-workloop-resume
 - Context carry-forward:

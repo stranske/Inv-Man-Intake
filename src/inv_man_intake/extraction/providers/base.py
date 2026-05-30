@@ -8,13 +8,24 @@ from typing import Protocol, runtime_checkable
 
 @dataclass(frozen=True)
 class ExtractedField:
-    """One extracted field with confidence and source location metadata."""
+    """One extracted field with evidence metadata.
+
+    ``method`` identifies the provider or normalization path that produced the
+    field and must be non-empty. ``location`` carries structured source
+    provenance when available, while ``snippet`` and ``snippet_metadata`` carry
+    the replayable evidence excerpt exposed in field payloads and run-artifact
+    provenance.
+    """
 
     key: str
     value: str
     confidence: float
     source_doc_id: str
     source_page: int
+    method: str
+    location: SourceLocation | None = None
+    snippet: str | None = None
+    snippet_metadata: SnippetMetadata | None = None
 
 
 @dataclass(frozen=True)
@@ -26,6 +37,15 @@ class SourceLocation:
     bbox: tuple[float, float, float, float] | None = None
     table_index: int | None = None
     image_index: int | None = None
+
+
+@dataclass(frozen=True)
+class SnippetMetadata:
+    """Structured snippet context for provenance and replay artifacts."""
+
+    kind: str
+    char_start: int | None = None
+    char_end: int | None = None
 
 
 @dataclass(frozen=True)
@@ -139,6 +159,16 @@ def validate_extracted_document_result(result: ExtractedDocumentResult) -> None:
             raise ValueError("ExtractedField.source_doc_id must match ExtractedDocumentResult")
         if field.source_page < 0:
             raise ValueError("ExtractedField.source_page must be >= 0")
+        if not field.method.strip():
+            raise ValueError("ExtractedField.method must be non-empty")
+        if field.location is not None:
+            _validate_source_location(
+                field.location,
+                expected_source_doc_id=result.source_doc_id,
+                context=f"field:{field.key}",
+            )
+        if field.snippet_metadata is not None:
+            _validate_snippet_metadata(field.snippet_metadata)
 
 
 def _validate_source_location(
@@ -153,6 +183,21 @@ def _validate_source_location(
         raise ValueError(f"SourceLocation.source_doc_id must match provider output for {context}")
     if location.source_page is not None and location.source_page < 0:
         raise ValueError("SourceLocation.source_page must be >= 0 when provided")
+
+
+def _validate_snippet_metadata(metadata: SnippetMetadata) -> None:
+    if not metadata.kind.strip():
+        raise ValueError("SnippetMetadata.kind must be non-empty")
+    if metadata.char_start is not None and metadata.char_start < 0:
+        raise ValueError("SnippetMetadata.char_start must be >= 0 when provided")
+    if metadata.char_end is not None and metadata.char_end < 0:
+        raise ValueError("SnippetMetadata.char_end must be >= 0 when provided")
+    if (
+        metadata.char_start is not None
+        and metadata.char_end is not None
+        and metadata.char_end < metadata.char_start
+    ):
+        raise ValueError("SnippetMetadata.char_end must be >= char_start when provided")
 
 
 @runtime_checkable
