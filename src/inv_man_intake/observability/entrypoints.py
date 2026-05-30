@@ -53,6 +53,15 @@ def audit_intake_extraction_entrypoints() -> tuple[PipelineEntrypoint, ...]:
                 "run_v1_smoke_pipeline -> ExtractionOrchestrator.run",
                 "python -m inv_man_intake.readiness.throughput",
             ),
+            (
+                "ingest_cli",
+                "inv_man_intake.cli.ingest",
+                "main",
+                "production",
+                "run_pipeline -> register_intake_bundle_file",
+                "run_pipeline -> ExtractionOrchestrator.run",
+                "python -m inv_man_intake.cli.ingest <bundle> --out <output_dir>",
+            ),
         )
     )
 
