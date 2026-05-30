@@ -136,7 +136,7 @@ class FilesystemDocumentStore:
             received_at=fingerprint.received_at,
             byte_size=len(content),
         )
-        self._blob_path(document_key, version_id).write_bytes(content)
+        self._blob_path(document_key, version_id, create_dirs=True).write_bytes(content)
         self._write_versions(document_key, (*existing_versions, record))
         return record
 
@@ -177,11 +177,15 @@ class FilesystemDocumentStore:
             }
             for version in versions
         ]
-        path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        serialized = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+        temp_path = path.with_suffix(path.suffix + ".tmp")
+        temp_path.write_text(serialized, encoding="utf-8")
+        temp_path.replace(path)
 
-    def _blob_path(self, document_key: str, version_id: str) -> Path:
+    def _blob_path(self, document_key: str, version_id: str, *, create_dirs: bool = False) -> Path:
         key_dir = self._blob_root / _path_token(document_key)
-        key_dir.mkdir(parents=True, exist_ok=True)
+        if create_dirs:
+            key_dir.mkdir(parents=True, exist_ok=True)
         return key_dir / f"{_path_token(version_id)}.bin"
 
     def _index_path(self, document_key: str) -> Path:

@@ -68,3 +68,11 @@ def test_idempotent_reingest_returns_prior_version(tmp_path: Path) -> None:
     assert store.list_versions("fund_1/deck") == (first,)
     reloaded = FilesystemDocumentStore(tmp_path / "document-store")
     assert reloaded.list_versions("fund_1/deck") == (first,)
+
+
+def test_read_only_operations_do_not_create_blob_directories(tmp_path: Path) -> None:
+    store = FilesystemDocumentStore(tmp_path / "document-store")
+
+    assert store.exists("fund_1/missing", "2026-03-01T09:00:00+00:00:abcd") is False
+    blob_root = tmp_path / "document-store" / "blobs"
+    assert list(blob_root.iterdir()) == []
