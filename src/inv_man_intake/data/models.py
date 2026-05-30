@@ -25,6 +25,7 @@ class Fund:
     strategy: str | None
     asset_class: str | None
     created_at: str
+    aliases_json: str | None = None
 
 
 @dataclass(frozen=True)

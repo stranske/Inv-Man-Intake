@@ -78,6 +78,19 @@ def test_name_variant_reuses_existing_firm_and_records_aliases() -> None:
     assert {"name": "Summit Arc Advisors", "normalized": "summit arc advisors"} in aliases
     assert {"name": "Summit Arc Advisors LLC", "normalized": "summit arc advisors"} in aliases
 
+    fund = repository.get_fund("fund_summit_arc_special_situations")
+    assert fund is not None
+    assert fund.fund_name == "Summit Arc Special Situations"
+    fund_aliases = json.loads(fund.aliases_json or "[]")
+    assert {
+        "name": "Summit Arc Special Situations",
+        "normalized": "summit arc special situations",
+    } in fund_aliases
+    assert {
+        "name": "Summit Arc Special Situations LP",
+        "normalized": "summit arc special situations",
+    } in fund_aliases
+
 
 def test_distinct_firm_name_mints_fresh_entity() -> None:
     service = IngestionService()

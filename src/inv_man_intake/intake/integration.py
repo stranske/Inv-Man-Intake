@@ -317,20 +317,9 @@ def _persist_accepted_bundle(
     version_date = _version_date(metadata, received_at)
 
     firm_name = _as_non_empty_str(metadata.get("firm_name")) or firm_id
-    resolved_firm_id = _resolve_firm_id(
-        core_repository=core_repository,
-        explicit_id=_as_non_empty_str(metadata.get("firm_id")),
-        fallback_id=firm_id,
-        name=firm_name,
-    )
+    resolved_firm_id = firm_id
     fund_name = _as_non_empty_str(metadata.get("fund_name")) or fund_id
-    resolved_fund_id = _resolve_fund_id(
-        core_repository=core_repository,
-        explicit_id=_as_non_empty_str(metadata.get("fund_id")),
-        fallback_id=fund_id,
-        firm_id=resolved_firm_id,
-        name=fund_name,
-    )
+    resolved_fund_id = fund_id
 
     if core_repository.get_firm(resolved_firm_id) is None:
         core_repository.create_firm(
@@ -351,6 +340,7 @@ def _persist_accepted_bundle(
         strategy=_as_non_empty_str(metadata.get("strategy")) or None,
         asset_class=_as_non_empty_str(metadata.get("asset_class")) or None,
         created_at=received_at,
+        aliases_json=_aliases_json_for_name(fund_name),
     )
     existing_fund = core_repository.get_fund(resolved_fund_id)
     if existing_fund is None:
@@ -397,7 +387,7 @@ def _as_non_empty_str(value: Any) -> str:
 
 
 def normalize_entity_name(name: str) -> str:
-    """Normalize a firm or fund name for deterministic local identity matching."""
+    """Normalize a firm or fund name, stripping trailing legal suffix chains."""
     normalized = _normalized_name(name)
     previous = None
     while previous != normalized:
@@ -481,7 +471,7 @@ def _resolve_fund_id(
     matches = [
         fund.fund_id
         for fund in core_repository.list_funds(firm_id)
-        if normalize_entity_name(fund.fund_name) == normalized
+        if _fund_has_alias(fund, normalized)
     ]
     unique_matches = sorted(set(matches))
     if len(unique_matches) > 1:
@@ -500,6 +490,16 @@ def _firm_has_alias(firm: Firm, normalized_name: str) -> bool:
     return any(
         normalize_entity_name(str(alias["name"])) == normalized_name
         for alias in _load_alias_entries(firm.aliases_json)
+        if isinstance(alias.get("name"), str)
+    )
+
+
+def _fund_has_alias(fund: Fund, normalized_name: str) -> bool:
+    if normalize_entity_name(fund.fund_name) == normalized_name:
+        return True
+    return any(
+        normalize_entity_name(str(alias["name"])) == normalized_name
+        for alias in _load_alias_entries(fund.aliases_json)
         if isinstance(alias.get("name"), str)
     )
 
@@ -563,15 +563,16 @@ def _load_alias_entries(aliases_json: str | None) -> list[dict[str, str]]:
 
 
 def _merge_fund(*, existing: Fund, incoming: Fund) -> Fund:
-    """Preserve existing fund attributes when the incoming bundle leaves them empty."""
+    """Preserve canonical fund identity while recording incoming name variants."""
     return replace(
         existing,
         firm_id=incoming.firm_id or existing.firm_id,
-        fund_name=incoming.fund_name or existing.fund_name,
+        fund_name=existing.fund_name,
         strategy=incoming.strategy if incoming.strategy is not None else existing.strategy,
         asset_class=(
             incoming.asset_class if incoming.asset_class is not None else existing.asset_class
         ),
+        aliases_json=_merge_alias_entries(existing.aliases_json, incoming.fund_name),
     )
 
 
