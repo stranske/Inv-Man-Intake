@@ -50,6 +50,8 @@ def test_ingest_run_json_carries_score_escalation_and_evidence(tmp_path: Path) -
         assert pointer["source_page"] is not None
         assert isinstance(pointer["method"], str)
         assert pointer["method"]
+        assert "snippet" not in pointer
+        assert "value" not in pointer
 
         location = pointer["location"]
         assert isinstance(location, dict)
@@ -67,6 +69,8 @@ def test_ingest_run_json_carries_score_escalation_and_evidence(tmp_path: Path) -
         assert isinstance(field_entry["method"], str)
         assert field_entry["method"]
         assert field_entry["location"] == location
+        assert isinstance(field_entry["snippet"], str)
+        assert field_entry["snippet"]
         assert field_entry["snippet_metadata"] == metadata
 
 
