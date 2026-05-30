@@ -42,11 +42,32 @@ def test_ingest_run_json_carries_score_escalation_and_evidence(tmp_path: Path) -
     assert run_payload["escalation_state"]["reason"] == "low_key_field_coverage"
 
     evidence = run_payload["provenance"]["evidence"]
+    fields_by_key = {field["key"]: field for field in run_payload["fields"]}
     for key in _KEY_FIELDS:
         assert key in evidence, f"missing evidence pointer for key field {key}"
         pointer = evidence[key]
         assert pointer["source_doc_id"]
         assert pointer["source_page"] is not None
+        assert isinstance(pointer["method"], str)
+        assert pointer["method"]
+
+        location = pointer["location"]
+        assert isinstance(location, dict)
+        assert location["source_doc_id"] == pointer["source_doc_id"]
+        assert location["source_page"] == pointer["source_page"]
+
+        metadata = pointer["snippet_metadata"]
+        assert isinstance(metadata, dict)
+        assert metadata["kind"] == "regex-match"
+        assert isinstance(metadata["char_start"], int)
+        assert isinstance(metadata["char_end"], int)
+        assert metadata["char_end"] >= metadata["char_start"]
+
+        field_entry = fields_by_key[key]
+        assert isinstance(field_entry["method"], str)
+        assert field_entry["method"]
+        assert field_entry["location"] == location
+        assert field_entry["snippet_metadata"] == metadata
 
 
 def test_ingest_entrypoint_returns_nonzero_for_missing_bundle(tmp_path: Path) -> None:
