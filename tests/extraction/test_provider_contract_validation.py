@@ -13,6 +13,7 @@ from inv_man_intake.extraction.providers.base import (
     ExtractedTableCell,
     ExtractedTextBlock,
     ProviderExtractionOutput,
+    SnippetMetadata,
     SourceLocation,
     validate_extracted_document_result,
     validate_provider_output,
@@ -124,6 +125,7 @@ def test_validate_extracted_document_result_accepts_structured_field_location() 
                 method="fallback-adapter",
                 location=location,
                 snippet="Management fee: 2%",
+                snippet_metadata=SnippetMetadata(kind="regex-match", char_start=0, char_end=18),
             ),
         ),
     )
@@ -131,6 +133,11 @@ def test_validate_extracted_document_result_accepts_structured_field_location() 
     validate_extracted_document_result(result)
     assert result.fields[0].location == location
     assert result.fields[0].snippet == "Management fee: 2%"
+    assert result.fields[0].snippet_metadata == SnippetMetadata(
+        kind="regex-match",
+        char_start=0,
+        char_end=18,
+    )
 
 
 def test_structured_field_location_round_trips_through_threshold_summary() -> None:
@@ -153,6 +160,7 @@ def test_structured_field_location_round_trips_through_threshold_summary() -> No
                 method="fallback-adapter",
                 location=location,
                 snippet="Management fee: 2%",
+                snippet_metadata=SnippetMetadata(kind="regex-match", char_start=0, char_end=18),
             ),
         ),
     )
@@ -168,6 +176,11 @@ def test_structured_field_location_round_trips_through_threshold_summary() -> No
 
     assert with_summary.fields[0].location == location
     assert with_summary.fields[0].snippet == "Management fee: 2%"
+    assert with_summary.fields[0].snippet_metadata == SnippetMetadata(
+        kind="regex-match",
+        char_start=0,
+        char_end=18,
+    )
     assert {field.method for field in with_summary.fields} == {
         "fallback-adapter",
         "threshold-summary",
@@ -192,4 +205,25 @@ def test_validate_extracted_document_result_rejects_invalid_confidence() -> None
     )
 
     with pytest.raises(ValueError, match="confidence"):
+        validate_extracted_document_result(result)
+
+
+def test_validate_extracted_document_result_rejects_invalid_snippet_metadata() -> None:
+    result = ExtractedDocumentResult(
+        source_doc_id="doc_1",
+        provider_name="fallback-adapter",
+        fields=(
+            ExtractedField(
+                key="terms.management_fee",
+                value="2%",
+                confidence=0.86,
+                source_doc_id="doc_1",
+                source_page=1,
+                method="fallback-adapter",
+                snippet_metadata=SnippetMetadata(kind="regex-match", char_start=8, char_end=2),
+            ),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="char_end"):
         validate_extracted_document_result(result)

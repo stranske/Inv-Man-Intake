@@ -7,6 +7,7 @@ import re
 from inv_man_intake.extraction.providers.base import (
     ExtractedDocumentResult,
     ExtractedField,
+    SnippetMetadata,
     SourceLocation,
     validate_extracted_document_result,
 )
@@ -65,6 +66,11 @@ class PdfPrimaryExtractionProvider:
                         ),
                     ),
                     snippet=match.group(0).strip(),
+                    snippet_metadata=SnippetMetadata(
+                        kind="regex-match",
+                        char_start=match.start(),
+                        char_end=match.end(),
+                    ),
                 )
             )
 

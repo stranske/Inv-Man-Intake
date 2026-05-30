@@ -10,6 +10,7 @@ from inv_man_intake.extraction.providers.base import (
     ExtractedTableCell,
     ExtractedTextBlock,
     ProviderExtractionOutput,
+    SnippetMetadata,
     SourceLocation,
 )
 
@@ -51,6 +52,7 @@ def _normalize_text_blocks(
                 method=provider_name,
                 location=block.location,
                 snippet=block.text,
+                snippet_metadata=SnippetMetadata(kind="text-block"),
             )
         )
     return fields
@@ -97,6 +99,7 @@ def _table_cell_to_field(
         method=provider_name,
         location=location,
         snippet=cell.value,
+        snippet_metadata=SnippetMetadata(kind="table-cell"),
     )
 
 
@@ -117,6 +120,7 @@ def _normalize_images(
                     method=provider_name,
                     location=image.location,
                     snippet=image.ocr_text,
+                    snippet_metadata=SnippetMetadata(kind="image-ocr"),
                 )
             )
         if image.description:
@@ -130,6 +134,7 @@ def _normalize_images(
                     method=provider_name,
                     location=image.location,
                     snippet=image.description,
+                    snippet_metadata=SnippetMetadata(kind="image-description"),
                 )
             )
     return fields

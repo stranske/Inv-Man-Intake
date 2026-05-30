@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from inv_man_intake.extraction.confidence import ThresholdDecision
-from inv_man_intake.extraction.providers.base import SourceLocation
+from inv_man_intake.extraction.providers.base import SnippetMetadata, SourceLocation
 from inv_man_intake.intake.integration import IntakeRegistrationResult
 from inv_man_intake.intake.models import IngestRecord
 from inv_man_intake.observability.tracing import TraceContext
@@ -174,6 +174,7 @@ def _build_run_result(artifacts: V1SmokeArtifacts) -> RunResult:
             "method": field.method,
             "location": _source_location_payload(field.location),
             "snippet": field.snippet,
+            "snippet_metadata": _snippet_metadata_payload(field.snippet_metadata),
         }
         for field in extraction.fields
     ]
@@ -183,6 +184,7 @@ def _build_run_result(artifacts: V1SmokeArtifacts) -> RunResult:
             "source_page": field.source_page,
             "method": field.method,
             "location": _source_location_payload(field.location),
+            "snippet_metadata": _snippet_metadata_payload(field.snippet_metadata),
         }
         for field in extraction.fields
     }
@@ -240,6 +242,16 @@ def _source_location_payload(location: SourceLocation | None) -> dict[str, objec
         "bbox": list(location.bbox) if location.bbox is not None else None,
         "table_index": location.table_index,
         "image_index": location.image_index,
+    }
+
+
+def _snippet_metadata_payload(metadata: SnippetMetadata | None) -> dict[str, object] | None:
+    if metadata is None:
+        return None
+    return {
+        "kind": metadata.kind,
+        "char_start": metadata.char_start,
+        "char_end": metadata.char_end,
     }
 
 

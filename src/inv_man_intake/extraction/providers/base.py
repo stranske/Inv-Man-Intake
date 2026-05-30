@@ -18,6 +18,7 @@ class ExtractedField:
     method: str
     location: SourceLocation | None = None
     snippet: str | None = None
+    snippet_metadata: SnippetMetadata | None = None
 
 
 @dataclass(frozen=True)
@@ -29,6 +30,15 @@ class SourceLocation:
     bbox: tuple[float, float, float, float] | None = None
     table_index: int | None = None
     image_index: int | None = None
+
+
+@dataclass(frozen=True)
+class SnippetMetadata:
+    """Structured snippet context for provenance and replay artifacts."""
+
+    kind: str
+    char_start: int | None = None
+    char_end: int | None = None
 
 
 @dataclass(frozen=True)
@@ -150,6 +160,8 @@ def validate_extracted_document_result(result: ExtractedDocumentResult) -> None:
                 expected_source_doc_id=result.source_doc_id,
                 context=f"field:{field.key}",
             )
+        if field.snippet_metadata is not None:
+            _validate_snippet_metadata(field.snippet_metadata)
 
 
 def _validate_source_location(
@@ -164,6 +176,21 @@ def _validate_source_location(
         raise ValueError(f"SourceLocation.source_doc_id must match provider output for {context}")
     if location.source_page is not None and location.source_page < 0:
         raise ValueError("SourceLocation.source_page must be >= 0 when provided")
+
+
+def _validate_snippet_metadata(metadata: SnippetMetadata) -> None:
+    if not metadata.kind.strip():
+        raise ValueError("SnippetMetadata.kind must be non-empty")
+    if metadata.char_start is not None and metadata.char_start < 0:
+        raise ValueError("SnippetMetadata.char_start must be >= 0 when provided")
+    if metadata.char_end is not None and metadata.char_end < 0:
+        raise ValueError("SnippetMetadata.char_end must be >= 0 when provided")
+    if (
+        metadata.char_start is not None
+        and metadata.char_end is not None
+        and metadata.char_end < metadata.char_start
+    ):
+        raise ValueError("SnippetMetadata.char_end must be >= char_start when provided")
 
 
 @runtime_checkable
