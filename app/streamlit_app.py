@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol, cast
 
-from inv_man_intake.observability import InMemoryTraceSink
-from inv_man_intake.readiness.throughput import DEFAULT_BATCH_PACKAGES
-from inv_man_intake.v1_smoke import run_v1_smoke_pipeline
+SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from inv_man_intake.observability import InMemoryTraceSink  # noqa: E402
+from inv_man_intake.readiness.throughput import DEFAULT_BATCH_PACKAGES  # noqa: E402
+from inv_man_intake.v1_smoke import run_v1_smoke_pipeline  # noqa: E402
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "intake"
 FIXTURE_OPTIONS = tuple(
@@ -47,6 +52,7 @@ class DemoResult:
     owner_role: str
     item_id: str
     sink_type: str
+    trace_tags: dict[str, str]
 
 
 def _suppress_langsmith_env() -> dict[str, str]:
@@ -84,6 +90,9 @@ def run_demo_fixture(fixture_name: str) -> DemoResult:
         _restore_env(suppressed_env)
 
     assert isinstance(artifacts.sink, InMemoryTraceSink)
+    trace_tags = cast(dict[str, str], artifacts.trace_context.tags)
+    assert "langsmith_enabled" not in trace_tags
+    assert "langsmith_project" not in trace_tags
     components = cast(list[dict[str, object]], artifacts.formatted_explainability["components"])
     return DemoResult(
         fixture_name=fixture_name,
@@ -93,6 +102,7 @@ def run_demo_fixture(fixture_name: str) -> DemoResult:
         owner_role=str(artifacts.queue_assignment.owner_role),
         item_id=str(artifacts.queue_assignment.item_id),
         sink_type=type(artifacts.sink).__name__,
+        trace_tags=trace_tags,
     )
 
 

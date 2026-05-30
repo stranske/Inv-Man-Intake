@@ -57,13 +57,22 @@ class _FakeQueueAssignment:
 @dataclass(frozen=True)
 class _FakeArtifacts:
     sink: object
+    trace_context: object
     formatted_explainability: dict[str, object]
     score: _FakeScore
     queue_assignment: _FakeQueueAssignment
 
 
+@dataclass(frozen=True)
+class _FakeTraceContext:
+    tags: dict[str, str]
+
+
 def test_app_renders_score_for_fixture_bundle(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.delenv("LANGCHAIN_API_KEY", raising=False)
+    monkeypatch.delenv("LANGSMITH_TRACING_ENABLED", raising=False)
+    monkeypatch.delenv("LANGCHAIN_TRACING_V2", raising=False)
 
     recorder = _StreamlitRecorder()
     result = render_app(recorder)
@@ -72,6 +81,8 @@ def test_app_renders_score_for_fixture_bundle(monkeypatch: pytest.MonkeyPatch) -
     assert result.components
     assert result.owner_role == "analyst"
     assert result.sink_type == InMemoryTraceSink.__name__
+    assert "langsmith_enabled" not in result.trace_tags
+    assert "langsmith_project" not in result.trace_tags
     assert recorder.metrics == [("Final score", "0.7809")]
     assert recorder.tables == [result.components]
 
@@ -91,6 +102,7 @@ def test_app_temporarily_disables_langsmith_and_langchain_env(
         assert "LANGCHAIN_TRACING_V2" not in os.environ
         return _FakeArtifacts(
             sink=InMemoryTraceSink(),
+            trace_context=_FakeTraceContext(tags={"stage": "intake"}),
             formatted_explainability={"components": [{"component": "risk_adjusted_returns"}]},
             score=_FakeScore(final_score=0.1234),
             queue_assignment=_FakeQueueAssignment(owner_role="analyst", item_id="queue-item"),
@@ -105,6 +117,7 @@ def test_app_temporarily_disables_langsmith_and_langchain_env(
     assert result.owner_role == "analyst"
     assert result.item_id == "queue-item"
     assert result.sink_type == InMemoryTraceSink.__name__
+    assert result.trace_tags == {"stage": "intake"}
     assert os.environ["LANGSMITH_API_KEY"] == "lsv2_pt_live"
     assert os.environ["LANGCHAIN_API_KEY"] == "lsv2_pt_live"
     assert os.environ["LANGSMITH_TRACING_ENABLED"] == "true"
@@ -125,3 +138,13 @@ def test_live_verification_evidence_is_recorded() -> None:
     assert "pdf_primary_mixed_bundle.json" in content
     assert "0.7809" in content
     assert "live-verification-screenshot.svg" in content
+
+
+def test_stlite_mount_bundles_package_and_fixture_files() -> None:
+    content = Path("app/index.html").read_text(encoding="utf-8")
+
+    assert '"src/inv_man_intake/v1_smoke.py"' in content
+    assert '"src/inv_man_intake/data/migrations/sql/0001_core_firm_fund_document.up.sql"' in content
+    assert '"tests/fixtures/intake/pdf_primary_mixed_bundle.json"' in content
+    assert "Object.fromEntries" in content
+    assert '"langsmith>=0.4.59"' in content
