@@ -40,3 +40,27 @@ The ingestion service supports timeline queries by:
 Record lookups are also available by:
 - package ID (`get_record(package_id)`)
 - document ID (`get_record_by_document(document_id)`)
+
+## Durable On-Disk Intake
+
+Use `register_intake_bundle_to_path(...)` when an intake run must survive process exit.
+It opens an on-disk SQLite core repository and a filesystem document store, then routes
+the bundle through the same deterministic `register_intake_bundle_file(...)` path.
+
+```bash
+python - <<'PY'
+from pathlib import Path
+
+from inv_man_intake.intake.integration import register_intake_bundle_to_path
+
+result = register_intake_bundle_to_path(
+    Path("tests/fixtures/intake/pdf_primary_mixed_bundle.json"),
+    db_path=Path("runs/intake/core.sqlite"),
+    store_root=Path("runs/intake/document-store"),
+)
+print(result.accepted, result.package_id, len(result.persisted_documents))
+PY
+```
+
+The command is local-only: it writes SQLite rows plus document blobs/metadata under
+`runs/intake/` and does not call external services.

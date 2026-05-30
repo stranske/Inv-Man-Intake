@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import date
@@ -16,7 +17,11 @@ from inv_man_intake.data.models import Document, Firm, Fund
 from inv_man_intake.data.repository import CoreRepository
 from inv_man_intake.intake.models import IngestStatus, IntakeFile
 from inv_man_intake.intake.service import IngestionService
-from inv_man_intake.storage.document_store import DocumentStore, DocumentVersionRecord
+from inv_man_intake.storage.document_store import (
+    DocumentStore,
+    DocumentVersionRecord,
+    FilesystemDocumentStore,
+)
 
 
 @dataclass(frozen=True)
@@ -215,6 +220,31 @@ def register_intake_bundle_file(
         document_store=document_store,
         content_resolver=content_resolver,
     )
+
+
+def register_intake_bundle_to_path(
+    bundle_path: Path | str,
+    *,
+    db_path: Path | str,
+    store_root: Path | str,
+    service: IngestionService | None = None,
+    content_resolver: DocumentContentResolver | None = None,
+) -> IntakeRegistrationResult:
+    """Register an intake bundle using on-disk SQLite and filesystem document storage."""
+
+    sqlite_path = Path(db_path)
+    sqlite_path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(sqlite_path)
+    try:
+        return register_intake_bundle_file(
+            bundle_path,
+            service or IngestionService(),
+            core_repository=CoreRepository(connection),
+            document_store=FilesystemDocumentStore(store_root),
+            content_resolver=content_resolver,
+        )
+    finally:
+        connection.close()
 
 
 type DocumentContentResolver = Callable[[dict[str, Any], str], bytes]

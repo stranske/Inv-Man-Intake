@@ -80,9 +80,12 @@ def _run_graphql(*, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         raise RuntimeError(stderr or "gh api graphql failed")
 
     try:
-        return json.loads(result.stdout)
+        payload = json.loads(result.stdout)
     except json.JSONDecodeError as exc:
         raise RuntimeError("Unable to parse gh api response as JSON") from exc
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected GraphQL payload type; expected object.")
+    return payload
 
 
 def _post_issue_comment(*, repo: str, issue_number: int, body: str) -> None:

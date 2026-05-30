@@ -115,7 +115,10 @@ def parse_unresolved_threads(payload: dict[str, Any]) -> list[UnresolvedThread]:
 
 
 def _load_from_file(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("Input JSON root must be an object.")
+    return payload
 
 
 def _load_from_gh(owner: str, repo: str, pr: int) -> dict[str, Any]:
@@ -130,7 +133,10 @@ def _load_from_gh(owner: str, repo: str, pr: int) -> dict[str, Any]:
         f"variables={json.dumps(variables)}",
     ]
     completed = subprocess.run(cmd, check=True, capture_output=True, text=True)
-    return json.loads(completed.stdout)
+    payload = json.loads(completed.stdout)
+    if not isinstance(payload, dict):
+        raise ValueError("GraphQL payload root must be an object.")
+    return payload
 
 
 def _as_markdown(pr: int, threads: list[UnresolvedThread]) -> str:
