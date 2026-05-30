@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from inv_man_intake.extraction.confidence import ThresholdDecision
+from inv_man_intake.extraction.providers.base import SourceLocation
 from inv_man_intake.intake.integration import IntakeRegistrationResult
 from inv_man_intake.intake.models import IngestRecord
 from inv_man_intake.observability.tracing import TraceContext
@@ -170,6 +171,9 @@ def _build_run_result(artifacts: V1SmokeArtifacts) -> RunResult:
             "confidence": field.confidence,
             "source_doc_id": field.source_doc_id,
             "source_page": field.source_page,
+            "method": field.method,
+            "location": _source_location_payload(field.location),
+            "snippet": field.snippet,
         }
         for field in extraction.fields
     ]
@@ -177,6 +181,8 @@ def _build_run_result(artifacts: V1SmokeArtifacts) -> RunResult:
         field.key: {
             "source_doc_id": field.source_doc_id,
             "source_page": field.source_page,
+            "method": field.method,
+            "location": _source_location_payload(field.location),
         }
         for field in extraction.fields
     }
@@ -223,6 +229,18 @@ def _build_run_result(artifacts: V1SmokeArtifacts) -> RunResult:
         ],
         manifest=f"artifact:{ARTIFACT_MANIFEST}",
     )
+
+
+def _source_location_payload(location: SourceLocation | None) -> dict[str, object] | None:
+    if location is None:
+        return None
+    return {
+        "source_doc_id": location.source_doc_id,
+        "source_page": location.source_page,
+        "bbox": list(location.bbox) if location.bbox is not None else None,
+        "table_index": location.table_index,
+        "image_index": location.image_index,
+    }
 
 
 def _collect_warnings(

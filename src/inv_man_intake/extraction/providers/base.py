@@ -15,6 +15,9 @@ class ExtractedField:
     confidence: float
     source_doc_id: str
     source_page: int
+    method: str
+    location: SourceLocation | None = None
+    snippet: str | None = None
 
 
 @dataclass(frozen=True)
@@ -139,6 +142,14 @@ def validate_extracted_document_result(result: ExtractedDocumentResult) -> None:
             raise ValueError("ExtractedField.source_doc_id must match ExtractedDocumentResult")
         if field.source_page < 0:
             raise ValueError("ExtractedField.source_page must be >= 0")
+        if not field.method.strip():
+            raise ValueError("ExtractedField.method must be non-empty")
+        if field.location is not None:
+            _validate_source_location(
+                field.location,
+                expected_source_doc_id=result.source_doc_id,
+                context=f"field:{field.key}",
+            )
 
 
 def _validate_source_location(

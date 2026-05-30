@@ -25,6 +25,7 @@ def _result(*fields: tuple[str, float]) -> ExtractedDocumentResult:
                 confidence=confidence,
                 source_doc_id="doc_1",
                 source_page=1,
+                method="primary",
             )
             for key, confidence in fields
         ),
