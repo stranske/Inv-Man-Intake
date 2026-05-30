@@ -48,6 +48,9 @@ jobs:
       - name: Install project with dev dependencies
         run: pip install -e ".[dev]"
 
+      - name: Run golden reference runs gate
+        run: pytest -q tests/test_golden_reference_runs.py --no-cov
+
       - name: Validate observability setup syntax
         env:
           LANGSMITH_API_KEY: lsv2_pt_ci_smoke_key

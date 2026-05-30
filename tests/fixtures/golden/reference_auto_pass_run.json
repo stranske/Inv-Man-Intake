@@ -1,0 +1,66 @@
+{
+  "decision": {
+    "auto_accept_fields": [
+      "performance.net_return_1y",
+      "strategy.asset_class",
+      "terms.management_fee"
+    ],
+    "auto_pass_document": true,
+    "escalate": false,
+    "escalation_reason": "none",
+    "key_field_coverage_ratio": 1.0
+  },
+  "fields": [
+    {
+      "confidence": 0.82,
+      "key": "operations.aum",
+      "source_page": 4
+    },
+    {
+      "confidence": 0.86,
+      "key": "performance.net_return_1y",
+      "source_page": 3
+    },
+    {
+      "confidence": 0.93,
+      "key": "strategy.asset_class",
+      "source_page": 1
+    },
+    {
+      "confidence": 0.79,
+      "key": "team.key_person_risk",
+      "source_page": 5
+    },
+    {
+      "confidence": 0.88,
+      "key": "terms.management_fee",
+      "source_page": 2
+    }
+  ],
+  "key_fields": [
+    "operations.aum",
+    "performance.net_return_1y",
+    "strategy.asset_class",
+    "team.key_person_risk",
+    "terms.management_fee"
+  ],
+  "package_id": "pkg_ref_auto_pass_001",
+  "provider_name": "reference-synthetic",
+  "scenario_id": "auto_pass",
+  "schema_version": "reference-run/v1",
+  "source_doc_id": "pkg_ref_auto_pass_001:doc:0",
+  "threshold_summary_fields": [
+    {
+      "key": "confidence.document.auto_pass",
+      "value": "true"
+    },
+    {
+      "key": "confidence.document.escalation_reason",
+      "value": "none"
+    },
+    {
+      "key": "confidence.document.key_field_coverage_ratio",
+      "value": "1.0000"
+    }
+  ]
+}

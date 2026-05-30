@@ -14,6 +14,23 @@ This catalog maps the issue #19 intake fixture corpus to expected registration o
 | `tests/fixtures/intake/malformed_unsupported_type.json` | `malformed_unsupported_file_type_and_missing_primary` | Rejected (`accepted=false`, `status=None`, `package_id=pkg_unsupported_type_001`) | `unsupported_file_type` (`files[0].file_name`), `missing_primary_document` (`files`) |
 | `tests/fixtures/intake/malformed_corrupted_file.json` | `malformed_invalid_json_bundle` | Rejected (`accepted=false`, `status=None`, `package_id=None`) | `invalid_json_bundle` (bundle path) |
 
+## Golden reference-run scenarios
+
+These bundles are **not** intake-registration bundles. They are synthetic field
+sets fed through the deterministic extraction-threshold decision core
+(`evaluate_thresholds`) to pin the threshold decision branches via committed
+goldens in `tests/fixtures/golden/`. See `tests/test_golden_reference_runs.py`
+and `src/inv_man_intake/reference_runs.py`.
+
+| Fixture | Scenario | Expected decision branch |
+| --- | --- | --- |
+| `tests/fixtures/intake/reference_auto_pass_bundle.json` | `auto_pass` | `auto_pass_document=true`, `escalate=false` |
+| `tests/fixtures/intake/reference_missing_mandatory_bundle.json` | `missing_mandatory` | `escalate=true`, `escalation_reason=missing_mandatory_field:operations.aum` |
+| `tests/fixtures/intake/reference_confidence_below_threshold_bundle.json` | `confidence_below_threshold` | `escalate=true`, `escalation_reason=confidence_below_threshold:operations.aum` |
+
+Regenerate the goldens after an intentional decision-contract change with
+`python -m inv_man_intake.reference_runs --regenerate`.
+
 ## Notes
 
 - `tests/intake/test_ingest_integration.py` is the canonical integration test entrypoint for the registration outcomes listed above.
