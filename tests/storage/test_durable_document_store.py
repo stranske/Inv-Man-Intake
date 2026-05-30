@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
+from urllib.parse import quote
 
 from inv_man_intake.data.repository import CoreRepository
 from inv_man_intake.intake.integration import register_intake_bundle_to_path
@@ -68,6 +69,42 @@ def test_idempotent_reingest_returns_prior_version(tmp_path: Path) -> None:
     assert store.list_versions("fund_1/deck") == (first,)
     reloaded = FilesystemDocumentStore(tmp_path / "document-store")
     assert reloaded.list_versions("fund_1/deck") == (first,)
+
+
+def test_reingest_repairs_missing_blob(tmp_path: Path) -> None:
+    """A re-ingest whose index record exists but whose blob is gone re-materializes it.
+
+    The idempotent short-circuit must not return an existing version while its
+    blob is missing from disk, or a subsequent ``get()`` would fail against an
+    index that claims the version is present.
+    """
+
+    store_root = tmp_path / "document-store"
+    store = FilesystemDocumentStore(store_root)
+
+    first = store.put(
+        document_key="fund_1/deck",
+        file_name="manager_deck.pdf",
+        content=b"same-content",
+        received_at="2026-03-01T09:00:00Z",
+    )
+
+    # Simulate a lost blob (manual deletion / interrupted write) while the index
+    # still references the version.
+    blob_path = store_root / "blobs" / "fund_1%2Fdeck" / f"{quote(first.version_id, safe='')}.bin"
+    blob_path.unlink()
+    assert not blob_path.is_file()
+
+    second = store.put(
+        document_key="fund_1/deck",
+        file_name="manager_deck.pdf",
+        content=b"same-content",
+        received_at="2026-03-02T09:00:00Z",
+    )
+
+    assert second.version_id == first.version_id
+    assert store.get("fund_1/deck", first.version_id) == b"same-content"
+    assert store.list_versions("fund_1/deck") == (first,)
 
 
 def test_read_only_operations_do_not_create_blob_directories(tmp_path: Path) -> None:

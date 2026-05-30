@@ -126,6 +126,17 @@ class FilesystemDocumentStore:
         existing_versions = list(self.list_versions(document_key))
         for existing in existing_versions:
             if existing.file_hash == fingerprint.sha256:
+                # Idempotent re-ingest: an identical payload returns the prior
+                # record. Only short-circuit when the blob is actually still on
+                # disk; if the index references a version whose blob is missing
+                # (manual deletion, partial/interrupted write), re-materialize the
+                # payload so a later get()/exists() does not fail against an index
+                # that claims the version is present.
+                if self._blob_path(document_key, existing.version_id).is_file():
+                    return existing
+                self._blob_path(document_key, existing.version_id, create_dirs=True).write_bytes(
+                    content
+                )
                 return existing
 
         record = DocumentVersionRecord(
