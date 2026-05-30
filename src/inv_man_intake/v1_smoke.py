@@ -117,6 +117,38 @@ def run_v1_smoke_pipeline(
     package_id: str,
     expected_document_ids: tuple[str, ...],
 ) -> V1SmokeArtifacts:
+    """Run the smoke pipeline with strict package/document-id assertions.
+
+    Thin wrapper that delegates to :func:`_run_pipeline_core`, the single
+    orchestration code path also used by the headless ``run_pipeline`` entry
+    point in :mod:`inv_man_intake.run`. Keeping one core means the operator
+    CLI and the acceptance smoke exercise identical pipeline behavior.
+    """
+
+    return _run_pipeline_core(
+        fixture_root=fixture_root,
+        intake_bundle_file=intake_bundle_file,
+        package_id=package_id,
+        expected_document_ids=expected_document_ids,
+    )
+
+
+def _run_pipeline_core(
+    *,
+    fixture_root: Path,
+    intake_bundle_file: str = "pdf_primary_mixed_bundle.json",
+    package_id: str,
+    expected_document_ids: tuple[str, ...] | None = None,
+) -> V1SmokeArtifacts:
+    """Execute the deterministic intake-to-scoring pipeline once.
+
+    When ``expected_document_ids`` is provided (the smoke path), the registered
+    package state is asserted exactly. When it is ``None`` (the headless
+    ``run_pipeline`` path), registration is validated softly: a rejected bundle
+    raises :class:`ValueError` instead of asserting, so the CLI can surface a
+    clean non-zero exit rather than an ``AssertionError`` traceback.
+    """
+
     sink = InMemoryTraceSink()
     tracer = _entrypoint_tracer(sink=sink)
     correlation_id = ensure_correlation_id()
@@ -143,11 +175,17 @@ def run_v1_smoke_pipeline(
             document_store=document_store,
         )
 
-    record = _assert_registered_package_state(
-        service=service,
-        package_id=package_id,
-        expected_document_ids=expected_document_ids,
-    )
+    if expected_document_ids is None:
+        if not registration.accepted:
+            rejected = ", ".join(issue.code for issue in registration.errors) or "unknown"
+            raise ValueError(f"intake bundle registration rejected: {rejected}")
+        record = service.get_record(package_id)
+    else:
+        record = _assert_registered_package_state(
+            service=service,
+            package_id=package_id,
+            expected_document_ids=expected_document_ids,
+        )
     intake_start = _start_event(sink, "v1_acceptance.intake_register")
     extracted_context = extract_trace_context(inject_trace_context(trace_context))
     assert extracted_context is not None

@@ -41,6 +41,9 @@ dev = [
 Homepage = "https://github.com/stranske/Inv-Man-Intake"
 Repository = "https://github.com/stranske/Inv-Man-Intake"
 
+[project.scripts]
+inv-man-ingest = "inv_man_intake.cli.ingest:main"
+
 [tool.setuptools.package-data]
 inv_man_intake = ["data/migrations/sql/*.sql"]
 

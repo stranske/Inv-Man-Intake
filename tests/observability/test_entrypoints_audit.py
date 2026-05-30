@@ -13,16 +13,25 @@ def test_audit_lists_manual_and_production_entrypoints() -> None:
     assert [entrypoint.name for entrypoint in entrypoints] == [
         "v1_smoke_pipeline",
         "throughput_readiness_batch",
+        "ingest_cli",
     ]
     assert {entrypoint.mode for entrypoint in entrypoints} == {"manual", "production"}
 
 
 def test_audited_entrypoints_resolve_to_callables() -> None:
-    for entrypoint in audit_intake_extraction_entrypoints():
+    entrypoints = audit_intake_extraction_entrypoints()
+    for entrypoint in entrypoints:
         module = import_module(entrypoint.module)
         target = getattr(module, entrypoint.function)
         assert callable(target)
         assert entrypoint.verification == "verified"
+
+    production_ingest = [
+        entrypoint
+        for entrypoint in entrypoints
+        if entrypoint.name == "ingest_cli" and entrypoint.mode == "production"
+    ]
+    assert len(production_ingest) == 1
 
 
 def test_audit_requires_intake_and_extraction_surfaces() -> None:
