@@ -302,7 +302,7 @@ def deterministic_fixture_content(entry: dict[str, Any], package_id: str) -> byt
 def filesystem_content_resolver(base_dir: Path | str) -> DocumentContentResolver:
     """Build a resolver that loads the *real* document bytes for each bundle entry.
 
-    Each entry's ``file_name`` is mapped to ``base_dir / file_name`` and the file's
+    Each entry's ``file_name`` is mapped to a path inside ``base_dir`` and the file's
     actual bytes are returned, so the persisted ``file_hash``/``byte_size`` describe
     the document the extractor parsed rather than fabricated placeholder text. Unlike
     :func:`deterministic_fixture_content`, this resolver never synthesizes content and
@@ -310,13 +310,19 @@ def filesystem_content_resolver(base_dir: Path | str) -> DocumentContentResolver
     raises ``FileNotFoundError`` so the gap is surfaced instead of masked.
     """
 
-    resolved_base = Path(base_dir)
+    resolved_base = Path(base_dir).resolve()
 
     def _resolve(entry: dict[str, Any], package_id: str) -> bytes:
         file_name = _as_non_empty_str(entry.get("file_name"))
         if not file_name:
             raise ValueError("intake entry is missing a file_name; cannot resolve real content")
-        source_path = resolved_base / file_name
+        source_path = (resolved_base / file_name).resolve()
+        try:
+            source_path.relative_to(resolved_base)
+        except ValueError as exc:
+            raise ValueError(
+                f"intake entry file_name {file_name!r} escapes the content base directory"
+            ) from exc
         try:
             return source_path.read_bytes()
         except OSError as exc:

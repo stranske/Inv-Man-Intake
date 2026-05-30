@@ -104,3 +104,17 @@ def test_missing_real_file_raises_instead_of_fabricating(tmp_path: Path) -> None
     resolver = filesystem_content_resolver(tmp_path)
     with pytest.raises(FileNotFoundError, match="summit_arc_investment_update.pdf"):
         resolver({"file_name": "summit_arc_investment_update.pdf"}, "pkg_real_content_001")
+
+
+def test_real_resolver_rejects_parent_directory_escape(tmp_path: Path) -> None:
+    resolver = filesystem_content_resolver(tmp_path / "bundle")
+
+    with pytest.raises(ValueError, match="escapes the content base directory"):
+        resolver({"file_name": "../outside.pdf"}, "pkg_real_content_001")
+
+
+def test_real_resolver_rejects_absolute_path_escape(tmp_path: Path) -> None:
+    resolver = filesystem_content_resolver(tmp_path / "bundle")
+
+    with pytest.raises(ValueError, match="escapes the content base directory"):
+        resolver({"file_name": str(tmp_path / "outside.pdf")}, "pkg_real_content_001")
