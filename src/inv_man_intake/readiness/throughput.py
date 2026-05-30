@@ -39,6 +39,9 @@ MIN_PACKAGES_PER_WEEK = 10
 TARGET_PACKAGES_PER_WEEK = 15
 BUSINESS_DAYS_PER_WEEK = 5
 SAME_BUSINESS_DAY_SECONDS = 8 * 60 * 60
+SYNTHETIC_LOWER_BOUND_WARNING = (
+    "synthetic lower bound: fixture timing excludes real extraction and IO cost"
+)
 STAGE_EVENT_NAMES = {
     "intake": ("v1_acceptance.intake_register",),
     "extraction_thresholds": (
@@ -72,6 +75,7 @@ class ReadinessReport:
     same_business_day_target_seconds: int
     observed_total_seconds: float
     projected_packages_per_business_day: float
+    synthetic_lower_bound: bool
     stage_timings: list[StageTiming]
     bottleneck_warnings: list[str]
     report_path: str
@@ -153,7 +157,7 @@ def build_readiness_report(
         observed_total_seconds=observed_total_seconds,
         projected_packages_per_business_day=projected_packages_per_business_day,
     )
-    status = "pass" if not bottleneck_warnings else "fail"
+    status = "pass" if not _blocking_warnings(bottleneck_warnings) else "fail"
     return ReadinessReport(
         status=status,
         package_count=package_count,
@@ -164,6 +168,7 @@ def build_readiness_report(
         same_business_day_target_seconds=SAME_BUSINESS_DAY_SECONDS,
         observed_total_seconds=observed_total_seconds,
         projected_packages_per_business_day=projected_packages_per_business_day,
+        synthetic_lower_bound=True,
         stage_timings=stage_timings,
         bottleneck_warnings=bottleneck_warnings,
         report_path=str(output_path),
@@ -247,7 +252,7 @@ def _bottleneck_warnings(
     observed_total_seconds: float,
     projected_packages_per_business_day: float,
 ) -> list[str]:
-    warnings = []
+    warnings = [SYNTHETIC_LOWER_BOUND_WARNING]
     if missing_stages:
         warnings.append(f"missing timing evidence for stages: {', '.join(missing_stages)}")
     if score_count < 1:
@@ -260,6 +265,10 @@ def _bottleneck_warnings(
     if projected_packages_per_week < MIN_PACKAGES_PER_WEEK:
         warnings.append("projected weekly capacity is below 10 packages/week target")
     return warnings
+
+
+def _blocking_warnings(warnings: list[str]) -> list[str]:
+    return [warning for warning in warnings if warning != SYNTHETIC_LOWER_BOUND_WARNING]
 
 
 if __name__ == "__main__":

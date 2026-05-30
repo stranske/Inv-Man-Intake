@@ -6,6 +6,7 @@ from pathlib import Path
 from inv_man_intake.observability import TraceEvent
 from inv_man_intake.readiness.throughput import (
     STAGE_EVENT_NAMES,
+    SYNTHETIC_LOWER_BOUND_WARNING,
     _bottleneck_warnings,
     _duration_for_events,
     build_readiness_report,
@@ -31,6 +32,8 @@ def test_throughput_readiness_writes_report_with_required_fields(tmp_path: Path)
     assert payload["target_packages_per_week"] == "10-15"
     assert payload["same_business_day_target_seconds"] == 28800
     assert payload["projected_packages_per_business_day"] >= 10
+    assert payload["synthetic_lower_bound"] is True
+    assert SYNTHETIC_LOWER_BOUND_WARNING in payload["bottleneck_warnings"]
 
 
 def test_throughput_readiness_fails_when_stage_output_is_missing(tmp_path: Path) -> None:
@@ -45,6 +48,19 @@ def test_throughput_readiness_fails_when_stage_output_is_missing(tmp_path: Path)
     assert report.status == "fail"
     assert "scoring stage produced no verifiable scores" in report.bottleneck_warnings
     assert any("missing timing evidence" in warning for warning in report.bottleneck_warnings)
+    assert SYNTHETIC_LOWER_BOUND_WARNING in report.bottleneck_warnings
+
+
+def test_fixture_run_is_marked_synthetic_lower_bound(tmp_path: Path) -> None:
+    output_path = tmp_path / "throughput_readiness.json"
+
+    report = run_readiness_check(output_path=output_path)
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+
+    assert report.synthetic_lower_bound is True
+    assert payload["synthetic_lower_bound"] is True
+    assert SYNTHETIC_LOWER_BOUND_WARNING in report.bottleneck_warnings
+    assert SYNTHETIC_LOWER_BOUND_WARNING in payload["bottleneck_warnings"]
 
 
 def test_duration_for_events_sums_completed_spans_by_name() -> None:
