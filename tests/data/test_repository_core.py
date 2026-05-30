@@ -86,6 +86,18 @@ def test_update_firm_aliases_unknown_firm_raises() -> None:
         repo.update_firm_aliases("missing", '["X"]')
 
 
+def test_list_firms_and_funds_are_deterministically_ordered() -> None:
+    repo = _repo()
+    repo.create_firm(Firm("firm_b", "Beta", None, "2026-03-01T09:00:00Z"))
+    repo.create_firm(Firm("firm_a", "Alpha", None, "2026-03-01T09:00:00Z"))
+    repo.create_fund(Fund("fund_b", "firm_b", "Beta Fund", None, None, "2026-03-01T09:00:00Z"))
+    repo.create_fund(Fund("fund_a", "firm_a", "Alpha Fund", None, None, "2026-03-01T09:00:00Z"))
+
+    assert [firm.firm_id for firm in repo.list_firms()] == ["firm_a", "firm_b"]
+    assert [fund.fund_id for fund in repo.list_funds()] == ["fund_a", "fund_b"]
+    assert [fund.fund_id for fund in repo.list_funds("firm_b")] == ["fund_b"]
+
+
 def test_list_document_versions_sorted_by_version_date_then_received_at() -> None:
     repo = _repo()
     repo.create_firm(Firm("firm_1", "Alpha", None, "2026-03-01T09:00:00Z"))
