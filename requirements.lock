@@ -87,6 +87,8 @@ requests-toolbelt==1.0.0
     # via langsmith
 ruff==0.15.13
     # via inv-man-intake (pyproject.toml)
+streamlit==1.52.1
+    # via inv-man-intake (pyproject.toml)
 typing-extensions==4.15.0
     # via
     #   anyio

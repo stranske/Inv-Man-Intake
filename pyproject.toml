@@ -25,6 +25,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+app = [
+    "streamlit==1.52.1",
+]
 dev = [
     "pytest==9.0.3",
     "pytest-cov==7.1.0",
