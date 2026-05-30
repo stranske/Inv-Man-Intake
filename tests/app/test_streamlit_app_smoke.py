@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
 from app.streamlit_app import render_app
@@ -108,3 +109,19 @@ def test_app_temporarily_disables_langsmith_and_langchain_env(
     assert os.environ["LANGCHAIN_API_KEY"] == "lsv2_pt_live"
     assert os.environ["LANGSMITH_TRACING_ENABLED"] == "true"
     assert os.environ["LANGCHAIN_TRACING_V2"] == "true"
+
+
+def test_live_verification_evidence_is_recorded() -> None:
+    evidence = Path("app/live-verification.md")
+    screenshot = Path("app/live-verification-screenshot.svg")
+
+    assert evidence.exists()
+    assert screenshot.exists()
+
+    content = evidence.read_text(encoding="utf-8")
+    assert "app/index.html" in content
+    assert "python -m http.server 8000" in content
+    assert "http://127.0.0.1:8000/app/index.html" in content
+    assert "pdf_primary_mixed_bundle.json" in content
+    assert "0.7809" in content
+    assert "live-verification-screenshot.svg" in content
