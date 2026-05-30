@@ -98,6 +98,7 @@ def _extracted_result(bundle: dict[str, Any]) -> ExtractedDocumentResult:
             confidence=float(field["confidence"]),
             source_doc_id=source_doc_id,
             source_page=int(field["source_page"]),
+            method=REFERENCE_PROVIDER_NAME,
         )
         for field in bundle["fields"]
     )
