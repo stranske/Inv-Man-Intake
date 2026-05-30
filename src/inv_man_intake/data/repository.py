@@ -85,6 +85,20 @@ class CoreRepository:
             raise KeyError(f"unknown firm_id={firm_id}")
         self._connection.commit()
 
+    def list_firms(self) -> tuple[Firm, ...]:
+        rows = self._connection.execute(
+            "SELECT firm_id, legal_name, aliases_json, created_at FROM firms ORDER BY firm_id"
+        ).fetchall()
+        return tuple(
+            Firm(
+                firm_id=str(row[0]),
+                legal_name=str(row[1]),
+                aliases_json=None if row[2] is None else str(row[2]),
+                created_at=str(row[3]),
+            )
+            for row in rows
+        )
+
     def create_fund(self, fund: Fund) -> None:
         self._connection.execute(
             (
@@ -138,6 +152,32 @@ class CoreRepository:
         if cursor.rowcount == 0:
             raise KeyError(f"unknown fund_id={fund.fund_id}")
         self._connection.commit()
+
+    def list_funds(self, firm_id: str | None = None) -> tuple[Fund, ...]:
+        if firm_id is None:
+            rows = self._connection.execute(
+                "SELECT fund_id, firm_id, fund_name, strategy, asset_class, created_at "
+                "FROM funds ORDER BY fund_id"
+            ).fetchall()
+        else:
+            rows = self._connection.execute(
+                (
+                    "SELECT fund_id, firm_id, fund_name, strategy, asset_class, created_at "
+                    "FROM funds WHERE firm_id = ? ORDER BY fund_id"
+                ),
+                (firm_id,),
+            ).fetchall()
+        return tuple(
+            Fund(
+                fund_id=str(row[0]),
+                firm_id=str(row[1]),
+                fund_name=str(row[2]),
+                strategy=None if row[3] is None else str(row[3]),
+                asset_class=None if row[4] is None else str(row[4]),
+                created_at=str(row[5]),
+            )
+            for row in rows
+        )
 
     def create_document(self, document: Document) -> None:
         self._connection.execute(
