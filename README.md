@@ -97,6 +97,10 @@ ruff check src/ tests/
 mypy
 ```
 
+The throughput readiness command reports a synthetic lower-bound fixture timing. It verifies
+that the local smoke path still produces measurable stage timings, but it excludes real
+extraction and IO cost and must not be treated as proof of live same-business-day capacity.
+
 LangSmith runtime setup and dashboard artifact fields are documented in
 [`docs/runbooks/langsmith_tracing.md`](docs/runbooks/langsmith_tracing.md).
 
