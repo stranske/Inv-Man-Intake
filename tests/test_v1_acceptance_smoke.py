@@ -293,6 +293,9 @@ def _assert_extraction_contains_provenance(
         assert field.source_page is not None
         assert isinstance(field.method, str)
         assert field.method
+        assert field.location is not None
+        assert field.location.source_doc_id == field.source_doc_id
+        assert field.location.source_page == field.source_page
 
 
 def _assert_conflict_escalation_has_evidence(

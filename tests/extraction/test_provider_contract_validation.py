@@ -140,6 +140,48 @@ def test_validate_extracted_document_result_accepts_structured_field_location() 
     )
 
 
+def test_validate_extracted_document_result_rejects_cross_document_field_location() -> None:
+    result = ExtractedDocumentResult(
+        source_doc_id="doc_1",
+        provider_name="fallback-adapter",
+        fields=(
+            ExtractedField(
+                key="terms.management_fee",
+                value="2%",
+                confidence=0.86,
+                source_doc_id="doc_1",
+                source_page=1,
+                method="fallback-adapter",
+                location=SourceLocation(source_doc_id="doc_2", source_page=1),
+            ),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="must match provider output"):
+        validate_extracted_document_result(result)
+
+
+def test_validate_extracted_document_result_rejects_negative_field_location_page() -> None:
+    result = ExtractedDocumentResult(
+        source_doc_id="doc_1",
+        provider_name="fallback-adapter",
+        fields=(
+            ExtractedField(
+                key="terms.management_fee",
+                value="2%",
+                confidence=0.86,
+                source_doc_id="doc_1",
+                source_page=1,
+                method="fallback-adapter",
+                location=SourceLocation(source_doc_id="doc_1", source_page=-1),
+            ),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="source_page"):
+        validate_extracted_document_result(result)
+
+
 def test_structured_field_location_round_trips_through_threshold_summary() -> None:
     location = SourceLocation(
         source_doc_id="doc_1",

@@ -150,7 +150,7 @@ A coverage task is NOT complete just because you added tests. It is complete ONL
 
 ### ⚠️ IMPORTANT: Task Reconciliation Required
 
-The previous iteration changed **5 file(s)** but did not update task checkboxes.
+The previous iteration changed **4 file(s)** but did not update task checkboxes.
 
 **Before continuing, you MUST:**
 1. Review the recent commits to understand what was changed
@@ -184,8 +184,9 @@ The PR is complete when ALL of these are satisfied:
 Avoid repeating these unless a task needs explicit follow-up:
 
 - add required ExtractedField.method plus optional structured SourceLocation and snippet metadata
+- populate methods/locations/snippets from primary providers, normalized multimodal output, threshold summary fields, and local run.json evidence
 
 ### Suggested Next Task
-- populate methods/locations/snippets from primary providers, normalized multimodal output, threshold summary fields, and local run.json evidence
+- validate non-empty methods and structured locations, with focused contract and smoke coverage
 
 ---
