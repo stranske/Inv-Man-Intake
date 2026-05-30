@@ -22,7 +22,9 @@ enforces its own redaction denylist.
 from __future__ import annotations
 
 import json
+import platform
 from dataclasses import dataclass
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, cast
 
@@ -70,15 +72,53 @@ class RunResult:
         """Return the run record as a JSON-serializable dictionary."""
 
         return {
+            "schema_version": "run-contract/v1",
+            "repo": "stranske/Inv-Man-Intake",
+            "tool": "inv-man-ingest",
             "run_id": self.run_id,
-            "inputs": self.inputs,
+            "status": "success",
+            "github_issue": "stranske/Inv-Man-Intake#474",
+            "actor": {
+                "kind": "ci",
+                "id": "inv-man-ingest-reference-run",
+                "intent": "headless intake-to-score run",
+            },
+            "inputs": {
+                **self.inputs,
+                "validated": True,
+                "refs": [f"ref:package:{self.inputs['package_id']}"],
+            },
+            "outputs": {
+                "manifest_ref": self.manifest,
+                "artifact_ids": [Path(ref).name for ref in self.artifact_refs],
+                "summary": {
+                    "final_score": self.final_score,
+                    "escalation_reason": self.escalation_state["reason"],
+                    "field_count": len(self.fields),
+                },
+            },
             "fields": self.fields,
             "confidence_state": self.confidence_state,
             "escalation_state": self.escalation_state,
             "final_score": self.final_score,
             "explainability": self.explainability,
-            "warnings": self.warnings,
+            "warnings": [
+                {"code": warning, "severity": "warning", "message": warning}
+                for warning in self.warnings
+            ],
+            "evidence_refs": sorted(
+                {
+                    f"document:{field['source_doc_id']}#page={field['source_page']}"
+                    for field in self.fields
+                    if field.get("source_doc_id") and field.get("source_page") is not None
+                }
+            ),
+            "identity_refs": [
+                f"firm:{self.inputs['firm_id']}",
+                f"fund:{self.inputs['fund_id']}",
+            ],
             "latency_ms": self.latency_ms,
+            "latency": {"wall_ms": self.latency_ms or 0},
             "provenance": self.provenance,
             "trace_refs": self.trace_refs,
             "artifact_refs": self.artifact_refs,
@@ -167,6 +207,9 @@ def _build_run_result(artifacts: V1SmokeArtifacts) -> RunResult:
         warnings=_collect_warnings(registration=registration, decision=decision),
         latency_ms=_pipeline_latency_ms(sink=artifacts.sink, root_span_name=_ROOT_SPAN_NAME),
         provenance={
+            "tool_version": _tool_version(),
+            "python_version": platform.python_version(),
+            "platform": platform.platform(),
             "tool": "inv-man-ingest",
             "provider": extraction.provider_name,
             "evidence": evidence,
@@ -191,6 +234,13 @@ def _collect_warnings(
     if decision.escalate and decision.escalation_reason:
         warnings.append(f"threshold:{decision.escalation_reason}")
     return sorted(warnings)
+
+
+def _tool_version() -> str:
+    try:
+        return version("inv-man-intake")
+    except PackageNotFoundError:
+        return "0.0+local"
 
 
 def _build_metadata(artifacts: V1SmokeArtifacts) -> dict[str, Any]:

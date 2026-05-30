@@ -25,9 +25,12 @@ def test_manifest_hashes_every_non_manifest_artifact(tmp_path: Path) -> None:
 
     on_disk = {p.name for p in tmp_path.iterdir() if p.name != ARTIFACT_MANIFEST}
     assert set(entries) == on_disk, "manifest must list exactly the non-manifest files"
+    assert manifest["schema_version"] == "artifact-manifest/v1"
+    assert manifest["tool"] == "inv-man-ingest"
 
     for name, entry in entries.items():
         content = (tmp_path / name).read_bytes()
+        assert entry["artifact_id"] == name
         assert entry["sha256"] == compute_sha256(content)
         assert entry["bytes"] == len(content)
         assert entry["path"] == name
@@ -45,6 +48,18 @@ def test_run_json_carries_manifest_pointer(tmp_path: Path) -> None:
     run_pipeline(_BUNDLE, output_dir=tmp_path)
     run_payload = json.loads((tmp_path / "run.json").read_text(encoding="utf-8"))
 
+    assert run_payload["schema_version"] == "run-contract/v1"
+    assert run_payload["repo"] == "stranske/Inv-Man-Intake"
+    assert run_payload["tool"] == "inv-man-ingest"
+    assert run_payload["status"] == "success"
+    assert run_payload["inputs"]["validated"] is True
+    assert run_payload["outputs"]["manifest_ref"] == f"artifact:{ARTIFACT_MANIFEST}"
+    assert set(run_payload["outputs"]["artifact_ids"]) == {
+        "run.json",
+        "metadata.json",
+        "threshold-summary.json",
+        "explainability.json",
+    }
     assert run_payload["manifest"] == f"artifact:{ARTIFACT_MANIFEST}"
 
 

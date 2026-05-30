@@ -7,11 +7,11 @@ advisory literal strings in the source. This module materializes a
 SHA-256 hash + byte count computed from the bytes actually written to disk, so a
 consumer can discover and verify a run's outputs (``artifact_discipline``).
 
-The manifest is byte-stable across identical runs: entries are sorted by name and
-serialized with ``json.dumps(..., sort_keys=True)`` (via :func:`run._write_json`),
-so it can be compared against a golden reference. Like the other run artifacts it
-is local to the operator-supplied output directory and is never pushed to the
-fleet telemetry NDJSON sink.
+For fixed run IDs and artifact bytes, the manifest is deterministically ordered
+and serialized with ``json.dumps(..., sort_keys=True)`` (via
+:func:`run._write_json`). Like the other run artifacts it is local to the
+operator-supplied output directory and is never pushed to the fleet telemetry
+NDJSON sink.
 """
 
 from __future__ import annotations
@@ -28,10 +28,10 @@ MANIFEST_NAME = "manifest.json"
 # Stable, human-readable kinds for the known named run artifacts; anything else
 # falls back to its file suffix so the manifest still classifies new artifacts.
 _KIND_BY_NAME = {
-    "run.json": "run-record",
-    "metadata.json": "metadata",
-    "threshold-summary.json": "threshold-summary",
-    "explainability.json": "explainability",
+    "run.json": "envelope",
+    "metadata.json": "data",
+    "threshold-summary.json": "report",
+    "explainability.json": "evidence",
 }
 
 
@@ -39,7 +39,7 @@ def _artifact_kind(name: str) -> str:
     """Classify an artifact by its file name, defaulting to its suffix."""
     if name in _KIND_BY_NAME:
         return _KIND_BY_NAME[name]
-    return Path(name).suffix.lstrip(".") or "file"
+    return "other"
 
 
 def build_manifest(
@@ -52,8 +52,8 @@ def build_manifest(
     Each entry is ``{artifact_id, name, kind, path, sha256, bytes}`` where
     ``sha256`` is :func:`compute_sha256` of the file's on-disk bytes and ``bytes``
     is that file's size. Entries are sorted by name so the serialized manifest is
-    byte-stable. The owning ``run_id`` and ``trace_id`` are recorded at the top
-    level.
+    byte-stable for fixed IDs and artifact bytes. The owning ``run_id`` and
+    ``trace_id`` are recorded at the top level.
 
     Each artifact is referenced inside the run directory as ``artifact:<name>``;
     that reference is validated with :func:`_is_safe_artifact_ref` (and any ``..``
@@ -78,7 +78,7 @@ def build_manifest(
         content = artifact.read_bytes()
         entries.append(
             {
-                "artifact_id": artifact.stem,
+                "artifact_id": name,
                 "name": name,
                 "kind": _artifact_kind(name),
                 "path": name,
@@ -87,7 +87,9 @@ def build_manifest(
             }
         )
     return {
+        "schema_version": "artifact-manifest/v1",
         "run_id": run_id,
         "trace_id": trace_id,
+        "tool": "inv-man-ingest",
         "artifacts": entries,
     }
