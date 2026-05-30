@@ -1,0 +1,59 @@
+{
+  "decision": {
+    "auto_accept_fields": [
+      "strategy.asset_class"
+    ],
+    "auto_pass_document": false,
+    "escalate": true,
+    "escalation_reason": "missing_mandatory_field:operations.aum",
+    "key_field_coverage_ratio": 0.8
+  },
+  "fields": [
+    {
+      "confidence": 0.82,
+      "key": "performance.net_return_1y",
+      "source_page": 3
+    },
+    {
+      "confidence": 0.9,
+      "key": "strategy.asset_class",
+      "source_page": 1
+    },
+    {
+      "confidence": 0.78,
+      "key": "team.key_person_risk",
+      "source_page": 5
+    },
+    {
+      "confidence": 0.84,
+      "key": "terms.management_fee",
+      "source_page": 2
+    }
+  ],
+  "key_fields": [
+    "operations.aum",
+    "performance.net_return_1y",
+    "strategy.asset_class",
+    "team.key_person_risk",
+    "terms.management_fee"
+  ],
+  "package_id": "pkg_ref_missing_mandatory_001",
+  "provider_name": "reference-synthetic",
+  "scenario_id": "missing_mandatory",
+  "schema_version": "reference-run/v1",
+  "source_doc_id": "pkg_ref_missing_mandatory_001:doc:0",
+  "threshold_summary_fields": [
+    {
+      "key": "confidence.document.auto_pass",
+      "value": "false"
+    },
+    {
+      "key": "confidence.document.escalation_reason",
+      "value": "missing_mandatory_field:operations.aum"
+    },
+    {
+      "key": "confidence.document.key_field_coverage_ratio",
+      "value": "0.8000"
+    }
+  ]
+}
