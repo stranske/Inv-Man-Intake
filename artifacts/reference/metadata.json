@@ -1,0 +1,43 @@
+{
+  "created_at": "2026-03-04T08:20:00Z",
+  "documents": [
+    {
+      "document_id": "pkg_pdf_mixed_001:doc:0",
+      "file_hash": "d865d3db1e28996a161dc291ca6b99703e11d568791f635b53307fdcb849a073",
+      "file_name": "summit_arc_investment_update.pdf",
+      "fund_id": "fund_summit_arc_special_situations",
+      "received_at": "2026-03-04T08:20:00+00:00",
+      "source_channel": "internal_forward"
+    },
+    {
+      "document_id": "pkg_pdf_mixed_001:doc:1",
+      "file_hash": "fbe2cc6a5e5f676c88abe1b7ca8712a414d78bd9d18cb287065184fed91edac5",
+      "file_name": "summit_arc_track_record.xlsx",
+      "fund_id": "fund_summit_arc_special_situations",
+      "received_at": "2026-03-04T08:20:00+00:00",
+      "source_channel": "internal_forward"
+    },
+    {
+      "document_id": "pkg_pdf_mixed_001:doc:2",
+      "file_hash": "abe28d7607c5125fc9eebe6dff9bc09023d1b2b2d268cee8b0823b257ae6ccfe",
+      "file_name": "summit_arc_due_diligence.docx",
+      "fund_id": "fund_summit_arc_special_situations",
+      "received_at": "2026-03-04T08:20:00+00:00",
+      "source_channel": "internal_forward"
+    },
+    {
+      "document_id": "pkg_pdf_mixed_001:doc:3",
+      "file_hash": "d7d8622a83af4e4bf4b3f59af59043dc2208f599ed7066eb8a528fe773e4644d",
+      "file_name": "summit_arc_manager_note.eml",
+      "fund_id": "fund_summit_arc_special_situations",
+      "received_at": "2026-03-04T08:20:00+00:00",
+      "source_channel": "internal_forward"
+    }
+  ],
+  "file_count": 4,
+  "firm_id": "firm_summit_arc_advisors",
+  "fund_id": "fund_summit_arc_special_situations",
+  "package_id": "pkg_pdf_mixed_001",
+  "status": "received",
+  "updated_at": "2026-03-04T08:20:00Z"
+}

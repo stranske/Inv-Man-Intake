@@ -1,0 +1,227 @@
+{
+  "actor": {
+    "id": "inv-man-ingest-reference-run",
+    "intent": "headless intake-to-score run",
+    "kind": "ci"
+  },
+  "artifact_refs": [
+    "run.json",
+    "metadata.json",
+    "threshold-summary.json",
+    "explainability.json"
+  ],
+  "confidence_state": {
+    "auto_accept_fields": [
+      "strategy.asset_class",
+      "terms.management_fee",
+      "performance.net_return_1y"
+    ],
+    "auto_pass_document": false,
+    "key_field_coverage_ratio": 0.6
+  },
+  "escalation_state": {
+    "auto_pass_document": false,
+    "escalate": true,
+    "reason": "low_key_field_coverage"
+  },
+  "evidence_refs": [
+    "document:pkg_pdf_mixed_001:doc:0#page=0",
+    "document:pkg_pdf_mixed_001:doc:0#page=11",
+    "document:pkg_pdf_mixed_001:doc:0#page=2",
+    "document:pkg_pdf_mixed_001:doc:0#page=3",
+    "document:pkg_pdf_mixed_001:doc:0#page=4",
+    "document:pkg_pdf_mixed_001:doc:0#page=8"
+  ],
+  "explainability": {
+    "components": [
+      {
+        "component": "operational_quality",
+        "contribution": 0.138,
+        "rationale": "AUM field is present but below auto-accept confidence.",
+        "weight": 0.2
+      },
+      {
+        "component": "performance_consistency",
+        "contribution": 0.2,
+        "rationale": "Normalized monthly track record is complete.",
+        "weight": 0.25
+      },
+      {
+        "component": "risk_adjusted_returns",
+        "contribution": 0.234,
+        "rationale": "Prioritized metrics include Sharpe and correlation evidence.",
+        "weight": 0.3
+      },
+      {
+        "component": "team_experience",
+        "contribution": 0.0979,
+        "rationale": "Key-person note is routed for analyst review.",
+        "weight": 0.1
+      },
+      {
+        "component": "transparency",
+        "contribution": 0.111,
+        "rationale": "Provenance pointers tie extracted fields to source pages.",
+        "weight": 0.15
+      }
+    ],
+    "overall_score": 0.7809,
+    "total_contribution": 0.7809
+  },
+  "fields": [
+    {
+      "confidence": 0.93,
+      "key": "strategy.asset_class",
+      "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+      "source_page": 2,
+      "value": "credit"
+    },
+    {
+      "confidence": 0.91,
+      "key": "terms.management_fee",
+      "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+      "source_page": 4,
+      "value": "1.25%"
+    },
+    {
+      "confidence": 0.88,
+      "key": "performance.net_return_1y",
+      "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+      "source_page": 8,
+      "value": "8.4%"
+    },
+    {
+      "confidence": 0.72,
+      "key": "operations.aum",
+      "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+      "source_page": 3,
+      "value": "$1.2bn"
+    },
+    {
+      "confidence": 0.5,
+      "key": "team.key_person_risk",
+      "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+      "source_page": 11,
+      "value": "one senior PM departure pending"
+    },
+    {
+      "confidence": 1.0,
+      "key": "confidence.document.key_field_coverage_ratio",
+      "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+      "source_page": 0,
+      "value": "0.6000"
+    },
+    {
+      "confidence": 1.0,
+      "key": "confidence.document.auto_pass",
+      "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+      "source_page": 0,
+      "value": "false"
+    },
+    {
+      "confidence": 1.0,
+      "key": "confidence.document.escalation_reason",
+      "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+      "source_page": 0,
+      "value": "low_key_field_coverage"
+    }
+  ],
+  "final_score": 0.7809,
+  "github_issue": "stranske/Inv-Man-Intake#474",
+  "identity_refs": [
+    "firm:firm_summit_arc_advisors",
+    "fund:fund_summit_arc_special_situations"
+  ],
+  "inputs": {
+    "document_ids": [
+      "pkg_pdf_mixed_001:doc:0",
+      "pkg_pdf_mixed_001:doc:1",
+      "pkg_pdf_mixed_001:doc:2",
+      "pkg_pdf_mixed_001:doc:3"
+    ],
+    "file_count": 4,
+    "firm_id": "firm_summit_arc_advisors",
+    "fund_id": "fund_summit_arc_special_situations",
+    "package_id": "pkg_pdf_mixed_001",
+    "refs": [
+      "ref:package:pkg_pdf_mixed_001"
+    ],
+    "status": "received",
+    "validated": true
+  },
+  "latency": {
+    "wall_ms": 1
+  },
+  "latency_ms": 1,
+  "manifest": "artifact:manifest.json",
+  "outputs": {
+    "artifact_ids": [
+      "run.json",
+      "metadata.json",
+      "threshold-summary.json",
+      "explainability.json"
+    ],
+    "manifest_ref": "artifact:manifest.json",
+    "summary": {
+      "escalation_reason": "low_key_field_coverage",
+      "field_count": 8,
+      "final_score": 0.7809
+    }
+  },
+  "provenance": {
+    "evidence": {
+      "confidence.document.auto_pass": {
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 0
+      },
+      "confidence.document.escalation_reason": {
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 0
+      },
+      "confidence.document.key_field_coverage_ratio": {
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 0
+      },
+      "operations.aum": {
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 3
+      },
+      "performance.net_return_1y": {
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 8
+      },
+      "strategy.asset_class": {
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 2
+      },
+      "team.key_person_risk": {
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 11
+      },
+      "terms.management_fee": {
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 4
+      }
+    },
+    "platform": "macOS-26.5-arm64-arm-64bit",
+    "provider": "pdf-primary",
+    "python_version": "3.12.2",
+    "tool": "inv-man-ingest",
+    "tool_version": "0.1.0"
+  },
+  "repo": "stranske/Inv-Man-Intake",
+  "run_id": "run_bf17ee5a622147e7a7903e5eb077747f",
+  "schema_version": "run-contract/v1",
+  "status": "success",
+  "tool": "inv-man-ingest",
+  "trace_refs": [
+    "trace:trace_533d3242dbd543aa8380263de7a44431"
+  ],
+  "warnings": [
+    {
+      "code": "threshold:low_key_field_coverage",
+      "message": "threshold:low_key_field_coverage",
+      "severity": "warning"
+    }
+  ]
+}
