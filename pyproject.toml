@@ -92,7 +92,7 @@ known-first-party = ["inv_man_intake", "tools"]
 
 [tool.mypy]
 python_version = "3.12"
-files = ["src/inv_man_intake"]
+files = ["src"]
 exclude = ["^scripts/", "^tools/"]
 strict = true
 warn_return_any = true
