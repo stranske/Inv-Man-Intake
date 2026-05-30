@@ -28,6 +28,21 @@ ruff check src/ tests/
 mypy
 ```
 
+### Browser Demo
+
+The synthetic intake demo can run in a local browser through `app/index.html`
+with stlite/Pyodide. It uses the committed Summit Arc fixture bundles in
+`tests/fixtures/intake/`, disables `LANGSMITH_API_KEY`, and executes the same
+deterministic `run_v1_smoke_pipeline` path locally so no proprietary payload is
+sent to LangSmith, an LLM provider, or an application server.
+
+For developer iteration, install the optional app dependency and run:
+
+```bash
+python -m pip install -e ".[app]"
+streamlit run app/streamlit_app.py
+```
+
 The repository uses the shared
 [`stranske/Workflows`](https://github.com/stranske/Workflows) CI and agent
 automation stack. The local project package is `inv_man_intake`.
