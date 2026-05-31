@@ -1,4 +1,4 @@
-"""Validation queue query contracts and filter endpoint helpers."""
+"""Consumer UI integration contract for validation-queue query/filter behavior."""
 
 from __future__ import annotations
 
