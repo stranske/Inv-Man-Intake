@@ -1,4 +1,4 @@
-"""Validation queue query contracts and filter endpoint helpers."""
+"""Consumer UI integration contract for validation-queue query/filter behavior."""
 
 from __future__ import annotations
 
@@ -8,6 +8,13 @@ from datetime import UTC, datetime
 from typing import Literal, TypeGuard
 
 from .workflow_validation import OwnerRole, ValidationQueueRow, ValidationState
+
+__all__ = (
+    "ValidationQueuePage",
+    "ValidationQueueQuery",
+    "build_query_from_params",
+    "list_validation_queue",
+)
 
 QueueSortBy = Literal["updated_at", "state", "owner_id"]
 QueueSortDirection = Literal["asc", "desc"]

@@ -1,0 +1,36 @@
+{
+  "components": [
+    {
+      "component": "operational_quality",
+      "contribution": 0.138,
+      "rationale": "AUM field is present but below auto-accept confidence.",
+      "weight": 0.2
+    },
+    {
+      "component": "performance_consistency",
+      "contribution": 0.2,
+      "rationale": "Normalized monthly track record is complete.",
+      "weight": 0.25
+    },
+    {
+      "component": "risk_adjusted_returns",
+      "contribution": 0.234,
+      "rationale": "Prioritized metrics include Sharpe and correlation evidence.",
+      "weight": 0.3
+    },
+    {
+      "component": "team_experience",
+      "contribution": 0.0979,
+      "rationale": "Key-person note is routed for analyst review.",
+      "weight": 0.1
+    },
+    {
+      "component": "transparency",
+      "contribution": 0.111,
+      "rationale": "Provenance pointers tie extracted fields to source pages.",
+      "weight": 0.15
+    }
+  ],
+  "overall_score": 0.7809,
+  "total_contribution": 0.7809
+}

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import io
 import os
 import sqlite3
+import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -17,8 +19,9 @@ from inv_man_intake.extraction.confidence import (
     evaluate_thresholds,
 )
 from inv_man_intake.extraction.orchestrator import ExtractionOrchestrator
-from inv_man_intake.extraction.providers.base import ExtractedDocumentResult
+from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractionProvider
 from inv_man_intake.extraction.providers.pdf_primary import PdfPrimaryExtractionProvider
+from inv_man_intake.extraction.providers.pptx_primary import PptxPrimaryExtractionProvider
 from inv_man_intake.intake.integration import register_intake_bundle_file
 from inv_man_intake.intake.models import IngestRecord
 from inv_man_intake.intake.service import IngestionService
@@ -114,6 +117,38 @@ def run_v1_smoke_pipeline(
     package_id: str,
     expected_document_ids: tuple[str, ...],
 ) -> V1SmokeArtifacts:
+    """Run the smoke pipeline with strict package/document-id assertions.
+
+    Thin wrapper that delegates to :func:`_run_pipeline_core`, the single
+    orchestration code path also used by the headless ``run_pipeline`` entry
+    point in :mod:`inv_man_intake.run`. Keeping one core means the operator
+    CLI and the acceptance smoke exercise identical pipeline behavior.
+    """
+
+    return _run_pipeline_core(
+        fixture_root=fixture_root,
+        intake_bundle_file=intake_bundle_file,
+        package_id=package_id,
+        expected_document_ids=expected_document_ids,
+    )
+
+
+def _run_pipeline_core(
+    *,
+    fixture_root: Path,
+    intake_bundle_file: str = "pdf_primary_mixed_bundle.json",
+    package_id: str,
+    expected_document_ids: tuple[str, ...] | None = None,
+) -> V1SmokeArtifacts:
+    """Execute the deterministic intake-to-scoring pipeline once.
+
+    When ``expected_document_ids`` is provided (the smoke path), the registered
+    package state is asserted exactly. When it is ``None`` (the headless
+    ``run_pipeline`` path), registration is validated softly: a rejected bundle
+    raises :class:`ValueError` instead of asserting, so the CLI can surface a
+    clean non-zero exit rather than an ``AssertionError`` traceback.
+    """
+
     sink = InMemoryTraceSink()
     tracer = _entrypoint_tracer(sink=sink)
     correlation_id = ensure_correlation_id()
@@ -140,11 +175,17 @@ def run_v1_smoke_pipeline(
             document_store=document_store,
         )
 
-    record = _assert_registered_package_state(
-        service=service,
-        package_id=package_id,
-        expected_document_ids=expected_document_ids,
-    )
+    if expected_document_ids is None:
+        if not registration.accepted:
+            rejected = ", ".join(issue.code for issue in registration.errors) or "unknown"
+            raise ValueError(f"intake bundle registration rejected: {rejected}")
+        record = service.get_record(package_id)
+    else:
+        record = _assert_registered_package_state(
+            service=service,
+            package_id=package_id,
+            expected_document_ids=expected_document_ids,
+        )
     intake_start = _start_event(sink, "v1_acceptance.intake_register")
     extracted_context = extract_trace_context(inject_trace_context(trace_context))
     assert extracted_context is not None
@@ -154,13 +195,15 @@ def run_v1_smoke_pipeline(
         tags={"stage": "extract"},
     )
 
+    primary_document = core_repository.get_document(record.document_ids[0])
+    assert primary_document is not None, "primary document must be registered"
+    primary_file_name = primary_document.file_name
     extraction_result = _run_extraction_smoke(
         tracer=tracer,
         trace_context=extraction_context,
         source_doc_id=record.document_ids[0],
-        content=_fixture_bytes(
-            fixture_root=fixture_root, file_name="summit_arc_investment_update.pdf"
-        ),
+        primary_file_name=primary_file_name,
+        content=_fixture_bytes(fixture_root=fixture_root, file_name=primary_file_name),
         correlation_id=correlation_id,
     )
     secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
@@ -357,22 +400,29 @@ def _langsmith_context_tags() -> dict[str, str]:
     }
 
 
+def _select_primary_provider(file_name: str) -> ExtractionProvider:
+    if file_name.lower().endswith(".pptx"):
+        return PptxPrimaryExtractionProvider()
+    return PdfPrimaryExtractionProvider()
+
+
 def _run_extraction_smoke(
     *,
     tracer: Tracer,
     trace_context: TraceContext,
     source_doc_id: str,
+    primary_file_name: str,
     content: bytes,
     correlation_id: str,
 ) -> ExtractedDocumentResult:
-    provider = PdfPrimaryExtractionProvider()
+    provider = _select_primary_provider(primary_file_name)
     extractor_key = "_".join(("primary", "extractor"))
     orchestrator = ExtractionOrchestrator(
         primary_name=provider.name,
         fallback_name="fixture-fallback",
         fallback_extractor=lambda payload: {"document_id": payload["document_id"]},
         tracer=tracer,
-        **{extractor_key: _pdf_provider_extractor(provider)},  # type: ignore[arg-type]
+        **{extractor_key: _provider_extractor(provider)},  # type: ignore[arg-type]
     )
     result = orchestrator.run(
         {
@@ -406,7 +456,7 @@ def _run_secondary_extraction_boundary_smoke(
         fallback_name="secondary-unsupported-escalation",
         fallback_extractor=_unsupported_secondary_extractor,
         tracer=tracer,
-        **{extractor_key: _pdf_provider_extractor(provider)},  # type: ignore[arg-type]
+        **{extractor_key: _provider_extractor(provider)},  # type: ignore[arg-type]
     )
     result = orchestrator.run(
         {
@@ -422,8 +472,8 @@ def _run_secondary_extraction_boundary_smoke(
     return result
 
 
-def _pdf_provider_extractor(
-    provider: PdfPrimaryExtractionProvider,
+def _provider_extractor(
+    provider: ExtractionProvider,
 ) -> Callable[[dict[str, Any]], dict[str, ExtractedDocumentResult]]:
     def extract(payload: dict[str, Any]) -> dict[str, ExtractedDocumentResult]:
         content = payload["content"]
@@ -452,10 +502,27 @@ def _fixture_bytes(*, fixture_root: Path, file_name: str) -> bytes:
 
 def _unsupported_secondary_bytes_reason(content: bytes) -> str:
     if content.startswith(b"PK\x03\x04"):
-        return "unsupported secondary document bytes format: xlsx"
+        # PK\x03\x04 is the shared ZIP magic for OOXML containers (pptx/xlsx/docx);
+        # the byte prefix alone cannot distinguish them, so inspect the archive.
+        return f"unsupported secondary document bytes format: {_ooxml_zip_kind(content)}"
     if content.startswith(b"%PDF-"):
         return "unsupported secondary document bytes format: pdf"
     return "unsupported secondary document bytes format: unknown"
+
+
+def _ooxml_zip_kind(content: bytes) -> str:
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            names = set(archive.namelist())
+    except zipfile.BadZipFile:
+        return "zip"
+    if "ppt/presentation.xml" in names:
+        return "pptx"
+    if "xl/workbook.xml" in names:
+        return "xlsx"
+    if "word/document.xml" in names:
+        return "docx"
+    return "zip"
 
 
 def _performance_series() -> tuple[PerformanceSeries, PerformanceSeries, PerformanceSeries]:

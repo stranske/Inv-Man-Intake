@@ -1,0 +1,3 @@
+@stlite/mountable==0.76.0
+streamlit==1.52.1
+

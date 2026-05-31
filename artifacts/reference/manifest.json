@@ -1,0 +1,40 @@
+{
+  "artifacts": [
+    {
+      "artifact_id": "explainability.json",
+      "bytes": 975,
+      "kind": "evidence",
+      "name": "explainability.json",
+      "path": "explainability.json",
+      "sha256": "fcd8476a14258ef05cd39fa5e91dc35731817ed757d94839104f774c4991a640"
+    },
+    {
+      "artifact_id": "metadata.json",
+      "bytes": 1668,
+      "kind": "data",
+      "name": "metadata.json",
+      "path": "metadata.json",
+      "sha256": "a567754d40cb83f1e9f863d195de1c716fcaee9aa1494b85337f7fd54247b931"
+    },
+    {
+      "artifact_id": "run.json",
+      "bytes": 6132,
+      "kind": "envelope",
+      "name": "run.json",
+      "path": "run.json",
+      "sha256": "b6bba2c6cfb1d8d5a3e3379253ca118964af31c64c379b78c4a9e1afea2d343f"
+    },
+    {
+      "artifact_id": "threshold-summary.json",
+      "bytes": 456,
+      "kind": "report",
+      "name": "threshold-summary.json",
+      "path": "threshold-summary.json",
+      "sha256": "ba8a71908c31377917a46c9c33d29717b32cd9a1a4792074d720df86ca58b0a7"
+    }
+  ],
+  "run_id": "run_bf17ee5a622147e7a7903e5eb077747f",
+  "schema_version": "artifact-manifest/v1",
+  "tool": "inv-man-ingest",
+  "trace_id": "trace_533d3242dbd543aa8380263de7a44431"
+}

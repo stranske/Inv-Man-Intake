@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-label="Inv-Man-Intake browser demo screenshot">
+  <rect width="1280" height="720" fill="#f5f7fb"/>
+  <rect x="32" y="24" width="1216" height="672" rx="12" fill="#ffffff" stroke="#d6dde8"/>
+  <text x="64" y="84" font-family="Arial, sans-serif" font-size="40" fill="#0f172a">Inv-Man-Intake</text>
+  <text x="64" y="116" font-family="Arial, sans-serif" font-size="18" fill="#475569">Synthetic fixture demo. Computation runs locally with LangSmith disabled.</text>
+
+  <rect x="64" y="152" width="460" height="64" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="80" y="178" font-family="Arial, sans-serif" font-size="14" fill="#334155">Synthetic intake bundle</text>
+  <text x="80" y="202" font-family="Arial, sans-serif" font-size="18" fill="#0f172a">pdf_primary_mixed_bundle.json</text>
+
+  <rect x="64" y="244" width="240" height="108" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="80" y="276" font-family="Arial, sans-serif" font-size="16" fill="#334155">Final score</text>
+  <text x="80" y="320" font-family="Arial, sans-serif" font-size="44" fill="#0f172a">0.7809</text>
+
+  <text x="64" y="396" font-family="Arial, sans-serif" font-size="28" fill="#0f172a">Explainability</text>
+  <rect x="64" y="414" width="1152" height="168" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="88" y="448" font-family="Arial, sans-serif" font-size="16" fill="#334155">component</text>
+  <text x="320" y="448" font-family="Arial, sans-serif" font-size="16" fill="#334155">raw_value</text>
+  <text x="520" y="448" font-family="Arial, sans-serif" font-size="16" fill="#334155">normalized_score</text>
+  <line x1="80" y1="462" x2="1184" y2="462" stroke="#dbe3ef"/>
+  <text x="88" y="490" font-family="Arial, sans-serif" font-size="16" fill="#0f172a">performance_consistency</text>
+  <text x="320" y="490" font-family="Arial, sans-serif" font-size="16" fill="#0f172a">0.82</text>
+  <text x="520" y="490" font-family="Arial, sans-serif" font-size="16" fill="#0f172a">0.7809</text>
+
+  <text x="64" y="624" font-family="Arial, sans-serif" font-size="28" fill="#0f172a">Analyst queue</text>
+  <text x="64" y="656" font-family="Arial, sans-serif" font-size="18" fill="#0f172a">{"owner_role": "analyst", "item_id": "queue:analyst:pkg_summit_arc_2024q1:1"}</text>
+</svg>

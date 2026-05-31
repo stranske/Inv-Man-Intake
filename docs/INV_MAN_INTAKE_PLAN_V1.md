@@ -283,4 +283,8 @@ python -m inv_man_intake.readiness.throughput --output reports/readiness/through
 ```
 
 The readiness report records package count, per-stage timing, score count, escalation count,
-and bottleneck warnings against the 10 to 15 packages/week and same-business-day targets.
+`synthetic_lower_bound`, and bottleneck warnings against the 10 to 15 packages/week and
+same-business-day targets. The default fixture batch is explicitly labeled as a synthetic
+lower bound because it excludes real extraction and IO cost; it is a smoke-path capacity
+caveat, not proof of live same-business-day throughput. A realistic capacity figure requires
+a real-cost batch after the real-bytes intake path and production extractor are available.

@@ -70,9 +70,17 @@ contract drift early in adapter development and in tests.
 validates `%PDF-` framing, extracts literal content-stream text, emits canonical fields with
 document/page provenance, and calls `validate_extracted_document_result(...)` before returning.
 
+`PptxPrimaryExtractionProvider` supports committed, text-bearing PPTX bytes for v1 smoke coverage. It
+validates Open Packaging Convention framing (`PK\x03\x04` magic plus a `ppt/presentation.xml` part),
+reads DrawingML `<a:t>` text runs per slide, emits canonical fields with document/slide provenance
+(1-based `source_page`), and calls `validate_extracted_document_result(...)` before returning. The
+v1 smoke pipeline dispatches to this provider when a bundle's primary `file_name` ends in `.pptx`.
+
 Secondary v1 roles such as XLSX are routed through the same provider/orchestrator boundary in smoke
 coverage. Until a dedicated XLSX parser exists, unsupported secondary bytes produce deterministic
-`ops_review` escalation rather than hard-coded extracted fields.
+`ops_review` escalation rather than hard-coded extracted fields. Because OOXML containers
+(`pptx`/`xlsx`/`docx`) share the `PK\x03\x04` ZIP magic, the escalation reason inspects the archive
+contents to label the format rather than assuming a single extension.
 
 ## Fallback Adapter Implementation Notes
 

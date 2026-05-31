@@ -10,6 +10,8 @@ from inv_man_intake.extraction.providers.base import (
     ExtractedTableCell,
     ExtractedTextBlock,
     ProviderExtractionOutput,
+    SnippetMetadata,
+    SourceLocation,
 )
 
 _UNKNOWN_CONFIDENCE = 0.0
@@ -20,9 +22,11 @@ def normalize_provider_output(output: ProviderExtractionOutput) -> ExtractedDocu
     """Convert multimodal provider output into canonical extracted fields."""
 
     fields: list[ExtractedField] = []
-    fields.extend(_normalize_text_blocks(output.source_doc_id, output.text_blocks))
-    fields.extend(_normalize_tables(output.source_doc_id, output.tables))
-    fields.extend(_normalize_images(output.source_doc_id, output.images))
+    fields.extend(
+        _normalize_text_blocks(output.provider_name, output.source_doc_id, output.text_blocks)
+    )
+    fields.extend(_normalize_tables(output.provider_name, output.source_doc_id, output.tables))
+    fields.extend(_normalize_images(output.provider_name, output.source_doc_id, output.images))
 
     return ExtractedDocumentResult(
         source_doc_id=output.source_doc_id,
@@ -32,6 +36,7 @@ def normalize_provider_output(output: ProviderExtractionOutput) -> ExtractedDocu
 
 
 def _normalize_text_blocks(
+    provider_name: str,
     source_doc_id: str,
     text_blocks: tuple[ExtractedTextBlock, ...],
 ) -> list[ExtractedField]:
@@ -44,13 +49,17 @@ def _normalize_text_blocks(
                 confidence=_UNKNOWN_CONFIDENCE,
                 source_doc_id=source_doc_id,
                 source_page=block.location.source_page or _UNKNOWN_SOURCE_PAGE,
+                method=provider_name,
+                location=block.location,
+                snippet=block.text,
+                snippet_metadata=SnippetMetadata(kind="text-block"),
             )
         )
     return fields
 
 
 def _normalize_tables(
-    source_doc_id: str, tables: tuple[ExtractedTable, ...]
+    provider_name: str, source_doc_id: str, tables: tuple[ExtractedTable, ...]
 ) -> list[ExtractedField]:
     fields: list[ExtractedField] = []
     for table_index, table in enumerate(tables):
@@ -66,6 +75,8 @@ def _normalize_tables(
                     table_index=table_index,
                     cell=cell,
                     source_page=source_page,
+                    provider_name=provider_name,
+                    location=table.location,
                 )
             )
     return fields
@@ -76,6 +87,8 @@ def _table_cell_to_field(
     table_index: int,
     cell: ExtractedTableCell,
     source_page: int,
+    provider_name: str,
+    location: SourceLocation | None,
 ) -> ExtractedField:
     return ExtractedField(
         key=f"table.{table_index}.r{cell.row_index}.c{cell.column_index}",
@@ -83,11 +96,15 @@ def _table_cell_to_field(
         confidence=(cell.confidence if cell.confidence is not None else _UNKNOWN_CONFIDENCE),
         source_doc_id=source_doc_id,
         source_page=source_page,
+        method=provider_name,
+        location=location,
+        snippet=cell.value,
+        snippet_metadata=SnippetMetadata(kind="table-cell"),
     )
 
 
 def _normalize_images(
-    source_doc_id: str, images: tuple[ExtractedImage, ...]
+    provider_name: str, source_doc_id: str, images: tuple[ExtractedImage, ...]
 ) -> list[ExtractedField]:
     fields: list[ExtractedField] = []
     for index, image in enumerate(images):
@@ -100,6 +117,10 @@ def _normalize_images(
                     confidence=_UNKNOWN_CONFIDENCE,
                     source_doc_id=source_doc_id,
                     source_page=source_page,
+                    method=provider_name,
+                    location=image.location,
+                    snippet=image.ocr_text,
+                    snippet_metadata=SnippetMetadata(kind="image-ocr"),
                 )
             )
         if image.description:
@@ -110,6 +131,10 @@ def _normalize_images(
                     confidence=_UNKNOWN_CONFIDENCE,
                     source_doc_id=source_doc_id,
                     source_page=source_page,
+                    method=provider_name,
+                    location=image.location,
+                    snippet=image.description,
+                    snippet_metadata=SnippetMetadata(kind="image-description"),
                 )
             )
     return fields

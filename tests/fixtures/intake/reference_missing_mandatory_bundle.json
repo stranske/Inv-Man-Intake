@@ -1,0 +1,27 @@
+{
+  "scenario_id": "missing_mandatory",
+  "package_id": "pkg_ref_missing_mandatory_001",
+  "source_doc_id": "pkg_ref_missing_mandatory_001:doc:0",
+  "key_fields": [
+    "strategy.asset_class",
+    "terms.management_fee",
+    "performance.net_return_1y",
+    "operations.aum",
+    "team.key_person_risk"
+  ],
+  "threshold_config": {
+    "field_auto_accept_min": 0.85,
+    "key_field_confidence_min": 0.75,
+    "document_key_field_coverage_min": 0.8,
+    "mandatory_field_min": 0.6,
+    "mandatory_fields": [
+      "operations.aum"
+    ]
+  },
+  "fields": [
+    {"key": "strategy.asset_class", "value": "synthetic-asset-class", "confidence": 0.90, "source_page": 1},
+    {"key": "terms.management_fee", "value": "synthetic-fee", "confidence": 0.84, "source_page": 2},
+    {"key": "performance.net_return_1y", "value": "synthetic-return", "confidence": 0.82, "source_page": 3},
+    {"key": "team.key_person_risk", "value": "synthetic-team", "confidence": 0.78, "source_page": 5}
+  ]
+}

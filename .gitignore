@@ -3,6 +3,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.coverage
 *.egg-info/
 *.egg
 dist/
@@ -38,3 +39,6 @@ autofix_report_enriched.json
 
 # Local readiness reports
 reports/readiness/
+
+# Internal automation/workloop tracker (not part of the project)
+workloop-state.md

@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import re
 
-from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
+from inv_man_intake.extraction.providers.base import (
+    ExtractedDocumentResult,
+    ExtractedField,
+    SnippetMetadata,
+    SourceLocation,
+)
 
 
 class PrimaryRegexExtractionProvider:
@@ -37,6 +42,14 @@ class PrimaryRegexExtractionProvider:
                     confidence=0.82,
                     source_doc_id=source_doc_id,
                     source_page=1,
+                    method=self.name,
+                    location=SourceLocation(source_doc_id=source_doc_id, source_page=1),
+                    snippet=match.group(0).strip(),
+                    snippet_metadata=SnippetMetadata(
+                        kind="regex-match",
+                        char_start=match.start(),
+                        char_end=match.end(),
+                    ),
                 )
             )
 

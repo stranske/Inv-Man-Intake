@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Inv-Man-Intake Browser Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.76.0/build/stlite.js"></script>
+    <style>
+      html,
+      body,
+      #root {
+        height: 100%;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      const bundledPaths = [
+        "src/inv_man_intake/__init__.py",
+        "src/inv_man_intake/audit/__init__.py",
+        "src/inv_man_intake/audit/events.py",
+        "src/inv_man_intake/audit/repository.py",
+        "src/inv_man_intake/contracts/__init__.py",
+        "src/inv_man_intake/contracts/image_feedback_contract.py",
+        "src/inv_man_intake/contracts/intake_contract.py",
+        "src/inv_man_intake/data/__init__.py",
+        "src/inv_man_intake/data/fixtures.py",
+        "src/inv_man_intake/data/migrations/__init__.py",
+        "src/inv_man_intake/data/migrations/core_schema.py",
+        "src/inv_man_intake/data/migrations/provenance_history.py",
+        "src/inv_man_intake/data/migrations/sql/0001_core_firm_fund_document.down.sql",
+        "src/inv_man_intake/data/migrations/sql/0001_core_firm_fund_document.up.sql",
+        "src/inv_man_intake/data/migrations/sql/0002_field_provenance_history.down.sql",
+        "src/inv_man_intake/data/migrations/sql/0002_field_provenance_history.up.sql",
+        "src/inv_man_intake/data/models.py",
+        "src/inv_man_intake/data/provenance.py",
+        "src/inv_man_intake/data/repository.py",
+        "src/inv_man_intake/epic_milestones.py",
+        "src/inv_man_intake/extraction/__init__.py",
+        "src/inv_man_intake/extraction/confidence.py",
+        "src/inv_man_intake/extraction/orchestrator.py",
+        "src/inv_man_intake/extraction/providers/__init__.py",
+        "src/inv_man_intake/extraction/providers/base.py",
+        "src/inv_man_intake/extraction/providers/normalize.py",
+        "src/inv_man_intake/extraction/providers/pdf_primary.py",
+        "src/inv_man_intake/extraction/providers/pptx_primary.py",
+        "src/inv_man_intake/extraction/providers/primary.py",
+        "src/inv_man_intake/extraction/quality.py",
+        "src/inv_man_intake/images/__init__.py",
+        "src/inv_man_intake/images/classifier.py",
+        "src/inv_man_intake/images/extractor.py",
+        "src/inv_man_intake/images/feedback_report.py",
+        "src/inv_man_intake/images/feedback_service.py",
+        "src/inv_man_intake/images/models.py",
+        "src/inv_man_intake/images/service.py",
+        "src/inv_man_intake/intake/__init__.py",
+        "src/inv_man_intake/intake/integration.py",
+        "src/inv_man_intake/intake/models.py",
+        "src/inv_man_intake/intake/service.py",
+        "src/inv_man_intake/intake/versioning.py",
+        "src/inv_man_intake/observability/__init__.py",
+        "src/inv_man_intake/observability/entrypoints.py",
+        "src/inv_man_intake/observability/langsmith_fleet.py",
+        "src/inv_man_intake/observability/langsmith_sink.py",
+        "src/inv_man_intake/observability/logging.py",
+        "src/inv_man_intake/observability/metrics.py",
+        "src/inv_man_intake/observability/setup_validation.py",
+        "src/inv_man_intake/observability/tracing.py",
+        "src/inv_man_intake/performance/__init__.py",
+        "src/inv_man_intake/performance/conflict_resolver.py",
+        "src/inv_man_intake/performance/contracts.py",
+        "src/inv_man_intake/performance/ingest.py",
+        "src/inv_man_intake/performance/metrics.py",
+        "src/inv_man_intake/performance/normalize.py",
+        "src/inv_man_intake/queue/__init__.py",
+        "src/inv_man_intake/queue/assignment.py",
+        "src/inv_man_intake/queue/sla.py",
+        "src/inv_man_intake/readiness/__init__.py",
+        "src/inv_man_intake/readiness/throughput.py",
+        "src/inv_man_intake/scoring/__init__.py",
+        "src/inv_man_intake/scoring/contracts.py",
+        "src/inv_man_intake/scoring/engine.py",
+        "src/inv_man_intake/scoring/explainability.py",
+        "src/inv_man_intake/scoring/regression.py",
+        "src/inv_man_intake/scoring/weights.py",
+        "src/inv_man_intake/storage/__init__.py",
+        "src/inv_man_intake/storage/document_store.py",
+        "src/inv_man_intake/v1_smoke.py",
+        "src/inv_man_intake/validation_queue_api.py",
+        "src/inv_man_intake/workflow_validation.py",
+        "tests/fixtures/intake/malformed_corrupted_file.json",
+        "tests/fixtures/intake/malformed_missing_metadata.json",
+        "tests/fixtures/intake/malformed_unsupported_type.json",
+        "tests/fixtures/intake/pdf_primary_bundle.json",
+        "tests/fixtures/intake/pdf_primary_mixed_bundle.json",
+        "tests/fixtures/intake/pptx_primary_bundle.json",
+        "tests/fixtures/intake/pptx_primary_mixed_bundle.json"
+      ];
+      const files = Object.fromEntries(
+        bundledPaths.map((path) => [path, { url: `../${path}` }])
+      );
+      files["app/streamlit_app.py"] = { url: "./streamlit_app.py" };
+
+      stlite.mount(
+        {
+          entrypoint: "app/streamlit_app.py",
+          requirements: ["streamlit==1.52.1", "langsmith>=0.4.59"],
+          files
+        },
+        document.getElementById("root")
+      );
+    </script>
+  </body>
+</html>

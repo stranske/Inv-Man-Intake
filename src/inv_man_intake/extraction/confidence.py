@@ -151,6 +151,7 @@ def attach_threshold_summary(
             confidence=1.0,
             source_doc_id=result.source_doc_id,
             source_page=0,
+            method="threshold-summary",
         ),
         ExtractedField(
             key="confidence.document.auto_pass",
@@ -158,6 +159,7 @@ def attach_threshold_summary(
             confidence=1.0,
             source_doc_id=result.source_doc_id,
             source_page=0,
+            method="threshold-summary",
         ),
         ExtractedField(
             key="confidence.document.escalation_reason",
@@ -165,6 +167,7 @@ def attach_threshold_summary(
             confidence=1.0,
             source_doc_id=result.source_doc_id,
             source_page=0,
+            method="threshold-summary",
         ),
     )
 

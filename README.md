@@ -19,6 +19,25 @@ The v1 design target is documented in
 - Configurable scoring weights, score explainability, red-flag hooks, and regression fixtures.
 - Observability helpers for tracing, LangSmith export, fleet dashboard records, logging, metrics, and setup validation.
 
+## Headless Backend Contract
+
+Inv-Man-Intake is intentionally a headless intake, scoring, and
+validation-queue backend. The repo-local package under `src/` does not ship a
+production HTTP/API server such as FastAPI, Gradio, or uvicorn; human review is
+expected to happen in a consuming analyst queue rather than in this package.
+
+The consumer UI integration contract for that analyst queue surface is
+`src/inv_man_intake/validation_queue_api.py`, which defines filter/query helpers
+and paginated queue response contracts for validation rows. A Manager-Database
+style analyst queue, or another portfolio operations UI, should integrate
+against that contract when it needs to display or triage intake validation work.
+
+The browser demo below is fixture-backed verification evidence for the
+deterministic intake path. It lives under `app/`, is demo-only, and is not a
+planned production human-facing UI for this repo. The absence of a production
+repo-local server in `src/` is a recorded product decision rather than a missing
+front-end gap.
+
 ## Quick Start
 
 ```bash
@@ -26,6 +45,33 @@ python -m pip install -e ".[dev]"
 pytest
 ruff check src/ tests/
 mypy
+```
+
+### Browser Demo
+
+The synthetic intake demo can run in a local browser through `app/index.html`
+with stlite/Pyodide. It uses the committed Summit Arc fixture bundles in
+`tests/fixtures/intake/`, disables `LANGSMITH_API_KEY`, and executes the same
+deterministic `run_v1_smoke_pipeline` path locally so no proprietary payload is
+sent to LangSmith, an LLM provider, or an application server. The pinned stlite
+runtime version is tracked in `requirements-stlite.lock`.
+
+Live verification gate (no terminal required for reviewer):
+
+1. Open `app/index.html` directly in a browser, or open
+   `http://127.0.0.1:8000/app/index.html` after running
+   `python -m http.server 8000` from the repo root.
+2. Select `pdf_primary_mixed_bundle.json`.
+3. Confirm the UI shows `Final score: 0.7809` and a non-empty Explainability
+   table.
+4. Verification evidence and screenshot are recorded in
+   `app/live-verification.md`.
+
+For developer iteration, install the optional app dependency and run:
+
+```bash
+python -m pip install -e ".[app]"
+streamlit run app/streamlit_app.py
 ```
 
 The repository uses the shared
@@ -69,6 +115,10 @@ python -m inv_man_intake.readiness.throughput --output reports/readiness/through
 ruff check src/ tests/
 mypy
 ```
+
+The throughput readiness command reports a synthetic lower-bound fixture timing. It verifies
+that the local smoke path still produces measurable stage timings, but it excludes real
+extraction and IO cost and must not be treated as proof of live same-business-day capacity.
 
 LangSmith runtime setup and dashboard artifact fields are documented in
 [`docs/runbooks/langsmith_tracing.md`](docs/runbooks/langsmith_tracing.md).

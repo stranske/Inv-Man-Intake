@@ -11,6 +11,7 @@ from inv_man_intake.validation_queue_api import (
     build_query_from_params,
     list_validation_queue,
 )
+from inv_man_intake.validation_queue_api import __all__ as queue_api_exports
 from inv_man_intake.workflow_validation import (
     ValidationQueueRow,
     claim_for_analyst_triage,
@@ -184,3 +185,12 @@ def test_direct_query_validation_rejects_invalid_sort_and_state() -> None:
 
     with pytest.raises(ValueError, match="Invalid sort_by"):
         list_validation_queue(rows, query=ValidationQueueQuery(sort_by="age"))  # type: ignore[arg-type]
+
+
+def test_consumer_ui_contract_exports() -> None:
+    assert queue_api_exports == (
+        "ValidationQueuePage",
+        "ValidationQueueQuery",
+        "build_query_from_params",
+        "list_validation_queue",
+    )

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import re
+import sqlite3
+import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import date
@@ -16,7 +18,11 @@ from inv_man_intake.data.models import Document, Firm, Fund
 from inv_man_intake.data.repository import CoreRepository
 from inv_man_intake.intake.models import IngestStatus, IntakeFile
 from inv_man_intake.intake.service import IngestionService
-from inv_man_intake.storage.document_store import DocumentStore, DocumentVersionRecord
+from inv_man_intake.storage.document_store import (
+    DocumentStore,
+    DocumentVersionRecord,
+    FilesystemDocumentStore,
+)
 
 
 @dataclass(frozen=True)
@@ -83,6 +89,50 @@ def register_intake_bundle(
         )
 
     metadata = bundle["metadata"]
+    normalized_firm_name = _normalized_name(_as_non_empty_str(metadata.get("firm_name")))
+    normalized_fund_name = _normalized_name(_as_non_empty_str(metadata.get("fund_name")))
+    firm_id = _stable_identifier(
+        preferred=metadata.get("firm_id"),
+        fallback=normalized_firm_name,
+        prefix="firm",
+    )
+    fund_id = _stable_identifier(
+        preferred=metadata.get("fund_id"),
+        fallback=normalized_fund_name,
+        prefix="fund",
+    )
+    if core_repository is not None and document_store is not None:
+        core_repository.ensure_core_schema()
+        firm_name = _as_non_empty_str(metadata.get("firm_name")) or firm_id
+        try:
+            firm_id = _resolve_firm_id(
+                core_repository=core_repository,
+                explicit_id=_as_non_empty_str(metadata.get("firm_id")),
+                fallback_id=firm_id,
+                name=firm_name,
+            )
+            fund_id = _resolve_fund_id(
+                core_repository=core_repository,
+                explicit_id=_as_non_empty_str(metadata.get("fund_id")),
+                fallback_id=fund_id,
+                firm_id=firm_id,
+                name=_as_non_empty_str(metadata.get("fund_name")) or fund_id,
+            )
+        except ValueError as exc:
+            return IntakeRegistrationResult(
+                accepted=False,
+                package_id=package_id,
+                status=None,
+                errors=(
+                    IntakeValidationIssue(
+                        code="identity_resolution_error",
+                        path="metadata",
+                        message=str(exc),
+                    ),
+                ),
+                warnings=validation.warnings,
+            )
+
     file_entries = [entry for entry in bundle["files"] if isinstance(entry, dict)]
     files = [
         IntakeFile(
@@ -97,16 +147,8 @@ def register_intake_bundle(
     try:
         record = service.receive_package(
             package_id=package_id,
-            firm_id=_stable_identifier(
-                preferred=metadata.get("firm_id"),
-                fallback=metadata.get("firm_name"),
-                prefix="firm",
-            ),
-            fund_id=_stable_identifier(
-                preferred=metadata.get("fund_id"),
-                fallback=metadata.get("fund_name"),
-                prefix="fund",
-            ),
+            firm_id=firm_id,
+            fund_id=fund_id,
             files=files,
             at=_as_non_empty_str(metadata.get("received_at")),
         )
@@ -217,7 +259,37 @@ def register_intake_bundle_file(
     )
 
 
+def register_intake_bundle_to_path(
+    bundle_path: Path | str,
+    *,
+    db_path: Path | str,
+    store_root: Path | str,
+    service: IngestionService | None = None,
+    content_resolver: DocumentContentResolver | None = None,
+) -> IntakeRegistrationResult:
+    """Register an intake bundle using on-disk SQLite and filesystem document storage."""
+
+    sqlite_path = Path(db_path)
+    sqlite_path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(sqlite_path)
+    try:
+        return register_intake_bundle_file(
+            bundle_path,
+            service or IngestionService(),
+            core_repository=CoreRepository(connection),
+            document_store=FilesystemDocumentStore(store_root),
+            content_resolver=content_resolver,
+        )
+    finally:
+        connection.close()
+
+
 type DocumentContentResolver = Callable[[dict[str, Any], str], bytes]
+
+_LEGAL_SUFFIX_PATTERN = re.compile(
+    r"\b(l\.?\s*l\.?\s*c\.?|l\.?\s*p\.?|ltd\.?|inc\.?)\b\.?$",
+    flags=re.IGNORECASE,
+)
 
 
 def deterministic_fixture_content(entry: dict[str, Any], package_id: str) -> bytes:
@@ -225,6 +297,40 @@ def deterministic_fixture_content(entry: dict[str, Any], package_id: str) -> byt
     file_name = _as_non_empty_str(entry.get("file_name"))
     source_ref = _as_non_empty_str(entry.get("source_ref"))
     return f"{package_id}\n{file_name}\n{source_ref}\n".encode()
+
+
+def filesystem_content_resolver(base_dir: Path | str) -> DocumentContentResolver:
+    """Build a resolver that loads the *real* document bytes for each bundle entry.
+
+    Each entry's ``file_name`` is mapped to a path inside ``base_dir`` and the file's
+    actual bytes are returned, so the persisted ``file_hash``/``byte_size`` describe
+    the document the extractor parsed rather than fabricated placeholder text. Unlike
+    :func:`deterministic_fixture_content`, this resolver never synthesizes content and
+    never silently falls back to fabricated bytes: a missing or unreadable source file
+    raises ``FileNotFoundError`` so the gap is surfaced instead of masked.
+    """
+
+    resolved_base = Path(base_dir).resolve()
+
+    def _resolve(entry: dict[str, Any], package_id: str) -> bytes:
+        file_name = _as_non_empty_str(entry.get("file_name"))
+        if not file_name:
+            raise ValueError("intake entry is missing a file_name; cannot resolve real content")
+        source_path = (resolved_base / file_name).resolve()
+        try:
+            source_path.relative_to(resolved_base)
+        except ValueError as exc:
+            raise ValueError(
+                f"intake entry file_name {file_name!r} escapes the content base directory"
+            ) from exc
+        try:
+            return source_path.read_bytes()
+        except OSError as exc:
+            raise FileNotFoundError(
+                f"real document bytes not found for {file_name!r} at {source_path}"
+            ) from exc
+
+    return _resolve
 
 
 def _persist_accepted_bundle(
@@ -244,25 +350,33 @@ def _persist_accepted_bundle(
     source_channel = _as_non_empty_str(metadata.get("source_channel"))
     version_date = _version_date(metadata, received_at)
 
-    if core_repository.get_firm(firm_id) is None:
+    firm_name = _as_non_empty_str(metadata.get("firm_name")) or firm_id
+    resolved_firm_id = firm_id
+    fund_name = _as_non_empty_str(metadata.get("fund_name")) or fund_id
+    resolved_fund_id = fund_id
+
+    if core_repository.get_firm(resolved_firm_id) is None:
         core_repository.create_firm(
             Firm(
-                firm_id=firm_id,
-                legal_name=_as_non_empty_str(metadata.get("firm_name")) or firm_id,
-                aliases_json=None,
+                firm_id=resolved_firm_id,
+                legal_name=firm_name,
+                aliases_json=_aliases_json_for_name(firm_name),
                 created_at=received_at,
             )
         )
+    else:
+        _append_firm_alias(core_repository, resolved_firm_id, firm_name)
 
     fund = Fund(
-        fund_id=fund_id,
-        firm_id=firm_id,
-        fund_name=_as_non_empty_str(metadata.get("fund_name")) or fund_id,
+        fund_id=resolved_fund_id,
+        firm_id=resolved_firm_id,
+        fund_name=fund_name,
         strategy=_as_non_empty_str(metadata.get("strategy")) or None,
         asset_class=_as_non_empty_str(metadata.get("asset_class")) or None,
         created_at=received_at,
+        aliases_json=_aliases_json_for_name(fund_name),
     )
-    existing_fund = core_repository.get_fund(fund_id)
+    existing_fund = core_repository.get_fund(resolved_fund_id)
     if existing_fund is None:
         core_repository.create_fund(fund)
     else:
@@ -273,7 +387,7 @@ def _persist_accepted_bundle(
     version_records: list[DocumentVersionRecord] = []
     for document_id, entry in zip(document_ids, file_entries, strict=True):
         file_name = _as_non_empty_str(entry.get("file_name"))
-        document_key = _document_key(fund_id=fund_id, document_id=document_id)
+        document_key = _document_key(fund_id=resolved_fund_id, document_id=document_id)
         content = content_resolver(entry, package_id)
         version = document_store.put(
             document_key=document_key,
@@ -283,7 +397,7 @@ def _persist_accepted_bundle(
         )
         document = Document(
             document_id=document_id,
-            fund_id=fund_id,
+            fund_id=resolved_fund_id,
             file_name=file_name,
             file_hash=version.file_hash,
             received_at=version.received_at,
@@ -306,14 +420,30 @@ def _as_non_empty_str(value: Any) -> str:
     return value.strip() if isinstance(value, str) else ""
 
 
+def normalize_entity_name(name: str) -> str:
+    """Normalize a firm or fund name, stripping trailing legal suffix chains."""
+    normalized = _normalized_name(name)
+    previous = None
+    while previous != normalized:
+        previous = normalized
+        normalized = _LEGAL_SUFFIX_PATTERN.sub("", normalized).strip()
+        normalized = normalized.rstrip(",").strip()
+    normalized = re.sub(r"\s+", " ", normalized)
+    return normalized
+
+
 def _stable_identifier(preferred: Any, fallback: Any, prefix: str) -> str:
     preferred_value = _as_non_empty_str(preferred)
     if preferred_value:
         return preferred_value
 
-    fallback_value = _as_non_empty_str(fallback).lower()
+    fallback_value = normalize_entity_name(_as_non_empty_str(fallback))
     slug = re.sub(r"[^a-z0-9]+", "_", fallback_value).strip("_")
     return f"{prefix}_{slug or 'unknown'}"
+
+
+def _normalized_name(name: str) -> str:
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", name).casefold()).strip()
 
 
 def _document_key(*, fund_id: str, document_id: str) -> str:
@@ -335,16 +465,148 @@ def _is_iso_date(value: str) -> bool:
     return True
 
 
+def _resolve_firm_id(
+    *,
+    core_repository: CoreRepository,
+    explicit_id: str,
+    fallback_id: str,
+    name: str,
+) -> str:
+    if explicit_id:
+        return explicit_id
+
+    normalized = normalize_entity_name(name)
+    matches = [
+        firm.firm_id for firm in core_repository.list_firms() if _firm_has_alias(firm, normalized)
+    ]
+    unique_matches = sorted(set(matches))
+    if len(unique_matches) > 1:
+        raise ValueError(
+            f"ambiguous firm identity for normalized_name={normalized!r}: "
+            + ", ".join(unique_matches)
+        )
+    if unique_matches:
+        return unique_matches[0]
+    return fallback_id
+
+
+def _resolve_fund_id(
+    *,
+    core_repository: CoreRepository,
+    explicit_id: str,
+    fallback_id: str,
+    firm_id: str,
+    name: str,
+) -> str:
+    if explicit_id:
+        return explicit_id
+
+    normalized = normalize_entity_name(name)
+    matches = [
+        fund.fund_id
+        for fund in core_repository.list_funds(firm_id)
+        if _fund_has_alias(fund, normalized)
+    ]
+    unique_matches = sorted(set(matches))
+    if len(unique_matches) > 1:
+        raise ValueError(
+            f"ambiguous fund identity for firm_id={firm_id!r}, normalized_name={normalized!r}: "
+            + ", ".join(unique_matches)
+        )
+    if unique_matches:
+        return unique_matches[0]
+    return fallback_id
+
+
+def _firm_has_alias(firm: Firm, normalized_name: str) -> bool:
+    if normalize_entity_name(firm.legal_name) == normalized_name:
+        return True
+    return any(
+        normalize_entity_name(str(alias["name"])) == normalized_name
+        for alias in _load_alias_entries(firm.aliases_json)
+        if isinstance(alias.get("name"), str)
+    )
+
+
+def _fund_has_alias(fund: Fund, normalized_name: str) -> bool:
+    if normalize_entity_name(fund.fund_name) == normalized_name:
+        return True
+    return any(
+        normalize_entity_name(str(alias["name"])) == normalized_name
+        for alias in _load_alias_entries(fund.aliases_json)
+        if isinstance(alias.get("name"), str)
+    )
+
+
+def _append_firm_alias(
+    core_repository: CoreRepository,
+    firm_id: str,
+    name: str,
+) -> None:
+    firm = core_repository.get_firm(firm_id)
+    if firm is None:
+        raise KeyError(f"unknown firm_id={firm_id}")
+
+    updated = _merge_alias_entries(firm.aliases_json, name)
+    if updated != firm.aliases_json:
+        core_repository.update_firm_aliases(firm_id, updated)
+
+
+def _aliases_json_for_name(name: str) -> str:
+    return _merge_alias_entries(None, name)
+
+
+def _merge_alias_entries(aliases_json: str | None, name: str) -> str:
+    entries = _load_alias_entries(aliases_json)
+    normalized = normalize_entity_name(name)
+    if not any(entry.get("name") == name for entry in entries):
+        entries.append({"name": name, "normalized": normalized})
+
+    entries.sort(key=lambda entry: (str(entry.get("normalized", "")), str(entry.get("name", ""))))
+    return json.dumps(entries, sort_keys=True)
+
+
+def _load_alias_entries(aliases_json: str | None) -> list[dict[str, str]]:
+    if aliases_json is None:
+        return []
+    try:
+        parsed = json.loads(aliases_json)
+    except JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+
+    entries: list[dict[str, str]] = []
+    for item in parsed:
+        if isinstance(item, str):
+            entries.append({"name": item, "normalized": normalize_entity_name(item)})
+        elif isinstance(item, dict) and isinstance(item.get("name"), str):
+            name = str(item["name"])
+            normalized = item.get("normalized")
+            entries.append(
+                {
+                    "name": name,
+                    "normalized": (
+                        str(normalized)
+                        if isinstance(normalized, str)
+                        else normalize_entity_name(name)
+                    ),
+                }
+            )
+    return entries
+
+
 def _merge_fund(*, existing: Fund, incoming: Fund) -> Fund:
-    """Preserve existing fund attributes when the incoming bundle leaves them empty."""
+    """Preserve canonical fund identity while recording incoming name variants."""
     return replace(
         existing,
         firm_id=incoming.firm_id or existing.firm_id,
-        fund_name=incoming.fund_name or existing.fund_name,
+        fund_name=existing.fund_name,
         strategy=incoming.strategy if incoming.strategy is not None else existing.strategy,
         asset_class=(
             incoming.asset_class if incoming.asset_class is not None else existing.asset_class
         ),
+        aliases_json=_merge_alias_entries(existing.aliases_json, incoming.fund_name),
     )
 
 

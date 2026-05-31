@@ -1,0 +1,16 @@
+{
+  "auto_accept_fields": [
+    "strategy.asset_class",
+    "terms.management_fee",
+    "performance.net_return_1y"
+  ],
+  "auto_pass_document": false,
+  "document": {
+    "confidence.document.auto_pass": "false",
+    "confidence.document.escalation_reason": "low_key_field_coverage",
+    "confidence.document.key_field_coverage_ratio": "0.6000"
+  },
+  "escalate": true,
+  "escalation_reason": "low_key_field_coverage",
+  "key_field_coverage_ratio": 0.6
+}
