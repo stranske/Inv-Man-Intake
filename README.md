@@ -23,7 +23,7 @@ The v1 design target is documented in
 
 Inv-Man-Intake is intentionally a headless intake, scoring, and
 validation-queue backend. The repo-local package under `src/` does not ship a
-first-party FastAPI, Streamlit, Gradio, or uvicorn server; human review is
+production HTTP/API server such as FastAPI, Gradio, or uvicorn; human review is
 expected to happen in a consuming analyst queue rather than in this package.
 
 The consumer UI integration contract for that analyst queue surface is
@@ -32,10 +32,11 @@ and paginated queue response contracts for validation rows. A Manager-Database
 style analyst queue, or another portfolio operations UI, should integrate
 against that contract when it needs to display or triage intake validation work.
 
-The browser demo below is fixture-backed verification evidence for
-the deterministic intake path. It is not a planned production human-facing UI for this repo,
-and the absence of a repo-local server in `src/` is a recorded product decision
-rather than a missing front-end gap.
+The browser demo below is fixture-backed verification evidence for the
+deterministic intake path. It lives under `app/`, is demo-only, and is not a
+planned production human-facing UI for this repo. The absence of a production
+repo-local server in `src/` is a recorded product decision rather than a missing
+front-end gap.
 
 ## Quick Start
 
