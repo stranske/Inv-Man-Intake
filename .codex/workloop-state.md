@@ -1,5 +1,18 @@
 # Workloop State
 
+## 2026-05-31T19:08:30Z - opener materializing #478
+- Automation: pd-workloop-resume / opener lane (`codex`).
+- Issue selected: #478, "Document Inv-Man-Intake as headless and name its human-facing consumer".
+- Branch/worktree: `codex/issue-478-headless-docs` at `/Users/teacher/.codex/automations/pd-workloop-resume/worktrees/inv-man-478-headless-docs`.
+- Implemented:
+  - Added a README "Human-facing surface (headless by design)" subsection after Current Capabilities.
+  - Documented that `src/` is intentionally serverless/headless and that human review belongs in a consuming analyst queue.
+  - Named `src/inv_man_intake/validation_queue_api.py` as the queue integration contract.
+- Validation:
+  - `grep -RniE "FastAPI|streamlit|gradio|APIRouter|uvicorn" src || true` -> no matches.
+  - `git diff --check` -> passed.
+- Next action: push the branch, open a ready-for-review PR, then hand to keepalive.
+
 ## 2026-05-30T21:07:18Z - opener materialized #476
 - Automation: pd-workloop-resume / opener lane (`codex`).
 - Issue selected: #476, "Add `method` + structured locator to the canonical `ExtractedField` evidence object".
