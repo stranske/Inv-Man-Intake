@@ -13,8 +13,7 @@ pip install "app-baseline-kit @ git+https://github.com/stranske/Workflows.git#su
 ```
 
 It is declared in this repo's `pyproject.toml` `[project.optional-dependencies]
-dev`, so `pip install -e ".[dev]"` pulls it (plus `pytest-regressions`, which
-needs `numpy` + `pandas` for the `num_regression` fixture).
+dev`, so `pip install -e ".[dev]"` pulls it (plus `pytest-regressions`).
 
 ## Target surface
 

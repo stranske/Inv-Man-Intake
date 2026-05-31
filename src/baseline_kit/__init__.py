@@ -29,8 +29,8 @@ def evaluate_direction(direction: str, variant: float, control: float) -> bool:
     raise ValueError(f"Unknown direction: {direction}")
 
 
-def check_metrics(num_regression: Any, metrics: dict[str, Any]) -> None:
-    num_regression.check(metrics)
+def check_metrics(regression_fixture: Any, metrics: dict[str, Any]) -> None:
+    regression_fixture.check(metrics)
 
 
 @dataclass(frozen=True)

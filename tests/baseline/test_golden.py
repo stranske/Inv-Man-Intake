@@ -20,5 +20,5 @@ _SCENARIOS = _CATALOG["scenarios"]
 
 
 @pytest.mark.parametrize("scenario", _SCENARIOS, ids=[s["id"] for s in _SCENARIOS])
-def test_scoring_golden(scenario, num_regression):
-    check_metrics(num_regression, adapter.run_scenario(scenario, _BASE))
+def test_scoring_golden(scenario, data_regression):
+    check_metrics(data_regression, adapter.run_scenario(scenario, _BASE))
