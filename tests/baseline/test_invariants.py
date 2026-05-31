@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from baseline_kit import assert_invariants, load_catalog
 
 from . import invariants

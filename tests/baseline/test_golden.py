@@ -8,6 +8,7 @@ then review and commit the updated baseline CSVs under test_golden/.
 from __future__ import annotations
 
 import pytest
+
 from baseline_kit import check_metrics, load_catalog
 
 from . import adapter

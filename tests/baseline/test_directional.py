@@ -8,6 +8,7 @@ final score.
 from __future__ import annotations
 
 import pytest
+
 from baseline_kit import evaluate_direction, load_catalog
 
 from . import adapter
