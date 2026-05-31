@@ -32,6 +32,13 @@ dev = [
     "mypy>=2.1.0",
     "black==26.3.1",
     "pydantic==2.13.4",
+    # Shared app behavior baseline harness (tests/baseline). Pulls
+    # pytest-regressions, which needs numpy + pandas for the num_regression
+    # fixture. Tracked as a git direct reference (latest on Workflows main).
+    "app-baseline-kit @ git+https://github.com/stranske/Workflows.git#subdirectory=packages/app-baseline-kit",
+    "pytest-regressions==2.11.0",
+    "numpy>=2.0,<3",
+    "pandas>=2.3,<4",
 ]
 
 [project.urls]

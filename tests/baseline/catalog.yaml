@@ -1,0 +1,171 @@
+# Inv-Man-Intake scenario catalog -- deterministic scoring compute.
+#
+# Surface: inv_man_intake.scoring.engine.compute_score
+#   ScoreSubmission (asset_class + five [0, 1] component scores)
+#     -> ScoreResult (base_score, final_score, per-component contributions,
+#        red_flag_applied), all flattened to named scalars (see adapter.py).
+#
+# Same shape as the TMP / trip-planner / Counter_Risk kits. Here a "scenario" is
+# the BASE submission with an optional `patch` applied (see adapter.apply_patch
+# for the patch DSL). Directional checks compare a variant scenario to `base` on
+# a named flat metric key.
+
+# ---------------------------------------------------------------------------
+# Base submission.
+#
+# An equity_market_neutral manager with deliberately UNEVEN component scores so
+# every per-component contribution is non-trivial and the directional moves are
+# unambiguous. None is at the 0/1 boundary, so a +/- shift stays interior and
+# strictly monotone. Component scores are in [0, 1] (engine contract).
+#
+#   performance_consistency 0.60   risk_adjusted_returns 0.55
+#   operational_quality     0.70   transparency          0.50
+#   team_experience         0.65
+#
+# Under equity_market_neutral weights this yields base_score = 0.595 (hand-check:
+#   0.60*0.30 + 0.55*0.25 + 0.70*0.15 + 0.50*0.15 + 0.65*0.15 = 0.595).
+# ---------------------------------------------------------------------------
+base:
+  manager_id: mgr_baseline
+  asset_class: equity_market_neutral
+  components:
+    performance_consistency: 0.60
+    risk_adjusted_returns: 0.55
+    operational_quality: 0.70
+    transparency: 0.50
+    team_experience: 0.65
+
+# ---------------------------------------------------------------------------
+# Scenarios (each = base + optional patch). `base` is listed explicitly so the
+# golden/invariant tests parametrize over it.
+# ---------------------------------------------------------------------------
+scenarios:
+  - id: base
+    patch: []
+
+  # Every sleeve improves by 0.15 -> a uniformly better manager.
+  - id: all_sleeves_better
+    patch:
+      - {op: shift_all, delta: 0.15}
+
+  # Every sleeve worsens by 0.15 -> a uniformly weaker manager.
+  - id: all_sleeves_worse
+    patch:
+      - {op: shift_all, delta: -0.15}
+
+  # Lift only the risk-adjusted-returns sleeve -> that contribution rises, and
+  # because weights are non-negative the total rises too.
+  - id: stronger_risk_adjusted
+    patch:
+      - {op: set_component, name: risk_adjusted_returns, value: 0.85}
+
+  # Same component profile, re-weighted as a trend_following manager. trend
+  # weights risk_adjusted_returns highest (0.33 vs equity's 0.25), so the RAR
+  # contribution rises relative to the equity base.
+  - id: trend_following_reweight
+    patch:
+      - {op: set_asset_class, value: trend_following}
+
+  # A red-flag cap below the base total -> final_score is pulled down to the cap;
+  # base_score (the pre-override total) is unchanged.
+  - id: red_flag_capped
+    patch:
+      - {op: red_flag_cap, capped_score: 0.30, reason: gating-breach}
+
+  # A red-flag block -> final_score = 0.0; base_score unchanged.
+  - id: red_flag_blocked
+    patch:
+      - {op: red_flag_block, reason: compliance-block}
+
+  # All sleeves at the maximum -> base_score = final_score = 1.0 (weights sum to
+  # 1.0, every component contributes its full weight).
+  - id: perfect_scores
+    patch:
+      - {op: set_component, name: performance_consistency, value: 1.0}
+      - {op: set_component, name: risk_adjusted_returns, value: 1.0}
+      - {op: set_component, name: operational_quality, value: 1.0}
+      - {op: set_component, name: transparency, value: 1.0}
+      - {op: set_component, name: team_experience, value: 1.0}
+
+  # All sleeves at the floor -> base_score = final_score = 0.0.
+  - id: floor_scores
+    patch:
+      - {op: set_component, name: performance_consistency, value: 0.0}
+      - {op: set_component, name: risk_adjusted_returns, value: 0.0}
+      - {op: set_component, name: operational_quality, value: 0.0}
+      - {op: set_component, name: transparency, value: 0.0}
+      - {op: set_component, name: team_experience, value: 0.0}
+
+# ---------------------------------------------------------------------------
+# Directional checks: variant vs control (base) on a flat metric key.
+# direction is from baseline_kit.DIRECTIONS (left=variant, right=control).
+# Each is grounded in the scoring economics, not boilerplate.
+# ---------------------------------------------------------------------------
+directionals:
+  # A uniformly better manager scores higher.
+  - id: better_sleeves_raise_score
+    scenario: all_sleeves_better
+    control: base
+    metric: base_score
+    direction: increase
+    enforce: true
+  # A uniformly weaker manager scores lower.
+  - id: worse_sleeves_lower_score
+    scenario: all_sleeves_worse
+    control: base
+    metric: base_score
+    direction: decrease
+    enforce: true
+  # Raising the risk-adjusted-returns sleeve raises the total.
+  - id: stronger_rar_raises_score
+    scenario: stronger_risk_adjusted
+    control: base
+    metric: base_score
+    direction: increase
+    enforce: true
+  # ...and raises that sleeve's own contribution.
+  - id: stronger_rar_raises_rar_contribution
+    scenario: stronger_risk_adjusted
+    control: base
+    metric: contribution.risk_adjusted_returns
+    direction: increase
+    enforce: true
+  # Re-weighting the same manager as trend_following (which weights RAR highest)
+  # raises the risk_adjusted_returns contribution vs the equity base.
+  - id: trend_reweight_raises_rar_contribution
+    scenario: trend_following_reweight
+    control: base
+    metric: contribution.risk_adjusted_returns
+    direction: increase
+    enforce: true
+  # A red-flag cap below the base total pulls final_score down.
+  - id: cap_lowers_final_score
+    scenario: red_flag_capped
+    control: base
+    metric: final_score
+    direction: decrease
+    enforce: true
+  # A red-flag block drives final_score to zero -- strictly below the base.
+  - id: block_lowers_final_score
+    scenario: red_flag_blocked
+    control: base
+    metric: final_score
+    direction: decrease
+    enforce: true
+  # A red-flag override sets the applied flag (0 -> 1).
+  - id: cap_sets_red_flag_applied
+    scenario: red_flag_capped
+    control: base
+    metric: red_flag_applied
+    direction: increase
+    enforce: true
+
+# ---------------------------------------------------------------------------
+# Coverage manifest: every flat metric key the surface produces must be
+# exercised by a directional check. Keys are flat metric keys.
+# ---------------------------------------------------------------------------
+priority_metrics:
+  - base_score
+  - final_score
+  - contribution.risk_adjusted_returns
+  - red_flag_applied
