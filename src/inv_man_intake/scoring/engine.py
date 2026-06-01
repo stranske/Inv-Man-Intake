@@ -138,7 +138,7 @@ def compute_score(
         decision = red_flag_hook.apply(submission, base_score=base_score)
         if decision.blocked:
             final_score = 0.0
-            red_flag_applied = True
+            red_flag_applied = final_score != base_score
             red_flag_reason = decision.reason or "blocked"
         elif decision.capped_score is not None:
             if decision.capped_score < 0 or decision.capped_score > 1:

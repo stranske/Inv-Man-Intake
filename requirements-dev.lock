@@ -16,7 +16,7 @@ iniconfig==2.3.0
     # via pytest
 langsmith==0.4.59
     # via inv-man-intake (pyproject.toml)
-mypy==2.0.0
+mypy==2.1.0
     # via inv-man-intake (pyproject.toml)
 mypy-extensions==1.1.0
     # via
@@ -36,9 +36,9 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
-pydantic==2.13.3
+pydantic==2.13.4
     # via inv-man-intake (pyproject.toml)
-pydantic-core==2.46.3
+pydantic-core==2.46.4
     # via pydantic
 pygments==2.20.0
     # via pytest
@@ -50,7 +50,7 @@ pytest-cov==7.1.0
     # via inv-man-intake (pyproject.toml)
 pytokens==0.4.1
     # via black
-ruff==0.15.12
+ruff==0.15.15
     # via inv-man-intake (pyproject.toml)
 typing-extensions==4.15.0
     # via

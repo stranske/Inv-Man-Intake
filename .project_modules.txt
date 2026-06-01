@@ -1,0 +1,9 @@
+# Repo-specific first-party / vendored module names for scripts/sync_test_dependencies.py.
+# One module name per line; comments start with #.
+
+# baseline_kit is vendored in src/baseline_kit.
+baseline_kit
+
+# tests/baseline/conftest.py is imported relatively ("from .conftest import ...");
+# the import scanner sees a bare `conftest` top-level name.
+conftest
