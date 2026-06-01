@@ -171,6 +171,8 @@ tenacity==9.1.4
     # via streamlit
 toml==0.10.2
     # via streamlit
+tomlkit==0.13.3
+    # via inv-man-intake (pyproject.toml)
 tomli==2.4.1 ; python_full_version <= '3.11'
     # via coverage
 tornado==6.5.6
