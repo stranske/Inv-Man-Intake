@@ -280,11 +280,7 @@ def extract_imports_from_file(file_path: Path) -> set[str]:
             for alias in node.names:
                 module = alias.name.split(".")[0]
                 imports.add(module)
-        elif (
-            isinstance(node, ast.ImportFrom)
-            and node.module
-            and node.level == 0
-        ):
+        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
             module = node.module.split(".")[0]
             imports.add(module)
 
