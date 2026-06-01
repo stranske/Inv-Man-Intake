@@ -45,6 +45,19 @@ def test_directional_metrics_exist():
     )
 
 
+def test_catalog_contract_shape():
+    catalog = load_catalog(CATALOG_PATH)
+
+    scenarios = list(catalog.get("scenarios", []))
+    directionals = list(catalog.get("directionals", []))
+    priority_metrics = list(catalog.get("priority_metrics", []))
+
+    assert "base" in catalog
+    assert len(scenarios) == 9
+    assert len(directionals) == 8
+    assert priority_metrics
+
+
 def test_priority_metrics_covered():
     m = _build_manifest()
     assert not m.priority_gaps, "Priority metrics with no directional check: " + ", ".join(
