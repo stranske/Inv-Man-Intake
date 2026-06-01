@@ -73,5 +73,7 @@ def test_emit_coverage_report(tmp_path: Path):
         else tmp_path / "baseline-coverage.md"
     )
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(m.to_markdown())
+    markdown = m.to_markdown()
+    report_path.write_text(markdown)
     assert report_path.exists()
+    assert not m.priority_gaps
