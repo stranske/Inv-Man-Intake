@@ -19,8 +19,8 @@ placeholders:
   * red-flag monotonicity:    final_score <= base_score always (a cap takes the
                               MIN with base; a block sends it to 0; no override
                               can raise it).
-  * red-flag flag agrees:     red_flag_applied == 1  iff  final_score < base_score
-                              (within float tolerance); == 0 when they are equal.
+  * red-flag flag agrees:     red_flag_applied == 1 when a block applies, or when
+                              a cap lowers final_score below base_score.
 
 The result type and assertion helper are shared
 (``baseline_kit.InvariantResult`` / ``assert_invariants``).
@@ -32,105 +32,20 @@ import math
 from typing import Any
 
 from baseline_kit import InvariantResult
+from inv_man_intake.scoring.engine import default_weights_by_asset_class
+from inv_man_intake.scoring.weights import normalize_asset_class
 
 from . import adapter
 
 _EPS = 1e-9
-
-# Default launch weight sets (mirrors engine.default_weights_by_asset_class); used
-# only to derive the per-component upper bound for the contribution invariant.
-_DEFAULT_WEIGHTS = {
-    "equity_market_neutral": {
-        "performance_consistency": 0.30,
-        "risk_adjusted_returns": 0.25,
-        "operational_quality": 0.15,
-        "transparency": 0.15,
-        "team_experience": 0.15,
-    },
-    "quant": {
-        "performance_consistency": 0.27,
-        "risk_adjusted_returns": 0.30,
-        "operational_quality": 0.12,
-        "transparency": 0.16,
-        "team_experience": 0.15,
-    },
-    "multi_strat": {
-        "performance_consistency": 0.27,
-        "risk_adjusted_returns": 0.23,
-        "operational_quality": 0.20,
-        "transparency": 0.12,
-        "team_experience": 0.18,
-    },
-    "credit_long_short": {
-        "performance_consistency": 0.25,
-        "risk_adjusted_returns": 0.30,
-        "operational_quality": 0.20,
-        "transparency": 0.15,
-        "team_experience": 0.10,
-    },
-    "macro": {
-        "performance_consistency": 0.28,
-        "risk_adjusted_returns": 0.27,
-        "operational_quality": 0.15,
-        "transparency": 0.10,
-        "team_experience": 0.20,
-    },
-    "trend_following": {
-        "performance_consistency": 0.22,
-        "risk_adjusted_returns": 0.33,
-        "operational_quality": 0.15,
-        "transparency": 0.15,
-        "team_experience": 0.15,
-    },
-    "credit_relative_value": {
-        "performance_consistency": 0.24,
-        "risk_adjusted_returns": 0.26,
-        "operational_quality": 0.22,
-        "transparency": 0.14,
-        "team_experience": 0.14,
-    },
-    "activist": {
-        "performance_consistency": 0.24,
-        "risk_adjusted_returns": 0.21,
-        "operational_quality": 0.20,
-        "transparency": 0.20,
-        "team_experience": 0.15,
-    },
-}
-
-# Asset-class aliases the engine canonicalizes (mirrors weights.ASSET_CLASS_ALIASES)
-# -- needed to resolve the weight set for invariant bounds when a scenario patch
-# uses an alias.
-_ALIASES = {
-    "equity": "equity_market_neutral",
-    "equity_l_s": "equity_market_neutral",
-    "long_short_equity": "equity_market_neutral",
-    "equity_long_short": "equity_market_neutral",
-    "quantitative": "quant",
-    "multi_strategy": "multi_strat",
-    "multi_asset": "multi_strat",
-    "credit": "credit_long_short",
-    "credit_ls": "credit_long_short",
-    "credit_l_s": "credit_long_short",
-    "cta": "trend_following",
-    "managed_futures": "trend_following",
-    "relative_value_credit": "credit_relative_value",
-    "distressed_credit": "credit_relative_value",
-    "event_driven": "activist",
-}
-
-
-def _canonical_asset_class(label: str) -> str:
-    key = str(label or "").strip().lower().replace("-", "_").replace(" ", "_")
-    return _ALIASES.get(key, key)
 
 
 def check_scenario(scenario: dict[str, Any], base: dict[str, Any]) -> list[InvariantResult]:
     """Run every invariant against one scenario's scored metrics."""
     spec = adapter.apply_patch(base, scenario.get("patch"))
     metrics = adapter.run_scenario(scenario, base)
-    asset_class = _canonical_asset_class(spec["asset_class"])
-    weights = _DEFAULT_WEIGHTS.get(asset_class, {})
+    asset_class = normalize_asset_class(str(spec["asset_class"]))
+    weights = default_weights_by_asset_class().get(asset_class, {})
 
     results: list[InvariantResult] = []
 
@@ -186,12 +101,16 @@ def check_scenario(scenario: dict[str, Any], base: dict[str, Any]) -> list[Invar
         f"final_score={final_score} base_score={base_score}",
     )
 
-    # red_flag_applied agrees with whether the final score moved.
+    # Blocks set red_flag_applied even when base_score is already 0.0; caps set it
+    # only when they actually lower final_score below base_score.
     moved = final_score < base_score - _EPS
+    red_flag = spec.get("red_flag") or {}
+    expected_red_flag_applied = red_flag.get("kind") == "block" or moved
     add(
-        "red_flag_applied_matches_move",
-        red_flag_applied == (1 if moved else 0),
-        f"red_flag_applied={red_flag_applied} moved={moved} "
+        "red_flag_applied_matches_engine_semantics",
+        red_flag_applied == (1 if expected_red_flag_applied else 0),
+        f"red_flag_applied={red_flag_applied} expected={expected_red_flag_applied} "
+        f"red_flag_kind={red_flag.get('kind')} moved={moved} "
         f"(base={base_score} final={final_score})",
     )
 

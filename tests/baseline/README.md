@@ -72,4 +72,5 @@ For the base submission and every scenario, grounded in
   contributions)
 - `0 <= contribution.<c> <= weight(<c>)` for each component
 - `final_score <= base_score` (no red-flag override can raise the score)
-- `red_flag_applied == 1` iff `final_score < base_score`
+- `red_flag_applied == 1` when a block applies, or when a cap lowers
+  `final_score` below `base_score`

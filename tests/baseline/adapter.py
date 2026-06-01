@@ -40,7 +40,7 @@ single flat ``dict[str, float | int]``:
 * ``base_score``                      -- weighted total before red-flag override
 * ``final_score``                     -- total after any cap/block
 * ``contribution.<component>`` (x5)   -- per-component weighted contribution
-* ``red_flag_applied``                -- 1 if a cap/block changed the score else 0
+* ``red_flag_applied``                -- 1 if a block applied or a cap changed the score
 
 which is exactly what ``baseline_kit`` golden/directional/coverage machinery
 consumes.
