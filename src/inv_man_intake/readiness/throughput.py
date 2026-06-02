@@ -71,9 +71,9 @@ def run_readiness_check(output_path: Path = DEFAULT_OUTPUT_PATH) -> ReadinessRep
     artifacts_batch = [
         run_v1_smoke_pipeline(
             fixture_root=DEFAULT_FIXTURE_ROOT,
-            intake_bundle_file=cast(str, package["intake_bundle_file"]),
-            package_id=cast(str, package["package_id"]),
-            expected_document_ids=cast(tuple[str, ...], package["expected_document_ids"]),
+            intake_bundle_file=package["intake_bundle_file"],
+            package_id=package["package_id"],
+            expected_document_ids=package["expected_document_ids"],
         )
         for package in DEFAULT_BATCH_PACKAGES
     ]
