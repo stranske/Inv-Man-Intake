@@ -177,9 +177,23 @@ def _detect_local_project_modules() -> set[str]:
             # Check for packages (directories with __init__.py)
             if item.is_dir() and (item / "__init__.py").exists():
                 detected.add(item.name)
-            # Check for standalone .py modules (but not in root .)
-            elif source_dir != Path(".") and item.suffix == ".py":
+            # Check for standalone .py modules, including root-level modules
+            # such as adapter.py in small consumer repos.
+            elif item.suffix == ".py":
                 detected.add(item.stem)
+
+    tests_dir = Path("tests")
+    if tests_dir.is_dir():
+        for item in tests_dir.iterdir():
+            if item.name.startswith(".") or item.name == "__pycache__":
+                continue
+            if item.is_dir() and (item / "__init__.py").exists():
+                detected.add(item.name)
+            elif item.suffix == ".py":
+                if item.name == "conftest.py":
+                    detected.add("conftest")
+                elif not item.name.startswith("test_") and item.name != "__init__.py":
+                    detected.add(item.stem)
 
     return detected
 
