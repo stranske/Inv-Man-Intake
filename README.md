@@ -64,7 +64,7 @@ Live verification gate (no terminal required for reviewer):
 2. Select `pdf_primary_mixed_bundle.json`.
 3. Confirm the UI shows `Final score: 0.7809` and a non-empty Explainability
    table.
-4. Verification evidence and screenshot are recorded in
+4. Verification evidence command and artifact paths are recorded in
    `app/live-verification.md`.
 
 For developer iteration, install the optional app dependency and run:
@@ -72,6 +72,14 @@ For developer iteration, install the optional app dependency and run:
 ```bash
 python -m pip install -e ".[app]"
 streamlit run app/streamlit_app.py
+```
+
+To capture reproducible headless-browser evidence for verifier review:
+
+```bash
+python -m pip install -e ".[app,browser]"
+python -m playwright install chromium
+python scripts/verify_stlite_browser_demo.py
 ```
 
 The repository uses the shared

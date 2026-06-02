@@ -28,6 +28,9 @@ dependencies = [
 app = [
     "streamlit==1.52.1",
 ]
+browser = [
+    "playwright>=1.49,<2",
+]
 dev = [
     "pytest==9.0.3",
     "pytest-cov==7.1.0",

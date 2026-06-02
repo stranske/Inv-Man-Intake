@@ -135,9 +135,12 @@ def test_live_verification_evidence_is_recorded() -> None:
     assert "app/index.html" in content
     assert "python -m http.server 8000" in content
     assert "http://127.0.0.1:8000/app/index.html" in content
+    assert "python scripts/verify_stlite_browser_demo.py" in content
     assert "pdf_primary_mixed_bundle.json" in content
     assert "0.7809" in content
-    assert "live-verification-screenshot.svg" in content
+    assert "live-verification-browser.png" in content
+    assert "live-verification-browser.json" in content
+    assert "older SVG fixture is supporting documentation only" in content
 
 
 def test_stlite_mount_bundles_package_and_fixture_files() -> None:
