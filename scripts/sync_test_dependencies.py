@@ -177,9 +177,19 @@ def _detect_local_project_modules() -> set[str]:
             # Check for packages (directories with __init__.py)
             if item.is_dir() and (item / "__init__.py").exists():
                 detected.add(item.name)
-            # Check for standalone .py modules (but not in root .)
-            elif source_dir != Path(".") and item.suffix == ".py":
+            # Check for standalone .py modules, including root-level modules
+            # such as adapter.py in small consumer repos.
+            elif item.suffix == ".py":
                 detected.add(item.stem)
+
+    tests_dir = Path("tests")
+    if tests_dir.is_dir():
+        for item in tests_dir.rglob("*.py"):
+            if any(part.startswith(".") or part == "__pycache__" for part in item.parts):
+                continue
+            if item.name.startswith("test_") or item.name in {"__init__.py", "conftest.py"}:
+                continue
+            detected.add(item.stem)
 
     return detected
 
@@ -280,7 +290,7 @@ def extract_imports_from_file(file_path: Path) -> set[str]:
             for alias in node.names:
                 module = alias.name.split(".")[0]
                 imports.add(module)
-        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+        elif isinstance(node, ast.ImportFrom) and node.module:
             module = node.module.split(".")[0]
             imports.add(module)
 
