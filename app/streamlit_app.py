@@ -13,31 +13,11 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from inv_man_intake.observability import InMemoryTraceSink  # noqa: E402
+from inv_man_intake.readiness.fixture_batches import DEFAULT_BATCH_PACKAGES  # noqa: E402
 from inv_man_intake.scoring.contracts import ScoreComponent, ScoreSubmission  # noqa: E402
 from inv_man_intake.scoring.engine import compute_score  # noqa: E402
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "intake"
-DEFAULT_BATCH_PACKAGES = (
-    {
-        "intake_bundle_file": "pdf_primary_mixed_bundle.json",
-        "package_id": "pkg_pdf_mixed_001",
-        "expected_document_ids": (
-            "pkg_pdf_mixed_001:doc:0",
-            "pkg_pdf_mixed_001:doc:1",
-            "pkg_pdf_mixed_001:doc:2",
-            "pkg_pdf_mixed_001:doc:3",
-        ),
-    },
-    {
-        "intake_bundle_file": "pptx_primary_mixed_bundle.json",
-        "package_id": "pkg_pptx_mixed_001",
-        "expected_document_ids": (
-            "pkg_pptx_mixed_001:doc:0",
-            "pkg_pptx_mixed_001:doc:1",
-            "pkg_pptx_mixed_001:doc:2",
-        ),
-    },
-)
 FIXTURE_OPTIONS = tuple(
     cast(str, package["intake_bundle_file"]) for package in DEFAULT_BATCH_PACKAGES
 )

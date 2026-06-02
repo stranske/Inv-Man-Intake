@@ -10,30 +10,10 @@ from pathlib import Path
 from typing import Any, cast
 
 from inv_man_intake.observability import TraceEvent
+from inv_man_intake.readiness.fixture_batches import DEFAULT_BATCH_PACKAGES
 from inv_man_intake.v1_smoke import run_v1_smoke_pipeline
 
 DEFAULT_FIXTURE_ROOT = Path("tests/fixtures/intake")
-DEFAULT_BATCH_PACKAGES = (
-    {
-        "intake_bundle_file": "pdf_primary_mixed_bundle.json",
-        "package_id": "pkg_pdf_mixed_001",
-        "expected_document_ids": (
-            "pkg_pdf_mixed_001:doc:0",
-            "pkg_pdf_mixed_001:doc:1",
-            "pkg_pdf_mixed_001:doc:2",
-            "pkg_pdf_mixed_001:doc:3",
-        ),
-    },
-    {
-        "intake_bundle_file": "pptx_primary_mixed_bundle.json",
-        "package_id": "pkg_pptx_mixed_001",
-        "expected_document_ids": (
-            "pkg_pptx_mixed_001:doc:0",
-            "pkg_pptx_mixed_001:doc:1",
-            "pkg_pptx_mixed_001:doc:2",
-        ),
-    },
-)
 DEFAULT_OUTPUT_PATH = Path("reports/readiness/throughput_readiness.json")
 MIN_PACKAGES_PER_WEEK = 10
 TARGET_PACKAGES_PER_WEEK = 15
