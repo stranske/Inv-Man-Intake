@@ -1,0 +1,806 @@
+{
+  "status": "pass",
+  "verified_at": "2026-06-02T02:37:26.277268+00:00",
+  "url": "http://127.0.0.1:49939/app/index.html",
+  "expected_score": "0.7809",
+  "page_title": "Inv-Man-Intake Demo",
+  "screenshot_path": "app/live-verification-artifacts/browser-demo-score.png",
+  "log_path": "app/live-verification-artifacts/browser-demo-score.json",
+  "body_excerpt": "Deploy\nInv-Man-Intake\n\nSynthetic fixture demo. Computation runs locally with LangSmith disabled.\n\nSynthetic intake bundle\n\npdf_primary_mixed_bundle.json\n\nFinal score\n\n0.7809\nExplainability\n\u00a0\tcomponent\tcontribution\n0\tperformance_consistency\t0.2000\n1\trisk_adjusted_returns\t0.2340\n2\toperational_quality\t0.1380\n3\ttransparency\t0.1110\n4\tteam_experience\t0.0979\nAnalyst queue\n{\n\"owner_role\":\"analyst\"\n\"item_id\":\"pkg_pdf_mixed_001:validation:browser-demo\"\n}\n\nTrace sink: InMemoryTraceSink; LangSmith and LangChain tracing env vars are off.\n\nLoading Pyodide.\nMounting files.\nUnpacking archives.\nMocking some packages.\nInstalling packages.\nLoading streamlit package.\nSetting up the loggers.\nMocking some Streamlit functions for the browser environment.\nBooting up the Streamlit server.",
+  "console_messages": [
+    {
+      "type": "debug",
+      "text": "Loading a worker script from a different origin: https://cdn.jsdelivr.net/npm/@stlite/mountable@0.75.0/build/static/js/3209.4faed50e.chunk.js"
+    },
+    {
+      "type": "debug",
+      "text": "Custom wheel URLs: {STLITE_LIB_WHEEL: ./pypi/stlite_lib-0.1.0-py3-none-any.whl, STREAMLIT_WHEEL: ./pypi/streamlit-1.40.1-cp312-none-any.whl}"
+    },
+    {
+      "type": "debug",
+      "text": "Custom wheel resolved URLs: {stliteLib: https://cdn.jsdelivr.net/npm/@stlite/mountable@0.75.0/build/pypi/stlite_lib-0.1.0-py3-none-any.whl, streamlit: https://cdn.jsdelivr.net/npm/@stlite/mountable@0.75.0/build/pypi/streamlit-1.40.1-cp312-none-any.whl}"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (File not found)"
+    },
+    {
+      "type": "debug",
+      "text": "Initial data {entrypoint: app/streamlit_app.py, files: Object, archives: Array(0), requirements: Array(1), prebuiltPackageNames: Array(0)}"
+    },
+    {
+      "type": "warning",
+      "text": "Streamlit is specified in the requirements (\"streamlit==1.52.1\"), but it will be ignored. A built-in version of Streamlit will be used."
+    },
+    {
+      "type": "debug",
+      "text": "Loading Pyodide."
+    },
+    {
+      "type": "debug",
+      "text": "Loaded Pyodide"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/__init__.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/audit/__init__.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/audit/events.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/audit/repository.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/contracts/__init__.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/contracts/image_feedback_contract.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/contracts/intake_contract.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/data/__init__.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/data/fixtures.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/data/migrations/__init__.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/data/migrations/core_schema.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/data/migrations/provenance_history.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/data/migrations/sql/0001_core_firm_fund_document.down.sql"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/data/migrations/sql/0001_core_firm_fund_document.up.sql"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/data/migrations/sql/0002_field_provenance_history.down.sql"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/data/migrations/sql/0002_field_provenance_history.up.sql"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/data/models.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/data/provenance.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/data/repository.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/epic_milestones.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/extraction/__init__.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/extraction/confidence.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/extraction/orchestrator.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/extraction/providers/__init__.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/extraction/providers/base.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/extraction/providers/normalize.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/extraction/providers/pdf_primary.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/extraction/providers/pptx_primary.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/extraction/providers/primary.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/extraction/quality.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/images/__init__.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/images/classifier.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/images/extractor.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/images/feedback_report.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/images/feedback_service.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/images/models.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/images/service.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/intake/__init__.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/intake/integration.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/intake/models.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/intake/service.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/intake/versioning.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/observability/__init__.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/observability/entrypoints.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/observability/langsmith_fleet.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/observability/langsmith_sink.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/observability/logging.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/observability/metrics.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/observability/setup_validation.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/observability/tracing.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/performance/__init__.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/performance/conflict_resolver.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/performance/contracts.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/performance/ingest.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/performance/metrics.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/performance/normalize.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/queue/__init__.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/queue/assignment.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/queue/sla.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/readiness/__init__.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/readiness/throughput.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/scoring/__init__.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/scoring/contracts.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/scoring/engine.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/scoring/explainability.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/scoring/regression.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/scoring/weights.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/storage/__init__.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/storage/document_store.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/v1_smoke.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/validation_queue_api.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/src/inv_man_intake/workflow_validation.py"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/tests/fixtures/intake/malformed_corrupted_file.json"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/tests/fixtures/intake/malformed_missing_metadata.json"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/tests/fixtures/intake/malformed_unsupported_type.json"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/tests/fixtures/intake/pdf_primary_bundle.json"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/tests/fixtures/intake/pdf_primary_mixed_bundle.json"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/tests/fixtures/intake/pptx_primary_bundle.json"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/tests/fixtures/intake/pptx_primary_mixed_bundle.json"
+    },
+    {
+      "type": "debug",
+      "text": "Fetch a file from http://127.0.0.1:49939/app/streamlit_app.py"
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/audit/__init__.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/__init__.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/audit/events.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/contracts/__init__.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/audit/repository.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/contracts/image_feedback_contract.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/data/__init__.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/contracts/intake_contract.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/data/migrations/__init__.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/data/migrations/core_schema.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/data/fixtures.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/data/migrations/provenance_history.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/data/migrations/sql/0002_field_provenance_history.down.sql\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/data/migrations/sql/0001_core_firm_fund_document.down.sql\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/data/migrations/sql/0002_field_provenance_history.up.sql\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/data/migrations/sql/0001_core_firm_fund_document.up.sql\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/data/models.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/data/provenance.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/data/repository.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/extraction/confidence.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/extraction/__init__.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/epic_milestones.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/extraction/orchestrator.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/extraction/providers/__init__.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/extraction/providers/normalize.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/extraction/providers/base.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/extraction/providers/primary.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/extraction/providers/pptx_primary.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/extraction/quality.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/extraction/providers/pdf_primary.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/images/__init__.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/images/classifier.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/images/extractor.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/images/feedback_report.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/images/feedback_service.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/images/service.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/intake/__init__.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/images/models.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/intake/integration.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/intake/models.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/observability/entrypoints.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/intake/versioning.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/observability/__init__.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/intake/service.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/observability/langsmith_fleet.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/observability/logging.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/observability/langsmith_sink.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/observability/setup_validation.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/performance/conflict_resolver.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/observability/metrics.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/observability/tracing.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/performance/ingest.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/performance/contracts.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/performance/__init__.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/performance/metrics.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/performance/normalize.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/queue/__init__.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/queue/sla.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/queue/assignment.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/readiness/throughput.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/scoring/__init__.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/readiness/__init__.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/scoring/engine.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/storage/__init__.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/scoring/regression.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/scoring/weights.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/scoring/explainability.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/scoring/contracts.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/storage/document_store.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/v1_smoke.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/validation_queue_api.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/tests/fixtures/intake/malformed_missing_metadata.json\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/tests/fixtures/intake/malformed_corrupted_file.json\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/src/inv_man_intake/workflow_validation.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/tests/fixtures/intake/malformed_unsupported_type.json\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/tests/fixtures/intake/pdf_primary_mixed_bundle.json\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/tests/fixtures/intake/pptx_primary_bundle.json\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/tests/fixtures/intake/pdf_primary_bundle.json\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/app/streamlit_app.py\""
+    },
+    {
+      "type": "debug",
+      "text": "Write a file \"/home/pyodide/tests/fixtures/intake/pptx_primary_mixed_bundle.json\""
+    },
+    {
+      "type": "log",
+      "text": "Loading micropip, packaging"
+    },
+    {
+      "type": "log",
+      "text": "Loaded micropip, packaging"
+    },
+    {
+      "type": "debug",
+      "text": "Mock pyarrow"
+    },
+    {
+      "type": "debug",
+      "text": "Mocked pyarrow"
+    },
+    {
+      "type": "debug",
+      "text": "Installing the prebuilt packages: []"
+    },
+    {
+      "type": "log",
+      "text": "No new packages to load"
+    },
+    {
+      "type": "debug",
+      "text": "Installed the prebuilt packages"
+    },
+    {
+      "type": "debug",
+      "text": "Installing the requirements: [https://cdn.jsdelivr.net/npm/@stlite/mountable@0.75.0/build/pypi/stlite_lib-0.1.0-py3-none-any.whl, https://cdn.jsdelivr.net/npm/@stlite/mountable@0.75.0/build/pypi/streamlit-1.40.1-cp312-none-any.whl]"
+    },
+    {
+      "type": "log",
+      "text": "packaging already loaded from default channel"
+    },
+    {
+      "type": "log",
+      "text": "Loading Jinja2, MarkupSafe, Pillow, altair, attrs, cachetools, cramjam, fastparquet, fsspec, jsonschema, jsonschema_specifications, numpy, pandas, protobuf, pyodide-http, pyrsistent, python-dateutil, pytz, referencing, rpds-py, six, toolz, typing-extensions"
+    },
+    {
+      "type": "log",
+      "text": "Loaded Jinja2, MarkupSafe, Pillow, altair, attrs, cachetools, cramjam, fastparquet, fsspec, jsonschema, jsonschema_specifications, numpy, pandas, protobuf, pyodide-http, pyrsistent, python-dateutil, pytz, referencing, rpds-py, six, toolz, typing-extensions"
+    },
+    {
+      "type": "debug",
+      "text": "Installed the requirements"
+    },
+    {
+      "type": "debug",
+      "text": "Loading the Streamlit package"
+    },
+    {
+      "type": "debug",
+      "text": "Loaded the Streamlit package"
+    },
+    {
+      "type": "debug",
+      "text": "Setting the loggers"
+    },
+    {
+      "type": "debug",
+      "text": "Set the loggers"
+    },
+    {
+      "type": "debug",
+      "text": "Mocking some Streamlit functions"
+    },
+    {
+      "type": "debug",
+      "text": "Mocked some Streamlit functions"
+    },
+    {
+      "type": "debug",
+      "text": "Setting up the Streamlit configuration"
+    },
+    {
+      "type": "debug",
+      "text": "Set up the Streamlit configuration"
+    },
+    {
+      "type": "debug",
+      "text": "Booting up the Streamlit server"
+    },
+    {
+      "type": "debug",
+      "text": "DEBUG:stlite_lib.server.server:Starting server..."
+    },
+    {
+      "type": "debug",
+      "text": "The kernel has been loaded. Start connecting."
+    },
+    {
+      "type": "debug",
+      "text": "Booted up the Streamlit server"
+    },
+    {
+      "type": "debug",
+      "text": "websocket:connect {path: /_stcore/stream}"
+    },
+    {
+      "type": "debug",
+      "text": "websocket:send {payload: Uint8Array(10)}"
+    },
+    {
+      "type": "debug",
+      "text": "DEBUG:stlite_lib.server.server:Received the following back message:\nrerun_script {\n  widget_states {\n  }\n}\n"
+    },
+    {
+      "type": "debug",
+      "text": "DEBUG:stlite_lib.server.task_context:Setting task-specific home directory: None"
+    },
+    {
+      "type": "debug",
+      "text": "DEBUG:stlite_lib.server.task_context:Restoring original home directory: None"
+    },
+    {
+      "type": "log",
+      "text": "Gather usage stats:  false"
+    }
+  ],
+  "failed_requests": [],
+  "page_errors": []
+}

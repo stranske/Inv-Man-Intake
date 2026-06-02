@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Inv-Man-Intake Browser Demo</title>
-    <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.76.0/build/stlite.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.75.0/build/stlite.js"></script>
     <style>
       html,
       body,
@@ -78,6 +78,7 @@
         "src/inv_man_intake/queue/assignment.py",
         "src/inv_man_intake/queue/sla.py",
         "src/inv_man_intake/readiness/__init__.py",
+        "src/inv_man_intake/readiness/fixture_batches.py",
         "src/inv_man_intake/readiness/throughput.py",
         "src/inv_man_intake/scoring/__init__.py",
         "src/inv_man_intake/scoring/contracts.py",
@@ -106,7 +107,7 @@
       stlite.mount(
         {
           entrypoint: "app/streamlit_app.py",
-          requirements: ["streamlit==1.52.1", "langsmith>=0.4.59"],
+          requirements: ["streamlit==1.52.1"],
           files
         },
         document.getElementById("root")

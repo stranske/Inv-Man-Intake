@@ -124,20 +124,46 @@ def test_app_temporarily_disables_langsmith_and_langchain_env(
     assert os.environ["LANGCHAIN_TRACING_V2"] == "true"
 
 
+def test_app_uses_browser_safe_score_when_pyodide_lacks_sqlite(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _sqlite_missing_pipeline(**_: object) -> object:
+        raise ModuleNotFoundError("No module named 'sqlite3'", name="sqlite3")
+
+    monkeypatch.setattr("app.streamlit_app.run_v1_smoke_pipeline", _sqlite_missing_pipeline)
+
+    recorder = _StreamlitRecorder()
+    result = render_app(recorder)
+
+    assert result.final_score == pytest.approx(0.7809)
+    assert result.sink_type == InMemoryTraceSink.__name__
+    assert result.trace_tags == {"stage": "browser-demo", "sqlite_fallback": "true"}
+    assert recorder.metrics == [("Final score", "0.7809")]
+
+
 def test_live_verification_evidence_is_recorded() -> None:
     evidence = Path("app/live-verification.md")
     screenshot = Path("app/live-verification-screenshot.svg")
+    browser_script = Path("scripts/verify_stlite_browser.py")
 
     assert evidence.exists()
     assert screenshot.exists()
+    assert browser_script.exists()
 
     content = evidence.read_text(encoding="utf-8")
     assert "app/index.html" in content
     assert "python -m http.server 8000" in content
     assert "http://127.0.0.1:8000/app/index.html" in content
+    assert (
+        "uv run --extra dev python scripts/verify_stlite_browser.py --browser-channel chrome"
+        in content
+    )
+    assert "app/live-verification-artifacts/browser-demo-score.png" in content
+    assert "app/live-verification-artifacts/browser-demo-score.json" in content
     assert "pdf_primary_mixed_bundle.json" in content
     assert "0.7809" in content
     assert "live-verification-screenshot.svg" in content
+    assert "static visual reference only" in content
 
 
 def test_stlite_mount_bundles_package_and_fixture_files() -> None:
@@ -148,6 +174,6 @@ def test_stlite_mount_bundles_package_and_fixture_files() -> None:
     assert '"src/inv_man_intake/data/migrations/sql/0001_core_firm_fund_document.up.sql"' in content
     assert '"tests/fixtures/intake/pdf_primary_mixed_bundle.json"' in content
     assert "Object.fromEntries" in content
-    assert '"langsmith>=0.4.59"' in content
-    assert stlite_lock == "@stlite/mountable==0.76.0"
-    assert "https://cdn.jsdelivr.net/npm/@stlite/mountable@0.76.0/build/stlite.js" in content
+    assert '"langsmith>=0.4.59"' not in content
+    assert stlite_lock == "@stlite/mountable==0.75.0"
+    assert "https://cdn.jsdelivr.net/npm/@stlite/mountable@0.75.0/build/stlite.js" in content
