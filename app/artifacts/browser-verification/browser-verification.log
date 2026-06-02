@@ -1,0 +1,14 @@
+Inv-Man-Intake browser verification (issue #498; evidence for #469, #470)
+browser: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+fixture: pdf_primary_mixed_bundle.json
+engine final_score: 0.7809
+rendered score (browser, from component contributions): 0.7809
+
+Reproduce:
+  python -m app.browser_verification --fixture pdf_primary_mixed_bundle.json \
+    --output-dir /Users/teacher/.codex/worktrees/imi-498/app/artifacts/browser-verification
+
+Artifacts:
+  page:       /Users/teacher/.codex/worktrees/imi-498/app/artifacts/browser-verification/browser-verification.html
+  screenshot: /Users/teacher/.codex/worktrees/imi-498/app/artifacts/browser-verification/browser-verification.png
+  dom dump:   /Users/teacher/.codex/worktrees/imi-498/app/artifacts/browser-verification/browser-verification-dom.html

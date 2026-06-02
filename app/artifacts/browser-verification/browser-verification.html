@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Inv-Man-Intake Browser Verification</title>
+    <style>
+      body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 32px; color: #1b1f24; }
+      h1 { margin: 0 0 4px; }
+      .caption { color: #57606a; margin-bottom: 24px; }
+      .score { font-size: 56px; font-weight: 700; color: #0969da; }
+      .score-label { text-transform: uppercase; letter-spacing: 0.08em; color: #57606a; font-size: 13px; }
+      table { border-collapse: collapse; margin-top: 12px; min-width: 640px; }
+      th, td { border: 1px solid #d0d7de; padding: 6px 10px; text-align: left; }
+      th { background: #f6f8fa; }
+      .queue { margin-top: 20px; font-family: ui-monospace, SFMono-Regular, monospace; }
+      .ok { color: #1a7f37; font-weight: 600; margin-top: 20px; }
+    </style>
+  </head>
+  <body data-rendered="false">
+    <script id="demo-data" type="application/json">{"fixture": "pdf_primary_mixed_bundle.json", "package_id": "pkg_pdf_mixed_001", "final_score": 0.7809, "components": [{"component": "operational_quality", "weight": 0.2, "contribution": 0.138, "rationale": "AUM field is present but below auto-accept confidence."}, {"component": "performance_consistency", "weight": 0.25, "contribution": 0.2, "rationale": "Normalized monthly track record is complete."}, {"component": "risk_adjusted_returns", "weight": 0.3, "contribution": 0.234, "rationale": "Prioritized metrics include Sharpe and correlation evidence."}, {"component": "team_experience", "weight": 0.1, "contribution": 0.0979, "rationale": "Key-person note is routed for analyst review."}, {"component": "transparency", "weight": 0.15, "contribution": 0.111, "rationale": "Provenance pointers tie extracted fields to source pages."}], "owner_role": "analyst", "item_id": "pkg_pdf_mixed_001:validation:performance_conflict:corr_4a5178e5be9a499b86ad4eae663af107", "sink_type": "InMemoryTraceSink"}</script>
+    <h1 id="page-title">loading…</h1>
+    <div class="caption">Synthetic fixture demo. Score recomputed in-browser; LangSmith/LangChain tracing disabled.</div>
+    <div class="score-label">Final score</div>
+    <div class="score" id="final-score">—</div>
+    <div id="score-crosscheck"></div>
+    <h2>Explainability</h2>
+    <table id="explainability">
+      <thead><tr><th>Component</th><th>Weight</th><th>Contribution</th><th>Rationale</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <h2>Analyst queue</h2>
+    <div class="queue" id="analyst-queue"></div>
+    <div class="ok" id="render-status"></div>
+    <script>
+      (function () {
+        const data = JSON.parse(document.getElementById("demo-data").textContent);
+        document.getElementById("page-title").textContent = "Inv-Man-Intake";
+
+        // Recompute the final score in the browser from component contributions.
+        const browserScore = data.components.reduce(
+          (acc, c) => acc + Number(c.contribution), 0);
+        document.getElementById("final-score").textContent = browserScore.toFixed(4);
+
+        const engineScore = Number(data.final_score).toFixed(4);
+        const matches = browserScore.toFixed(4) === engineScore;
+        document.getElementById("score-crosscheck").textContent =
+          "Engine score: " + engineScore + " (browser recomputation " +
+          (matches ? "matches" : "DIFFERS") + ")";
+
+        const tbody = document.querySelector("#explainability tbody");
+        data.components.forEach((c) => {
+          const tr = document.createElement("tr");
+          [c.component, c.weight, c.contribution, c.rationale].forEach((v) => {
+            const td = document.createElement("td");
+            td.textContent = String(v);
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+
+        document.getElementById("analyst-queue").textContent =
+          "owner_role=" + data.owner_role + "  item_id=" + data.item_id;
+
+        document.getElementById("render-status").textContent =
+          "Browser render OK for fixture " + data.fixture + " (score " +
+          browserScore.toFixed(4) + ").";
+        document.body.setAttribute("data-rendered", matches ? "true" : "mismatch");
+      })();
+    </script>
+  </body>
+</html>
