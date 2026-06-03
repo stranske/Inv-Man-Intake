@@ -1,7 +1,7 @@
 ## 2026-06-03T16:08:45Z - opener (codex) issue #518 -> PR #519
 
 - Lane: opener / new_issue. Materialized approved weekly-review queue item as issue **#518** (`Wire load_threshold_config() from config/extraction_thresholds.yaml into the headless ingest production path`) and opened ready-for-review PR **#519**.
-- Branch/worktree: `codex/issue-518-threshold-config` at `/Users/teacher/.codex/automations/pd-workloop-resume/worktrees/inv-man-518-threshold-config`.
+- Branch/worktree: `codex/issue-518-threshold-config` in the automation worktree for issue #518.
 - Implementation: `run_pipeline()` now loads the repo-bundled `config/extraction_thresholds.yaml` by default, threads the resulting threshold config into `_run_pipeline_core()`, and `inv-man-ingest` accepts `--threshold-config PATH`. The smoke core keeps its existing one-field fallback when no config is supplied. `docs/contracts/extraction_thresholds.md` now states that production headless runs load the YAML by default.
 - Regression coverage: added `tests/run/test_pipeline_threshold_config.py` to assert the committed YAML mandatory-field set and to prove a custom YAML config changes the generated `threshold-summary.json` escalation reason to `confidence_below_threshold:operations.aum`.
 - Deliberate-break gate: temporarily removed the `threshold_config=threshold_config` pass-through in `run_pipeline()`; `python -m pytest tests/run/test_pipeline_threshold_config.py::test_run_pipeline_uses_yaml_mandatory_fields -q --no-cov` failed on `low_key_field_coverage` versus `confidence_below_threshold:operations.aum`; restored and reran green.

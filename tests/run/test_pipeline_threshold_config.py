@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
+import inv_man_intake.run as run_module
 from inv_man_intake.extraction.confidence import load_threshold_config
 from inv_man_intake.run import DEFAULT_THRESHOLD_CONFIG_PATH, run_pipeline
 
@@ -16,14 +19,7 @@ _MANDATORY_FIELDS = {
 }
 
 
-def test_yaml_mandatory_fields_match_v1_contract() -> None:
-    config = load_threshold_config(DEFAULT_THRESHOLD_CONFIG_PATH)
-
-    assert set(config.mandatory_fields) == _MANDATORY_FIELDS
-
-
-def test_run_pipeline_uses_yaml_mandatory_fields(tmp_path: Path) -> None:
-    config_path = tmp_path / "strict-thresholds.yaml"
+def _write_strict_threshold_config(config_path: Path) -> None:
     config_path.write_text(
         "\n".join(
             [
@@ -40,6 +36,37 @@ def test_run_pipeline_uses_yaml_mandatory_fields(tmp_path: Path) -> None:
         ),
         encoding="utf-8",
     )
+
+
+def test_yaml_mandatory_fields_match_v1_contract() -> None:
+    config = load_threshold_config(DEFAULT_THRESHOLD_CONFIG_PATH)
+
+    assert set(config.mandatory_fields) == _MANDATORY_FIELDS
+
+
+def test_run_pipeline_uses_default_yaml_mandatory_fields(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_path = tmp_path / "strict-thresholds.yaml"
+    _write_strict_threshold_config(config_path)
+    monkeypatch.setattr(run_module, "DEFAULT_THRESHOLD_CONFIG_PATH", config_path)
+
+    output_dir = tmp_path / "out"
+    run_pipeline(_BUNDLE, output_dir=output_dir)
+
+    summary = json.loads((output_dir / "threshold-summary.json").read_text(encoding="utf-8"))
+
+    assert summary["escalate"] is True
+    assert summary["escalation_reason"] == "confidence_below_threshold:operations.aum"
+    assert (
+        summary["document"]["confidence.document.escalation_reason"]
+        == "confidence_below_threshold:operations.aum"
+    )
+
+
+def test_run_pipeline_uses_yaml_mandatory_fields(tmp_path: Path) -> None:
+    config_path = tmp_path / "strict-thresholds.yaml"
+    _write_strict_threshold_config(config_path)
 
     output_dir = tmp_path / "out"
     run_pipeline(_BUNDLE, output_dir=output_dir, threshold_config_path=config_path)
