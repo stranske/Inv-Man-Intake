@@ -44,7 +44,9 @@ ARTIFACT_METADATA = "metadata.json"
 ARTIFACT_THRESHOLD = "threshold-summary.json"
 ARTIFACT_EXPLAINABILITY = "explainability.json"
 ARTIFACT_MANIFEST = MANIFEST_NAME
-DEFAULT_THRESHOLD_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "extraction_thresholds.yaml"
+DEFAULT_THRESHOLD_CONFIG_PATH = (
+    Path(__file__).resolve().parents[2] / "config" / "extraction_thresholds.yaml"
+)
 
 
 @dataclass(frozen=True)
