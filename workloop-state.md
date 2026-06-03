@@ -1,3 +1,14 @@
+## 2026-06-03T16:08:45Z - opener (codex) issue #518 -> PR #519
+
+- Lane: opener / new_issue. Materialized approved weekly-review queue item as issue **#518** (`Wire load_threshold_config() from config/extraction_thresholds.yaml into the headless ingest production path`) and opened ready-for-review PR **#519**.
+- Branch/worktree: `codex/issue-518-threshold-config` at `/Users/teacher/.codex/automations/pd-workloop-resume/worktrees/inv-man-518-threshold-config`.
+- Implementation: `run_pipeline()` now loads the repo-bundled `config/extraction_thresholds.yaml` by default, threads the resulting threshold config into `_run_pipeline_core()`, and `inv-man-ingest` accepts `--threshold-config PATH`. The smoke core keeps its existing one-field fallback when no config is supplied. `docs/contracts/extraction_thresholds.md` now states that production headless runs load the YAML by default.
+- Regression coverage: added `tests/run/test_pipeline_threshold_config.py` to assert the committed YAML mandatory-field set and to prove a custom YAML config changes the generated `threshold-summary.json` escalation reason to `confidence_below_threshold:operations.aum`.
+- Deliberate-break gate: temporarily removed the `threshold_config=threshold_config` pass-through in `run_pipeline()`; `python -m pytest tests/run/test_pipeline_threshold_config.py::test_run_pipeline_uses_yaml_mandatory_fields -q --no-cov` failed on `low_key_field_coverage` versus `confidence_below_threshold:operations.aum`; restored and reran green.
+- Validation: `python -m pytest tests/run/test_pipeline_threshold_config.py tests/run/test_manifest.py tests/cli/test_ingest_entrypoint.py tests/extraction/test_thresholds.py -q --no-cov` -> 16 passed; `python -m pytest tests/v1/ tests/run/ -q --no-cov` -> 22 passed; focused `ruff`, focused `mypy`, and `git diff --check` passed.
+- PR state: PR **#519** open/non-draft, closes #518, labels [agent:codex, agents:keepalive, autofix]. `codex`/`codex-automation` labels are not present in this repo label list; `agent:retry` exists but was not required for initial creation. Cap-health after PR creation sees #519 as draining with active Gate/Gate Followups/Autofix evidence.
+- Next action: keepalive/Gate owns PR #519.
+
 ## 2026-06-02T04:12:00Z - opener (codex) PR #500 typecheck recovery
 
 - Selected recovery lane: `stranske/Inv-Man-Intake` PR `#500` (`codex/issue-498-browser-artifact`), source issue `#498`.
