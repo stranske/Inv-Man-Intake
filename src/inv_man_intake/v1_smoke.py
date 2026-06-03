@@ -139,6 +139,7 @@ def _run_pipeline_core(
     intake_bundle_file: str = "pdf_primary_mixed_bundle.json",
     package_id: str,
     expected_document_ids: tuple[str, ...] | None = None,
+    threshold_config: ThresholdConfig | None = None,
 ) -> V1SmokeArtifacts:
     """Execute the deterministic intake-to-scoring pipeline once.
 
@@ -218,7 +219,7 @@ def _run_pipeline_core(
         context=extraction_context,
         metadata={"package_id": record.package_id},
     ):
-        threshold_config = ThresholdConfig(
+        effective_threshold_config = threshold_config or ThresholdConfig(
             field_auto_accept_min=0.85,
             key_field_confidence_min=0.75,
             document_key_field_coverage_min=0.80,
@@ -234,7 +235,7 @@ def _run_pipeline_core(
                 "operations.aum",
                 "team.key_person_risk",
             ),
-            config=threshold_config,
+            config=effective_threshold_config,
         )
         extraction_with_thresholds = attach_threshold_summary(
             result=extraction_result,

@@ -5,6 +5,7 @@ Issue: #22
 ## Config Source
 
 Thresholds are loaded from [`config/extraction_thresholds.yaml`](../../config/extraction_thresholds.yaml) using `load_threshold_config` in `src/inv_man_intake/extraction/confidence.py`.
+Production headless runs (`run_pipeline()` and `inv-man-ingest`) load this YAML by default; `inv-man-ingest --threshold-config PATH` can point a run at an alternate policy file.
 The loader intentionally supports a strict subset:
 - scalar numeric keys must be plain `key: value` entries
 - `mandatory_fields` must use block-list syntax (`mandatory_fields:` followed by `- field.key` lines)
