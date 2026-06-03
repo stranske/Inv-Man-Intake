@@ -28,7 +28,7 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, cast
 
-from inv_man_intake.extraction.confidence import ThresholdDecision
+from inv_man_intake.extraction.confidence import ThresholdDecision, load_threshold_config
 from inv_man_intake.extraction.providers.base import SnippetMetadata, SourceLocation
 from inv_man_intake.intake.integration import IntakeRegistrationResult
 from inv_man_intake.intake.models import IngestRecord
@@ -44,6 +44,9 @@ ARTIFACT_METADATA = "metadata.json"
 ARTIFACT_THRESHOLD = "threshold-summary.json"
 ARTIFACT_EXPLAINABILITY = "explainability.json"
 ARTIFACT_MANIFEST = MANIFEST_NAME
+DEFAULT_THRESHOLD_CONFIG_PATH = (
+    Path(__file__).resolve().parents[2] / "config" / "extraction_thresholds.yaml"
+)
 
 
 @dataclass(frozen=True)
@@ -127,7 +130,12 @@ class RunResult:
         }
 
 
-def run_pipeline(bundle_path: Path, *, output_dir: Path) -> RunResult:
+def run_pipeline(
+    bundle_path: Path,
+    *,
+    output_dir: Path,
+    threshold_config_path: Path | None = None,
+) -> RunResult:
     """Run the intake pipeline for ``bundle_path`` and write artifacts to ``output_dir``.
 
     Returns the :class:`RunResult`. Writes ``run.json`` plus the three named
@@ -146,10 +154,12 @@ def run_pipeline(bundle_path: Path, *, output_dir: Path) -> RunResult:
     if not isinstance(package_id, str) or not package_id.strip():
         raise ValueError("intake bundle must declare a non-empty string package_id")
 
+    threshold_config = load_threshold_config(threshold_config_path or DEFAULT_THRESHOLD_CONFIG_PATH)
     artifacts = _run_pipeline_core(
         fixture_root=bundle_path.parent,
         intake_bundle_file=bundle_path.name,
         package_id=package_id,
+        threshold_config=threshold_config,
     )
     result = _build_run_result(artifacts)
     _write_run_artifacts(result=result, artifacts=artifacts, output_dir=output_dir)

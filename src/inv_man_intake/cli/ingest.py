@@ -34,6 +34,12 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Output directory for run.json and the named artifact files.",
     )
+    parser.add_argument(
+        "--threshold-config",
+        default=None,
+        metavar="PATH",
+        help="Threshold YAML config path (default: repo-bundled config/extraction_thresholds.yaml).",
+    )
     return parser
 
 
@@ -45,13 +51,18 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     bundle_path = Path(args.bundle)
     output_dir = Path(args.out)
+    threshold_config_path = Path(args.threshold_config) if args.threshold_config else None
 
     if not bundle_path.is_file():
         print(f"error: intake bundle not found: {bundle_path}", file=sys.stderr)
         return 2
 
     try:
-        result = run_pipeline(bundle_path, output_dir=output_dir)
+        result = run_pipeline(
+            bundle_path,
+            output_dir=output_dir,
+            threshold_config_path=threshold_config_path,
+        )
     except (ValueError, KeyError, json.JSONDecodeError, OSError) as exc:
         print(f"error: intake run failed: {exc}", file=sys.stderr)
         return 1
