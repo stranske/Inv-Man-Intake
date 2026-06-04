@@ -5,7 +5,10 @@ altair==6.1.0
 annotated-types==0.7.0
     # via pydantic
 anyio==4.13.0
-    # via httpx
+    # via
+    #   httpx
+    #   starlette
+    #   streamlit
 ast-serialize==0.5.0
     # via mypy
 attrs==26.1.0
@@ -29,6 +32,7 @@ click==8.4.1
     # via
     #   black
     #   streamlit
+    #   uvicorn
 colorama==0.4.6 ; sys_platform == 'win32'
     # via
     #   click
@@ -42,9 +46,13 @@ gitpython==3.1.50
 greenlet==3.5.1
     # via playwright
 h11==0.16.0
-    # via httpcore
+    # via
+    #   httpcore
+    #   uvicorn
 httpcore==1.0.9
     # via httpx
+httptools==0.8.0
+    # via streamlit
 httpx==0.28.1
     # via langsmith
 idna==3.17
@@ -54,6 +62,8 @@ idna==3.17
     #   requests
 iniconfig==2.3.0
     # via pytest
+itsdangerous==2.2.0
+    # via streamlit
 jinja2==3.1.6
     # via
     #   altair
@@ -136,6 +146,8 @@ pytest-regressions==2.11.0
     # via inv-man-intake (pyproject.toml)
 python-dateutil==2.9.0.post0
     # via pandas
+python-multipart==0.0.30
+    # via streamlit
 pytokens==0.4.1
     # via black
 pytz==2026.2
@@ -163,16 +175,16 @@ six==1.17.0
     # via python-dateutil
 smmap==5.0.3
     # via gitdb
-streamlit==1.52.1
+starlette==1.2.1
+    # via streamlit
+streamlit==1.58.0
     # via inv-man-intake (pyproject.toml)
 tenacity==9.1.4
     # via streamlit
 toml==0.10.2
     # via streamlit
-tomlkit==0.13.3
+tomlkit==0.15.0
     # via inv-man-intake (pyproject.toml)
-tornado==6.5.6
-    # via streamlit
 typing-extensions==4.15.0
     # via
     #   altair
@@ -182,6 +194,7 @@ typing-extensions==4.15.0
     #   pydantic-core
     #   pyee
     #   referencing
+    #   starlette
     #   streamlit
     #   typing-inspection
 typing-inspection==0.4.2
@@ -192,10 +205,14 @@ urllib3==2.7.0
     # via requests
 uuid-utils==0.16.0
     # via langsmith
+uvicorn==0.49.0
+    # via streamlit
 watchdog==6.0.0 ; sys_platform != 'darwin'
     # via streamlit
 websockets==16.0
-    # via langsmith
+    # via
+    #   langsmith
+    #   streamlit
 xxhash==3.7.0
     # via langsmith
 zstandard==0.25.0
