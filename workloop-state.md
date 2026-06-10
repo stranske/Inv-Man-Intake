@@ -1,3 +1,14 @@
+## 2026-06-10T23:10Z - opener (codex) issue #547 directional baseline PR
+
+- Lane: opener / new_issue. Materialized approved weekly-review queue item as issue **#547** (`Add directional baseline checks for 4 non-RAR scoring contribution metric keys`) and implemented branch `codex/issue-547-directional-baselines`.
+- Worktree: `/Users/teacher/.codex/automations/pd-workloop-resume/worktrees/inv-man-547-directional`.
+- Implementation: added four isolated `set_component` baseline scenarios and enforced directional checks for `contribution.performance_consistency`, `contribution.operational_quality`, `contribution.transparency`, and `contribution.team_experience`; expanded priority coverage to all produced flat metric keys; regenerated `docs/reports/baseline-coverage.md`.
+- Validation: `pytest tests/baseline/test_directional.py --no-cov` (12 passed); focused new checks with `-k "raise_performance_consistency_contribution or raise_operational_quality_contribution or raise_transparency_contribution or raise_team_experience_contribution"` (4 passed); `pytest tests/baseline/test_coverage_manifest.py::test_catalog_contract_shape --no-cov` (passed); `BASELINE_REFRESH_REPORT=1 pytest tests/baseline/test_coverage_manifest.py::test_emit_coverage_report --no-cov` (passed); final `pytest tests/baseline/test_directional.py tests/baseline/test_coverage_manifest.py --no-cov` (16 passed).
+- Deliberate-break gate: temporarily changed `raise_performance_consistency_contribution` to `direction: decrease`; quoted pytest node id failed with `Economically wrong direction -- ... variant=0.24 decrease control=0.18 -> False`; restored `increase` and reran green.
+- Extra disposition: stale approved TPP queue item was materialized as `Travel-Plan-Permission#1182`, then closed as duplicate/completed because the same work already merged via `Travel-Plan-Permission#1179` / PR `#1180` at `2026-06-10T18:23:16Z` (`b9be2d7` on main).
+- PR state: PR **#548** is open/non-draft, closes #547, head `4b2a8b6`, labels [agent:codex, agents:keepalive, autofix, repo-review-approved, priority:normal]. Direct PR status immediately after open showed Gate/Agents Gate Followups/CI/guard jobs queued or in progress; cap-health lagged with `needs-dispatch-evidence`, but direct checks showed active async worker evidence.
+- Next action: keepalive/Gate owns PR #548.
+
 ## 2026-06-03T16:08:45Z - opener (codex) issue #518 -> PR #519
 
 - Lane: opener / new_issue. Materialized approved weekly-review queue item as issue **#518** (`Wire load_threshold_config() from config/extraction_thresholds.yaml into the headless ingest production path`) and opened ready-for-review PR **#519**.

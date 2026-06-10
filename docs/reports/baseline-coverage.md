@@ -1,12 +1,14 @@
 # Inv-Man-Intake baseline coverage manifest
 
-- Input parameters: **8**
-- Exercised by a scenario: **4** (50.0%)
-- Observed read at runtime: **0**
+- total metric keys: 8
+- touched by directionals: 8
+- uncovered: 0
 
-## Priority parameters
+## Priority gaps
+- none
 
-- [x] `base_score`
-- [x] `final_score`
-- [x] `contribution.risk_adjusted_returns`
-- [x] `red_flag_applied`
+## Unknown directional keys
+- none
+
+## Uncovered keys
+- none

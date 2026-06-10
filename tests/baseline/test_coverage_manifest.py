@@ -53,8 +53,8 @@ def test_catalog_contract_shape():
     priority_metrics = list(catalog.get("priority_metrics", []))
 
     assert "base" in catalog
-    assert len(scenarios) == 9
-    assert len(directionals) == 8
+    assert len(scenarios) == 13
+    assert len(directionals) == 12
     assert priority_metrics
 
 
