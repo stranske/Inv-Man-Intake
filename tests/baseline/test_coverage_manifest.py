@@ -77,3 +77,7 @@ def test_emit_coverage_report(tmp_path: Path):
     report_path.write_text(markdown)
     assert report_path.exists()
     assert not m.priority_gaps
+    assert "- contribution.performance_consistency" in markdown
+    assert "- contribution.operational_quality" in markdown
+    assert "- contribution.transparency" in markdown
+    assert "- contribution.team_experience" in markdown
