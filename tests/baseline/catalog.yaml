@@ -59,6 +59,30 @@ scenarios:
     patch:
       - {op: set_component, name: risk_adjusted_returns, value: 0.85}
 
+  # Lift only the performance-consistency sleeve -> that contribution rises
+  # under the equity_market_neutral weight of 0.30.
+  - id: raise_performance_consistency
+    patch:
+      - {op: set_component, name: performance_consistency, value: 0.80}
+
+  # Lift only the operational-quality sleeve -> that contribution rises under
+  # the equity_market_neutral weight of 0.15.
+  - id: raise_operational_quality
+    patch:
+      - {op: set_component, name: operational_quality, value: 0.90}
+
+  # Lift only the transparency sleeve -> that contribution rises under the
+  # equity_market_neutral weight of 0.15.
+  - id: raise_transparency
+    patch:
+      - {op: set_component, name: transparency, value: 0.70}
+
+  # Lift only the team-experience sleeve -> that contribution rises under the
+  # equity_market_neutral weight of 0.15.
+  - id: raise_team_experience
+    patch:
+      - {op: set_component, name: team_experience, value: 0.85}
+
   # Same component profile, re-weighted as a trend_following manager. trend
   # weights risk_adjusted_returns highest (0.33 vs equity's 0.25), so the RAR
   # contribution rises relative to the equity base.
@@ -130,6 +154,35 @@ directionals:
     metric: contribution.risk_adjusted_returns
     direction: increase
     enforce: true
+  # Raising performance_consistency from 0.60 to 0.80 raises its contribution
+  # under equity_market_neutral weight=0.30.
+  - id: raise_performance_consistency_contribution
+    scenario: raise_performance_consistency
+    control: base
+    metric: contribution.performance_consistency
+    direction: increase
+    enforce: true
+  # Raising operational_quality from 0.70 to 0.90 raises its contribution.
+  - id: raise_operational_quality_contribution
+    scenario: raise_operational_quality
+    control: base
+    metric: contribution.operational_quality
+    direction: increase
+    enforce: true
+  # Raising transparency from 0.50 to 0.70 raises its contribution.
+  - id: raise_transparency_contribution
+    scenario: raise_transparency
+    control: base
+    metric: contribution.transparency
+    direction: increase
+    enforce: true
+  # Raising team_experience from 0.65 to 0.85 raises its contribution.
+  - id: raise_team_experience_contribution
+    scenario: raise_team_experience
+    control: base
+    metric: contribution.team_experience
+    direction: increase
+    enforce: true
   # Re-weighting the same manager as trend_following (which weights RAR highest)
   # raises the risk_adjusted_returns contribution vs the equity base.
   - id: trend_reweight_raises_rar_contribution
@@ -167,5 +220,9 @@ directionals:
 priority_metrics:
   - base_score
   - final_score
+  - contribution.performance_consistency
   - contribution.risk_adjusted_returns
+  - contribution.operational_quality
+  - contribution.transparency
+  - contribution.team_experience
   - red_flag_applied

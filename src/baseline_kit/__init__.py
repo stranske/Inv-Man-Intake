@@ -77,6 +77,18 @@ class CoverageManifest:
         lines.append(f"- touched by directionals: {len(self.touched_keys)}")
         lines.append(f"- uncovered: {len(self.uncovered_keys)}")
         lines.append("")
+        lines.append("## Priority metrics")
+        if self.priority_params:
+            lines.extend(f"- {key}" for key in self.priority_params)
+        else:
+            lines.append("- none")
+        lines.append("")
+        lines.append("## Touched keys")
+        if self.touched_keys:
+            lines.extend(f"- {key}" for key in sorted(self.touched_keys))
+        else:
+            lines.append("- none")
+        lines.append("")
         lines.append("## Priority gaps")
         if self.priority_gaps:
             lines.extend(f"- {key}" for key in self.priority_gaps)
