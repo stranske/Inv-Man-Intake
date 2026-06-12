@@ -37,7 +37,7 @@ colorama==0.4.6 ; sys_platform == 'win32'
     # via
     #   click
     #   pytest
-coverage==7.14.0
+coverage==7.14.1
     # via pytest-cov
 gitdb==4.0.12
     # via gitpython
@@ -169,7 +169,7 @@ rpds-py==2026.5.1
     # via
     #   jsonschema
     #   referencing
-ruff==0.15.14
+ruff==0.15.17
     # via inv-man-intake (pyproject.toml)
 six==1.17.0
     # via python-dateutil
