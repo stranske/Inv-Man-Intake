@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from inv_man_intake.extraction.confidence import (
     attach_threshold_summary,
     evaluate_thresholds,
@@ -40,6 +42,68 @@ def test_load_threshold_config_reads_policy_values() -> None:
     assert config.document_key_field_coverage_min == 0.80
     assert config.mandatory_field_min == 0.60
     assert "terms.management_fee" in config.mandatory_fields
+
+
+def test_load_threshold_config_rejects_inline_mandatory_fields(tmp_path: Path) -> None:
+    config_path = tmp_path / "thresholds.yaml"
+    config_path.write_text(
+        "\n".join(
+            (
+                "field_auto_accept_min: 0.85",
+                "key_field_confidence_min: 0.75",
+                "document_key_field_coverage_min: 0.80",
+                "mandatory_field_min: 0.60",
+                "mandatory_fields: [terms.management_fee]",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="unsupported mandatory_fields format"):
+        load_threshold_config(config_path)
+
+
+def test_load_threshold_config_rejects_unknown_keys(tmp_path: Path) -> None:
+    config_path = tmp_path / "thresholds.yaml"
+    config_path.write_text(
+        "\n".join(
+            (
+                "field_auto_accept_min: 0.85",
+                "key_field_confidence_min: 0.75",
+                "document_key_field_coverage_min: 0.80",
+                "mandatory_field_min: 0.60",
+                "unexpected_threshold: 0.10",
+                "mandatory_fields:",
+                "  - terms.management_fee",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="unknown threshold config key: unexpected_threshold"):
+        load_threshold_config(config_path)
+
+
+def test_load_threshold_config_reports_missing_required_keys(tmp_path: Path) -> None:
+    config_path = tmp_path / "thresholds.yaml"
+    config_path.write_text(
+        "\n".join(
+            (
+                "field_auto_accept_min: 0.85",
+                "key_field_confidence_min: 0.75",
+                "mandatory_field_min: 0.60",
+                "mandatory_fields:",
+                "  - terms.management_fee",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="missing threshold config keys: document_key_field_coverage_min",
+    ):
+        load_threshold_config(config_path)
 
 
 def test_evaluate_thresholds_boundary_values_are_deterministic() -> None:
