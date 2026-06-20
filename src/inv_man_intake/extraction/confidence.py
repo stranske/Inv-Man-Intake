@@ -103,27 +103,26 @@ def evaluate_thresholds(
         for key in key_fields
         if key in field_by_key and field_by_key[key].confidence >= config.key_field_confidence_min
     ]
-    key_field_coverage_ratio = len(eligible_key_fields) / len(key_fields) if key_fields else 0.0
+    key_field_coverage_ratio = len(eligible_key_fields) / len(key_fields) if key_fields else 1.0
     auto_pass_document = key_field_coverage_ratio >= config.document_key_field_coverage_min
 
+    mandatory_failures: list[str] = []
     for mandatory_field in config.mandatory_fields:
         candidate = field_by_key.get(mandatory_field)
         if candidate is None:
-            return ThresholdDecision(
-                auto_accept_fields=auto_accept_fields,
-                key_field_coverage_ratio=key_field_coverage_ratio,
-                auto_pass_document=False,
-                escalate=True,
-                escalation_reason=f"missing_mandatory_field:{mandatory_field}",
-            )
+            mandatory_failures.append(f"missing_mandatory_field:{mandatory_field}")
+            continue
         if candidate.confidence < config.mandatory_field_min:
-            return ThresholdDecision(
-                auto_accept_fields=auto_accept_fields,
-                key_field_coverage_ratio=key_field_coverage_ratio,
-                auto_pass_document=False,
-                escalate=True,
-                escalation_reason=f"confidence_below_threshold:{mandatory_field}",
-            )
+            mandatory_failures.append(f"confidence_below_threshold:{mandatory_field}")
+
+    if mandatory_failures:
+        return ThresholdDecision(
+            auto_accept_fields=auto_accept_fields,
+            key_field_coverage_ratio=key_field_coverage_ratio,
+            auto_pass_document=False,
+            escalate=True,
+            escalation_reason=";".join(mandatory_failures),
+        )
 
     escalate = not auto_pass_document
     reason = None if auto_pass_document else "low_key_field_coverage"

@@ -112,6 +112,28 @@ def test_evaluate_thresholds_escalates_when_mandatory_field_is_missing() -> None
     assert decision.escalation_reason == "missing_mandatory_field:operations.aum"
 
 
+def test_evaluate_thresholds_reports_all_mandatory_field_failures() -> None:
+    config = load_threshold_config(_CONFIG_PATH)
+    result = _result(
+        ("terms.management_fee", 0.59),
+        ("performance.net_return_1y", 0.91),
+    )
+
+    decision = evaluate_thresholds(
+        result=result,
+        key_fields=(
+            "terms.management_fee",
+            "performance.net_return_1y",
+        ),
+        config=config,
+    )
+
+    assert decision.escalate is True
+    assert decision.escalation_reason is not None
+    assert "confidence_below_threshold:terms.management_fee" in decision.escalation_reason
+    assert "missing_mandatory_field:operations.aum" in decision.escalation_reason
+
+
 def test_attach_threshold_summary_adds_document_policy_fields() -> None:
     config = load_threshold_config(_CONFIG_PATH)
     result = _result(
@@ -136,7 +158,7 @@ def test_attach_threshold_summary_adds_document_policy_fields() -> None:
     assert by_key["confidence.document.escalation_reason"].value == "none"
 
 
-def test_evaluate_thresholds_empty_key_fields_forces_escalation() -> None:
+def test_evaluate_thresholds_empty_key_fields_do_not_force_escalation() -> None:
     config = load_threshold_config(_CONFIG_PATH)
     result = _result(
         ("terms.management_fee", 0.95),
@@ -146,7 +168,7 @@ def test_evaluate_thresholds_empty_key_fields_forces_escalation() -> None:
 
     decision = evaluate_thresholds(result=result, key_fields=(), config=config)
 
-    assert decision.key_field_coverage_ratio == 0.0
-    assert decision.auto_pass_document is False
-    assert decision.escalate is True
-    assert decision.escalation_reason == "low_key_field_coverage"
+    assert decision.key_field_coverage_ratio == 1.0
+    assert decision.auto_pass_document is True
+    assert decision.escalate is False
+    assert decision.escalation_reason is None
