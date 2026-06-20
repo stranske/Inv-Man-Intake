@@ -108,6 +108,15 @@ def get_weight_set(asset_class: str, config_dir: Path | None = None) -> ScoringW
         raise ValueError(unknown_asset_class_message(asset_class)) from exc
 
 
+def weights_by_asset_class_for(
+    asset_class: str, config_dir: Path | None = None
+) -> dict[str, dict[str, float]]:
+    """Return registry-loaded weights in the shape expected by ``compute_score``."""
+
+    weight_set = get_weight_set(asset_class, config_dir=config_dir)
+    return {weight_set.asset_class: dict(weight_set.weights)}
+
+
 def normalize_asset_class(asset_class: str) -> str:
     """Return the canonical v1 launch asset-class key for a label or alias."""
 

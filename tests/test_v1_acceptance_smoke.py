@@ -10,6 +10,7 @@ import pytest
 from inv_man_intake.intake.integration import register_intake_bundle_file
 from inv_man_intake.intake.service import IngestionService
 from inv_man_intake.observability import InMemoryTraceSink
+from inv_man_intake.scoring import weights as scoring_weights
 from inv_man_intake.scoring.contracts import ScoreSubmission
 from inv_man_intake.scoring.engine import compute_score
 from inv_man_intake.v1_smoke import (
@@ -151,6 +152,55 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path(v1_smoke_artifacts
     assert all("summit" not in str(item).lower() for item in fleet_records)
 
 
+def test_v1_smoke_pipeline_score_uses_toml_weight_registry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_dir = tmp_path / "scoring_weights"
+    for asset_class in scoring_weights.LAUNCH_ASSET_CLASSES:
+        weights_block = "\n".join(
+            [
+                "performance_consistency = 0.20",
+                "risk_adjusted_returns = 0.20",
+                "operational_quality = 0.20",
+                "transparency = 0.20",
+                "team_experience = 0.20",
+            ]
+        )
+        if asset_class == "credit_long_short":
+            weights_block = "\n".join(
+                [
+                    "performance_consistency = 1.00",
+                    "risk_adjusted_returns = 0.00",
+                    "operational_quality = 0.00",
+                    "transparency = 0.00",
+                    "team_experience = 0.00",
+                ]
+            )
+        _write_weight_file(config_dir, asset_class=asset_class, weights_block=weights_block)
+
+    monkeypatch.setattr(scoring_weights, "DEFAULT_CONFIG_DIR", config_dir)
+    scoring_weights._load_weight_registry_cached.cache_clear()
+    try:
+        artifacts = run_v1_smoke_pipeline(
+            fixture_root=_FIXTURE_ROOT,
+            package_id=_SMOKE_PACKAGE_ID,
+            expected_document_ids=_EXPECTED_DOCUMENT_IDS,
+        )
+    finally:
+        scoring_weights._load_weight_registry_cached.cache_clear()
+
+    assert artifacts.score.asset_class == "credit_long_short"
+    assert artifacts.score.final_score == pytest.approx(0.80)
+    assert artifacts.score.contributions["performance_consistency"] == pytest.approx(0.80)
+    assert artifacts.score.contributions["risk_adjusted_returns"] == pytest.approx(0.00)
+    performance_component = next(
+        item
+        for item in artifacts.formatted_explainability["components"]
+        if item["component"] == "performance_consistency"
+    )
+    assert performance_component["weight"] == pytest.approx(1.00)
+
+
 def test_v1_acceptance_smoke_fails_when_intake_registration_is_bypassed() -> None:
     service = IngestionService()
     with pytest.raises(KeyError, match="unknown package_id=pkg_pdf_mixed_001"):
@@ -257,6 +307,23 @@ def test_v1_smoke_pipeline_without_langsmith_key_uses_local_trace_context(monkey
 
     assert "langsmith_enabled" not in artifacts.trace_context.tags
     assert "langsmith_project" not in artifacts.trace_context.tags
+
+
+def _write_weight_file(directory: Path, *, asset_class: str, weights_block: str) -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / f"{asset_class}.toml").write_text(
+        "\n".join(
+            [
+                f'asset_class = "{asset_class}"',
+                'version = "v1"',
+                "",
+                "[weights]",
+                weights_block,
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
 
 
 def _start_event(sink: InMemoryTraceSink, name: str):

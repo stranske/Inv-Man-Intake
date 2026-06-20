@@ -51,12 +51,13 @@ from inv_man_intake.performance.metrics import compute_metrics
 from inv_man_intake.performance.normalize import normalize_payload
 from inv_man_intake.queue.assignment import create_analyst_first_assignment
 from inv_man_intake.scoring.contracts import ScoreComponent, ScoreSubmission
-from inv_man_intake.scoring.engine import compute_score, default_weights_by_asset_class
+from inv_man_intake.scoring.engine import compute_score
 from inv_man_intake.scoring.explainability import (
     ScoreComponentInput,
     build_explainability_payload,
     format_explainability_payload,
 )
+from inv_man_intake.scoring.weights import get_weight_set, weights_by_asset_class_for
 from inv_man_intake.storage.document_store import InMemoryDocumentStore
 
 
@@ -301,7 +302,8 @@ def _run_pipeline_core(
                 manager_id=record.fund_id,
                 asset_class="credit",
                 components=components,
-            )
+            ),
+            weights_by_asset_class=weights_by_asset_class_for("credit"),
         )
         explainability = build_explainability_payload(
             components=_explainability_inputs(score.asset_class, components),
@@ -579,7 +581,7 @@ def _explainability_inputs(
     asset_class: str,
     components: tuple[ScoreComponent, ...],
 ) -> tuple[ScoreComponentInput, ...]:
-    weights = default_weights_by_asset_class()[asset_class]
+    weights = get_weight_set(asset_class).weights
     rationale_by_component = {
         "performance_consistency": "Normalized monthly track record is complete.",
         "risk_adjusted_returns": "Prioritized metrics include Sharpe and correlation evidence.",
