@@ -19,7 +19,8 @@ placeholders:
   * red-flag monotonicity:    final_score <= base_score always (a cap takes the
                               MIN with base; a block sends it to 0; no override
                               can raise it).
-  * red-flag flag agrees:     red_flag_applied == 1 iff final_score < base_score.
+  * red-flag flag agrees:     red_flag_applied == 1 when a block applies, or
+                              when a cap lowers final_score below base_score.
 
 The result type and assertion helper are shared
 (``baseline_kit.InvariantResult`` / ``assert_invariants``).
@@ -100,12 +101,21 @@ def check_scenario(scenario: dict[str, Any], base: dict[str, Any]) -> list[Invar
         f"final_score={final_score} base_score={base_score}",
     )
 
-    # A red flag is "applied" iff it actually changes the total downward.
+    # A block decision applies even when the score was already at zero; a cap
+    # applies only when it moves the final score downward.
+    red_flag = spec.get("red_flag")
     moved = final_score < base_score - _EPS
+    expected_applied = bool(
+        red_flag
+        and (
+            red_flag.get("kind") == "block"
+            or (red_flag.get("kind") == "cap" and moved)
+        )
+    )
     add(
         "red_flag_applied_matches_engine_semantics",
-        red_flag_applied == (1 if moved else 0),
-        f"red_flag_applied={red_flag_applied} expected={moved} "
+        red_flag_applied == (1 if expected_applied else 0),
+        f"red_flag_applied={red_flag_applied} expected={expected_applied} "
         f"(base={base_score} final={final_score})",
     )
 

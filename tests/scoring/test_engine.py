@@ -72,6 +72,46 @@ def test_red_flag_hook_can_fully_block_score() -> None:
     assert result.red_flag_reason == "compliance-block"
 
 
+def test_red_flag_block_applies_when_base_score_is_zero() -> None:
+    class BlockHook:
+        def apply(self, submission: ScoreSubmission, *, base_score: float) -> RedFlagDecision:
+            del submission, base_score
+            return RedFlagDecision(blocked=True, reason="zero-block")
+
+    submission = ScoreSubmission(
+        manager_id="mgr_zero",
+        asset_class="macro",
+        components=(
+            ScoreComponent("performance_consistency", 0.0),
+            ScoreComponent("risk_adjusted_returns", 0.0),
+            ScoreComponent("operational_quality", 0.0),
+            ScoreComponent("transparency", 0.0),
+            ScoreComponent("team_experience", 0.0),
+        ),
+    )
+
+    result = compute_score(submission, red_flag_hook=BlockHook())
+
+    assert result.base_score == pytest.approx(0.0)
+    assert result.final_score == pytest.approx(0.0)
+    assert result.red_flag_applied is True
+    assert result.red_flag_reason == "zero-block"
+
+
+def test_red_flag_cap_at_or_above_base_does_not_apply_reason() -> None:
+    class CapHook:
+        def apply(self, submission: ScoreSubmission, *, base_score: float) -> RedFlagDecision:
+            del submission, base_score
+            return RedFlagDecision(capped_score=0.95, reason="not-lower")
+
+    result = compute_score(_submission("equity"), red_flag_hook=CapHook())
+
+    assert result.base_score == pytest.approx(0.705)
+    assert result.final_score == pytest.approx(result.base_score)
+    assert result.red_flag_applied is False
+    assert result.red_flag_reason is None
+
+
 def test_compute_score_rejects_unmapped_asset_class() -> None:
     with pytest.raises(ValueError, match="unknown asset class: real_assets"):
         compute_score(_submission("real_assets"))

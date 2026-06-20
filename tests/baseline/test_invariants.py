@@ -39,7 +39,7 @@ def test_blocked_floor_score_matches_engine_red_flag_semantics():
 
     assert metrics["base_score"] == 0.0
     assert metrics["final_score"] == 0.0
-    assert metrics["red_flag_applied"] == 0
+    assert metrics["red_flag_applied"] == 1
     assert (metrics["final_score"] < metrics["base_score"]) is False
     assert_invariants(
         invariants.check_scenario(floor_blocked, _BASE),
