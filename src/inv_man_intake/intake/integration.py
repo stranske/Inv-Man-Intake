@@ -611,12 +611,16 @@ def _merge_fund(*, existing: Fund, incoming: Fund) -> Fund:
 
 
 def _ensure_document_invariants(*, existing: Document, incoming: Document) -> None:
-    """Reject document_id collisions where structural identity has changed."""
+    """Reject document_id collisions where structural identity or provenance changed."""
     mismatches: list[str] = []
     if existing.fund_id != incoming.fund_id:
         mismatches.append(f"fund_id={existing.fund_id!r}->{incoming.fund_id!r}")
     if existing.file_hash != incoming.file_hash:
         mismatches.append(f"file_hash={existing.file_hash!r}->{incoming.file_hash!r}")
+    if existing.source_channel != incoming.source_channel:
+        mismatches.append(
+            f"source_channel={existing.source_channel!r}->{incoming.source_channel!r}"
+        )
     if mismatches:
         raise ValueError(
             f"document_id={incoming.document_id!r} collision: " + ", ".join(mismatches)

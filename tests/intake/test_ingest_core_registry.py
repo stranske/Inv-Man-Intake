@@ -280,6 +280,71 @@ def test_document_id_collision_with_different_content_raises(tmp_path: Path) -> 
         )
 
 
+def test_document_id_collision_with_different_source_channel_raises(tmp_path: Path) -> None:
+    repository, store = _registry()
+
+    first = tmp_path / "first.json"
+    second = tmp_path / "second.json"
+    bundle = {
+        "metadata": {
+            "firm_id": "firm_source_collision",
+            "fund_id": "fund_source_collision",
+            "firm_name": "Source Collision Firm",
+            "fund_name": "Source Collision Fund",
+            "received_at": "2026-03-01T09:00:00Z",
+            "source_channel": "email",
+        },
+        "files": [
+            {
+                "file_name": "deck.pdf",
+                "role": "investment_deck",
+                "source_ref": "shared:deck",
+                "document_id": "source_shared_doc_id",
+            }
+        ],
+    }
+    first.write_text(json.dumps({"package_id": "pkg_source_a", **bundle}), encoding="utf-8")
+    second_bundle = {
+        **bundle,
+        "metadata": {
+            **bundle["metadata"],
+            "received_at": "2026-03-02T09:00:00Z",
+            "source_channel": "portal_upload",
+        },
+    }
+    second.write_text(json.dumps({"package_id": "pkg_source_b", **second_bundle}), encoding="utf-8")
+
+    first_result = register_intake_bundle_file(
+        first,
+        IngestionService(),
+        core_repository=repository,
+        document_store=store,
+        content_resolver=lambda _entry, _package_id: b"same deck bytes",
+    )
+    assert first_result.accepted is True
+    original = repository.get_document("source_shared_doc_id")
+    assert original is not None
+    assert original.source_channel == "email"
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "document_id='source_shared_doc_id' collision: "
+            "source_channel='email'->'portal_upload'"
+        ),
+    ):
+        register_intake_bundle_file(
+            second,
+            IngestionService(),
+            core_repository=repository,
+            document_store=store,
+            content_resolver=lambda _entry, _package_id: b"same deck bytes",
+        )
+
+    preserved = repository.get_document("source_shared_doc_id")
+    assert preserved == original
+
+
 def test_invalid_version_date_falls_back_to_received_at(tmp_path: Path) -> None:
     service = IngestionService()
     repository, store = _registry()
