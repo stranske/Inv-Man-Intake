@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from inv_man_intake.scoring.contracts import ScoreComponent, ScoreSubmission
+from inv_man_intake.scoring.engine import compute_score, default_weights_by_asset_class
 from inv_man_intake.scoring.weights import (
     ASSET_CLASS_ALIASES,
     COMPONENT_NAMES,
@@ -13,6 +15,7 @@ from inv_man_intake.scoring.weights import (
     get_weight_set,
     load_weight_registry,
     normalize_asset_class,
+    weights_by_asset_class_for,
 )
 
 EXPECTED_V1_LAUNCH_ASSET_CLASSES = (
@@ -72,6 +75,51 @@ def test_load_weight_registry_returns_all_launch_asset_classes() -> None:
         assert weight_set.version == "v1"
         assert set(weight_set.weights) == set(COMPONENT_NAMES)
         assert sum(weight_set.weights.values()) == pytest.approx(1.0)
+
+
+def test_default_weight_fallback_matches_toml_registry() -> None:
+    registry = load_weight_registry()
+
+    assert default_weights_by_asset_class() == {
+        asset_class: dict(weight_set.weights) for asset_class, weight_set in registry.items()
+    }
+
+
+def test_weight_registry_adapter_changes_compute_score_when_toml_changes(tmp_path: Path) -> None:
+    config_dir = tmp_path / "scoring_weights"
+    for asset_class in LAUNCH_ASSET_CLASSES:
+        weights_block = _valid_weights_block()
+        if asset_class == "credit_long_short":
+            weights_block = "\n".join(
+                [
+                    "performance_consistency = 1.00",
+                    "risk_adjusted_returns = 0.00",
+                    "operational_quality = 0.00",
+                    "transparency = 0.00",
+                    "team_experience = 0.00",
+                ]
+            )
+        _write_weight_file(config_dir, asset_class=asset_class, weights_block=weights_block)
+
+    result = compute_score(
+        ScoreSubmission(
+            manager_id="mgr_001",
+            asset_class="credit",
+            components=(
+                ScoreComponent("performance_consistency", 0.80),
+                ScoreComponent("risk_adjusted_returns", 0.60),
+                ScoreComponent("operational_quality", 0.90),
+                ScoreComponent("transparency", 0.70),
+                ScoreComponent("team_experience", 0.50),
+            ),
+        ),
+        weights_by_asset_class=weights_by_asset_class_for("credit", config_dir=config_dir),
+    )
+
+    assert result.asset_class == "credit_long_short"
+    assert result.final_score == pytest.approx(0.80)
+    assert result.contributions["performance_consistency"] == pytest.approx(0.80)
+    assert result.contributions["risk_adjusted_returns"] == pytest.approx(0.00)
 
 
 def test_launch_asset_class_catalog_matches_v1_approved_classes() -> None:

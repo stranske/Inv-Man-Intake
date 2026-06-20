@@ -141,6 +141,33 @@ def test_app_uses_browser_safe_score_when_pyodide_lacks_sqlite(
     assert recorder.metrics == [("Final score", "0.7809")]
 
 
+def test_app_browser_safe_score_uses_registry_weights(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _sqlite_missing_pipeline(**_: object) -> object:
+        raise ModuleNotFoundError("No module named 'sqlite3'", name="sqlite3")
+
+    monkeypatch.setattr("app.streamlit_app.run_v1_smoke_pipeline", _sqlite_missing_pipeline)
+    monkeypatch.setattr(
+        "app.streamlit_app.weights_by_asset_class_for",
+        lambda asset_class: {
+            "credit_long_short": {
+                "performance_consistency": 1.00,
+                "risk_adjusted_returns": 0.00,
+                "operational_quality": 0.00,
+                "transparency": 0.00,
+                "team_experience": 0.00,
+            }
+        },
+    )
+
+    result = render_app(_StreamlitRecorder())
+
+    assert result.final_score == pytest.approx(0.80)
+    assert result.components[0] == {
+        "component": "performance_consistency",
+        "contribution": pytest.approx(0.80),
+    }
+
+
 def test_live_verification_evidence_is_recorded() -> None:
     evidence = Path("app/live-verification.md")
     screenshot = Path("app/live-verification-screenshot.svg")

@@ -35,6 +35,7 @@ from inv_man_intake.scoring.weights import (
     get_weight_set,
     load_weight_registry,
     normalize_asset_class,
+    weights_by_asset_class_for,
 )
 
 __all__ = [
@@ -64,4 +65,5 @@ __all__ = [
     "load_weight_registry",
     "normalize_asset_class",
     "rank_by_asset_class",
+    "weights_by_asset_class_for",
 ]
