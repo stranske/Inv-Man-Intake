@@ -23,6 +23,7 @@ ENV_MODEL = "LANGCHAIN_MODEL"
 ENV_TIMEOUT = "LANGCHAIN_TIMEOUT"
 ENV_MAX_RETRIES = "LANGCHAIN_MAX_RETRIES"
 ENV_SLOT_CONFIG = "LANGCHAIN_SLOT_CONFIG"
+ENV_MODEL_REGISTRY_CONFIG = "LANGCHAIN_MODEL_REGISTRY_CONFIG"
 ENV_SLOT_PREFIX = "LANGCHAIN_SLOT"
 ENV_ANTHROPIC_KEY = "CLAUDE_API_STRANSKE"
 
@@ -31,6 +32,9 @@ PROVIDER_ANTHROPIC = "anthropic"
 PROVIDER_GITHUB = "github-models"
 
 DEFAULT_SLOT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "llm_slots.json"
+DEFAULT_MODEL_REGISTRY_CONFIG_PATH = (
+    Path(__file__).resolve().parent.parent / "config" / "model_registry.json"
+)
 
 
 def _env_int(name: str, default: int) -> int:
@@ -66,6 +70,14 @@ class SlotDefinition:
     model: str
 
 
+@dataclass(frozen=True)
+class ModelRegistryEntry:
+    provider: str
+    model: str
+    blocked: bool
+    quality: dict[str, float]
+
+
 def _normalize_provider(value: str | None) -> str | None:
     if not value:
         return None
@@ -93,6 +105,81 @@ def _resolve_model(model: str | None) -> str:
     return model or env_model or DEFAULT_MODEL
 
 
+def _load_model_registry() -> list[ModelRegistryEntry]:
+    config_path = os.environ.get(ENV_MODEL_REGISTRY_CONFIG)
+    path = Path(config_path) if config_path else DEFAULT_MODEL_REGISTRY_CONFIG_PATH
+    if not path.is_file():
+        return []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        logger.warning("Could not read model registry %s; continuing without registry", path)
+        return []
+
+    entries: list[ModelRegistryEntry] = []
+    for raw_entry in payload.get("models", []):
+        provider = _normalize_provider(str(raw_entry.get("provider", "")))
+        model = str(raw_entry.get("model_id", "")).strip()
+        if not provider or not model:
+            continue
+        quality_payload = raw_entry.get("quality", {})
+        quality = {
+            str(tier).upper(): float(score)
+            for tier, score in quality_payload.items()
+            if isinstance(score, int | float)
+        }
+        entries.append(
+            ModelRegistryEntry(
+                provider=provider,
+                model=model,
+                blocked=bool(raw_entry.get("blocked", False)),
+                quality=quality,
+            )
+        )
+    return entries
+
+
+def _registry_entry_for(
+    provider: str, model: str, registry: list[ModelRegistryEntry] | None = None
+) -> ModelRegistryEntry | None:
+    entries = registry if registry is not None else _load_model_registry()
+    normalized_provider = _normalize_provider(provider)
+    normalized_model = model.strip()
+    for entry in entries:
+        if entry.provider == normalized_provider and entry.model == normalized_model:
+            return entry
+    return None
+
+
+def _is_model_blocked(
+    provider: str, model: str, registry: list[ModelRegistryEntry] | None = None
+) -> bool:
+    entry = _registry_entry_for(provider, model, registry=registry)
+    return bool(entry and entry.blocked)
+
+
+def _select_model_for_tier(
+    *,
+    provider: str,
+    tier: str,
+    registry: list[ModelRegistryEntry] | None = None,
+) -> str | None:
+    entries = registry if registry is not None else _load_model_registry()
+    normalized_provider = _normalize_provider(provider)
+    normalized_tier = tier.strip().upper()
+    candidates = [
+        entry
+        for entry in entries
+        if entry.provider == normalized_provider
+        and not entry.blocked
+        and normalized_tier in entry.quality
+    ]
+    if not candidates:
+        return None
+    selected = max(candidates, key=lambda entry: entry.quality[normalized_tier])
+    return selected.model
+
+
 def _default_slots() -> list[SlotDefinition]:
     return [
         SlotDefinition(name="slot1", provider=PROVIDER_OPENAI, model="gpt-5.4"),
@@ -111,11 +198,18 @@ def _load_slot_config() -> list[SlotDefinition]:
     except (OSError, json.JSONDecodeError):
         return _default_slots()
 
+    registry = _load_model_registry()
     slots: list[SlotDefinition] = []
     for idx, entry in enumerate(payload.get("slots", []), start=1):
         provider = _normalize_provider(str(entry.get("provider", "")))
         model = str(entry.get("model", "")).strip()
+        tier = str(entry.get("quality_tier") or entry.get("tier") or "").strip()
+        if provider and not model and tier:
+            model = _select_model_for_tier(provider=provider, tier=tier, registry=registry) or ""
         if not provider or not model:
+            continue
+        if _is_model_blocked(provider, model, registry=registry):
+            logger.warning("Skipping blocked LLM model in slot config: %s/%s", provider, model)
             continue
         name = str(entry.get("name") or f"slot{idx}").strip() or f"slot{idx}"
         slots.append(SlotDefinition(name=name, provider=provider, model=model))
@@ -132,11 +226,16 @@ def _apply_slot_env_overrides(slots: list[SlotDefinition]) -> list[SlotDefinitio
         model_override = os.environ.get(model_key)
         if idx == 1:
             model_override = model_override or os.environ.get(ENV_MODEL)
+        provider = provider_override or slot.provider
+        model = (model_override or slot.model).strip()
+        if _is_model_blocked(provider, model):
+            logger.warning("Skipping blocked LLM slot override: %s/%s", provider, model)
+            continue
         updated.append(
             SlotDefinition(
                 name=slot.name,
-                provider=provider_override or slot.provider,
-                model=(model_override or slot.model).strip(),
+                provider=provider,
+                model=model,
             )
         )
     return updated
@@ -234,6 +333,9 @@ def build_chat_client(
     selected_provider, provider_explicit = _resolve_provider(provider, force_openai=force_openai)
     if provider_explicit and selected_provider is None:
         return None
+    if selected_provider and _is_model_blocked(selected_provider, selected_model):
+        logger.warning("Refusing blocked LLM model: %s/%s", selected_provider, selected_model)
+        return None
 
     if selected_provider == PROVIDER_GITHUB:
         if not github_token:
@@ -283,6 +385,11 @@ def build_chat_client(
     # Auto-select: slot order (OpenAI -> Claude -> GitHub Models by default).
     slots = _resolve_slots()
     model_override = model or os.environ.get(ENV_MODEL)
+    if model_override:
+        override_provider = selected_provider or (slots[0].provider if slots else "")
+        if override_provider and _is_model_blocked(override_provider, model_override):
+            logger.warning("Refusing blocked LLM model override: %s/%s", override_provider, model_override)
+            return None
     used_override = False
     for slot in slots:
         slot_model = model_override if model_override and not used_override else slot.model
@@ -358,6 +465,11 @@ def build_chat_clients(
     selected_provider, provider_explicit = _resolve_provider(provider, force_openai=False)
     if provider_explicit and selected_provider is None:
         return []
+    if selected_provider:
+        blocked_models = [candidate for candidate in (first_model, second_model) if candidate]
+        if any(_is_model_blocked(selected_provider, candidate) for candidate in blocked_models):
+            logger.warning("Refusing blocked LLM model for provider %s", selected_provider)
+            return []
 
     clients: list[ClientInfo] = []
 
