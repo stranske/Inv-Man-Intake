@@ -6,7 +6,7 @@ import types
 
 import pytest
 
-from tools import langchain_client
+from tools import langchain_client, llm_provider
 
 
 class FakeChatOpenAI:
@@ -140,3 +140,67 @@ def test_build_chat_client_refuses_explicit_blocked_model(tmp_path, monkeypatch)
 
     assert client is None
     assert FakeChatOpenAI.calls == []
+
+
+def test_llm_provider_uses_configured_slot_model(tmp_path, monkeypatch) -> None:
+    registry_path = _write_json(
+        tmp_path / "model_registry.json",
+        {
+            "models": [
+                {
+                    "model_id": "gpt-configured",
+                    "provider": "openai",
+                    "quality": {"T3": 0.91},
+                }
+            ]
+        },
+    )
+    slots_path = _write_json(
+        tmp_path / "llm_slots.json",
+        {"slots": [{"name": "primary", "provider": "openai", "model": "gpt-configured"}]},
+    )
+    fake_openai_module = types.SimpleNamespace(ChatOpenAI=FakeChatOpenAI)
+    monkeypatch.setitem(sys.modules, "langchain_openai", fake_openai_module)
+    monkeypatch.setenv(langchain_client.ENV_MODEL_REGISTRY_CONFIG, registry_path)
+    monkeypatch.setenv(langchain_client.ENV_SLOT_CONFIG, slots_path)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-token")
+
+    client = llm_provider.OpenAIProvider()._get_client()
+
+    assert client is not None
+    assert FakeChatOpenAI.calls[-1]["model"] == "gpt-configured"
+
+
+def test_llm_provider_skips_blocked_slot_model(tmp_path, monkeypatch) -> None:
+    registry_path = _write_json(
+        tmp_path / "model_registry.json",
+        {
+            "models": [
+                {
+                    "model_id": "gpt-blocked",
+                    "provider": "openai",
+                    "blocked": True,
+                    "quality": {"T3": 0.99},
+                },
+                {
+                    "model_id": "gpt-safe",
+                    "provider": "openai",
+                    "quality": {"T3": 0.80},
+                },
+            ]
+        },
+    )
+    slots_path = _write_json(
+        tmp_path / "llm_slots.json",
+        {"slots": [{"name": "primary", "provider": "openai", "model": "gpt-blocked"}]},
+    )
+    fake_openai_module = types.SimpleNamespace(ChatOpenAI=FakeChatOpenAI)
+    monkeypatch.setitem(sys.modules, "langchain_openai", fake_openai_module)
+    monkeypatch.setenv(langchain_client.ENV_MODEL_REGISTRY_CONFIG, registry_path)
+    monkeypatch.setenv(langchain_client.ENV_SLOT_CONFIG, slots_path)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-token")
+
+    client = llm_provider.OpenAIProvider()._get_client()
+
+    assert client is not None
+    assert FakeChatOpenAI.calls[-1]["model"] == "gpt-safe"
