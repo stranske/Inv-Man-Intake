@@ -90,6 +90,34 @@ scenarios:
     patch:
       - {op: set_asset_class, value: trend_following}
 
+  # Same component profile, re-weighted across the other launch asset classes.
+  # These make every scoring_weights/*.toml table observable by the directional
+  # suite, so a sign-flipped or stale component weight cannot hide behind green
+  # equity/trend-only coverage.
+  - id: quant_reweight
+    patch:
+      - {op: set_asset_class, value: quant}
+
+  - id: multi_strat_reweight
+    patch:
+      - {op: set_asset_class, value: multi_strat}
+
+  - id: credit_long_short_reweight
+    patch:
+      - {op: set_asset_class, value: credit_long_short}
+
+  - id: macro_reweight
+    patch:
+      - {op: set_asset_class, value: macro}
+
+  - id: credit_relative_value_reweight
+    patch:
+      - {op: set_asset_class, value: credit_relative_value}
+
+  - id: activist_reweight
+    patch:
+      - {op: set_asset_class, value: activist}
+
   # A red-flag cap below the base total -> final_score is pulled down to the cap;
   # base_score (the pre-override total) is unchanged.
   - id: red_flag_capped
@@ -119,6 +147,17 @@ scenarios:
       - {op: set_component, name: operational_quality, value: 0.0}
       - {op: set_component, name: transparency, value: 0.0}
       - {op: set_component, name: team_experience, value: 0.0}
+
+  # The blocked+zero-base edge that caught #593: even when final_score stays at
+  # 0.0, a blocking red flag is still applied and must be visible.
+  - id: floor_scores_blocked
+    patch:
+      - {op: set_component, name: performance_consistency, value: 0.0}
+      - {op: set_component, name: risk_adjusted_returns, value: 0.0}
+      - {op: set_component, name: operational_quality, value: 0.0}
+      - {op: set_component, name: transparency, value: 0.0}
+      - {op: set_component, name: team_experience, value: 0.0}
+      - {op: red_flag_block, reason: floor-block}
 
 # ---------------------------------------------------------------------------
 # Directional checks: variant vs control (base) on a flat metric key.
@@ -191,6 +230,45 @@ directionals:
     metric: contribution.risk_adjusted_returns
     direction: increase
     enforce: true
+  # Quant and credit_long_short also overweight RAR relative to the equity base.
+  - id: quant_reweight_raises_rar_contribution
+    scenario: quant_reweight
+    control: base
+    metric: contribution.risk_adjusted_returns
+    direction: increase
+    enforce: true
+  - id: credit_long_short_reweight_raises_rar_contribution
+    scenario: credit_long_short_reweight
+    control: base
+    metric: contribution.risk_adjusted_returns
+    direction: increase
+    enforce: true
+  # Multi-strategy and credit relative value overweight operational quality.
+  - id: multi_strat_reweight_raises_operational_quality_contribution
+    scenario: multi_strat_reweight
+    control: base
+    metric: contribution.operational_quality
+    direction: increase
+    enforce: true
+  - id: credit_relative_value_reweight_raises_operational_quality_contribution
+    scenario: credit_relative_value_reweight
+    control: base
+    metric: contribution.operational_quality
+    direction: increase
+    enforce: true
+  # Macro overweights team experience; activist overweights transparency.
+  - id: macro_reweight_raises_team_experience_contribution
+    scenario: macro_reweight
+    control: base
+    metric: contribution.team_experience
+    direction: increase
+    enforce: true
+  - id: activist_reweight_raises_transparency_contribution
+    scenario: activist_reweight
+    control: base
+    metric: contribution.transparency
+    direction: increase
+    enforce: true
   # A red-flag cap below the base total pulls final_score down.
   - id: cap_lowers_final_score
     scenario: red_flag_capped
@@ -209,6 +287,20 @@ directionals:
   - id: cap_sets_red_flag_applied
     scenario: red_flag_capped
     control: base
+    metric: red_flag_applied
+    direction: increase
+    enforce: true
+  # Blocked-zero keeps final_score at the floor, but must still surface that a
+  # blocking red flag applied.
+  - id: blocked_floor_keeps_final_score_at_floor
+    scenario: floor_scores_blocked
+    control: floor_scores
+    metric: final_score
+    direction: equal
+    enforce: true
+  - id: blocked_floor_sets_red_flag_applied
+    scenario: floor_scores_blocked
+    control: floor_scores
     metric: red_flag_applied
     direction: increase
     enforce: true
