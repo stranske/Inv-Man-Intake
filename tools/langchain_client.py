@@ -218,6 +218,7 @@ def _load_slot_config() -> list[SlotDefinition]:
 
 
 def _apply_slot_env_overrides(slots: list[SlotDefinition]) -> list[SlotDefinition]:
+    registry = _load_model_registry()
     updated: list[SlotDefinition] = []
     for idx, slot in enumerate(slots, start=1):
         provider_key = f"{ENV_SLOT_PREFIX}{idx}_PROVIDER"
@@ -228,7 +229,7 @@ def _apply_slot_env_overrides(slots: list[SlotDefinition]) -> list[SlotDefinitio
             model_override = model_override or os.environ.get(ENV_MODEL)
         provider = provider_override or slot.provider
         model = (model_override or slot.model).strip()
-        if _is_model_blocked(provider, model):
+        if _is_model_blocked(provider, model, registry=registry):
             logger.warning("Skipping blocked LLM slot override: %s/%s", provider, model)
             continue
         updated.append(
@@ -465,9 +466,13 @@ def build_chat_clients(
     selected_provider, provider_explicit = _resolve_provider(provider, force_openai=False)
     if provider_explicit and selected_provider is None:
         return []
+    registry = _load_model_registry()
     if selected_provider:
         blocked_models = [candidate for candidate in (first_model, second_model) if candidate]
-        if any(_is_model_blocked(selected_provider, candidate) for candidate in blocked_models):
+        if any(
+            _is_model_blocked(selected_provider, candidate, registry=registry)
+            for candidate in blocked_models
+        ):
             logger.warning("Refusing blocked LLM model for provider %s", selected_provider)
             return []
 
@@ -587,6 +592,9 @@ def build_chat_clients(
     for idx, slot in enumerate(candidate_slots):
         slot_model = model_overrides[idx] if idx < len(model_overrides) else None
         slot_model = slot_model or slot.model
+        if _is_model_blocked(slot.provider, slot_model, registry=registry):
+            logger.warning("Skipping blocked LLM model override: %s/%s", slot.provider, slot_model)
+            continue
         if slot.provider == PROVIDER_OPENAI and openai_token:
             with contextlib.suppress(Exception):
                 clients.append(

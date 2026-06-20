@@ -4,6 +4,8 @@ import json
 import sys
 import types
 
+import pytest
+
 from tools import langchain_client
 
 
@@ -21,6 +23,15 @@ class FakeChatAnthropic:
     def __init__(self, **kwargs: object) -> None:
         self.kwargs = kwargs
         self.__class__.calls.append(kwargs)
+
+
+@pytest.fixture(autouse=True)
+def reset_fake_chat_calls():
+    FakeChatOpenAI.calls.clear()
+    FakeChatAnthropic.calls.clear()
+    yield
+    FakeChatOpenAI.calls.clear()
+    FakeChatAnthropic.calls.clear()
 
 
 def _write_json(path, payload: dict[str, object]) -> str:
@@ -124,7 +135,6 @@ def test_build_chat_client_refuses_explicit_blocked_model(tmp_path, monkeypatch)
     monkeypatch.setitem(sys.modules, "langchain_anthropic", fake_anthropic_module)
     monkeypatch.setenv(langchain_client.ENV_MODEL_REGISTRY_CONFIG, registry_path)
     monkeypatch.setenv("OPENAI_API_KEY", "test-token")
-    FakeChatOpenAI.calls.clear()
 
     client = langchain_client.build_chat_client(provider="openai", model="gpt-blocked")
 
