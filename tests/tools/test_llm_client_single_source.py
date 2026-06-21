@@ -73,10 +73,15 @@ def test_script_llm_client_adapter_delegates_to_langchain_client(monkeypatch) ->
 
 
 def test_scripts_do_not_bypass_shared_llm_client_adapter() -> None:
-    direct_import = "from tools.langchain_client import build_chat_client"
-
     for path in (REPO_ROOT / "scripts").rglob("*.py"):
         if path.as_posix().endswith("scripts/langchain/_llm_client.py"):
             continue
         source = path.read_text(encoding="utf-8")
-        assert direct_import not in source, path.relative_to(REPO_ROOT).as_posix()
+        tree = ast.parse(source, filename=path.as_posix())
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.ImportFrom)
+                and node.module == "tools.langchain_client"
+                and any(alias.name == "build_chat_client" for alias in node.names)
+            ):
+                raise AssertionError(path.relative_to(REPO_ROOT).as_posix())
