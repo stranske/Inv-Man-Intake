@@ -39,6 +39,52 @@ def _write_json(path, payload: dict[str, object]) -> str:
     return str(path)
 
 
+def test_slot_config_ignores_non_object_payload(tmp_path, monkeypatch) -> None:
+    registry_path = _write_json(
+        tmp_path / "model_registry.json",
+        {
+            "models": [
+                {
+                    "model_id": "gpt-safe",
+                    "provider": "openai",
+                    "quality": {"T3": 0.80},
+                }
+            ]
+        },
+    )
+    slots_path = tmp_path / "llm_slots.json"
+    slots_path.write_text(json.dumps(["not", "an", "object"]), encoding="utf-8")
+    monkeypatch.setenv(langchain_client.ENV_MODEL_REGISTRY_CONFIG, registry_path)
+    monkeypatch.setenv(langchain_client.ENV_SLOT_CONFIG, str(slots_path))
+
+    slots = langchain_client._resolve_slots()
+
+    assert [(slot.name, slot.provider, slot.model) for slot in slots] == [
+        ("slot1", langchain_client.PROVIDER_OPENAI, "gpt-5.4"),
+        ("slot2", langchain_client.PROVIDER_ANTHROPIC, "claude-sonnet-4-6"),
+        ("slot3", langchain_client.PROVIDER_GITHUB, langchain_client.DEFAULT_MODEL),
+    ]
+
+
+def test_model_registry_ignores_non_object_payload(tmp_path, monkeypatch) -> None:
+    registry_path = tmp_path / "model_registry.json"
+    registry_path.write_text(json.dumps(["not", "an", "object"]), encoding="utf-8")
+    slots_path = _write_json(
+        tmp_path / "llm_slots.json",
+        {"slots": [{"name": "primary", "provider": "openai", "quality_tier": "T3"}]},
+    )
+    monkeypatch.setenv(langchain_client.ENV_MODEL_REGISTRY_CONFIG, str(registry_path))
+    monkeypatch.setenv(langchain_client.ENV_SLOT_CONFIG, slots_path)
+
+    slots = langchain_client._resolve_slots()
+
+    assert [(slot.name, slot.provider, slot.model) for slot in slots] == [
+        ("slot1", langchain_client.PROVIDER_OPENAI, "gpt-5.4"),
+        ("slot2", langchain_client.PROVIDER_ANTHROPIC, "claude-sonnet-4-6"),
+        ("slot3", langchain_client.PROVIDER_GITHUB, langchain_client.DEFAULT_MODEL),
+    ]
+
+
 def test_slot_config_skips_model_registry_blocked_models(tmp_path, monkeypatch) -> None:
     registry_path = _write_json(
         tmp_path / "model_registry.json",
