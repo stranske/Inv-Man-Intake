@@ -908,19 +908,22 @@ def _parse_checklist(lines: list[str]) -> list[str]:
 def _get_llm_client(reasoning: bool = False) -> tuple[Any, str] | None:
     """Get LLM client using slot order with optional reasoning model override."""
     try:
-        from tools.langchain_client import build_chat_client
+        from scripts.langchain._llm_client import build_client
     except ImportError as e:
-        print(f"Warning: langchain_client not available: {e}", file=sys.stderr)
-        return None
+        try:
+            from _llm_client import build_client
+        except ImportError:
+            print(f"Warning: shared LLM client adapter not available: {e}", file=sys.stderr)
+            return None
 
     if reasoning:
         model = os.environ.get("FOLLOWUP_REASONING_MODEL", "o3-mini")
-        resolved = build_chat_client(model=model, provider="openai")
+        resolved = build_client(model=model, provider="openai")
         if not resolved:
-            resolved = build_chat_client()
+            resolved = build_client()
     else:
         model = os.environ.get("FOLLOWUP_MODEL", "gpt-5.4")
-        resolved = build_chat_client(model=model)
+        resolved = build_client(model=model)
 
     if not resolved:
         print("Warning: No LLM API keys found", file=sys.stderr)
