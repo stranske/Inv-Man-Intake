@@ -31,6 +31,13 @@ class ModelRegistryEntry:
     quality: dict[str, float]
 
 
+@dataclass(frozen=True)
+class SlotDefinition:
+    name: str
+    provider: str
+    model: str
+
+
 def normalize_provider(value: str | None) -> str | None:
     if not value:
         return None
@@ -163,3 +170,87 @@ def configured_model_for_provider(
     if not is_model_blocked(provider, fallback, registry=entries):
         return fallback
     return ""
+
+
+def default_slots(*, github_default_model: str) -> list[SlotDefinition]:
+    return [
+        SlotDefinition(name="slot1", provider=PROVIDER_OPENAI, model="gpt-5.4"),
+        SlotDefinition(name="slot2", provider=PROVIDER_ANTHROPIC, model="claude-sonnet-4-6"),
+        SlotDefinition(name="slot3", provider=PROVIDER_GITHUB, model=github_default_model),
+    ]
+
+
+def load_slot_config(*, github_default_model: str) -> list[SlotDefinition]:
+    config_path = os.environ.get(ENV_SLOT_CONFIG)
+    path = Path(config_path) if config_path else DEFAULT_SLOT_CONFIG_PATH
+    fallback_slots = default_slots(github_default_model=github_default_model)
+    if not path.is_file():
+        return fallback_slots
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return fallback_slots
+    if not isinstance(payload, dict):
+        logger.warning("Invalid slot config format in %s; expected object", path)
+        return fallback_slots
+
+    registry = load_model_registry()
+    slots: list[SlotDefinition] = []
+    for idx, entry in enumerate(payload.get("slots", []), start=1):
+        provider = normalize_provider(str(entry.get("provider", "")))
+        model = str(entry.get("model", "")).strip()
+        tier = str(entry.get("quality_tier") or entry.get("tier") or "").strip()
+        if provider and not model and tier:
+            model = select_model_for_tier(provider=provider, tier=tier, registry=registry) or ""
+        if not provider or not model:
+            continue
+        if is_model_blocked(provider, model, registry=registry):
+            logger.warning("Skipping blocked LLM model in slot config: %s/%s", provider, model)
+            continue
+        name = str(entry.get("name") or f"slot{idx}").strip() or f"slot{idx}"
+        slots.append(SlotDefinition(name=name, provider=provider, model=model))
+
+    return slots or fallback_slots
+
+
+def apply_slot_env_overrides(
+    slots: list[SlotDefinition],
+    *,
+    env_model_name: str = "LANGCHAIN_MODEL",
+    env_slot_prefix: str = "LANGCHAIN_SLOT",
+) -> list[SlotDefinition]:
+    registry = load_model_registry()
+    updated: list[SlotDefinition] = []
+    for idx, slot in enumerate(slots, start=1):
+        provider_key = f"{env_slot_prefix}{idx}_PROVIDER"
+        model_key = f"{env_slot_prefix}{idx}_MODEL"
+        provider_override = normalize_provider(os.environ.get(provider_key))
+        model_override = os.environ.get(model_key)
+        if idx == 1:
+            model_override = model_override or os.environ.get(env_model_name)
+        provider = provider_override or slot.provider
+        model = (model_override or slot.model).strip()
+        if is_model_blocked(provider, model, registry=registry):
+            logger.warning("Skipping blocked LLM slot override: %s/%s", provider, model)
+            continue
+        updated.append(
+            SlotDefinition(
+                name=slot.name,
+                provider=provider,
+                model=model,
+            )
+        )
+    return updated
+
+
+def resolve_slots(
+    *,
+    github_default_model: str,
+    env_model_name: str = "LANGCHAIN_MODEL",
+    env_slot_prefix: str = "LANGCHAIN_SLOT",
+) -> list[SlotDefinition]:
+    return apply_slot_env_overrides(
+        load_slot_config(github_default_model=github_default_model),
+        env_model_name=env_model_name,
+        env_slot_prefix=env_slot_prefix,
+    )
