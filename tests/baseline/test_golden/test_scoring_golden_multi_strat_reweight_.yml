@@ -1,0 +1,8 @@
+base_score: 0.6055
+contribution.operational_quality: 0.14
+contribution.performance_consistency: 0.162
+contribution.risk_adjusted_returns: 0.1265
+contribution.team_experience: 0.117
+contribution.transparency: 0.06
+final_score: 0.6055
+red_flag_applied: 0

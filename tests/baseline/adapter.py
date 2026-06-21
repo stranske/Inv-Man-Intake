@@ -165,6 +165,7 @@ def run_scenario(scenario: dict[str, Any], base: dict[str, Any]) -> dict[str, fl
     """
     from inv_man_intake.scoring.contracts import ScoreComponent, ScoreSubmission
     from inv_man_intake.scoring.engine import compute_score
+    from inv_man_intake.scoring.weights import weights_by_asset_class_for
 
     spec = apply_patch(base, scenario.get("patch"))
     submission = ScoreSubmission(
@@ -174,7 +175,11 @@ def run_scenario(scenario: dict[str, Any], base: dict[str, Any]) -> dict[str, fl
             ScoreComponent(name, float(spec["components"][name])) for name in COMPONENT_NAMES
         ),
     )
-    result = compute_score(submission, red_flag_hook=_build_red_flag_hook(spec))
+    result = compute_score(
+        submission,
+        weights_by_asset_class=weights_by_asset_class_for(str(spec["asset_class"])),
+        red_flag_hook=_build_red_flag_hook(spec),
+    )
 
     flat: dict[str, float | int] = {
         "base_score": float(result.base_score),
