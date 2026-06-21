@@ -67,7 +67,9 @@ def test_slot_config_ignores_non_object_payload(tmp_path, monkeypatch) -> None:
 
 
 def test_slot_config_ignores_non_list_slots_payload(tmp_path, monkeypatch) -> None:
+    registry_path = _write_json(tmp_path / "model_registry.json", {"models": []})
     slots_path = _write_json(tmp_path / "llm_slots.json", {"slots": {"bad": "shape"}})
+    monkeypatch.setenv(langchain_client.ENV_MODEL_REGISTRY_CONFIG, registry_path)
     monkeypatch.setenv(langchain_client.ENV_SLOT_CONFIG, slots_path)
 
     slots = langchain_client._resolve_slots()
@@ -80,6 +82,18 @@ def test_slot_config_ignores_non_list_slots_payload(tmp_path, monkeypatch) -> No
 
 
 def test_slot_config_skips_non_object_slot_entries(tmp_path, monkeypatch) -> None:
+    registry_path = _write_json(
+        tmp_path / "model_registry.json",
+        {
+            "models": [
+                {
+                    "model_id": "gpt-safe",
+                    "provider": "openai",
+                    "quality": {"T3": 0.80},
+                }
+            ]
+        },
+    )
     slots_path = _write_json(
         tmp_path / "llm_slots.json",
         {
@@ -89,6 +103,7 @@ def test_slot_config_skips_non_object_slot_entries(tmp_path, monkeypatch) -> Non
             ]
         },
     )
+    monkeypatch.setenv(langchain_client.ENV_MODEL_REGISTRY_CONFIG, registry_path)
     monkeypatch.setenv(langchain_client.ENV_SLOT_CONFIG, slots_path)
 
     slots = langchain_client._resolve_slots()
