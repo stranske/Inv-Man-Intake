@@ -51,6 +51,20 @@ def normalize_provider(value: str | None) -> str | None:
     return None
 
 
+def _slot_entries(payload: dict[str, object], path: Path) -> list[dict[str, object]]:
+    raw_slots = payload.get("slots", [])
+    if not isinstance(raw_slots, list):
+        logger.warning("Invalid slot config format in %s; expected slots list", path)
+        return []
+    slots: list[dict[str, object]] = []
+    for raw_slot in raw_slots:
+        if isinstance(raw_slot, dict):
+            slots.append(raw_slot)
+        else:
+            logger.warning("Ignoring invalid slot entry in %s; expected object", path)
+    return slots
+
+
 def load_model_registry() -> list[ModelRegistryEntry]:
     config_path = os.environ.get(ENV_MODEL_REGISTRY_CONFIG)
     path = Path(config_path) if config_path else DEFAULT_MODEL_REGISTRY_CONFIG_PATH
@@ -67,6 +81,9 @@ def load_model_registry() -> list[ModelRegistryEntry]:
 
     entries: list[ModelRegistryEntry] = []
     for raw_entry in payload.get("models", []):
+        if not isinstance(raw_entry, dict):
+            logger.warning("Ignoring invalid model registry entry in %s; expected object", path)
+            continue
         provider = normalize_provider(str(raw_entry.get("provider", "")))
         model = str(raw_entry.get("model_id", "")).strip()
         if not provider or not model:
@@ -149,7 +166,7 @@ def configured_model_for_provider(
         if not isinstance(payload, dict):
             logger.warning("Invalid slot config format in %s; expected object", path)
             payload = {}
-        for slot in payload.get("slots", []):
+        for slot in _slot_entries(payload, path):
             slot_provider = normalize_provider(str(slot.get("provider", "")))
             if slot_provider != normalized_provider:
                 continue
@@ -196,7 +213,7 @@ def load_slot_config(*, github_default_model: str) -> list[SlotDefinition]:
 
     registry = load_model_registry()
     slots: list[SlotDefinition] = []
-    for idx, entry in enumerate(payload.get("slots", []), start=1):
+    for idx, entry in enumerate(_slot_entries(payload, path), start=1):
         provider = normalize_provider(str(entry.get("provider", "")))
         model = str(entry.get("model", "")).strip()
         tier = str(entry.get("quality_tier") or entry.get("tier") or "").strip()

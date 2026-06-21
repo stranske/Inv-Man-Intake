@@ -66,6 +66,38 @@ def test_slot_config_ignores_non_object_payload(tmp_path, monkeypatch) -> None:
     ]
 
 
+def test_slot_config_ignores_non_list_slots_payload(tmp_path, monkeypatch) -> None:
+    slots_path = _write_json(tmp_path / "llm_slots.json", {"slots": {"bad": "shape"}})
+    monkeypatch.setenv(langchain_client.ENV_SLOT_CONFIG, slots_path)
+
+    slots = langchain_client._resolve_slots()
+
+    assert [(slot.name, slot.provider, slot.model) for slot in slots] == [
+        ("slot1", langchain_client.PROVIDER_OPENAI, "gpt-5.4"),
+        ("slot2", langchain_client.PROVIDER_ANTHROPIC, "claude-sonnet-4-6"),
+        ("slot3", langchain_client.PROVIDER_GITHUB, langchain_client.DEFAULT_MODEL),
+    ]
+
+
+def test_slot_config_skips_non_object_slot_entries(tmp_path, monkeypatch) -> None:
+    slots_path = _write_json(
+        tmp_path / "llm_slots.json",
+        {
+            "slots": [
+                "bad-entry",
+                {"name": "safe", "provider": "openai", "model": "gpt-safe"},
+            ]
+        },
+    )
+    monkeypatch.setenv(langchain_client.ENV_SLOT_CONFIG, slots_path)
+
+    slots = langchain_client._resolve_slots()
+
+    assert [(slot.name, slot.provider, slot.model) for slot in slots] == [
+        ("safe", langchain_client.PROVIDER_OPENAI, "gpt-safe")
+    ]
+
+
 def test_model_registry_ignores_non_object_payload(tmp_path, monkeypatch) -> None:
     registry_path = tmp_path / "model_registry.json"
     registry_path.write_text(json.dumps(["not", "an", "object"]), encoding="utf-8")
