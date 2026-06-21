@@ -109,6 +109,21 @@ def test_resolver_handles_no_overlap_without_escalation() -> None:
     assert result.audit_entries == ()
 
 
+def test_zero_denominator_difference_uses_float_tolerance_without_conflict() -> None:
+    as_of = date(2025, 1, 31)
+    xlsx = PerformanceSeries("monthly", (PerformancePoint(as_of=as_of, value=0.0),))
+    other = PerformanceSeries("monthly", (PerformancePoint(as_of=as_of, value=5e-13),))
+
+    result = resolve_source_conflicts(xlsx_series=xlsx, other_series=other)
+
+    assert result.conflict_count == 0
+    assert len(result.audit_entries) == 1
+    entry = result.audit_entries[0]
+    assert entry.absolute_difference == pytest.approx(5e-13)
+    assert entry.percent_difference == pytest.approx(50.0)
+    assert entry.is_conflict is False
+
+
 def test_resolver_validates_frequency_mismatch() -> None:
     xlsx = PerformanceSeries(
         "monthly",

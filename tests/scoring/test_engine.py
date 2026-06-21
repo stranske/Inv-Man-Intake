@@ -112,6 +112,16 @@ def test_red_flag_cap_at_or_above_base_does_not_apply_reason() -> None:
     assert result.red_flag_reason is None
 
 
+def test_red_flag_hook_rejects_out_of_range_capped_score() -> None:
+    class InvalidCapHook:
+        def apply(self, submission: ScoreSubmission, *, base_score: float) -> RedFlagDecision:
+            del submission, base_score
+            return RedFlagDecision(capped_score=1.5, reason="invalid-cap")
+
+    with pytest.raises(ValueError, match="red flag capped_score must be between 0 and 1"):
+        compute_score(_submission("equity"), red_flag_hook=InvalidCapHook())
+
+
 def test_compute_score_rejects_unmapped_asset_class() -> None:
     with pytest.raises(ValueError, match="unknown asset class: real_assets"):
         compute_score(_submission("real_assets"))
