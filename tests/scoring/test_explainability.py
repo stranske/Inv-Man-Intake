@@ -7,6 +7,8 @@ from typing import Any, cast
 
 import pytest
 
+from inv_man_intake.scoring.contracts import ScoreComponent, ScoreSubmission
+from inv_man_intake.scoring.engine import compute_score, default_weights_by_asset_class
 from inv_man_intake.scoring.explainability import (
     ScoreComponentInput,
     build_explainability_payload,
@@ -88,6 +90,39 @@ def test_formatter_is_stable_for_unordered_input_components() -> None:
         "a_liquidity",
         "z_tail_risk",
     ]
+
+
+def test_payload_component_order_matches_engine_contribution_order() -> None:
+    submission = ScoreSubmission(
+        manager_id="fund-order-check",
+        asset_class="quant",
+        components=(
+            ScoreComponent("transparency", 0.70),
+            ScoreComponent("risk_adjusted_returns", 0.60),
+            ScoreComponent("team_experience", 0.50),
+            ScoreComponent("performance_consistency", 0.80),
+            ScoreComponent("operational_quality", 0.90),
+        ),
+    )
+    weights = default_weights_by_asset_class()["quant"]
+    score = compute_score(submission)
+    input_values = {component.name: component.value for component in submission.components}
+    payload = build_explainability_payload(
+        components=tuple(
+            ScoreComponentInput(
+                component=component,
+                weight=weights[component],
+                score=input_values[component],
+                rationale=f"{component} rationale.",
+            )
+            for component in sorted(score.contributions)
+        ),
+        overall_score=score.final_score,
+    )
+
+    assert tuple(component.component for component in payload.components) == tuple(
+        score.contributions
+    )
 
 
 def test_component_validations_enforced() -> None:

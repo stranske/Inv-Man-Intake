@@ -5,8 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import isfinite
 
+from inv_man_intake.scoring.engine import _COMPONENT_ORDER
+
 _ROUND_PRECISION = 6
 _RECONCILIATION_TOLERANCE = 1e-6
+_COMPONENT_ORDER_INDEX = {component: index for index, component in enumerate(_COMPONENT_ORDER)}
 
 
 @dataclass(frozen=True)
@@ -54,7 +57,7 @@ def build_explainability_payload(
     component_ids = [component.component for component in normalized]
     if len(component_ids) != len(set(component_ids)):
         raise ValueError("component identifiers must be unique")
-    ordered = tuple(sorted(normalized, key=lambda component: component.component))
+    ordered = tuple(sorted(normalized, key=_component_order_key))
 
     computed_total = _round(sum(component.contribution for component in ordered))
     resolved_overall = computed_total if overall_score is None else _round(overall_score)
@@ -110,6 +113,13 @@ def _normalize_component(component: ScoreComponentInput) -> ScoreComponentOutput
         weight=_round(component.weight),
         contribution=_round(component.weight * component.score),
         rationale=rationale,
+    )
+
+
+def _component_order_key(component: ScoreComponentOutput) -> tuple[int, str]:
+    return (
+        _COMPONENT_ORDER_INDEX.get(component.component, len(_COMPONENT_ORDER_INDEX)),
+        component.component,
     )
 
 
