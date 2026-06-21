@@ -33,9 +33,14 @@ Thumbs.db
 # - Workflow artifacts (full outputs)
 # - Commit messages (change descriptions)
 codex-prompt.md
+codex-prompt-*.md
 codex-output.md
 verifier-context.md
 autofix_report_enriched.json
+Issues.txt
+pr73-thread-review.md
+coverage.json
+pytest-junit.xml
 
 # Local readiness reports
 reports/readiness/
