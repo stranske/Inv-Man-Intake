@@ -721,7 +721,10 @@ class AnthropicProvider(LLMProvider):
                 confidence=result.confidence,
                 reasoning=result.reasoning,
                 provider_used=self.name,
-                model_name="claude-sonnet-4-5-20250929",
+                model_name=configured_model_for_provider(
+                    PROVIDER_ANTHROPIC,
+                    fallback="claude-sonnet-4-5-20250929",
+                ),
                 raw_confidence=result.raw_confidence,
                 confidence_adjusted=result.confidence_adjusted,
                 quality_warnings=result.quality_warnings,

@@ -204,3 +204,64 @@ def test_llm_provider_skips_blocked_slot_model(tmp_path, monkeypatch) -> None:
 
     assert client is not None
     assert FakeChatOpenAI.calls[-1]["model"] == "gpt-safe"
+
+
+def test_anthropic_completion_reports_configured_model(tmp_path, monkeypatch) -> None:
+    registry_path = _write_json(
+        tmp_path / "model_registry.json",
+        {
+            "models": [
+                {
+                    "model_id": "claude-configured",
+                    "provider": "anthropic",
+                    "quality": {"T3": 0.91},
+                }
+            ]
+        },
+    )
+    slots_path = _write_json(
+        tmp_path / "llm_slots.json",
+        {
+            "slots": [
+                {
+                    "name": "primary",
+                    "provider": "anthropic",
+                    "model": "claude-configured",
+                }
+            ]
+        },
+    )
+
+    class FakeAnthropicClient:
+        def invoke(self, prompt, **kwargs):
+            return types.SimpleNamespace(content="ok")
+
+    monkeypatch.setenv(langchain_client.ENV_MODEL_REGISTRY_CONFIG, registry_path)
+    monkeypatch.setenv(langchain_client.ENV_SLOT_CONFIG, slots_path)
+    monkeypatch.setattr(
+        llm_provider.AnthropicProvider,
+        "_get_client",
+        lambda self: FakeAnthropicClient(),
+    )
+    monkeypatch.setattr(
+        llm_provider.GitHubModelsProvider,
+        "_build_analysis_prompt",
+        lambda self, session_output, tasks, context: "prompt",
+    )
+    monkeypatch.setattr(
+        llm_provider.GitHubModelsProvider,
+        "_parse_response",
+        lambda self, content, tasks, quality_context=None: llm_provider.CompletionAnalysis(
+            completed_tasks=[],
+            in_progress_tasks=[],
+            blocked_tasks=[],
+            confidence=0.9,
+            reasoning="ok",
+            provider_used="github-models",
+            model_name="stale-hardcoded",
+        ),
+    )
+
+    result = llm_provider.AnthropicProvider().analyze_completion("output", ["task"])
+
+    assert result.model_name == "claude-configured"
