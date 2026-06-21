@@ -85,6 +85,12 @@ def test_scripts_do_not_bypass_shared_llm_client_adapter() -> None:
                 and any(alias.name in {"build_chat_client", "*"} for alias in node.names)
             ):
                 raise AssertionError(path.relative_to(REPO_ROOT).as_posix())
+            if (
+                isinstance(node, ast.ImportFrom)
+                and node.module == "tools"
+                and any(alias.name == "langchain_client" for alias in node.names)
+            ):
+                raise AssertionError(path.relative_to(REPO_ROOT).as_posix())
             if isinstance(node, ast.Import) and any(
                 alias.name == "tools.langchain_client" for alias in node.names
             ):
