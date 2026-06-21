@@ -29,6 +29,13 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from tools.llm_registry import (
+    PROVIDER_ANTHROPIC,
+    PROVIDER_GITHUB,
+    PROVIDER_OPENAI,
+    configured_model_for_provider,
+)
+
 logger = logging.getLogger(__name__)
 
 # GitHub Models API endpoint (OpenAI-compatible)
@@ -337,8 +344,11 @@ class GitHubModelsProvider(LLMProvider):
             logger.warning("langchain_openai not installed")
             return None
 
+        model = configured_model_for_provider(PROVIDER_GITHUB, fallback="gpt-4.1")
+        if not model:
+            return None
         return ChatOpenAI(
-            model="gpt-4.1",  # Battle-tested, reliable, available on GitHub Models
+            model=model,
             base_url=GITHUB_MODELS_BASE_URL,
             api_key=os.environ.get("GITHUB_TOKEN"),
             temperature=0.1,  # Low temperature for consistent analysis
@@ -550,7 +560,7 @@ Be conservative - if unsure, don't mark as completed."""
                 confidence=adjusted_confidence,
                 reasoning=reasoning,
                 provider_used=self.name,
-                model_name="gpt-4.1",  # Actual model used by GitHubModelsProvider
+                model_name=configured_model_for_provider(PROVIDER_GITHUB, fallback="gpt-4.1"),
                 raw_confidence=raw_confidence if adjusted_confidence != raw_confidence else None,
                 confidence_adjusted=adjusted_confidence != raw_confidence,
                 quality_warnings=warnings if warnings else None,
@@ -565,7 +575,7 @@ Be conservative - if unsure, don't mark as completed."""
                 confidence=0.0,
                 reasoning=f"Failed to parse response: {e}",
                 provider_used=self.name,
-                model_name="gpt-4.1",  # Actual model used by GitHubModelsProvider
+                model_name=configured_model_for_provider(PROVIDER_GITHUB, fallback="gpt-4.1"),
             )
 
 
@@ -590,8 +600,11 @@ class OpenAIProvider(LLMProvider):
             logger.warning("langchain_openai not installed")
             return None
 
+        model = configured_model_for_provider(PROVIDER_OPENAI, fallback="gpt-5.1-codex")
+        if not model:
+            return None
         return ChatOpenAI(
-            model="gpt-5.1-codex",  # Purpose-built for analyzing Codex coding sessions
+            model=model,
             api_key=os.environ.get("OPENAI_API_KEY"),
             temperature=0.1,
         )
@@ -626,7 +639,7 @@ class OpenAIProvider(LLMProvider):
                 confidence=result.confidence,
                 reasoning=result.reasoning,
                 provider_used=self.name,
-                model_name="gpt-5.1-codex",  # Actual model used by OpenAIProvider
+                model_name=configured_model_for_provider(PROVIDER_OPENAI, fallback="gpt-5.1-codex"),
                 raw_confidence=result.raw_confidence,
                 confidence_adjusted=result.confidence_adjusted,
                 quality_warnings=result.quality_warnings,
@@ -656,8 +669,14 @@ class AnthropicProvider(LLMProvider):
             logger.warning("langchain_anthropic not installed")
             return None
 
+        model = configured_model_for_provider(
+            PROVIDER_ANTHROPIC,
+            fallback="claude-sonnet-4-5-20250929",
+        )
+        if not model:
+            return None
         return ChatAnthropic(
-            model="claude-sonnet-4-5-20250929",
+            model=model,
             anthropic_api_key=os.environ.get(ANTHROPIC_API_KEY_ENV),
             temperature=0.1,
         )
@@ -702,7 +721,10 @@ class AnthropicProvider(LLMProvider):
                 confidence=result.confidence,
                 reasoning=result.reasoning,
                 provider_used=self.name,
-                model_name="claude-sonnet-4-5-20250929",
+                model_name=configured_model_for_provider(
+                    PROVIDER_ANTHROPIC,
+                    fallback="claude-sonnet-4-5-20250929",
+                ),
                 raw_confidence=result.raw_confidence,
                 confidence_adjusted=result.confidence_adjusted,
                 quality_warnings=result.quality_warnings,

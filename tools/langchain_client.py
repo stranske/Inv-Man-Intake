@@ -115,6 +115,9 @@ def _load_model_registry() -> list[ModelRegistryEntry]:
     except (OSError, json.JSONDecodeError):
         logger.warning("Could not read model registry %s; continuing without registry", path)
         return []
+    if not isinstance(payload, dict):
+        logger.warning("Invalid model registry format in %s; expected object", path)
+        return []
 
     entries: list[ModelRegistryEntry] = []
     for raw_entry in payload.get("models", []):
@@ -196,6 +199,9 @@ def _load_slot_config() -> list[SlotDefinition]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
+        return _default_slots()
+    if not isinstance(payload, dict):
+        logger.warning("Invalid slot config format in %s; expected object", path)
         return _default_slots()
 
     registry = _load_model_registry()
