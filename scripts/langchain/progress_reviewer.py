@@ -429,10 +429,7 @@ def review_progress_with_llm(
     try:
         from scripts.langchain._llm_client import build_client
     except ImportError:
-        try:
-            from _llm_client import build_client
-        except ImportError:
-            build_client = None
+        build_client = None
 
     resolved = build_client(model=model) if build_client else None
     if not resolved:

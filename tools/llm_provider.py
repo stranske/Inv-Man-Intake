@@ -29,13 +29,6 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from tools.llm_registry import (
-    PROVIDER_ANTHROPIC,
-    PROVIDER_GITHUB,
-    PROVIDER_OPENAI,
-    configured_model_for_provider,
-)
-
 logger = logging.getLogger(__name__)
 
 # GitHub Models API endpoint (OpenAI-compatible)
@@ -47,6 +40,14 @@ GITHUB_MODELS_BASE_URL = "https://models.inference.ai.azure.com"
 DEFAULT_MODEL = "codex-mini-latest"
 ANTHROPIC_API_KEY_ENV = "CLAUDE_API_STRANSKE"
 SHORT_ANALYSIS_CONFIDENCE_CAP = 0.4
+
+
+def _configured_langchain_model(provider: str, *, fallback: str) -> str:
+    try:
+        from tools.llm_registry import configured_model_for_provider
+    except ImportError:
+        return fallback
+    return configured_model_for_provider(provider, fallback=fallback) or fallback
 
 
 def _setup_langsmith_tracing() -> bool:
@@ -344,11 +345,8 @@ class GitHubModelsProvider(LLMProvider):
             logger.warning("langchain_openai not installed")
             return None
 
-        model = configured_model_for_provider(PROVIDER_GITHUB, fallback="gpt-4.1")
-        if not model:
-            return None
         return ChatOpenAI(
-            model=model,
+            model="gpt-4.1",  # Battle-tested, reliable, available on GitHub Models
             base_url=GITHUB_MODELS_BASE_URL,
             api_key=os.environ.get("GITHUB_TOKEN"),
             temperature=0.1,  # Low temperature for consistent analysis
@@ -560,7 +558,7 @@ Be conservative - if unsure, don't mark as completed."""
                 confidence=adjusted_confidence,
                 reasoning=reasoning,
                 provider_used=self.name,
-                model_name=configured_model_for_provider(PROVIDER_GITHUB, fallback="gpt-4.1"),
+                model_name="gpt-4.1",  # Actual model used by GitHubModelsProvider
                 raw_confidence=raw_confidence if adjusted_confidence != raw_confidence else None,
                 confidence_adjusted=adjusted_confidence != raw_confidence,
                 quality_warnings=warnings if warnings else None,
@@ -575,7 +573,7 @@ Be conservative - if unsure, don't mark as completed."""
                 confidence=0.0,
                 reasoning=f"Failed to parse response: {e}",
                 provider_used=self.name,
-                model_name=configured_model_for_provider(PROVIDER_GITHUB, fallback="gpt-4.1"),
+                model_name="gpt-4.1",  # Actual model used by GitHubModelsProvider
             )
 
 
@@ -595,19 +593,17 @@ class OpenAIProvider(LLMProvider):
     def _get_client(self):
         """Get LangChain ChatOpenAI client."""
         try:
-            from langchain_openai import ChatOpenAI
+            from tools.langchain_client import build_chat_client
         except ImportError:
-            logger.warning("langchain_openai not installed")
+            logger.warning("LangChain client helper not available")
             return None
 
-        model = configured_model_for_provider(PROVIDER_OPENAI, fallback="gpt-5.1-codex")
-        if not model:
-            return None
-        return ChatOpenAI(
-            model=model,
-            api_key=os.environ.get("OPENAI_API_KEY"),
-            temperature=0.1,
-        )
+        model_name = _configured_langchain_model("openai", fallback="gpt-5.1-codex")
+        resolved = build_chat_client(provider="openai", model=model_name)
+        if resolved:
+            self._model_name = resolved.model
+            return resolved.client
+        return None
 
     def analyze_completion(
         self,
@@ -639,7 +635,11 @@ class OpenAIProvider(LLMProvider):
                 confidence=result.confidence,
                 reasoning=result.reasoning,
                 provider_used=self.name,
-                model_name=configured_model_for_provider(PROVIDER_OPENAI, fallback="gpt-5.1-codex"),
+                model_name=getattr(
+                    self,
+                    "_model_name",
+                    _configured_langchain_model("openai", fallback="gpt-5.1-codex"),
+                ),
                 raw_confidence=result.raw_confidence,
                 confidence_adjusted=result.confidence_adjusted,
                 quality_warnings=result.quality_warnings,
@@ -664,22 +664,19 @@ class AnthropicProvider(LLMProvider):
 
     def _get_client(self):
         try:
-            from langchain_anthropic import ChatAnthropic
+            from tools.langchain_client import build_chat_client
         except ImportError:
-            logger.warning("langchain_anthropic not installed")
+            logger.warning("LangChain client helper not available")
             return None
 
-        model = configured_model_for_provider(
-            PROVIDER_ANTHROPIC,
-            fallback="claude-sonnet-4-5-20250929",
+        model_name = _configured_langchain_model(
+            "anthropic", fallback="claude-sonnet-4-5-20250929"
         )
-        if not model:
-            return None
-        return ChatAnthropic(
-            model=model,
-            anthropic_api_key=os.environ.get(ANTHROPIC_API_KEY_ENV),
-            temperature=0.1,
-        )
+        resolved = build_chat_client(provider="anthropic", model=model_name)
+        if resolved:
+            self._model_name = resolved.model
+            return resolved.client
+        return None
 
     def analyze_completion(
         self,
@@ -721,9 +718,12 @@ class AnthropicProvider(LLMProvider):
                 confidence=result.confidence,
                 reasoning=result.reasoning,
                 provider_used=self.name,
-                model_name=configured_model_for_provider(
-                    PROVIDER_ANTHROPIC,
-                    fallback="claude-sonnet-4-5-20250929",
+                model_name=getattr(
+                    self,
+                    "_model_name",
+                    _configured_langchain_model(
+                        "anthropic", fallback="claude-sonnet-4-5-20250929"
+                    ),
                 ),
                 raw_confidence=result.raw_confidence,
                 confidence_adjusted=result.confidence_adjusted,

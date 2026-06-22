@@ -79,8 +79,13 @@ def load_model_registry() -> list[ModelRegistryEntry]:
         logger.warning("Invalid model registry format in %s; expected object", path)
         return []
 
+    raw_models = payload.get("models", [])
+    if not isinstance(raw_models, list):
+        logger.warning("Invalid model registry format in %s; expected models list", path)
+        return []
+
     entries: list[ModelRegistryEntry] = []
-    for raw_entry in payload.get("models", []):
+    for raw_entry in raw_models:
         if not isinstance(raw_entry, dict):
             logger.warning("Ignoring invalid model registry entry in %s; expected object", path)
             continue
@@ -89,6 +94,14 @@ def load_model_registry() -> list[ModelRegistryEntry]:
         if not provider or not model:
             continue
         quality_payload = raw_entry.get("quality", {})
+        if not isinstance(quality_payload, dict):
+            logger.warning(
+                "Ignoring invalid quality scores for %s/%s in %s; expected object",
+                provider,
+                model,
+                path,
+            )
+            quality_payload = {}
         quality = {
             str(tier).upper(): float(score)
             for tier, score in quality_payload.items()
@@ -173,11 +186,14 @@ def configured_model_for_provider(
             model = str(slot.get("model", "")).strip()
             slot_tier = str(slot.get("quality_tier") or slot.get("tier") or tier).strip()
             if not model and slot_tier:
-                model = select_model_for_tier(
-                    provider=slot_provider or "",
-                    tier=slot_tier,
-                    registry=entries,
-                ) or ""
+                model = (
+                    select_model_for_tier(
+                        provider=slot_provider or "",
+                        tier=slot_tier,
+                        registry=entries,
+                    )
+                    or ""
+                )
             if model and not is_model_blocked(slot_provider or "", model, registry=entries):
                 return model
 
@@ -249,6 +265,11 @@ def apply_slot_env_overrides(
         model = (model_override or slot.model).strip()
         if is_model_blocked(provider, model, registry=registry):
             logger.warning("Skipping blocked LLM slot override: %s/%s", provider, model)
+            override_requested = provider_override is not None or model_override is not None
+            if override_requested and not is_model_blocked(
+                slot.provider, slot.model, registry=registry
+            ):
+                updated.append(slot)
             continue
         updated.append(
             SlotDefinition(
