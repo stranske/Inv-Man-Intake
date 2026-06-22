@@ -281,7 +281,9 @@ def build_chat_client(
     if model_override:
         override_provider = selected_provider or (slots[0].provider if slots else "")
         if override_provider and _is_model_blocked(override_provider, model_override):
-            logger.warning("Refusing blocked LLM model override: %s/%s", override_provider, model_override)
+            logger.warning(
+                "Refusing blocked LLM model override: %s/%s", override_provider, model_override
+            )
             return None
     used_override = False
     for slot in slots:

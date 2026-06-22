@@ -173,11 +173,14 @@ def configured_model_for_provider(
             model = str(slot.get("model", "")).strip()
             slot_tier = str(slot.get("quality_tier") or slot.get("tier") or tier).strip()
             if not model and slot_tier:
-                model = select_model_for_tier(
-                    provider=slot_provider or "",
-                    tier=slot_tier,
-                    registry=entries,
-                ) or ""
+                model = (
+                    select_model_for_tier(
+                        provider=slot_provider or "",
+                        tier=slot_tier,
+                        registry=entries,
+                    )
+                    or ""
+                )
             if model and not is_model_blocked(slot_provider or "", model, registry=entries):
                 return model
 
