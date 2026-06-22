@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from app.streamlit_app import render_app
+from app.streamlit_app import QUEUE_ACTION_STATE, render_app
 
 from inv_man_intake.observability import InMemoryTraceSink
 
@@ -14,6 +14,8 @@ class _StreamlitRecorder:
     def __init__(self) -> None:
         self.metrics: list[tuple[str, str]] = []
         self.tables: list[object] = []
+        self.buttons: list[tuple[str, str]] = []
+        self.clicked_keys: set[str] = set()
 
     def set_page_config(self, **kwargs: object) -> None:
         return None
@@ -35,6 +37,10 @@ class _StreamlitRecorder:
 
     def table(self, data: object) -> None:
         self.tables.append(data)
+
+    def button(self, label: str, *, key: str) -> bool:
+        self.buttons.append((label, key))
+        return key in self.clicked_keys
 
     def write(self, *args: object, **kwargs: object) -> None:
         return None
@@ -84,7 +90,7 @@ def test_app_renders_score_for_fixture_bundle(monkeypatch: pytest.MonkeyPatch) -
     assert "langsmith_enabled" not in result.trace_tags
     assert "langsmith_project" not in result.trace_tags
     assert recorder.metrics == [("Final score", "0.7809")]
-    assert recorder.tables == [result.components]
+    assert recorder.tables[0] == result.components
 
 
 def test_app_temporarily_disables_langsmith_and_langchain_env(
@@ -122,6 +128,55 @@ def test_app_temporarily_disables_langsmith_and_langchain_env(
     assert os.environ["LANGCHAIN_API_KEY"] == "lsv2_pt_live"
     assert os.environ["LANGSMITH_TRACING_ENABLED"] == "true"
     assert os.environ["LANGCHAIN_TRACING_V2"] == "true"
+
+
+def test_analyst_queue_renders_readable_item_and_actions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    item_id = "pkg_pdf_mixed_001:validation:performance_conflict:corr_4d03914dd557"
+
+    def _fake_pipeline(**_: object) -> _FakeArtifacts:
+        return _FakeArtifacts(
+            sink=InMemoryTraceSink(),
+            trace_context=_FakeTraceContext(tags={"stage": "intake"}),
+            formatted_explainability={"components": [{"component": "risk_adjusted_returns"}]},
+            score=_FakeScore(final_score=0.4321),
+            queue_assignment=_FakeQueueAssignment(owner_role="analyst", item_id=item_id),
+        )
+
+    QUEUE_ACTION_STATE.clear()
+    monkeypatch.setattr("app.streamlit_app.run_v1_smoke_pipeline", _fake_pipeline)
+
+    recorder = _StreamlitRecorder()
+    recorder.clicked_keys.add(f"{item_id}:escalate")
+    result = render_app(recorder)
+
+    queue_rows = recorder.tables[1]
+    assert isinstance(queue_rows, list)
+    assert queue_rows == [
+        {
+            "Owner": "Analyst",
+            "Package": "pkg_pdf_mixed_001",
+            "Issue": "Performance Conflict requires validation review",
+            "Reason": (
+                "The scoring pipeline routed this package for analyst review because "
+                "performance conflict evidence needs confirmation."
+            ),
+            "Affected evidence": "Package pkg_pdf_mixed_001; evidence marker corr_4d03914dd557",
+            "Suggested resolution": (
+                "Open the package evidence, confirm the conflict, then accept the score, "
+                "escalate to ops, or request missing information."
+            ),
+            "State": "Escalated to ops",
+        }
+    ]
+    assert item_id not in str(queue_rows)
+    assert recorder.buttons == [
+        ("Accept", f"{item_id}:accept"),
+        ("Escalate", f"{item_id}:escalate"),
+        ("Needs-info", f"{item_id}:needs-info"),
+    ]
+    assert QUEUE_ACTION_STATE[result.item_id] == "Escalated to ops"
 
 
 def test_app_uses_browser_safe_score_when_pyodide_lacks_sqlite(
