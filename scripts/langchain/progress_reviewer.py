@@ -427,14 +427,11 @@ def review_progress_with_llm(
         rounds_without_completion,
     )
     try:
-        from scripts.langchain._llm_client import build_client
+        from tools.langchain_client import build_chat_client
     except ImportError:
-        try:
-            from _llm_client import build_client
-        except ImportError:
-            build_client = None
+        build_chat_client = None
 
-    resolved = build_client(model=model) if build_client else None
+    resolved = build_chat_client(model=model) if build_chat_client else None
     if not resolved:
         score, aligned, unaligned = heuristic_alignment_check(
             acceptance_criteria, recent_commits, files_changed
