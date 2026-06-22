@@ -42,6 +42,7 @@ class StreamlitLike(Protocol):
     def metric(self, label: str, value: str) -> None: ...
     def subheader(self, body: str) -> None: ...
     def table(self, data: object) -> None: ...
+    def button(self, label: str, *, key: str) -> bool: ...
     def write(self, *args: object, **kwargs: object) -> None: ...
     def success(self, body: str) -> None: ...
 
@@ -56,6 +57,22 @@ class DemoResult:
     item_id: str
     sink_type: str
     trace_tags: dict[str, str]
+
+
+@dataclass(frozen=True)
+class AnalystQueueCard:
+    """Human-readable queue row for the demo analyst workflow."""
+
+    owner: str
+    package: str
+    headline: str
+    reason: str
+    affected_evidence: str
+    suggested_resolution: str
+    state: str
+
+
+QUEUE_ACTION_STATE: dict[str, str] = {}
 
 
 def _suppress_langsmith_env() -> dict[str, str]:
@@ -157,6 +174,66 @@ def _browser_safe_demo_fixture(fixture_name: str) -> DemoResult:
     )
 
 
+def build_analyst_queue_card(result: DemoResult) -> AnalystQueueCard:
+    """Decode the internal queue item id into a readable analyst work item."""
+
+    tokens = result.item_id.split(":")
+    package_id = tokens[0] if tokens and tokens[0] else result.package_id
+    validation_rule = _label_from_token(tokens[1]) if len(tokens) > 1 else "Validation"
+    conflict_type = _label_from_token(tokens[2]) if len(tokens) > 2 else "Review needed"
+    correlation = tokens[3] if len(tokens) > 3 else "demo item"
+
+    return AnalystQueueCard(
+        owner=result.owner_role.title(),
+        package=package_id,
+        headline=f"{conflict_type} requires {validation_rule.lower()} review",
+        reason=(
+            "The scoring pipeline routed this package for analyst review because "
+            f"{conflict_type.lower()} evidence needs confirmation."
+        ),
+        affected_evidence=f"Package {package_id}; evidence marker {correlation}",
+        suggested_resolution=(
+            "Open the package evidence, confirm the conflict, then accept the score, "
+            "escalate to ops, or request missing information."
+        ),
+        state=QUEUE_ACTION_STATE.get(result.item_id, "Waiting for analyst action"),
+    )
+
+
+def _label_from_token(token: str) -> str:
+    return token.replace("_", " ").replace("-", " ").title()
+
+
+def _record_queue_action(item_id: str, action: str) -> None:
+    QUEUE_ACTION_STATE[item_id] = action
+
+
+def render_analyst_queue(st: StreamlitLike, result: DemoResult) -> AnalystQueueCard:
+    """Render a readable queue card and in-memory action controls."""
+
+    if st.button("Accept", key=f"{result.item_id}:accept"):
+        _record_queue_action(result.item_id, "Accepted")
+    if st.button("Escalate", key=f"{result.item_id}:escalate"):
+        _record_queue_action(result.item_id, "Escalated to ops")
+    if st.button("Needs-info", key=f"{result.item_id}:needs-info"):
+        _record_queue_action(result.item_id, "Needs information")
+    card = build_analyst_queue_card(result)
+    st.table(
+        [
+            {
+                "Owner": card.owner,
+                "Package": card.package,
+                "Issue": card.headline,
+                "Reason": card.reason,
+                "Affected evidence": card.affected_evidence,
+                "Suggested resolution": card.suggested_resolution,
+                "State": card.state,
+            }
+        ]
+    )
+    return card
+
+
 def render_app(st: StreamlitLike | None = None) -> DemoResult:
     """Render the browser demo and return the underlying deterministic result."""
 
@@ -175,7 +252,7 @@ def render_app(st: StreamlitLike | None = None) -> DemoResult:
     st.subheader("Explainability")
     st.table(result.components)
     st.subheader("Analyst queue")
-    st.write({"owner_role": result.owner_role, "item_id": result.item_id})
+    render_analyst_queue(st, result)
     st.success(f"Trace sink: {result.sink_type}; LangSmith and LangChain tracing env vars are off.")
     return result
 
