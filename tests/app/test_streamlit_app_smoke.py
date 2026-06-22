@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from app.streamlit_app import QUEUE_ACTION_STATE, render_app
+from app.streamlit_app import QUEUE_ACTION_STATE_KEY, render_app
 
 from inv_man_intake.observability import InMemoryTraceSink
 
@@ -16,6 +16,7 @@ class _StreamlitRecorder:
         self.tables: list[object] = []
         self.buttons: list[tuple[str, str]] = []
         self.clicked_keys: set[str] = set()
+        self.session_state: dict[str, object] = {}
 
     def set_page_config(self, **kwargs: object) -> None:
         return None
@@ -144,7 +145,6 @@ def test_analyst_queue_renders_readable_item_and_actions(
             queue_assignment=_FakeQueueAssignment(owner_role="analyst", item_id=item_id),
         )
 
-    QUEUE_ACTION_STATE.clear()
     monkeypatch.setattr("app.streamlit_app.run_v1_smoke_pipeline", _fake_pipeline)
 
     recorder = _StreamlitRecorder()
@@ -176,7 +176,7 @@ def test_analyst_queue_renders_readable_item_and_actions(
         ("Escalate", f"{item_id}:escalate"),
         ("Needs-info", f"{item_id}:needs-info"),
     ]
-    assert QUEUE_ACTION_STATE[result.item_id] == "Escalated to ops"
+    assert recorder.session_state[QUEUE_ACTION_STATE_KEY] == {result.item_id: "Escalated to ops"}
 
 
 def test_app_uses_browser_safe_score_when_pyodide_lacks_sqlite(
