@@ -4,6 +4,7 @@ Diff-anchored record of UX Review (`/ux-review`) passes. Each entry's commit SHA
 review's git-diff focus. Detailed artifacts live in `Orchestrator/ux_reviews/`.
 
 ## 2026-06-22 — Scoring/intake demo (`app/streamlit_app.py`), full coverage — commit `b91b4a9` — overall 3.0/10 (gate FAIL)
+
 - **Coverage:** main scoring view ✓ (Final score + Explainability + Analyst queue); bundle selector ✓ (default fixture). **NOT driven:** the other fixture bundles; the stlite build (`app/index.html`) not separately served.
 - **Scores:** wired 7.0 / usability 5.5 / help_clarity 5.5 / workflow 5.0 (2 sev-4 blockers + 2 sev-3).
 - **Headline:** the scoring + Explainability table are strong (clear weights + rationales), but the **Analyst queue — the analyst's actual workflow — is a non-actionable raw JSON dump**, so the workflow dead-ends after scoring.
