@@ -669,9 +669,7 @@ class AnthropicProvider(LLMProvider):
             logger.warning("LangChain client helper not available")
             return None
 
-        model_name = _configured_langchain_model(
-            "anthropic", fallback="claude-sonnet-4-5-20250929"
-        )
+        model_name = _configured_langchain_model("anthropic", fallback="claude-sonnet-4-5-20250929")
         resolved = build_chat_client(provider="anthropic", model=model_name)
         if resolved:
             self._model_name = resolved.model
@@ -721,9 +719,7 @@ class AnthropicProvider(LLMProvider):
                 model_name=getattr(
                     self,
                     "_model_name",
-                    _configured_langchain_model(
-                        "anthropic", fallback="claude-sonnet-4-5-20250929"
-                    ),
+                    _configured_langchain_model("anthropic", fallback="claude-sonnet-4-5-20250929"),
                 ),
                 raw_confidence=result.raw_confidence,
                 confidence_adjusted=result.confidence_adjusted,
