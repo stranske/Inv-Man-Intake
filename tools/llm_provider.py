@@ -42,14 +42,6 @@ ANTHROPIC_API_KEY_ENV = "CLAUDE_API_STRANSKE"
 SHORT_ANALYSIS_CONFIDENCE_CAP = 0.4
 
 
-def _configured_langchain_model(provider: str, *, fallback: str) -> str:
-    try:
-        from tools.llm_registry import configured_model_for_provider
-    except ImportError:
-        return fallback
-    return configured_model_for_provider(provider, fallback=fallback) or fallback
-
-
 def _setup_langsmith_tracing() -> bool:
     """
     Configure LangSmith tracing if API key is available.
@@ -593,17 +585,16 @@ class OpenAIProvider(LLMProvider):
     def _get_client(self):
         """Get LangChain ChatOpenAI client."""
         try:
-            from tools.langchain_client import build_chat_client
+            from langchain_openai import ChatOpenAI
         except ImportError:
-            logger.warning("LangChain client helper not available")
+            logger.warning("langchain_openai not installed")
             return None
 
-        model_name = _configured_langchain_model("openai", fallback="gpt-5.1-codex")
-        resolved = build_chat_client(provider="openai", model=model_name)
-        if resolved:
-            self._model_name = resolved.model
-            return resolved.client
-        return None
+        return ChatOpenAI(
+            model="gpt-5.1-codex",  # Purpose-built for analyzing Codex coding sessions
+            api_key=os.environ.get("OPENAI_API_KEY"),
+            temperature=0.1,
+        )
 
     def analyze_completion(
         self,
@@ -635,11 +626,7 @@ class OpenAIProvider(LLMProvider):
                 confidence=result.confidence,
                 reasoning=result.reasoning,
                 provider_used=self.name,
-                model_name=getattr(
-                    self,
-                    "_model_name",
-                    _configured_langchain_model("openai", fallback="gpt-5.1-codex"),
-                ),
+                model_name="gpt-5.1-codex",  # Actual model used by OpenAIProvider
                 raw_confidence=result.raw_confidence,
                 confidence_adjusted=result.confidence_adjusted,
                 quality_warnings=result.quality_warnings,
@@ -664,19 +651,16 @@ class AnthropicProvider(LLMProvider):
 
     def _get_client(self):
         try:
-            from tools.langchain_client import build_chat_client
+            from langchain_anthropic import ChatAnthropic
         except ImportError:
-            logger.warning("LangChain client helper not available")
+            logger.warning("langchain_anthropic not installed")
             return None
 
-        model_name = _configured_langchain_model(
-            "anthropic", fallback="claude-sonnet-4-5-20250929"
+        return ChatAnthropic(
+            model="claude-sonnet-4-5-20250929",
+            anthropic_api_key=os.environ.get(ANTHROPIC_API_KEY_ENV),
+            temperature=0.1,
         )
-        resolved = build_chat_client(provider="anthropic", model=model_name)
-        if resolved:
-            self._model_name = resolved.model
-            return resolved.client
-        return None
 
     def analyze_completion(
         self,
@@ -718,13 +702,7 @@ class AnthropicProvider(LLMProvider):
                 confidence=result.confidence,
                 reasoning=result.reasoning,
                 provider_used=self.name,
-                model_name=getattr(
-                    self,
-                    "_model_name",
-                    _configured_langchain_model(
-                        "anthropic", fallback="claude-sonnet-4-5-20250929"
-                    ),
-                ),
+                model_name="claude-sonnet-4-5-20250929",
                 raw_confidence=result.raw_confidence,
                 confidence_adjusted=result.confidence_adjusted,
                 quality_warnings=result.quality_warnings,
