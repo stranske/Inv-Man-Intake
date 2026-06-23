@@ -7,8 +7,19 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 INDEX_HTML = REPO_ROOT / "app" / "index.html"
 APP_PYPI = REPO_ROOT / "app" / "pypi"
+DESIGN_SYSTEM = REPO_ROOT / "design-system"
 STLITE_VENDOR = REPO_ROOT / "app" / "vendor" / "stlite@0.75.0"
 PYODIDE_VENDOR = REPO_ROOT / "app" / "vendor" / "pyodide@0.26.2"
+
+
+def _has_design_system_stylesheets(index_html: str) -> bool:
+    return all(
+        link in index_html
+        for link in (
+            '<link rel="stylesheet" href="../design-system/tokens.css" />',
+            '<link rel="stylesheet" href="../design-system/components.css" />',
+        )
+    )
 
 
 def test_index_has_no_external_runtime_ref() -> None:
@@ -28,6 +39,34 @@ def test_index_has_no_external_runtime_ref() -> None:
         r"""pyodideUrl:\s*new URL\(["']\./vendor/pyodide@0\.26\.2/pyodide\.js["'],\s*window\.location\.href\)\.href""",
         index_html,
     ), "pyodideUrl must anchor the local ./vendor pyodide runtime to the page URL"
+
+
+def test_design_system_stylesheets_present() -> None:
+    index_html = INDEX_HTML.read_text(encoding="utf-8")
+
+    assert _has_design_system_stylesheets(index_html)
+    assert 'id="root" class="ds theme-air"' in index_html
+    assert '"design-system/tokens.css"' in index_html
+    assert '"design-system/components.css"' in index_html
+    assert (DESIGN_SYSTEM / "tokens.css").is_file()
+    assert (DESIGN_SYSTEM / "components.css").is_file()
+
+
+def test_design_system_stylesheet_gate_fails_when_link_removed() -> None:
+    index_html = INDEX_HTML.read_text(encoding="utf-8")
+
+    assert _has_design_system_stylesheets(
+        index_html.replace(
+            '<link rel="stylesheet" href="../design-system/tokens.css" />',
+            "",
+        )
+    ) is False
+    assert _has_design_system_stylesheets(
+        index_html.replace(
+            '<link rel="stylesheet" href="../design-system/components.css" />',
+            "",
+        )
+    ) is False
 
 
 def test_vendored_pyodide_runtime_files_exist_and_are_non_empty() -> None:
