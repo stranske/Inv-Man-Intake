@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -32,3 +33,24 @@ def test_local_stlite_pyodide_and_wheels_are_committed() -> None:
     assert "stlite_lib-0.1.0-py3-none-any.whl" in app_wheels
     assert "streamlit-1.40.1-cp312-none-any.whl" in app_wheels
     assert app_wheels == vendor_wheels
+
+
+def test_stlite_manifest_entries_exist() -> None:
+    manifest_path = STLITE_VENDOR / "asset-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    missing = [
+        rel_path
+        for rel_path in manifest["files"].values()
+        if not (STLITE_VENDOR / rel_path.removeprefix("./")).exists()
+    ]
+
+    assert not missing, f"Missing vendored stlite assets: {missing}"
+
+
+def test_vendored_worker_has_local_pyodide_fallback() -> None:
+    worker_path = STLITE_VENDOR / "static" / "js" / "3209.4faed50e.chunk.js"
+    worker_source = worker_path.read_text(encoding="utf-8")
+
+    assert "cdn.jsdelivr.net/pyodide" not in worker_source
+    assert "../../../pyodide@0.26.2/pyodide.js" in worker_source

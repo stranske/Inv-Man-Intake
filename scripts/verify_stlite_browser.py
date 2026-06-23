@@ -136,12 +136,29 @@ def verify_browser_demo(
                 page.screenshot(path=str(screenshot_path), full_page=True)
                 body_text = page.locator("body").inner_text(timeout=timeout_ms)
                 if external_requests:
+                    result = BrowserVerificationResult(
+                        status="fail",
+                        verified_at=datetime.now(UTC).isoformat(),
+                        url=url,
+                        expected_score=expected_score,
+                        page_title=page.title(),
+                        screenshot_path=str(screenshot_path.relative_to(repo_root)),
+                        log_path=str(log_path.relative_to(repo_root)),
+                        body_excerpt=body_text[:1200],
+                        console_messages=console_messages,
+                        failed_requests=failed_requests,
+                        page_errors=page_errors,
+                        external_requests=external_requests,
+                    )
+                    log_path.write_text(
+                        json.dumps(asdict(result), indent=2) + "\n", encoding="utf-8"
+                    )
                     raise RuntimeError(
                         "Offline stlite verification attempted external requests: "
                         + ", ".join(sorted(set(external_requests)))
                     )
                 result = BrowserVerificationResult(
-                    status="verified",
+                    status="pass",
                     verified_at=datetime.now(UTC).isoformat(),
                     url=url,
                     expected_score=expected_score,
