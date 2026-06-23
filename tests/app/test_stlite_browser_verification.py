@@ -6,6 +6,7 @@ from scripts.verify_stlite_browser import (
     DEFAULT_LOG_NAME,
     DEFAULT_SCREENSHOT_NAME,
     build_artifact_paths,
+    is_local_browser_url,
     parse_args,
 )
 
@@ -29,3 +30,18 @@ def test_cli_allows_bundled_chromium_channel() -> None:
     args = parse_args(["--browser-channel", ""])
 
     assert args.browser_channel == ""
+
+
+def test_cli_accepts_offline_mode() -> None:
+    args = parse_args(["--offline"])
+
+    assert args.offline is True
+
+
+def test_offline_url_filter_allows_only_local_browser_urls() -> None:
+    assert is_local_browser_url("http://127.0.0.1:8000/app/index.html")
+    assert is_local_browser_url("http://localhost:8000/app/index.html")
+    assert is_local_browser_url("blob:http://127.0.0.1:8000/token")
+    assert is_local_browser_url("data:text/plain,ok")
+    assert is_local_browser_url("about:blank")
+    assert not is_local_browser_url("https://cdn.jsdelivr.net/npm/@stlite/mountable")

@@ -13,6 +13,7 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 DEFAULT_EXPECTED_SCORE = "0.7809"
 DEFAULT_OUTPUT_DIR = Path("app/live-verification-artifacts")
@@ -33,6 +34,7 @@ class BrowserVerificationResult:
     console_messages: list[dict[str, str]]
     failed_requests: list[dict[str, str]]
     page_errors: list[str]
+    external_requests: list[str]
 
 
 def find_free_port() -> int:
@@ -55,6 +57,24 @@ def start_static_server(repo_root: Path, port: int) -> subprocess.Popen[str]:
     )
 
 
+def is_local_browser_url(url: str) -> bool:
+    parsed = urlparse(url)
+    if parsed.scheme in {"about", "blob", "data"}:
+        return True
+    if parsed.scheme in {"http", "https"}:
+        return parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+    return parsed.scheme == ""
+
+
+def handle_offline_route(route: Any, external_requests: list[str]) -> None:
+    request_url = route.request.url
+    if is_local_browser_url(request_url):
+        route.continue_()
+        return
+    external_requests.append(request_url)
+    route.abort()
+
+
 def verify_browser_demo(
     *,
     repo_root: Path,
@@ -62,6 +82,7 @@ def verify_browser_demo(
     expected_score: str = DEFAULT_EXPECTED_SCORE,
     timeout_ms: int = 45_000,
     browser_channel: str | None = "chrome",
+    offline: bool = False,
 ) -> BrowserVerificationResult:
     try:
         from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -82,6 +103,7 @@ def verify_browser_demo(
     console_messages: list[dict[str, str]] = []
     failed_requests: list[dict[str, str]] = []
     page_errors: list[str] = []
+    external_requests: list[str] = []
 
     try:
         time.sleep(0.5)
@@ -92,6 +114,8 @@ def verify_browser_demo(
             browser = playwright.chromium.launch(**launch_kwargs)
             try:
                 page = browser.new_page(viewport={"width": 1280, "height": 720})
+                if offline:
+                    page.route("**/*", lambda route: handle_offline_route(route, external_requests))
                 page.on(
                     "console",
                     lambda msg: console_messages.append(
@@ -111,6 +135,28 @@ def verify_browser_demo(
                 page.get_by_text(expected_score).wait_for(timeout=timeout_ms)
                 page.screenshot(path=str(screenshot_path), full_page=True)
                 body_text = page.locator("body").inner_text(timeout=timeout_ms)
+                if external_requests:
+                    result = BrowserVerificationResult(
+                        status="fail",
+                        verified_at=datetime.now(UTC).isoformat(),
+                        url=url,
+                        expected_score=expected_score,
+                        page_title=page.title(),
+                        screenshot_path=str(screenshot_path.relative_to(repo_root)),
+                        log_path=str(log_path.relative_to(repo_root)),
+                        body_excerpt=body_text[:1200],
+                        console_messages=console_messages,
+                        failed_requests=failed_requests,
+                        page_errors=page_errors,
+                        external_requests=external_requests,
+                    )
+                    log_path.write_text(
+                        json.dumps(asdict(result), indent=2) + "\n", encoding="utf-8"
+                    )
+                    raise RuntimeError(
+                        "Offline stlite verification attempted external requests: "
+                        + ", ".join(sorted(set(external_requests)))
+                    )
                 result = BrowserVerificationResult(
                     status="pass",
                     verified_at=datetime.now(UTC).isoformat(),
@@ -123,6 +169,7 @@ def verify_browser_demo(
                     console_messages=console_messages,
                     failed_requests=failed_requests,
                     page_errors=page_errors,
+                    external_requests=external_requests,
                 )
             except PlaywrightTimeoutError as exc:
                 page.screenshot(path=str(screenshot_path), full_page=True)
@@ -139,6 +186,7 @@ def verify_browser_demo(
                     console_messages=console_messages,
                     failed_requests=failed_requests,
                     page_errors=page_errors,
+                    external_requests=external_requests,
                 )
                 log_path.write_text(json.dumps(asdict(result), indent=2) + "\n", encoding="utf-8")
                 raise RuntimeError(
@@ -170,6 +218,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="chrome",
         help="Playwright Chromium channel to use. Pass an empty string to use bundled Chromium.",
     )
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Abort and record any browser request outside localhost/blob/data/about URLs.",
+    )
     return parser.parse_args(argv)
 
 
@@ -182,6 +235,7 @@ def main(argv: list[str] | None = None) -> int:
         expected_score=args.expected_score,
         timeout_ms=args.timeout_ms,
         browser_channel=browser_channel,
+        offline=args.offline,
     )
     print(json.dumps(asdict(result), indent=2))
     return 0
