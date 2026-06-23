@@ -156,8 +156,7 @@ def pyodide_dependency_closure(pyodide_vendor: Path) -> list[str]:
             missing_files.append(f"{package_name}: {file_name}")
     if missing_files:
         raise RuntimeError(
-            "Pyodide dependency closure is not fully vendored; missing "
-            + ", ".join(missing_files)
+            "Pyodide dependency closure is not fully vendored; missing " + ", ".join(missing_files)
         )
 
     return sorted(closure)

@@ -53,9 +53,9 @@ def test_required_pyodide_wheels_are_vendored() -> None:
     ]:
         matches = list(PYODIDE_VENDOR.glob(pattern))
         assert matches, f"Missing vendored Pyodide wheel matching {pattern}"
-        assert all(path.stat().st_size > 0 for path in matches), (
-            f"Vendored Pyodide wheel matching {pattern} must be non-empty"
-        )
+        assert all(
+            path.stat().st_size > 0 for path in matches
+        ), f"Vendored Pyodide wheel matching {pattern} must be non-empty"
 
 
 def test_vendored_stlite_runtime_and_wheels_exist() -> None:
@@ -66,9 +66,9 @@ def test_vendored_stlite_runtime_and_wheels_exist() -> None:
     for pattern in ["streamlit-*.whl", "stlite_lib-*.whl"]:
         matches = list((STLITE_VENDOR / "pypi").glob(pattern))
         assert matches, f"Missing vendored stlite wheel matching {pattern}"
-        assert all(path.stat().st_size > 0 for path in matches), (
-            f"Vendored stlite wheel matching {pattern} must be non-empty"
-        )
+        assert all(
+            path.stat().st_size > 0 for path in matches
+        ), f"Vendored stlite wheel matching {pattern} must be non-empty"
 
 
 def test_local_stlite_pyodide_and_wheels_are_committed() -> None:

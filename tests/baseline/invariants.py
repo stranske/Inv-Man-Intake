@@ -106,11 +106,7 @@ def check_scenario(scenario: dict[str, Any], base: dict[str, Any]) -> list[Invar
     red_flag = spec.get("red_flag")
     moved = final_score < base_score - _EPS
     expected_applied = bool(
-        red_flag
-        and (
-            red_flag.get("kind") == "block"
-            or (red_flag.get("kind") == "cap" and moved)
-        )
+        red_flag and (red_flag.get("kind") == "block" or (red_flag.get("kind") == "cap" and moved))
     )
     add(
         "red_flag_applied_matches_engine_semantics",
