@@ -250,12 +250,17 @@ def test_live_verification_evidence_is_recorded() -> None:
 
 def test_stlite_mount_bundles_package_and_fixture_files() -> None:
     content = Path("app/index.html").read_text(encoding="utf-8")
-    stlite_lock = Path("requirements-stlite.lock").read_text(encoding="utf-8").strip()
+    stlite_lock = set(Path("requirements-stlite.lock").read_text(encoding="utf-8").splitlines())
 
     assert '"src/inv_man_intake/v1_smoke.py"' in content
     assert '"src/inv_man_intake/data/migrations/sql/0001_core_firm_fund_document.up.sql"' in content
     assert '"tests/fixtures/intake/pdf_primary_mixed_bundle.json"' in content
     assert "Object.fromEntries" in content
     assert '"langsmith>=0.4.59"' not in content
-    assert stlite_lock == "@stlite/mountable==0.75.0"
-    assert "https://cdn.jsdelivr.net/npm/@stlite/mountable@0.75.0/build/stlite.js" in content
+    assert stlite_lock == {
+        "@stlite/mountable==0.75.0",
+        "pyodide==0.26.2",
+        "streamlit==1.40.1",
+    }
+    assert '<script src="./vendor/stlite@0.75.0/stlite.js"></script>' in content
+    assert 'pyodideUrl: "./vendor/pyodide@0.26.2/pyodide.js"' in content
