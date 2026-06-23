@@ -97,7 +97,15 @@
         "tests/fixtures/intake/pdf_primary_bundle.json",
         "tests/fixtures/intake/pdf_primary_mixed_bundle.json",
         "tests/fixtures/intake/pptx_primary_bundle.json",
-        "tests/fixtures/intake/pptx_primary_mixed_bundle.json"
+        "tests/fixtures/intake/pptx_primary_mixed_bundle.json",
+        "config/scoring_weights/activist.toml",
+        "config/scoring_weights/credit_long_short.toml",
+        "config/scoring_weights/credit_relative_value.toml",
+        "config/scoring_weights/equity_market_neutral.toml",
+        "config/scoring_weights/macro.toml",
+        "config/scoring_weights/multi_strat.toml",
+        "config/scoring_weights/quant.toml",
+        "config/scoring_weights/trend_following.toml"
       ];
       const files = Object.fromEntries(
         bundledPaths.map((path) => [path, { url: `../${path}` }])
@@ -107,7 +115,11 @@
       stlite.mount(
         {
           entrypoint: "app/streamlit_app.py",
-          pyodideUrl: "./vendor/pyodide@0.26.2/pyodide.js",
+          // Absolute URL resolved against the page: stlite's worker resolves a
+          // bare relative pyodideUrl against its own nested script location
+          // (vendor/stlite@0.75.0/static/js/...), which 404s. Anchoring to
+          // window.location.href keeps the vendored Pyodide same-origin/local.
+          pyodideUrl: new URL("./vendor/pyodide@0.26.2/pyodide.js", window.location.href).href,
           requirements: [],
           files
         },
