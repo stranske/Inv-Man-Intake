@@ -43,6 +43,8 @@ class StreamlitLike(Protocol):
     def subheader(self, body: str) -> None: ...
     def table(self, data: object) -> None: ...
     def button(self, label: str, *, key: str) -> bool: ...
+    @property
+    def session_state(self) -> dict[str, object]: ...
     def write(self, *args: object, **kwargs: object) -> None: ...
     def success(self, body: str) -> None: ...
 
@@ -72,7 +74,7 @@ class AnalystQueueCard:
     state: str
 
 
-QUEUE_ACTION_STATE: dict[str, str] = {}
+QUEUE_ACTION_STATE_KEY = "analyst_queue_action_state"
 
 
 def _suppress_langsmith_env() -> dict[str, str]:
@@ -174,7 +176,10 @@ def _browser_safe_demo_fixture(fixture_name: str) -> DemoResult:
     )
 
 
-def build_analyst_queue_card(result: DemoResult) -> AnalystQueueCard:
+def build_analyst_queue_card(
+    result: DemoResult,
+    action_state: dict[str, str] | None = None,
+) -> AnalystQueueCard:
     """Decode the internal queue item id into a readable analyst work item."""
 
     tokens = result.item_id.split(":")
@@ -196,7 +201,7 @@ def build_analyst_queue_card(result: DemoResult) -> AnalystQueueCard:
             "Open the package evidence, confirm the conflict, then accept the score, "
             "escalate to ops, or request missing information."
         ),
-        state=QUEUE_ACTION_STATE.get(result.item_id, "Waiting for analyst action"),
+        state=(action_state or {}).get(result.item_id, "Waiting for analyst action"),
     )
 
 
@@ -204,20 +209,29 @@ def _label_from_token(token: str) -> str:
     return token.replace("_", " ").replace("-", " ").title()
 
 
-def _record_queue_action(item_id: str, action: str) -> None:
-    QUEUE_ACTION_STATE[item_id] = action
+def _queue_action_state(st: StreamlitLike) -> dict[str, str]:
+    state = st.session_state.setdefault(QUEUE_ACTION_STATE_KEY, {})
+    if not isinstance(state, dict):
+        state = {}
+        st.session_state[QUEUE_ACTION_STATE_KEY] = state
+    return cast(dict[str, str], state)
+
+
+def _record_queue_action(action_state: dict[str, str], item_id: str, action: str) -> None:
+    action_state[item_id] = action
 
 
 def render_analyst_queue(st: StreamlitLike, result: DemoResult) -> AnalystQueueCard:
     """Render a readable queue card and in-memory action controls."""
 
+    action_state = _queue_action_state(st)
     if st.button("Accept", key=f"{result.item_id}:accept"):
-        _record_queue_action(result.item_id, "Accepted")
+        _record_queue_action(action_state, result.item_id, "Accepted")
     if st.button("Escalate", key=f"{result.item_id}:escalate"):
-        _record_queue_action(result.item_id, "Escalated to ops")
+        _record_queue_action(action_state, result.item_id, "Escalated to ops")
     if st.button("Needs-info", key=f"{result.item_id}:needs-info"):
-        _record_queue_action(result.item_id, "Needs information")
-    card = build_analyst_queue_card(result)
+        _record_queue_action(action_state, result.item_id, "Needs information")
+    card = build_analyst_queue_card(result, action_state)
     st.table(
         [
             {
