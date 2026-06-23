@@ -1,0 +1,136 @@
+version: 1
+issue: 653
+base: main
+branch: codex/issue-653
+tasks:
+  - id: task-01
+    title: 'Update `app/index.html` to reference local `design-system/tokens.css`
+      and `components.css`, served same-origin and included in the offline bundle,
+      after #639 lands.'
+    status: doing
+    started_at: '2026-06-23T18:50:37Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Add link tags in app/index.html to reference design-system/tokens.css
+      (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'components.css using relative paths (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Verify that tokens.css
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'components.css are included in the offline bundle build output (verify:
+      confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Confirm that the CSS files are served from the same origin with no external
+      CDN references (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Update the app root in `app/index.html` to apply `class="ds theme-air"`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Add optional `ds_streamlit.inject_theme()` usage in `app/streamlit_app.py`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: '`app/index.html` links local shared stylesheets, applies `.ds` and `theme-air`,
+      and references no external CSS.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Removing a stylesheet link causes the named test gate to fail, and restoring
+      it makes the test pass.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: 'After #639, the offline build boots and renders the shared theme with
+      zero external requests.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: '(after #639) Reference `tokens.css` + `components.css` in `app/index.html`,
+      served same-origin and included in the offline bundle.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Apply `class="ds theme-air"` at the app root.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: (optional) `inject_theme()` in the server-side `app/streamlit_app.py`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: 'Named test gate: assert `app/index.html` links the **local** shared stylesheets,
+      applies `.ds`/`theme-air`, and references **no external** CSS.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: '**Deliberate-break -> revert:** remove the stylesheet link -> test **FAILS**
+      -> revert -> passes.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: 'Live offline: the shared theme renders with zero external requests (after
+      #639 makes the build bootable).'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
