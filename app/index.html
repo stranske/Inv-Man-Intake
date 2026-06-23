@@ -4,6 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Inv-Man-Intake Browser Demo</title>
+    <link rel="stylesheet" href="../design-system/tokens.css" />
+    <link rel="stylesheet" href="../design-system/components.css" />
     <script src="./vendor/stlite@0.75.0/stlite.js"></script>
     <style>
       html,
@@ -15,9 +17,11 @@
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root" class="ds theme-air"></div>
     <script>
       const bundledPaths = [
+        "design-system/tokens.css",
+        "design-system/components.css",
         "src/inv_man_intake/__init__.py",
         "src/inv_man_intake/audit/__init__.py",
         "src/inv_man_intake/audit/events.py",

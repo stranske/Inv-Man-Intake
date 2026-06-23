@@ -12,6 +12,9 @@ from typing import Any, Protocol, cast
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
+DESIGN_SYSTEM_ROOT = Path(__file__).resolve().parents[1] / "design-system"
+if str(DESIGN_SYSTEM_ROOT) not in sys.path:
+    sys.path.insert(0, str(DESIGN_SYSTEM_ROOT))
 
 from inv_man_intake.observability import InMemoryTraceSink  # noqa: E402
 from inv_man_intake.readiness.fixture_batches import DEFAULT_BATCH_PACKAGES  # noqa: E402
@@ -262,12 +265,17 @@ def render_analyst_queue(st: StreamlitLike, result: DemoResult) -> AnalystQueueC
 def render_app(st: StreamlitLike | None = None) -> DemoResult:
     """Render the browser demo and return the underlying deterministic result."""
 
+    use_real_streamlit = st is None
     if st is None:
         import streamlit as streamlit_module
 
         st = cast(StreamlitLike, streamlit_module)
 
     st.set_page_config(page_title="Inv-Man-Intake Demo", layout="wide")
+    if use_real_streamlit:
+        from ds_streamlit import inject_theme
+
+        inject_theme()
     st.title("Inv-Man-Intake")
     st.caption("Synthetic fixture demo. Computation runs locally with LangSmith disabled.")
     fixture_name = st.selectbox(
