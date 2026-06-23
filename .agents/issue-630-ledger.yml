@@ -1,0 +1,99 @@
+version: 1
+issue: 630
+base: main
+branch: codex/issue-630
+tasks:
+  - id: task-01
+    title: Update `app/streamlit_app.py:179` to remove the trace-sink line from the
+      user-facing surface, or gate it behind a collapsed debug expander (`st.expander`)
+      or `logging`.
+    status: done
+    started_at: '2026-06-23T04:52:21Z'
+    finished_at: '2026-06-23T04:52:33Z'
+    commit: d7d88651da460a63a563d0d31eca6b718073f8ca
+    notes: []
+  - id: task-02
+    title: Update `app/streamlit_app.py:171` to map fixture filenames to friendly
+      display names plus a one-line description, while keeping the filename as secondary/caption
+      text if useful.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Write `tests/test_demo_presentation.py` to assert the bundle selector uses
+      friendly display labels instead of raw `*.json` filenames and that the trace-sink/observability
+      string is not rendered via `st.success` or `st.write` in the main content.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: "Test the deliberate-break case by restoring the raw-filename options and\
+      \ the `st.success(\"Trace sink\u2026\")` call, confirming `tests/test_demo_presentation.py`\
+      \ fails, then reverting."
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: '`app/streamlit_app.py` no longer renders the trace-sink/observability
+      string in main content via `st.success` or `st.write`.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: The synthetic intake bundle selector in `app/streamlit_app.py` presents
+      friendly display names rather than raw `*.json` filenames.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Underlying fixture filenames remain unchanged and are used only as backing
+      values or secondary/caption text.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: "`tests/test_demo_presentation.py` exists and fails when raw filename options\
+      \ and the `st.success(\"Trace sink\u2026\")` call are restored."
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: '`tests/test_demo_presentation.py` passes with the intended UI changes
+      applied.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: "`app/streamlit_app.py:179` \u2014 remove the trace-sink line from the\
+      \ user-facing surface, or gate it behind a collapsed debug expander (`st.expander`)/`logging`.\
+      \ (panel fix-hint)"
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: "`app/streamlit_app.py:171` \u2014 map fixture filenames to **friendly\
+      \ display names + a one-line description** (e.g. \"Mixed-source PDF intake (sample)\"\
+      ); keep the filename as secondary/caption text if useful. (panel fix-hint)"
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
