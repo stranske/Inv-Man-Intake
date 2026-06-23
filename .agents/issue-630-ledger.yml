@@ -7,10 +7,10 @@ tasks:
     title: Update `app/streamlit_app.py:179` to remove the trace-sink line from the
       user-facing surface, or gate it behind a collapsed debug expander (`st.expander`)
       or `logging`.
-    status: doing
+    status: done
     started_at: '2026-06-23T04:52:21Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-06-23T04:52:33Z'
+    commit: d7d88651da460a63a563d0d31eca6b718073f8ca
     notes: []
   - id: task-02
     title: Update `app/streamlit_app.py:171` to map fixture filenames to friendly
