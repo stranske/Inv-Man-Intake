@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol, cast
@@ -22,6 +23,12 @@ FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "int
 FIXTURE_OPTIONS = tuple(
     cast(str, package["intake_bundle_file"]) for package in DEFAULT_BATCH_PACKAGES
 )
+FIXTURE_DISPLAY_LABELS = {
+    "pdf_primary_mixed_bundle.json": "Mixed-source PDF intake sample",
+    "pdf_primary_bundle.json": "PDF-only primary intake sample",
+    "pptx_primary_bundle.json": "Presentation-only primary intake sample",
+    "pptx_mixed_bundle.json": "Mixed presentation intake sample",
+}
 PACKAGE_CONFIG_BY_FIXTURE = {
     cast(str, package["intake_bundle_file"]): {
         "package_id": cast(str, package["package_id"]),
@@ -38,7 +45,13 @@ class StreamlitLike(Protocol):
     def set_page_config(self, **kwargs: Any) -> None: ...
     def title(self, body: str) -> None: ...
     def caption(self, body: str) -> None: ...
-    def selectbox(self, label: str, options: tuple[str, ...]) -> str: ...
+    def selectbox(
+        self,
+        label: str,
+        options: tuple[str, ...],
+        *,
+        format_func: Callable[[str], str] | None = None,
+    ) -> str: ...
     def metric(self, label: str, value: str) -> None: ...
     def subheader(self, body: str) -> None: ...
     def table(self, data: object) -> None: ...
@@ -259,7 +272,13 @@ def render_app(st: StreamlitLike | None = None) -> DemoResult:
     st.set_page_config(page_title="Inv-Man-Intake Demo", layout="wide")
     st.title("Inv-Man-Intake")
     st.caption("Synthetic fixture demo. Computation runs locally with LangSmith disabled.")
-    fixture_name = st.selectbox("Synthetic intake bundle", FIXTURE_OPTIONS)
+    fixture_name = st.selectbox(
+        "Synthetic intake bundle",
+        FIXTURE_OPTIONS,
+        format_func=lambda fixture: FIXTURE_DISPLAY_LABELS.get(
+            fixture, fixture.removesuffix(".json").replace("_", " ").title()
+        ),
+    )
     result = run_demo_fixture(fixture_name)
 
     st.metric("Final score", f"{result.final_score:.4f}")
@@ -267,7 +286,6 @@ def render_app(st: StreamlitLike | None = None) -> DemoResult:
     st.table(result.components)
     st.subheader("Analyst queue")
     render_analyst_queue(st, result)
-    st.success(f"Trace sink: {result.sink_type}; LangSmith and LangChain tracing env vars are off.")
     return result
 
 
