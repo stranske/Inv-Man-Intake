@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -15,6 +16,9 @@ class _StreamlitRecorder:
         self.metrics: list[tuple[str, str]] = []
         self.tables: list[object] = []
         self.buttons: list[tuple[str, str]] = []
+        self.selectboxes: list[tuple[str, tuple[str, ...], tuple[str, ...]]] = []
+        self.success_messages: list[str] = []
+        self.write_calls: list[tuple[object, ...]] = []
         self.clicked_keys: set[str] = set()
         self.session_state: dict[str, object] = {}
 
@@ -27,7 +31,17 @@ class _StreamlitRecorder:
     def caption(self, body: str) -> None:
         return None
 
-    def selectbox(self, label: str, options: tuple[str, ...]) -> str:
+    def selectbox(
+        self,
+        label: str,
+        options: tuple[str, ...],
+        *,
+        format_func: Callable[[str], str] | None = None,
+    ) -> str:
+        display_options = tuple(
+            format_func(option) if format_func else option for option in options
+        )
+        self.selectboxes.append((label, options, display_options))
         return "pdf_primary_mixed_bundle.json"
 
     def metric(self, label: str, value: str) -> None:
@@ -44,9 +58,11 @@ class _StreamlitRecorder:
         return key in self.clicked_keys
 
     def write(self, *args: object, **kwargs: object) -> None:
+        self.write_calls.append(args)
         return None
 
     def success(self, body: str) -> None:
+        self.success_messages.append(body)
         return None
 
 
@@ -92,6 +108,25 @@ def test_app_renders_score_for_fixture_bundle(monkeypatch: pytest.MonkeyPatch) -
     assert "langsmith_project" not in result.trace_tags
     assert recorder.metrics == [("Final score", "0.7809")]
     assert recorder.tables[0] == result.components
+
+
+def test_demo_presentation_hides_developer_observability_details() -> None:
+    recorder = _StreamlitRecorder()
+
+    render_app(recorder)
+
+    assert recorder.selectboxes
+    label, backing_options, display_options = recorder.selectboxes[0]
+    assert label == "Synthetic intake bundle"
+    assert "pdf_primary_mixed_bundle.json" in backing_options
+    assert "Mixed-source PDF intake sample" in display_options
+    assert all(not option.endswith(".json") for option in display_options)
+
+    rendered_main_content = " ".join(
+        [*recorder.success_messages, *(" ".join(map(str, call)) for call in recorder.write_calls)]
+    )
+    assert "Trace sink:" not in rendered_main_content
+    assert "LangSmith and LangChain tracing env vars are off" not in rendered_main_content
 
 
 def test_app_temporarily_disables_langsmith_and_langchain_env(
