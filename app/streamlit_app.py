@@ -25,9 +25,7 @@ FIXTURE_OPTIONS = tuple(
 )
 FIXTURE_DISPLAY_LABELS = {
     "pdf_primary_mixed_bundle.json": "Mixed-source PDF intake sample",
-    "pdf_primary_bundle.json": "PDF-only primary intake sample",
-    "pptx_primary_bundle.json": "Presentation-only primary intake sample",
-    "pptx_mixed_bundle.json": "Mixed presentation intake sample",
+    "pptx_primary_mixed_bundle.json": "Mixed presentation intake sample",
 }
 PACKAGE_CONFIG_BY_FIXTURE = {
     cast(str, package["intake_bundle_file"]): {
