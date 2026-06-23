@@ -17,16 +17,8 @@ def test_langchain_client_uses_llm_registry_as_single_resolution_source() -> Non
     source = _module_source("tools/langchain_client.py")
     tree = ast.parse(source)
 
-    local_classes = {
-        node.name
-        for node in tree.body
-        if isinstance(node, ast.ClassDef)
-    }
-    local_function_names = {
-        node.name
-        for node in tree.body
-        if isinstance(node, ast.FunctionDef)
-    }
+    local_classes = {node.name for node in tree.body if isinstance(node, ast.ClassDef)}
+    local_function_names = {node.name for node in tree.body if isinstance(node, ast.FunctionDef)}
 
     assert "ModelRegistryEntry" not in local_classes
     assert "SlotDefinition" not in local_classes
@@ -53,7 +45,9 @@ def test_script_llm_client_adapter_delegates_to_langchain_client(monkeypatch) ->
             provider_label="openai/gpt-configured",
         )
 
-    monkeypatch.setattr(_llm_client, "build_client", lambda **kwargs: fake_build_chat_client(**kwargs))
+    monkeypatch.setattr(
+        _llm_client, "build_client", lambda **kwargs: fake_build_chat_client(**kwargs)
+    )
 
     client, label = _llm_client.get_llm_client(
         provider="openai",
