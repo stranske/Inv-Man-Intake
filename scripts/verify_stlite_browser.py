@@ -107,9 +107,9 @@ def assert_index_has_no_external_urls(index_path: Path) -> None:
         details = external_runtime_refs + external_imports + external_urls
         raise RuntimeError("index.html contains external URL references: " + ", ".join(details))
     expected_pyodide_pattern = (
-        r"""pyodideUrl:\s*(?:new URL\()?["']\./vendor/pyodide@"""
+        r"""pyodideUrl:\s*new URL\(["']\./vendor/pyodide@"""
         + re.escape(PYODIDE_VERSION)
-        + r"""/pyodide\.js["']"""
+        + r"""/pyodide\.js["'],\s*window\.location\.href\)\.href"""
     )
     if not re.search(expected_pyodide_pattern, source):
         raise RuntimeError(

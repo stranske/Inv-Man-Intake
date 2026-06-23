@@ -65,6 +65,8 @@ def fetch_missing_runtime(repo_root: Path) -> list[Path]:
         file_name = package.get("file_name")
         if not isinstance(file_name, str) or not file_name:
             continue
+        if Path(file_name).name != file_name or file_name in {".", ".."}:
+            raise RuntimeError(f"Unsafe package file name in lock file: {file_name!r}")
         destination = pyodide_vendor / file_name
         if destination.exists():
             print(f"skip existing {destination.relative_to(repo_root)}")

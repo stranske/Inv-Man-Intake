@@ -263,4 +263,7 @@ def test_stlite_mount_bundles_package_and_fixture_files() -> None:
         "streamlit==1.40.1",
     }
     assert '<script src="./vendor/stlite@0.75.0/stlite.js"></script>' in content
-    assert 'pyodideUrl: "./vendor/pyodide@0.26.2/pyodide.js"' in content
+    assert (
+        'pyodideUrl: new URL("./vendor/pyodide@0.26.2/pyodide.js", '
+        "window.location.href).href"
+    ) in content

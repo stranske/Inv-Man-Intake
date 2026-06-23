@@ -25,9 +25,9 @@ def test_index_has_no_external_runtime_ref() -> None:
         '<script src="./vendor/stlite@0.75.0/stlite.js"></script>' in index_html
     ), "index.html must load the vendored stlite runtime"
     assert re.search(
-        r"""pyodideUrl:\s*(?:new URL\()?["']\./vendor/pyodide@0\.26\.2/pyodide\.js["']""",
+        r"""pyodideUrl:\s*new URL\(["']\./vendor/pyodide@0\.26\.2/pyodide\.js["'],\s*window\.location\.href\)\.href""",
         index_html,
-    ), "pyodideUrl must point at the local ./vendor pyodide runtime"
+    ), "pyodideUrl must anchor the local ./vendor pyodide runtime to the page URL"
 
 
 def test_vendored_pyodide_runtime_files_exist_and_are_non_empty() -> None:
