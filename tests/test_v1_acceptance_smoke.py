@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,7 @@ import pytest
 from inv_man_intake.intake.integration import register_intake_bundle_file
 from inv_man_intake.intake.service import IngestionService
 from inv_man_intake.observability import InMemoryTraceSink
+from inv_man_intake.observability.langsmith_fleet import ARTIFACT_NAME, write_fleet_records
 from inv_man_intake.scoring import weights as scoring_weights
 from inv_man_intake.scoring.contracts import ScoreSubmission
 from inv_man_intake.scoring.engine import compute_score
@@ -145,6 +147,10 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path(v1_smoke_artifacts
     assert all(
         item["domain"]["correlation_id"] == artifacts.correlation_id for item in fleet_records
     )
+    ci_artifact_path = _write_ci_langsmith_fleet_artifact(fleet_records)
+    if ci_artifact_path is not None:
+        assert ci_artifact_path.exists()
+        assert len(ci_artifact_path.read_text(encoding="utf-8").splitlines()) == len(fleet_records)
     assert artifacts.secondary_extraction_result.correlation_id == artifacts.correlation_id
     assert artifacts.secondary_extraction_result.escalation_payload["correlation_id"] == (
         artifacts.correlation_id
@@ -209,6 +215,21 @@ def test_v1_acceptance_smoke_fails_when_intake_registration_is_bypassed() -> Non
             package_id=_SMOKE_PACKAGE_ID,
             expected_document_ids=_EXPECTED_DOCUMENT_IDS,
         )
+
+
+def test_ci_langsmith_fleet_artifact_writer_uses_canonical_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, v1_smoke_artifacts
+) -> None:
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+
+    artifact_path = _write_ci_langsmith_fleet_artifact(
+        v1_smoke_artifacts.langsmith_fleet_records,
+        root=tmp_path,
+    )
+
+    assert artifact_path == tmp_path / "artifacts" / "langsmith" / ARTIFACT_NAME
+    records = artifact_path.read_text(encoding="utf-8").splitlines()
+    assert len(records) == len(v1_smoke_artifacts.langsmith_fleet_records)
 
 
 def test_v1_acceptance_smoke_fails_when_document_identifiers_are_not_stable() -> None:
@@ -324,6 +345,19 @@ def _write_weight_file(directory: Path, *, asset_class: str, weights_block: str)
         ),
         encoding="utf-8",
     )
+
+
+def _write_ci_langsmith_fleet_artifact(
+    records: list[dict[str, Any]],
+    *,
+    root: Path | None = None,
+) -> Path | None:
+    """Write the Workflows-uploaded fleet artifact during GitHub Actions CI."""
+
+    if os.getenv("GITHUB_ACTIONS", "").lower() != "true":
+        return None
+    repo_root = root or Path.cwd()
+    return write_fleet_records(repo_root / "artifacts" / "langsmith" / ARTIFACT_NAME, records)
 
 
 def _start_event(sink: InMemoryTraceSink, name: str):
