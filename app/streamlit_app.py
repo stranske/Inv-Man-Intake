@@ -26,9 +26,15 @@ FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "int
 FIXTURE_OPTIONS = tuple(
     cast(str, package["intake_bundle_file"]) for package in DEFAULT_BATCH_PACKAGES
 )
-FIXTURE_DISPLAY_LABELS = {
-    "pdf_primary_mixed_bundle.json": "Mixed-source PDF intake sample",
-    "pptx_primary_mixed_bundle.json": "Mixed presentation intake sample",
+FIXTURE_DISPLAY_METADATA = {
+    "pdf_primary_mixed_bundle.json": {
+        "label": "Mixed-source PDF intake sample",
+        "description": "PDF-led sample package with mixed evidence for the analyst queue demo.",
+    },
+    "pptx_primary_mixed_bundle.json": {
+        "label": "Mixed presentation intake sample",
+        "description": "Presentation-led sample package for checking intake and scoring output.",
+    },
 }
 PACKAGE_CONFIG_BY_FIXTURE = {
     cast(str, package["intake_bundle_file"]): {
@@ -38,6 +44,24 @@ PACKAGE_CONFIG_BY_FIXTURE = {
     for package in DEFAULT_BATCH_PACKAGES
 }
 run_v1_smoke_pipeline: Any | None = None
+
+
+def fixture_display_label(fixture_name: str) -> str:
+    """Return the analyst-facing label for a committed fixture bundle."""
+
+    metadata = FIXTURE_DISPLAY_METADATA.get(fixture_name)
+    if metadata:
+        return metadata["label"]
+    return fixture_name.removesuffix(".json").replace("_", " ").title()
+
+
+def fixture_display_description(fixture_name: str) -> str:
+    """Return a one-line description for the selected fixture bundle."""
+
+    metadata = FIXTURE_DISPLAY_METADATA.get(fixture_name)
+    if metadata:
+        return metadata["description"]
+    return "Sample intake bundle for the deterministic browser demo."
 
 
 class StreamlitLike(Protocol):
@@ -281,10 +305,9 @@ def render_app(st: StreamlitLike | None = None) -> DemoResult:
     fixture_name = st.selectbox(
         "Synthetic intake bundle",
         FIXTURE_OPTIONS,
-        format_func=lambda fixture: FIXTURE_DISPLAY_LABELS.get(
-            fixture, fixture.removesuffix(".json").replace("_", " ").title()
-        ),
+        format_func=fixture_display_label,
     )
+    st.caption(f"{fixture_display_description(fixture_name)} Backing fixture: `{fixture_name}`.")
     result = run_demo_fixture(fixture_name)
 
     st.metric("Final score", f"{result.final_score:.4f}")
