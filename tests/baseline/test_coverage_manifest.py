@@ -54,7 +54,7 @@ def test_catalog_contract_shape():
 
     assert "base" in catalog
     assert len(scenarios) == 20
-    assert len(directionals) == 20
+    assert len(directionals) == 21
     assert priority_metrics
 
 
