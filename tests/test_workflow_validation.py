@@ -136,3 +136,40 @@ def test_transfer_to_ops_and_dashboard_projection() -> None:
     assert row.owner_role == "ops"
     assert row.state == "ops_review"
     assert row.next_action == "Ops policy decision"
+
+
+def test_rejected_next_action_is_distinct_from_completed() -> None:
+    rejected = create_queue_item(
+        item_id="queue-7",
+        package_id="pkg-107",
+        escalation_reason="policy_exception",
+    )
+    rejected = claim_for_analyst_triage(rejected, analyst_id="analyst-13")
+    rejected = transition_state(
+        rejected,
+        actor_id="analyst-13",
+        actor_role="analyst",
+        to_state="rejected",
+    )
+
+    completed = create_queue_item(
+        item_id="queue-8",
+        package_id="pkg-108",
+        escalation_reason="policy_exception",
+    )
+    completed = claim_for_analyst_triage(completed, analyst_id="analyst-14")
+    completed = transition_state(
+        completed,
+        actor_id="analyst-14",
+        actor_role="analyst",
+        to_state="completed",
+    )
+
+    rejected_row = to_queue_row(rejected)
+    completed_row = to_queue_row(completed)
+
+    assert rejected_row.state == "rejected"
+    assert completed_row.state == "completed"
+    assert completed_row.next_action == "No action"
+    assert rejected_row.next_action == "No further action"
+    assert rejected_row.next_action != completed_row.next_action
