@@ -290,6 +290,13 @@ directionals:
     metric: red_flag_applied
     direction: increase
     enforce: true
+  # A red-flag block on the non-floor base also sets the applied flag (0 -> 1).
+  - id: block_sets_red_flag_applied
+    scenario: red_flag_blocked
+    control: base
+    metric: red_flag_applied
+    direction: increase
+    enforce: true
   # Blocked-zero keeps final_score at the floor, but must still surface that a
   # blocking red flag applied.
   - id: blocked_floor_keeps_final_score_at_floor
