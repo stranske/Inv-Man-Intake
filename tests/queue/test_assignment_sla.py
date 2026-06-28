@@ -89,11 +89,28 @@ def test_same_day_breach_flag_set_after_due_time() -> None:
     assert breached.sla.breached_at == datetime(2026, 3, 9, 0, 0, 0, tzinfo=UTC)
 
 
-def test_same_day_breach_flag_not_set_before_due_time() -> None:
+def test_same_day_breach_idempotent_preserves_first_timestamp() -> None:
     created = datetime(2026, 3, 8, 9, 0, 0, tzinfo=UTC)
+    first_observed_at = datetime(2026, 3, 9, 0, 0, 0, tzinfo=UTC)
+    second_observed_at = datetime(2026, 3, 9, 1, 15, 0, tzinfo=UTC)
     record = create_analyst_first_assignment(
         item_id="queue-41-5",
         analyst_id="analyst-6",
+        created_at=created,
+    )
+
+    breached = update_sla_breach(record, now=first_observed_at)
+    breached_again = update_sla_breach(breached, now=second_observed_at)
+
+    assert breached.sla.breached_at == first_observed_at
+    assert breached_again.sla.breached_at == first_observed_at
+
+
+def test_same_day_breach_flag_not_set_before_due_time() -> None:
+    created = datetime(2026, 3, 8, 9, 0, 0, tzinfo=UTC)
+    record = create_analyst_first_assignment(
+        item_id="queue-41-6",
+        analyst_id="analyst-7",
         created_at=created,
     )
 
@@ -106,7 +123,7 @@ def test_sla_requires_timezone_aware_created_at() -> None:
 
     with pytest.raises(ValueError, match="created_at must be timezone-aware"):
         create_analyst_first_assignment(
-            item_id="queue-41-6",
-            analyst_id="analyst-7",
+            item_id="queue-41-7",
+            analyst_id="analyst-8",
             created_at=naive,
         )
