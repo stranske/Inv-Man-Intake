@@ -230,6 +230,8 @@ def _next_action_for_state(state: ValidationState) -> str:
         return "Ops policy decision"
     if state == "completed":
         return "No action"
+    if state == "rejected":
+        return "No further action"
     return "No action"
 
 
