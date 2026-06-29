@@ -13,6 +13,7 @@ For every present series:
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
@@ -127,6 +128,8 @@ def validate_series(series: PerformanceSeries) -> None:
     seen_days: set[date] = set()
 
     for idx, point in enumerate(series.points):
+        if not math.isfinite(point.value):
+            raise ValueError(f"{series.frequency}[{idx}].value must be finite")
         if point.as_of in seen_days:
             raise ValueError(f"{series.frequency}[{idx}].as_of duplicates a previous date")
         seen_days.add(point.as_of)

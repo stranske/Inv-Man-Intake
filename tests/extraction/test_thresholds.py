@@ -84,6 +84,28 @@ def test_load_threshold_config_rejects_unknown_keys(tmp_path: Path) -> None:
         load_threshold_config(config_path)
 
 
+def test_load_threshold_config_rejects_out_of_range_value(tmp_path: Path) -> None:
+    config_path = tmp_path / "thresholds.yaml"
+    config_path.write_text(
+        "\n".join(
+            (
+                "field_auto_accept_min: 0.85",
+                "key_field_confidence_min: 0.75",
+                "document_key_field_coverage_min: -1.0",
+                "mandatory_field_min: 0.60",
+                "mandatory_fields:",
+                "  - terms.management_fee",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError, match=r"threshold document_key_field_coverage_min must be a finite value"
+    ):
+        load_threshold_config(config_path)
+
+
 def test_load_threshold_config_reports_missing_required_keys(tmp_path: Path) -> None:
     config_path = tmp_path / "thresholds.yaml"
     config_path.write_text(
