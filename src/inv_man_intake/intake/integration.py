@@ -18,6 +18,7 @@ from inv_man_intake.data.models import Document, Firm, Fund
 from inv_man_intake.data.repository import CoreRepository
 from inv_man_intake.intake.models import IngestStatus, IntakeFile
 from inv_man_intake.intake.service import IngestionService
+from inv_man_intake.intake.versioning import create_fingerprint
 from inv_man_intake.storage.document_store import (
     DocumentStore,
     DocumentVersionRecord,
@@ -389,6 +390,23 @@ def _persist_accepted_bundle(
         file_name = _as_non_empty_str(entry.get("file_name"))
         document_key = _document_key(fund_id=resolved_fund_id, document_id=document_id)
         content = content_resolver(entry, package_id)
+        existing_document = core_repository.get_document(document_id)
+        if existing_document is not None:
+            # Validate provenance BEFORE the store write so a rejected re-ingest leaves no orphan
+            # version (#697). create_fingerprint is the same hash source document_store.put uses,
+            # so the prospective file_hash matches what would be stored.
+            fingerprint = create_fingerprint(content=content, received_at=received_at)
+            prospective = Document(
+                document_id=document_id,
+                fund_id=resolved_fund_id,
+                file_name=file_name,
+                file_hash=fingerprint.sha256,
+                received_at=fingerprint.received_at,
+                version_date=version_date,
+                source_channel=source_channel,
+                created_at=received_at,
+            )
+            _ensure_document_invariants(existing=existing_document, incoming=prospective)
         version = document_store.put(
             document_key=document_key,
             file_name=file_name,
@@ -405,11 +423,9 @@ def _persist_accepted_bundle(
             source_channel=source_channel,
             created_at=received_at,
         )
-        existing_document = core_repository.get_document(document_id)
         if existing_document is None:
             core_repository.create_document(document)
         else:
-            _ensure_document_invariants(existing=existing_document, incoming=document)
             core_repository.update_document(document)
         version_records.append(version)
 
