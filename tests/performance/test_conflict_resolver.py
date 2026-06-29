@@ -211,3 +211,17 @@ def _month_end_from_index(index: int) -> date:
     if month in {4, 6, 9, 11}:
         return date(year, month, 30)
     return date(year, month, 31)
+
+
+def test_resolve_source_conflicts_rejects_non_finite_value() -> None:
+    """A non-finite source value must fail closed, not silently report conflict_count=0 (#695)."""
+    xlsx = PerformanceSeries(
+        "monthly",
+        (PerformancePoint(as_of=date(2025, 1, 31), value=float("nan")),),
+    )
+    other = PerformanceSeries(
+        "monthly",
+        (PerformancePoint(as_of=date(2025, 1, 31), value=0.10),),
+    )
+    with pytest.raises(ValueError, match="value must be finite"):
+        resolve_source_conflicts(xlsx_series=xlsx, other_series=other)

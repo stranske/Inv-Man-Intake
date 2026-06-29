@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -76,12 +77,25 @@ def load_threshold_config(path: str | Path) -> ThresholdConfig:
         raise ValueError(f"missing threshold config keys: {', '.join(missing)}")
 
     return ThresholdConfig(
-        field_auto_accept_min=float(values["field_auto_accept_min"]),
-        key_field_confidence_min=float(values["key_field_confidence_min"]),
-        document_key_field_coverage_min=float(values["document_key_field_coverage_min"]),
-        mandatory_field_min=float(values["mandatory_field_min"]),
+        field_auto_accept_min=_threshold_value("field_auto_accept_min", values),
+        key_field_confidence_min=_threshold_value("key_field_confidence_min", values),
+        document_key_field_coverage_min=_threshold_value("document_key_field_coverage_min", values),
+        mandatory_field_min=_threshold_value("mandatory_field_min", values),
         mandatory_fields=tuple(mandatory_fields),
     )
+
+
+def _threshold_value(name: str, values: dict[str, str]) -> float:
+    """Parse a threshold float and fail closed if it is not finite and within [0, 1].
+
+    A policy gate must reject malformed config deterministically rather than silently change
+    routing (a negative coverage floor auto-passes every document; NaN flips comparisons). See #695.
+    """
+
+    value = float(values[name])
+    if not math.isfinite(value) or not (0.0 <= value <= 1.0):
+        raise ValueError(f"threshold {name} must be a finite value in [0, 1]; got {values[name]!r}")
+    return value
 
 
 def evaluate_thresholds(

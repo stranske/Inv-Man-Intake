@@ -422,3 +422,18 @@ def test_to_canonical_dict_rejects_negative_counts() -> None:
         metrics.to_canonical_dict()
 
     assert "observation_count cannot be negative" in str(exc.value)
+
+
+def test_compute_metrics_rejects_non_finite_value() -> None:
+    """A NaN/inf monthly return must fail closed, not silently produce nan metrics (#695)."""
+    payload = PerformancePayload(
+        monthly=PerformanceSeries(
+            "monthly",
+            (
+                PerformancePoint(as_of=date(2025, 1, 31), value=0.02),
+                PerformancePoint(as_of=date(2025, 2, 28), value=float("nan")),
+            ),
+        )
+    )
+    with pytest.raises(ValueError, match="value must be finite"):
+        compute_metrics(payload)
