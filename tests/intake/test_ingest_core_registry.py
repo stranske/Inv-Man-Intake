@@ -411,3 +411,55 @@ def _write_bundle(path: Path, *, package_id: str, received_at: str) -> None:
         ),
         encoding="utf-8",
     )
+
+
+def test_rejected_reingest_leaves_document_store_unchanged(tmp_path: Path) -> None:
+    """A rejected re-ingest (different content, same document_id) must not leave an orphan version
+    in the document store: provenance is validated before the store write (#697)."""
+    repository, store = _registry()
+
+    def _bundle(package_id: str, file_name: str, received_at: str) -> dict[str, object]:
+        return {
+            "package_id": package_id,
+            "metadata": {
+                "firm_id": "firm_atomic",
+                "fund_id": "fund_atomic",
+                "firm_name": "Atomic Firm",
+                "fund_name": "Atomic Fund",
+                "received_at": received_at,
+                "source_channel": "email",
+            },
+            "files": [
+                {
+                    "file_name": file_name,
+                    "role": "investment_deck",
+                    "source_ref": f"email:{package_id}",
+                    "document_id": "atomic_doc_id",
+                }
+            ],
+        }
+
+    first = tmp_path / "first.json"
+    second = tmp_path / "second.json"
+    first.write_text(
+        json.dumps(_bundle("pkg_atomic_a", "deck.pdf", "2026-03-01T09:00:00Z")), encoding="utf-8"
+    )
+    second.write_text(
+        json.dumps(_bundle("pkg_atomic_b", "deck-changed.pdf", "2026-03-02T09:00:00Z")),
+        encoding="utf-8",
+    )
+
+    first_result = register_intake_bundle_file(
+        first, IngestionService(), core_repository=repository, document_store=store
+    )
+    assert first_result.accepted is True
+    document_key = "fund_atomic/atomic_doc_id"
+    assert len(store.list_versions(document_key)) == 1
+
+    with pytest.raises(ValueError, match="document_id='atomic_doc_id' collision"):
+        register_intake_bundle_file(
+            second, IngestionService(), core_repository=repository, document_store=store
+        )
+
+    # No orphan version may be left by the rejected re-ingest.
+    assert len(store.list_versions(document_key)) == 1
