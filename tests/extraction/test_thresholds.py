@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from inv_man_intake.extraction.confidence import (
+    ThresholdConfig,
     attach_threshold_summary,
     evaluate_thresholds,
     load_threshold_config,
@@ -258,3 +259,31 @@ def test_evaluate_thresholds_empty_key_fields_do_not_force_escalation() -> None:
     assert decision.auto_pass_document is True
     assert decision.escalate is False
     assert decision.escalation_reason is None
+
+
+def test_evaluate_thresholds_duplicate_field_keys_are_order_independent() -> None:
+    """Duplicate keys must not let field order flip the decision (#696): highest confidence wins
+    deterministically and the duplicate is surfaced as an escalation reason."""
+    config = ThresholdConfig(
+        field_auto_accept_min=0.85,
+        key_field_confidence_min=0.75,
+        document_key_field_coverage_min=0.80,
+        mandatory_field_min=0.60,
+        mandatory_fields=(),
+    )
+    key_fields = ("terms.management_fee",)
+
+    forward = evaluate_thresholds(
+        result=_result(("terms.management_fee", 0.95), ("terms.management_fee", 0.10)),
+        key_fields=key_fields,
+        config=config,
+    )
+    reverse = evaluate_thresholds(
+        result=_result(("terms.management_fee", 0.10), ("terms.management_fee", 0.95)),
+        key_fields=key_fields,
+        config=config,
+    )
+
+    assert forward == reverse
+    assert forward.escalate is True
+    assert "duplicate_field_key:terms.management_fee" in (forward.escalation_reason or "")
