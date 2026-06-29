@@ -55,18 +55,24 @@ def test_design_system_stylesheets_present() -> None:
 def test_design_system_stylesheet_gate_fails_when_link_removed() -> None:
     index_html = INDEX_HTML.read_text(encoding="utf-8")
 
-    assert _has_design_system_stylesheets(
-        index_html.replace(
-            '<link rel="stylesheet" href="../design-system/tokens.css" />',
-            "",
+    assert (
+        _has_design_system_stylesheets(
+            index_html.replace(
+                '<link rel="stylesheet" href="../design-system/tokens.css" />',
+                "",
+            )
         )
-    ) is False
-    assert _has_design_system_stylesheets(
-        index_html.replace(
-            '<link rel="stylesheet" href="../design-system/components.css" />',
-            "",
+        is False
+    )
+    assert (
+        _has_design_system_stylesheets(
+            index_html.replace(
+                '<link rel="stylesheet" href="../design-system/components.css" />',
+                "",
+            )
         )
-    ) is False
+        is False
+    )
 
 
 def test_vendored_pyodide_runtime_files_exist_and_are_non_empty() -> None:

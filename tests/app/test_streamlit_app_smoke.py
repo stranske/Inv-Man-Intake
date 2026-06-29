@@ -299,6 +299,5 @@ def test_stlite_mount_bundles_package_and_fixture_files() -> None:
     }
     assert '<script src="./vendor/stlite@0.75.0/stlite.js"></script>' in content
     assert (
-        'pyodideUrl: new URL("./vendor/pyodide@0.26.2/pyodide.js", '
-        "window.location.href).href"
+        'pyodideUrl: new URL("./vendor/pyodide@0.26.2/pyodide.js", ' "window.location.href).href"
     ) in content
