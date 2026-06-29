@@ -106,7 +106,20 @@ def evaluate_thresholds(
 ) -> ThresholdDecision:
     """Apply threshold policy to field/document extraction confidence."""
 
-    field_by_key = {field.key: field for field in result.fields}
+    # Duplicate keys are collapsed deterministically (highest confidence wins) instead of the
+    # previous silent last-wins, which let provider/field order invert the decision. Duplicates
+    # are surfaced as an escalation reason rather than hidden. See #696.
+    field_by_key: dict[str, ExtractedField] = {}
+    duplicate_keys: list[str] = []
+    for field in result.fields:
+        existing = field_by_key.get(field.key)
+        if existing is None:
+            field_by_key[field.key] = field
+            continue
+        if field.key not in duplicate_keys:
+            duplicate_keys.append(field.key)
+        if field.confidence > existing.confidence:
+            field_by_key[field.key] = field
 
     auto_accept_fields = tuple(
         field.key for field in result.fields if field.confidence >= config.field_auto_accept_min
@@ -129,13 +142,15 @@ def evaluate_thresholds(
         if candidate.confidence < config.mandatory_field_min:
             mandatory_failures.append(f"confidence_below_threshold:{mandatory_field}")
 
-    if mandatory_failures:
+    duplicate_reasons = [f"duplicate_field_key:{key}" for key in sorted(duplicate_keys)]
+
+    if mandatory_failures or duplicate_reasons:
         return ThresholdDecision(
             auto_accept_fields=auto_accept_fields,
             key_field_coverage_ratio=key_field_coverage_ratio,
             auto_pass_document=False,
             escalate=True,
-            escalation_reason=";".join(mandatory_failures),
+            escalation_reason=";".join(mandatory_failures + duplicate_reasons),
         )
 
     escalate = not auto_pass_document
