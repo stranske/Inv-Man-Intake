@@ -69,6 +69,7 @@ class _StreamlitRecorder:
 @dataclass(frozen=True)
 class _FakeScore:
     final_score: float
+    red_flag_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -78,12 +79,19 @@ class _FakeQueueAssignment:
 
 
 @dataclass(frozen=True)
+class _FakeThresholdDecision:
+    escalate: bool
+    escalation_reason: str | None
+
+
+@dataclass(frozen=True)
 class _FakeArtifacts:
     sink: object
     trace_context: object
     formatted_explainability: dict[str, object]
     score: _FakeScore
     queue_assignment: _FakeQueueAssignment
+    threshold_decision: object = _FakeThresholdDecision(escalate=False, escalation_reason=None)
 
 
 @dataclass(frozen=True)
@@ -178,6 +186,9 @@ def test_analyst_queue_renders_readable_item_and_actions(
             formatted_explainability={"components": [{"component": "risk_adjusted_returns"}]},
             score=_FakeScore(final_score=0.4321),
             queue_assignment=_FakeQueueAssignment(owner_role="analyst", item_id=item_id),
+            threshold_decision=_FakeThresholdDecision(
+                escalate=True, escalation_reason="confidence_below_threshold:terms.management_fee"
+            ),
         )
 
     monkeypatch.setattr("app.streamlit_app.run_v1_smoke_pipeline", _fake_pipeline)
@@ -193,10 +204,7 @@ def test_analyst_queue_renders_readable_item_and_actions(
             "Owner": "Analyst",
             "Package": "pkg_pdf_mixed_001",
             "Issue": "Performance Conflict requires validation review",
-            "Reason": (
-                "The scoring pipeline routed this package for analyst review because "
-                "performance conflict evidence needs confirmation."
-            ),
+            "Reason": "Pipeline decision: confidence_below_threshold:terms.management_fee",
             "Affected evidence": "Package pkg_pdf_mixed_001; evidence marker corr_4d03914dd557",
             "Suggested resolution": (
                 "Open the package evidence, confirm the conflict, then accept the score, "

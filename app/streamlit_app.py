@@ -97,6 +97,7 @@ class DemoResult:
     item_id: str
     sink_type: str
     trace_tags: dict[str, str]
+    decision_reason: str
 
 
 @dataclass(frozen=True)
@@ -159,6 +160,17 @@ def run_demo_fixture(fixture_name: str) -> DemoResult:
     assert "langsmith_enabled" not in trace_tags
     assert "langsmith_project" not in trace_tags
     components = cast(list[dict[str, object]], artifacts.formatted_explainability["components"])
+    decision = artifacts.threshold_decision
+    escalation_reason = (
+        getattr(decision, "escalation_reason", None)
+        if getattr(decision, "escalate", False)
+        else None
+    )
+    decision_reason = (
+        escalation_reason
+        or artifacts.score.red_flag_reason
+        or "auto-pass: no escalation or red flags"
+    )
     return DemoResult(
         fixture_name=fixture_name,
         package_id=package["package_id"],
@@ -168,6 +180,7 @@ def run_demo_fixture(fixture_name: str) -> DemoResult:
         item_id=str(artifacts.queue_assignment.item_id),
         sink_type=type(artifacts.sink).__name__,
         trace_tags=trace_tags,
+        decision_reason=str(decision_reason),
     )
 
 
@@ -211,6 +224,7 @@ def _browser_safe_demo_fixture(fixture_name: str) -> DemoResult:
         item_id=f"{package['package_id']}:validation:browser-demo",
         sink_type=InMemoryTraceSink.__name__,
         trace_tags={"stage": "browser-demo", "sqlite_fallback": "true"},
+        decision_reason=score.red_flag_reason or "auto-pass: no red flags (synthetic browser demo)",
     )
 
 
@@ -230,10 +244,9 @@ def build_analyst_queue_card(
         owner=result.owner_role.title(),
         package=package_id,
         headline=f"{conflict_type} requires {validation_rule.lower()} review",
-        reason=(
-            "The scoring pipeline routed this package for analyst review because "
-            f"{conflict_type.lower()} evidence needs confirmation."
-        ),
+        # Surface the REAL pipeline decision (threshold escalation / red-flag reason), not a
+        # template derived from the item_id tokens (#698).
+        reason=f"Pipeline decision: {result.decision_reason}",
         affected_evidence=f"Package {package_id}; evidence marker {correlation}",
         suggested_resolution=(
             "Open the package evidence, confirm the conflict, then accept the score, "

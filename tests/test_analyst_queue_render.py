@@ -22,7 +22,10 @@ class StreamlitRecorder:
         self.tables.append(data)
 
 
-def _demo_result(item_id: str) -> DemoResult:
+def _demo_result(
+    item_id: str,
+    decision_reason: str = "confidence_below_threshold:terms.management_fee",
+) -> DemoResult:
     return DemoResult(
         fixture_name="pdf_primary_mixed_bundle.json",
         package_id="pkg_pdf_mixed_001",
@@ -32,6 +35,7 @@ def _demo_result(item_id: str) -> DemoResult:
         item_id=item_id,
         sink_type="InMemoryTraceSink",
         trace_tags={},
+        decision_reason=decision_reason,
     )
 
 
@@ -59,10 +63,7 @@ def test_analyst_queue_render_decodes_item_id_and_records_session_action() -> No
                 "Owner": "Analyst",
                 "Package": "pkg_pdf_mixed_001",
                 "Issue": "Performance Conflict requires validation review",
-                "Reason": (
-                    "The scoring pipeline routed this package for analyst review because "
-                    "performance conflict evidence needs confirmation."
-                ),
+                "Reason": "Pipeline decision: confidence_below_threshold:terms.management_fee",
                 "Affected evidence": "Package pkg_pdf_mixed_001; evidence marker corr_4d03914dd557",
                 "Suggested resolution": (
                     "Open the package evidence, confirm the conflict, then accept the score, "
@@ -73,3 +74,18 @@ def test_analyst_queue_render_decodes_item_id_and_records_session_action() -> No
         ]
     ]
     assert item_id not in str(recorder.tables)
+
+
+def test_analyst_queue_card_reason_reflects_pipeline_decision() -> None:
+    """The card reason must be derived from the real pipeline decision (#698), not a fixed template
+    built from the item_id tokens."""
+    item_id = "pkg_pdf_mixed_001:validation:performance_conflict:corr_4d03914dd557"
+    recorder = StreamlitRecorder()
+
+    card = render_analyst_queue(
+        recorder, _demo_result(item_id, decision_reason="missing_mandatory_field:operations.aum")
+    )
+
+    assert card.reason == "Pipeline decision: missing_mandatory_field:operations.aum"
+    # Not the old token-derived boilerplate.
+    assert "evidence needs confirmation" not in card.reason
