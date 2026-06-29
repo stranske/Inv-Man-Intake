@@ -16,6 +16,7 @@ from inv_man_intake.scoring.weights import (
     load_weight_registry,
     normalize_asset_class,
     weights_by_asset_class_for,
+    weights_for_registry,
 )
 
 EXPECTED_V1_LAUNCH_ASSET_CLASSES = (
@@ -265,3 +266,46 @@ def test_load_weight_registry_rejects_non_launch_asset_class_file(tmp_path: Path
 
     with pytest.raises(ValueError, match="unsupported launch asset_class 'real_assets'"):
         load_weight_registry(config_dir)
+
+
+_DISTINCT_COMPONENTS = (
+    ScoreComponent("performance_consistency", 0.9),
+    ScoreComponent("risk_adjusted_returns", 0.1),
+    ScoreComponent("operational_quality", 0.5),
+    ScoreComponent("transparency", 0.5),
+    ScoreComponent("team_experience", 0.5),
+)
+
+
+def test_compute_score_works_for_all_launch_classes() -> None:
+    """Every launch asset class must be scorable through the registry weights — not just credit.
+    Regression for #693, where a single-class weight map made non-credit submissions raise."""
+    registry_weights = weights_for_registry()
+    for asset_class in LAUNCH_ASSET_CLASSES:
+        submission = ScoreSubmission(
+            manager_id="mgr_all",
+            asset_class=asset_class,
+            components=_DISTINCT_COMPONENTS,
+        )
+        result = compute_score(submission, weights_by_asset_class=registry_weights)
+        assert 0.0 <= result.base_score <= 1.0
+
+
+def test_each_class_uses_its_own_toml_weights() -> None:
+    """A non-credit class scores by its OWN weight table, distinct from credit. Editing
+    config/scoring_weights/macro.toml must move the macro score (deliberate-break target)."""
+    registry_weights = weights_for_registry()
+
+    def base_for(asset_class: str) -> float:
+        submission = ScoreSubmission(
+            manager_id="mgr",
+            asset_class=asset_class,
+            components=_DISTINCT_COMPONENTS,
+        )
+        return compute_score(submission, weights_by_asset_class=registry_weights).base_score
+
+    # macro.toml: 0.28/0.27/0.15/0.10/0.20 → 0.9*.28+0.1*.27+0.5*(.15+.10+.20)=0.504
+    assert base_for("macro") == pytest.approx(0.504)
+    # credit_long_short.toml: 0.25/0.30/0.20/0.15/0.10 → 0.480 (distinct from macro)
+    assert base_for("credit_long_short") == pytest.approx(0.480)
+    assert base_for("macro") != base_for("credit_long_short")

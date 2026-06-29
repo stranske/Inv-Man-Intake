@@ -20,7 +20,7 @@ from inv_man_intake.observability import InMemoryTraceSink  # noqa: E402
 from inv_man_intake.readiness.fixture_batches import DEFAULT_BATCH_PACKAGES  # noqa: E402
 from inv_man_intake.scoring.contracts import ScoreComponent, ScoreSubmission  # noqa: E402
 from inv_man_intake.scoring.engine import compute_score  # noqa: E402
-from inv_man_intake.scoring.weights import weights_by_asset_class_for  # noqa: E402
+from inv_man_intake.scoring.weights import weights_for_registry  # noqa: E402
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "intake"
 FIXTURE_OPTIONS = tuple(
@@ -197,7 +197,7 @@ def _browser_safe_demo_fixture(fixture_name: str) -> DemoResult:
             asset_class="credit",
             components=components,
         ),
-        weights_by_asset_class=weights_by_asset_class_for("credit"),
+        weights_by_asset_class=weights_for_registry(),
     )
     return DemoResult(
         fixture_name=fixture_name,

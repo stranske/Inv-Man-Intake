@@ -58,7 +58,7 @@ from inv_man_intake.scoring.explainability import (
     build_explainability_payload,
     format_explainability_payload,
 )
-from inv_man_intake.scoring.weights import get_weight_set, weights_by_asset_class_for
+from inv_man_intake.scoring.weights import get_weight_set, weights_for_registry
 from inv_man_intake.storage.document_store import InMemoryDocumentStore
 
 # Single source of truth for the default extraction threshold policy. The production CLI
@@ -306,7 +306,7 @@ def _run_pipeline_core(
                 asset_class="credit",
                 components=components,
             ),
-            weights_by_asset_class=weights_by_asset_class_for("credit"),
+            weights_by_asset_class=weights_for_registry(),
         )
         explainability = build_explainability_payload(
             components=_explainability_inputs(score.asset_class, components),
