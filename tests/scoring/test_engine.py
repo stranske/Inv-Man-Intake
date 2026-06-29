@@ -141,3 +141,49 @@ def test_compute_score_reports_missing_canonical_weight_set_for_alias() -> None:
         ),
     ):
         compute_score(_submission("equity"), weights_by_asset_class={"macro": {}})
+
+
+def _valid_weights() -> dict[str, float]:
+    return {
+        "performance_consistency": 0.30,
+        "risk_adjusted_returns": 0.25,
+        "operational_quality": 0.15,
+        "transparency": 0.15,
+        "team_experience": 0.15,
+    }
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_compute_score_rejects_non_finite_component(bad: float) -> None:
+    submission = ScoreSubmission(
+        manager_id="mgr_nan",
+        asset_class="equity_market_neutral",
+        components=(
+            ScoreComponent("performance_consistency", bad),
+            ScoreComponent("risk_adjusted_returns", 0.60),
+            ScoreComponent("operational_quality", 0.90),
+            ScoreComponent("transparency", 0.70),
+            ScoreComponent("team_experience", 0.50),
+        ),
+    )
+    with pytest.raises(ValueError, match="component performance_consistency must be finite"):
+        compute_score(submission)
+
+
+def test_compute_score_rejects_non_finite_weight() -> None:
+    weights = _valid_weights()
+    weights["risk_adjusted_returns"] = float("nan")
+    with pytest.raises(ValueError, match="weight risk_adjusted_returns must be finite"):
+        compute_score(
+            _submission("equity_market_neutral"),
+            weights_by_asset_class={"equity_market_neutral": weights},
+        )
+
+
+def test_compute_score_rejects_non_finite_cap() -> None:
+    class NanCapHook:
+        def apply(self, submission: ScoreSubmission, *, base_score: float) -> RedFlagDecision:
+            return RedFlagDecision(capped_score=float("nan"), reason="bad-cap")
+
+    with pytest.raises(ValueError, match="red flag capped_score must be finite"):
+        compute_score(_submission("equity_market_neutral"), red_flag_hook=NanCapHook())
