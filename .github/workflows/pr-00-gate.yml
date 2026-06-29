@@ -71,7 +71,10 @@ jobs:
     with:
       python-versions: '["3.12", "3.13"]'
       coverage-min: "80"
-      format_check: false  # Using ruff for formatting
+      # Run the Black format check on PRs too. ci.yml (push-to-main) already enforces
+      # Black (format_check defaults true), so leaving it off here let unformatted code
+      # merge clean and redden main (see #691). ruff check is lint-only, not a formatter.
+      format_check: true
       working-directory: "."
       artifact-prefix: "gate-"
       # Enable soft coverage gate for trend tracking and hotspot reporting
