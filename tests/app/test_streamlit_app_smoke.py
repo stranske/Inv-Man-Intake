@@ -237,8 +237,8 @@ def test_app_browser_safe_score_uses_registry_weights(monkeypatch: pytest.Monkey
 
     monkeypatch.setattr("app.streamlit_app.run_v1_smoke_pipeline", _sqlite_missing_pipeline)
     monkeypatch.setattr(
-        "app.streamlit_app.weights_by_asset_class_for",
-        lambda asset_class: {
+        "app.streamlit_app.weights_for_registry",
+        lambda: {
             "credit_long_short": {
                 "performance_consistency": 1.00,
                 "risk_adjusted_returns": 0.00,

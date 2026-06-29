@@ -117,6 +117,21 @@ def weights_by_asset_class_for(
     return {weight_set.asset_class: dict(weight_set.weights)}
 
 
+def weights_for_registry(config_dir: Path | None = None) -> dict[str, dict[str, float]]:
+    """Return ALL launch asset classes' weights in the shape expected by ``compute_score``.
+
+    Production callers must pass this (not the single-class ``weights_by_asset_class_for``) so
+    ``compute_score`` can score any asset class. A single-class map made every non-credit
+    submission raise and left 7 of 8 weight TOMLs inert in production (see #693).
+    """
+
+    if config_dir is None:
+        registry = _load_weight_registry_cached(str(DEFAULT_CONFIG_DIR.resolve()))
+    else:
+        registry = load_weight_registry(config_dir)
+    return {asset_class: dict(weight_set.weights) for asset_class, weight_set in registry.items()}
+
+
 def normalize_asset_class(asset_class: str) -> str:
     """Return the canonical v1 launch asset-class key for a label or alias."""
 
