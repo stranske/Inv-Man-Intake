@@ -408,3 +408,18 @@ def _assert_conflict_escalation_has_evidence(
     if not escalate:
         return
     assert audit_entries or queue_item_id, "conflict case must emit queue or audit evidence"
+
+
+def test_default_threshold_fallback_matches_bundled_yaml() -> None:
+    """The smoke/demo fallback (threshold_config=None) must load the bundled YAML policy,
+    not a hand-copied subset, so it does not drift from the production CLI (#694)."""
+    from inv_man_intake.extraction.confidence import load_threshold_config
+    from inv_man_intake.v1_smoke import DEFAULT_THRESHOLD_CONFIG_PATH
+
+    assert DEFAULT_THRESHOLD_CONFIG_PATH.exists()
+    fallback = load_threshold_config(DEFAULT_THRESHOLD_CONFIG_PATH)
+    assert fallback.mandatory_fields == (
+        "terms.management_fee",
+        "performance.net_return_1y",
+        "operations.aum",
+    )

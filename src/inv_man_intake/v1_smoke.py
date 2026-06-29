@@ -17,6 +17,7 @@ from inv_man_intake.extraction.confidence import (
     ThresholdConfig,
     attach_threshold_summary,
     evaluate_thresholds,
+    load_threshold_config,
 )
 from inv_man_intake.extraction.orchestrator import ExtractionOrchestrator
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractionProvider
@@ -59,6 +60,12 @@ from inv_man_intake.scoring.explainability import (
 )
 from inv_man_intake.scoring.weights import get_weight_set, weights_by_asset_class_for
 from inv_man_intake.storage.document_store import InMemoryDocumentStore
+
+# Single source of truth for the default extraction threshold policy. The production CLI
+# (run.py) loads this same file; the smoke/demo fallback must not drift from it (see #694).
+DEFAULT_THRESHOLD_CONFIG_PATH = (
+    Path(__file__).resolve().parents[2] / "config" / "extraction_thresholds.yaml"
+)
 
 
 class _FanoutTraceSink:
@@ -220,12 +227,8 @@ def _run_pipeline_core(
         context=extraction_context,
         metadata={"package_id": record.package_id},
     ):
-        effective_threshold_config = threshold_config or ThresholdConfig(
-            field_auto_accept_min=0.85,
-            key_field_confidence_min=0.75,
-            document_key_field_coverage_min=0.80,
-            mandatory_field_min=0.60,
-            mandatory_fields=("operations.aum",),
+        effective_threshold_config = threshold_config or load_threshold_config(
+            DEFAULT_THRESHOLD_CONFIG_PATH
         )
         threshold_decision = evaluate_thresholds(
             result=extraction_result,
