@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Protocol
 
 from inv_man_intake.scoring.contracts import (
@@ -141,6 +142,8 @@ def compute_score(
             red_flag_applied = True
             red_flag_reason = decision.reason or "blocked"
         elif decision.capped_score is not None:
+            if not math.isfinite(decision.capped_score):
+                raise ValueError("red flag capped_score must be finite")
             if decision.capped_score < 0 or decision.capped_score > 1:
                 raise ValueError("red flag capped_score must be between 0 and 1")
             final_score = min(base_score, round(decision.capped_score, 6))
@@ -165,6 +168,8 @@ def _normalize_components(submission: ScoreSubmission) -> dict[str, float]:
             raise ValueError("component name must be non-empty")
         if component.name in values:
             raise ValueError(f"duplicate component: {component.name}")
+        if not math.isfinite(component.value):
+            raise ValueError(f"component {component.name} must be finite")
         if component.value < 0 or component.value > 1:
             raise ValueError(f"component {component.name} must be between 0 and 1")
         values[component.name] = component.value
@@ -191,6 +196,8 @@ def _validate_weight_set(weights: dict[str, float]) -> None:
     total = 0.0
     for name in _COMPONENT_ORDER:
         value = weights[name]
+        if not math.isfinite(value):
+            raise ValueError(f"weight {name} must be finite")
         if value < 0 or value > 1:
             raise ValueError(f"weight {name} must be between 0 and 1")
         total += value
