@@ -1,29 +1,23 @@
 # PR #74 Unresolved Review Threads
 
-Source issue: #142  
+Source issue: #142
 Source PR: #74
 
 ## Status
 
-- Blocked in this runner: live GitHub API/`gh` access is unavailable.
-- Added local extraction tooling in `scripts/list_unresolved_review_threads.py` with tests in
-  `tests/test_list_unresolved_review_threads.py`.
+- Blocked in this runner: live GitHub API/`gh` access was unavailable when this note was written.
+- The unresolved-thread listing tool is `scripts/list_unresolved_pr_threads.sh`, covered by
+  `tests/test_list_unresolved_pr_threads.py`. (An earlier draft of this doc referenced a
+  `scripts/list_unresolved_review_threads.py` that was never committed; the shell script is the
+  real tool — see #698.)
 
 ## Identification Command
 
-Run this from an environment with valid `GH_TOKEN`:
+Run this from an environment with valid `GH_TOKEN`/`gh` auth:
 
 ```bash
-python scripts/list_unresolved_review_threads.py --owner stranske --repo Inv-Man-Intake --pr 74 --format checklist
+REPO=stranske/Inv-Man-Intake ./scripts/list_unresolved_pr_threads.sh 74
 ```
 
-The checklist output documents each unresolved thread with:
-- Thread URL
-- File/line location
-- Quoted comment text (blockquoted)
-
-For offline verification with a saved GraphQL payload:
-
-```bash
-python scripts/list_unresolved_review_threads.py --pr 74 --input-json /path/to/pr74-review-threads.json --format checklist
-```
+The output is a tab-separated table with one row per unresolved thread:
+`thread_id`, `path`, `line`, `author`, `comment_url`.

@@ -40,6 +40,7 @@ autofix_report_enriched.json
 Issues.txt
 pr73-thread-review.md
 coverage.json
+coverage.xml
 pytest-junit.xml
 
 # Local readiness reports
