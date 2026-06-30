@@ -105,7 +105,7 @@ def load_model_registry() -> list[ModelRegistryEntry]:
         quality = {
             str(tier).upper(): float(score)
             for tier, score in quality_payload.items()
-            if isinstance(score, int | float)
+            if isinstance(score, (int, float)) and not isinstance(score, bool)
         }
         entries.append(
             ModelRegistryEntry(
@@ -116,6 +116,21 @@ def load_model_registry() -> list[ModelRegistryEntry]:
             )
         )
     return entries
+
+
+def _model_registry_format_valid() -> bool:
+    config_path = os.environ.get(ENV_MODEL_REGISTRY_CONFIG)
+    path = Path(config_path) if config_path else DEFAULT_MODEL_REGISTRY_CONFIG_PATH
+    if not path.is_file():
+        return True
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    if not isinstance(payload, dict):
+        return False
+    raw_models = payload.get("models", [])
+    return isinstance(raw_models, list)
 
 
 def registry_entry_for(
@@ -228,13 +243,30 @@ def load_slot_config(*, github_default_model: str) -> list[SlotDefinition]:
         return fallback_slots
 
     registry = load_model_registry()
+    slot_entries = _slot_entries(payload, path)
+    if not _model_registry_format_valid() and any(
+        str(entry.get("provider", "")).strip()
+        and not str(entry.get("model", "")).strip()
+        and str(entry.get("quality_tier") or entry.get("tier") or "").strip()
+        for entry in slot_entries
+    ):
+        return fallback_slots
     slots: list[SlotDefinition] = []
-    for idx, entry in enumerate(_slot_entries(payload, path), start=1):
+    fallback_by_position = dict(enumerate(fallback_slots, start=1))
+    fallback_by_provider = {slot.provider: slot for slot in fallback_slots}
+    for idx, entry in enumerate(slot_entries, start=1):
         provider = normalize_provider(str(entry.get("provider", "")))
         model = str(entry.get("model", "")).strip()
         tier = str(entry.get("quality_tier") or entry.get("tier") or "").strip()
         if provider and not model and tier:
             model = select_model_for_tier(provider=provider, tier=tier, registry=registry) or ""
+        if provider and not model:
+            fallback_slot = fallback_by_position.get(idx)
+            if fallback_slot and fallback_slot.provider != provider:
+                fallback_slot = fallback_by_provider.get(provider)
+            fallback_slot = fallback_slot or fallback_by_provider.get(provider)
+            if fallback_slot and fallback_slot.provider == provider:
+                model = fallback_slot.model
         if not provider or not model:
             continue
         if is_model_blocked(provider, model, registry=registry):
