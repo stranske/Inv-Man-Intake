@@ -9,9 +9,8 @@ from inv_man_intake.extraction.confidence import ThresholdConfig
 from inv_man_intake.readiness.extraction_calibration import build_calibration_report
 
 
-def test_calibration_metrics_on_seeded_corrections(tmp_path: Path) -> None:
-    threshold_path = tmp_path / "extraction_thresholds.yaml"
-    threshold_path.write_text("field_auto_accept_min: 0.85\n", encoding="utf-8")
+def test_calibration_metrics_on_seeded_corrections() -> None:
+    threshold_path = Path("config/extraction_thresholds.yaml")
     before_thresholds = threshold_path.read_text(encoding="utf-8")
 
     report = build_calibration_report(
@@ -19,6 +18,7 @@ def test_calibration_metrics_on_seeded_corrections(tmp_path: Path) -> None:
             _field("field-aum", "operations.aum", "100000000", 0.9),
             _field("field-fee", "terms.management_fee", "1.00%", 0.9),
             _field("field-strategy", "strategy.asset_class", "Private Equity", 0.9),
+            _field("field-vintage", "strategy.vintage_year", "2025", 0.72),
         ),
         corrections=(
             CorrectionRecord(
@@ -46,7 +46,13 @@ def test_calibration_metrics_on_seeded_corrections(tmp_path: Path) -> None:
                 corrected_at="2026-07-04T10:10:00Z",
             ),
         ),
-        expected_field_keys=("operations.aum", "terms.management_fee", "strategy.asset_class"),
+        expected_field_keys=(
+            "operations.aum",
+            "terms.management_fee",
+            "strategy.asset_class",
+            "strategy.vintage_year",
+            "risk.liquidity_terms",
+        ),
         threshold_config=ThresholdConfig(
             field_auto_accept_min=0.85,
             key_field_confidence_min=0.75,
@@ -57,17 +63,20 @@ def test_calibration_metrics_on_seeded_corrections(tmp_path: Path) -> None:
     )
 
     assert report["summary"] == {
-        "field_count": 3,
-        "expected_field_count": 3,
+        "field_count": 4,
+        "known_field_count": 3,
+        "unknown_field_count": 1,
+        "expected_field_count": 5,
         "true_positive_count": 2,
         "false_positive_count": 1,
-        "false_negative_count": 0,
+        "false_negative_count": 2,
         "precision": 0.6667,
-        "recall": 1.0,
+        "recall": 0.5,
         "auto_accept_precision": 0.6667,
-        "missing_expected_fields": [],
+        "missing_expected_fields": ["risk.liquidity_terms"],
     }
     assert report["field_metrics"]["terms.management_fee"]["precision"] == 0.0
+    assert "strategy.vintage_year" not in report["field_metrics"]
     assert report["confidence_buckets"] == [
         {
             "bucket": "0.85-1.00",

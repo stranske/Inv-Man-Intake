@@ -11,6 +11,7 @@ from inv_man_intake.data.provenance import CorrectionRecord, ExtractedFieldRecor
 from inv_man_intake.extraction.confidence import ThresholdConfig
 
 DEFAULT_CONFIDENCE_BUCKETS: tuple[float, ...] = (0.0, 0.6, 0.75, 0.85, 1.0)
+type CorrectnessSignal = bool | None
 
 
 @dataclass(frozen=True)
@@ -20,9 +21,9 @@ class FieldCalibrationObservation:
     field_id: str
     field_key: str
     confidence: float
-    observed_correct: bool
+    observed_correct: CorrectnessSignal
     original_value: str
-    latest_value: str
+    latest_value: str | None
 
 
 def build_calibration_report(
@@ -46,30 +47,39 @@ def build_calibration_report(
 
     _validate_buckets(confidence_buckets)
     observations = _observations(fields, corrections)
+    known_observations = tuple(
+        observation for observation in observations if observation.observed_correct is not None
+    )
     observed_by_key = {observation.field_key for observation in observations}
     expected_keys = set(expected_field_keys) or observed_by_key
     missing_expected = sorted(expected_keys.difference(observed_by_key))
 
-    true_positive_count = sum(observation.observed_correct for observation in observations)
-    false_positive_count = len(observations) - true_positive_count
-    false_negative_count = len(missing_expected)
+    true_positive_count = sum(
+        observation.observed_correct is True for observation in known_observations
+    )
+    false_positive_count = sum(
+        observation.observed_correct is False for observation in known_observations
+    )
+    false_negative_count = false_positive_count + len(missing_expected)
 
     precision = _ratio(true_positive_count, true_positive_count + false_positive_count)
     recall = _ratio(true_positive_count, true_positive_count + false_negative_count)
 
     auto_accept = [
         observation
-        for observation in observations
+        for observation in known_observations
         if observation.confidence >= threshold_config.field_auto_accept_min
     ]
     auto_accept_precision = _ratio(
-        sum(observation.observed_correct for observation in auto_accept),
+        sum(observation.observed_correct is True for observation in auto_accept),
         len(auto_accept),
     )
 
     return {
         "summary": {
             "field_count": len(observations),
+            "known_field_count": len(known_observations),
+            "unknown_field_count": len(observations) - len(known_observations),
             "expected_field_count": len(expected_keys),
             "true_positive_count": true_positive_count,
             "false_positive_count": false_positive_count,
@@ -79,8 +89,8 @@ def build_calibration_report(
             "auto_accept_precision": auto_accept_precision,
             "missing_expected_fields": missing_expected,
         },
-        "field_metrics": _field_metrics(observations),
-        "confidence_buckets": _confidence_bucket_metrics(observations, confidence_buckets),
+        "field_metrics": _field_metrics(known_observations),
+        "confidence_buckets": _confidence_bucket_metrics(known_observations, confidence_buckets),
         "threshold_suggestions": _threshold_suggestions(
             precision=precision,
             recall=recall,
@@ -100,13 +110,13 @@ def _observations(
         if not 0.0 <= field.confidence <= 1.0:
             raise ValueError(f"field {field.field_id} confidence must be within [0, 1]")
         correction = latest_correction.get(field.field_id)
-        latest_value = field.value if correction is None else correction.corrected_value
+        latest_value = None if correction is None else correction.corrected_value
         observations.append(
             FieldCalibrationObservation(
                 field_id=field.field_id,
                 field_key=field.field_key,
                 confidence=field.confidence,
-                observed_correct=latest_value == field.value,
+                observed_correct=None if latest_value is None else latest_value == field.value,
                 original_value=field.value,
                 latest_value=latest_value,
             )
@@ -138,9 +148,9 @@ def _field_metrics(
     return {
         field_key: {
             "count": len(items),
-            "precision": _ratio(sum(item.observed_correct for item in items), len(items)),
-            "correct_count": sum(item.observed_correct for item in items),
-            "corrected_count": sum(not item.observed_correct for item in items),
+            "precision": _ratio(sum(item.observed_correct is True for item in items), len(items)),
+            "correct_count": sum(item.observed_correct is True for item in items),
+            "corrected_count": sum(item.observed_correct is False for item in items),
             "mean_confidence": _rounded(sum(item.confidence for item in items) / len(items)),
         }
         for field_key, items in sorted(by_key.items())
@@ -160,7 +170,7 @@ def _confidence_bucket_metrics(
         ]
         if not items:
             continue
-        observed_accuracy = _ratio(sum(item.observed_correct for item in items), len(items))
+        observed_accuracy = _ratio(sum(item.observed_correct is True for item in items), len(items))
         mean_confidence = _rounded(sum(item.confidence for item in items) / len(items))
         bucketed.append(
             {
