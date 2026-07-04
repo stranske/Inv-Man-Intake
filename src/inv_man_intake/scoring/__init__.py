@@ -18,6 +18,12 @@ from inv_man_intake.scoring.explainability import (
     build_explainability_payload,
     format_explainability_payload,
 )
+from inv_man_intake.scoring.peer_group import (
+    CohortScore,
+    CohortStore,
+    InMemoryCohortStore,
+    percentile_rank,
+)
 from inv_man_intake.scoring.regression import (
     CalibrationStats,
     DriftAlert,
@@ -42,9 +48,12 @@ __all__ = [
     "ASSET_CLASS_ALIASES",
     "COMPONENT_NAMES",
     "CalibrationStats",
+    "CohortScore",
+    "CohortStore",
     "DriftAlert",
     "DriftReport",
     "ExplainabilityPayload",
+    "InMemoryCohortStore",
     "LAUNCH_ASSET_CLASSES",
     "RedFlagDecision",
     "RedFlagHook",
@@ -64,6 +73,7 @@ __all__ = [
     "get_weight_set",
     "load_weight_registry",
     "normalize_asset_class",
+    "percentile_rank",
     "rank_by_asset_class",
     "weights_by_asset_class_for",
 ]

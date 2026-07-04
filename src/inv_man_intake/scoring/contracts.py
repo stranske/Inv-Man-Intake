@@ -44,6 +44,8 @@ class ScoreResult:
     contributions: Mapping[str, float]
     red_flag_applied: bool
     red_flag_reason: str | None
+    peer_group_percentile: float | None = None
+    peer_group_size: int | None = None
 
 
 def freeze_mapping(values: dict[str, float]) -> Mapping[str, float]:

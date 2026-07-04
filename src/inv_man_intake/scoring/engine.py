@@ -11,6 +11,7 @@ from inv_man_intake.scoring.contracts import (
     ScoreSubmission,
     freeze_mapping,
 )
+from inv_man_intake.scoring.peer_group import CohortStore, percentile_rank_from_scores
 from inv_man_intake.scoring.weights import LAUNCH_ASSET_CLASSES, normalize_asset_class
 
 _COMPONENT_ORDER: tuple[str, ...] = (
@@ -97,6 +98,7 @@ def compute_score(
     *,
     weights_by_asset_class: dict[str, dict[str, float]] | None = None,
     red_flag_hook: RedFlagHook | None = None,
+    peer_group_store: CohortStore | None = None,
 ) -> ScoreResult:
     """Compute deterministic total score with optional red-flag overrides."""
 
@@ -150,6 +152,14 @@ def compute_score(
             red_flag_applied = final_score < base_score
             red_flag_reason = decision.reason if red_flag_applied else None
 
+    peer_group_percentile: float | None = None
+    peer_group_size: int | None = None
+    if peer_group_store is not None:
+        peer_scores = peer_group_store.scores_for_asset_class(canonical_asset_class)
+        if peer_scores:
+            peer_group_percentile = percentile_rank_from_scores(final_score, peer_scores)
+            peer_group_size = len(peer_scores)
+
     return ScoreResult(
         manager_id=submission.manager_id,
         asset_class=canonical_asset_class,
@@ -158,6 +168,8 @@ def compute_score(
         contributions=freeze_mapping(contributions),
         red_flag_applied=red_flag_applied,
         red_flag_reason=red_flag_reason,
+        peer_group_percentile=peer_group_percentile,
+        peer_group_size=peer_group_size,
     )
 
 
