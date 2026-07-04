@@ -72,6 +72,19 @@ def percentile_rank(score: float, asset_class: str, cohort: CohortStore) -> floa
     if not scores:
         raise ValueError(f"cohort is empty for asset class: {canonical_asset_class}")
 
+    return percentile_rank_from_scores(score, scores)
+
+
+def percentile_rank_from_scores(score: float, scores: tuple[float, ...]) -> float:
+    """Return midpoint empirical percentile rank for ``score`` against ``scores``."""
+
+    if not math.isfinite(score):
+        raise ValueError("score must be finite")
+    if score < 0.0 or score > 1.0:
+        raise ValueError("score must be between 0 and 1")
+    if not scores:
+        raise ValueError("cohort scores must be non-empty")
+
     less = sum(1 for value in scores if value < score and not math.isclose(value, score))
     equal = sum(1 for value in scores if math.isclose(value, score))
     percentile = ((less + (equal * 0.5)) / len(scores)) * 100.0

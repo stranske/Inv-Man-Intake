@@ -45,6 +45,11 @@ def test_percentile_rank_against_seeded_cohort() -> None:
     assert percentile == pytest.approx(50.0)
     assert repeated == percentile
 
+    cohort.add_score("macro", "macro_90", 0.90)
+    shifted_percentile = percentile_rank(0.60, "macro", cohort)
+
+    assert shifted_percentile != pytest.approx(percentile)
+
 
 def test_compute_score_exposes_peer_group_percentile_without_changing_final_score() -> None:
     result = compute_score(_flat_submission(), peer_group_store=_seeded_macro_cohort())
@@ -98,3 +103,9 @@ def test_peer_group_rejects_invalid_scores() -> None:
 
     with pytest.raises(ValueError, match="cohort is empty for asset class"):
         percentile_rank(0.50, "macro", InMemoryCohortStore())
+
+    with pytest.raises(ValueError, match="score must be between 0 and 1"):
+        percentile_rank(1.01, "macro", _seeded_macro_cohort())
+
+    with pytest.raises(ValueError, match="score must be finite"):
+        percentile_rank(float("nan"), "macro", _seeded_macro_cohort())

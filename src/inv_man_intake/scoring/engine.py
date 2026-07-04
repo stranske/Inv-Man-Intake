@@ -11,7 +11,7 @@ from inv_man_intake.scoring.contracts import (
     ScoreSubmission,
     freeze_mapping,
 )
-from inv_man_intake.scoring.peer_group import CohortStore, percentile_rank
+from inv_man_intake.scoring.peer_group import CohortStore, percentile_rank_from_scores
 from inv_man_intake.scoring.weights import LAUNCH_ASSET_CLASSES, normalize_asset_class
 
 _COMPONENT_ORDER: tuple[str, ...] = (
@@ -157,11 +157,7 @@ def compute_score(
     if peer_group_store is not None:
         peer_scores = peer_group_store.scores_for_asset_class(canonical_asset_class)
         if peer_scores:
-            peer_group_percentile = percentile_rank(
-                final_score,
-                canonical_asset_class,
-                peer_group_store,
-            )
+            peer_group_percentile = percentile_rank_from_scores(final_score, peer_scores)
             peer_group_size = len(peer_scores)
 
     return ScoreResult(
