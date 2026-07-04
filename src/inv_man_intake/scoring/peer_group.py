@@ -31,7 +31,7 @@ class InMemoryCohortStore:
     """Dependency-light cohort store keyed by canonical launch asset class."""
 
     def __init__(self, rows: Iterable[CohortScore] = ()) -> None:
-        self._scores_by_asset_class: dict[str, list[float]] = defaultdict(list)
+        self._scores_by_asset_class: dict[str, dict[str, float]] = defaultdict(dict)
         for row in rows:
             self.add_score(row.asset_class, row.manager_id, row.base_score)
 
@@ -46,13 +46,13 @@ class InMemoryCohortStore:
             raise ValueError("base_score must be between 0 and 1")
 
         canonical_asset_class = normalize_asset_class(asset_class)
-        self._scores_by_asset_class[canonical_asset_class].append(float(base_score))
+        self._scores_by_asset_class[canonical_asset_class][manager_id] = float(base_score)
 
     def scores_for_asset_class(self, asset_class: str) -> tuple[float, ...]:
         """Return cohort base scores for a canonical or alias asset class."""
 
         canonical_asset_class = normalize_asset_class(asset_class)
-        return tuple(self._scores_by_asset_class.get(canonical_asset_class, ()))
+        return tuple(self._scores_by_asset_class.get(canonical_asset_class, {}).values())
 
 
 def percentile_rank(score: float, asset_class: str, cohort: CohortStore) -> float:
@@ -72,7 +72,7 @@ def percentile_rank(score: float, asset_class: str, cohort: CohortStore) -> floa
     if not scores:
         raise ValueError(f"cohort is empty for asset class: {canonical_asset_class}")
 
-    less = sum(1 for value in scores if value < score)
-    equal = sum(1 for value in scores if value == score)
+    less = sum(1 for value in scores if value < score and not math.isclose(value, score))
+    equal = sum(1 for value in scores if math.isclose(value, score))
     percentile = ((less + (equal * 0.5)) / len(scores)) * 100.0
     return round(percentile, 6)

@@ -67,6 +67,31 @@ def test_percentile_rank_uses_midpoint_tie_rule() -> None:
     assert percentile_rank(0.60, "macro", cohort) == pytest.approx(50.0)
 
 
+def test_cohort_store_overwrites_existing_manager_score() -> None:
+    cohort = InMemoryCohortStore(
+        (
+            CohortScore(asset_class="macro", manager_id="manager_a", base_score=0.40),
+            CohortScore(asset_class="macro", manager_id="manager_b", base_score=0.60),
+            CohortScore(asset_class="macro", manager_id="manager_a", base_score=0.80),
+        )
+    )
+
+    assert cohort.scores_for_asset_class("macro") == pytest.approx((0.80, 0.60))
+
+
+def test_percentile_rank_treats_rounding_noise_as_tie() -> None:
+    cohort = InMemoryCohortStore(
+        (
+            CohortScore(asset_class="macro", manager_id="a", base_score=0.50),
+            CohortScore(asset_class="macro", manager_id="b", base_score=0.1 + 0.2 + 0.3),
+            CohortScore(asset_class="macro", manager_id="c", base_score=0.60),
+            CohortScore(asset_class="macro", manager_id="d", base_score=0.80),
+        )
+    )
+
+    assert percentile_rank(0.60, "macro", cohort) == pytest.approx(50.0)
+
+
 def test_peer_group_rejects_invalid_scores() -> None:
     with pytest.raises(ValueError, match="base_score must be between 0 and 1"):
         InMemoryCohortStore((CohortScore(asset_class="macro", manager_id="bad", base_score=1.01),))
