@@ -16,6 +16,7 @@ DESIGN_SYSTEM_ROOT = Path(__file__).resolve().parents[1] / "design-system"
 if str(DESIGN_SYSTEM_ROOT) not in sys.path:
     sys.path.insert(0, str(DESIGN_SYSTEM_ROOT))
 
+from inv_man_intake.assist.intake_assistant import IntakeRecommendation  # noqa: E402
 from inv_man_intake.extraction.providers.base import (  # noqa: E402
     ExtractedDocumentResult,
     ExtractedField,
@@ -24,7 +25,6 @@ from inv_man_intake.intake.standard_elements import (  # noqa: E402
     StandardElementLibrary,
     load_standard_element_library,
 )
-from inv_man_intake.assist.intake_assistant import IntakeRecommendation  # noqa: E402
 from inv_man_intake.observability import InMemoryTraceSink  # noqa: E402
 from inv_man_intake.packet import PacketFile, ingest_packet  # noqa: E402
 from inv_man_intake.readiness.fixture_batches import DEFAULT_BATCH_PACKAGES  # noqa: E402

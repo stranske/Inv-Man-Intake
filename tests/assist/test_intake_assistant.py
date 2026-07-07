@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 
 from inv_man_intake.assist.egress_guard import EgressConsent, ProviderConfig
-from inv_man_intake.assist.intake_assistant import answer_intake_question
+from inv_man_intake.assist.intake_assistant import answer_intake_question, collect_run_signals
 from inv_man_intake.data.provenance import CorrectionRecord
 from inv_man_intake.extraction.cross_check import CrossCheckReport, FieldCrossCheck
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
@@ -130,6 +130,43 @@ def test_assistant_rejects_uncited_recommendations(tmp_path: Path) -> None:
             log_path=tmp_path / "egress.jsonl",
             client=fake_client,
         )
+
+
+def test_assistant_rejects_uncited_answers(tmp_path: Path) -> None:
+    def fake_client(
+        payload: dict[str, Any],
+        provider_config: ProviderConfig,
+    ) -> Mapping[str, Any]:
+        return {"answer": "No evidence cited.", "citations": [], "recommendations": []}
+
+    with pytest.raises(ValueError, match="citations"):
+        answer_intake_question(
+            manager_profile=_manager_profile(),
+            question="what should change?",
+            consent=EgressConsent(
+                granted_by="operator",
+                purpose="rank intake-improvement recommendations",
+                granted_at="2026-07-07T09:00:00Z",
+            ),
+            provider_config=ProviderConfig(
+                provider="frontier-zero-retention",
+                model="secure-model",
+                zero_retention=True,
+                baa_eligible=True,
+            ),
+            log_path=tmp_path / "egress.jsonl",
+            client=fake_client,
+        )
+
+
+def test_standardness_signal_ids_are_category_stable() -> None:
+    profile = _manager_profile()
+
+    signals = collect_run_signals(manager_profile=profile)
+
+    assert [signal.signal_id for signal in signals if signal.category == "standardness"] == [
+        "standardness:1"
+    ]
 
 
 def test_assistant_routes_through_egress_guard(tmp_path: Path) -> None:

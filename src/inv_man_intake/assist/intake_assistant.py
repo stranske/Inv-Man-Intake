@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +23,7 @@ from inv_man_intake.scoring.contracts import ScoreResult
 
 @dataclass(frozen=True)
 class RunSignal:
-    """One cited signal available to the assistant."""
+    """One citable signal available to the assistant."""
 
     signal_id: str
     category: str
@@ -73,7 +74,7 @@ class _AssistantResponsePayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     answer: str = Field(min_length=1)
-    citations: tuple[str, ...]
+    citations: tuple[str, ...] = Field(min_length=1)
     recommendations: tuple[_RecommendationPayload, ...]
 
     @field_validator("citations")
@@ -94,7 +95,7 @@ def answer_intake_question(
     client: LlmClient,
     corrections: Sequence[CorrectionRecord] = (),
     score_result: ScoreResult | None = None,
-    now: Callable[[], Any] | None = None,
+    now: Callable[[], datetime] | None = None,
 ) -> AssistantAnswer:
     """Return cited, recommend-only guidance through the egress guard."""
 
@@ -141,7 +142,7 @@ def collect_run_signals(
     corrections: Sequence[CorrectionRecord] = (),
     score_result: ScoreResult | None = None,
 ) -> tuple[RunSignal, ...]:
-    """Flatten packet, provenance, and score signals into citeable inputs."""
+    """Flatten packet, provenance, and score signals into citable inputs."""
 
     signals: list[RunSignal] = []
     for index, reason in enumerate(manager_profile.escalations, start=1):
@@ -158,11 +159,11 @@ def collect_run_signals(
                 severity=0.95,
             )
         )
-    for flag in manager_profile.flagged_non_standard_items:
+    for index, flag in enumerate(manager_profile.flagged_non_standard_items, start=1):
         document_id, _, _ = flag.partition(":")
         signals.append(
             RunSignal(
-                signal_id=f"standardness:{len(signals) + 1}",
+                signal_id=f"standardness:{index}",
                 category="standardness",
                 summary=flag,
                 source_ref=document_id or manager_profile.packet_id,
@@ -198,9 +199,6 @@ def _validate_assistant_response(
     signal_by_id: Mapping[str, RunSignal],
 ) -> AssistantAnswer:
     parsed = _AssistantResponsePayload.model_validate(response)
-    if not parsed.citations and parsed.recommendations:
-        raise ValueError("assistant response must cite evidence")
-
     recommendations = tuple(
         _recommendation_from_payload(index=index, payload=payload, signal_by_id=signal_by_id)
         for index, payload in enumerate(parsed.recommendations, start=1)
