@@ -55,6 +55,9 @@ def score_extraction_trace_drift(
 ) -> ExtractionDriftRecord:
     """Score sampled LangSmith trace metadata and return a numeric drift record."""
 
+    if not 0.0 <= minimum_f1 <= 1.0:
+        raise ValueError("minimum_f1 must be between 0 and 1")
+
     score = score_trace_drift(
         samples=samples,
         trace_events=trace_events,

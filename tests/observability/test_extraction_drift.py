@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from inv_man_intake.extraction.regression import load_golden_samples
 from inv_man_intake.observability.extraction_drift import score_extraction_trace_drift
 from inv_man_intake.observability.tracing import TraceEvent
@@ -54,6 +56,17 @@ def test_score_extraction_trace_drift_returns_numeric_observability_record() -> 
     assert record.drift_score == 0.125
     assert record.status == "drift"
     assert record.as_metric_fields()["drift_score"] == 0.125
+
+
+def test_score_extraction_trace_drift_validates_minimum_f1() -> None:
+    samples = load_golden_samples(_GOLDEN_PATH)
+
+    with pytest.raises(ValueError, match="minimum_f1 must be between 0 and 1"):
+        score_extraction_trace_drift(
+            samples=samples[:1],
+            trace_events=(),
+            minimum_f1=1.1,
+        )
 
 
 def _trace_event(*, source_doc_id: str, fields: dict[str, object]) -> TraceEvent:

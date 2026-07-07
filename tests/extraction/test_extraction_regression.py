@@ -24,7 +24,13 @@ _GOLDEN_PATH = Path(__file__).resolve().parent / "golden" / "extraction_regressi
 def test_extraction_matches_golden() -> None:
     samples = load_golden_samples(_GOLDEN_PATH)
 
-    assert samples[0].expected_fields[0].confidence == 0.93
+    manager_report = next(
+        sample for sample in samples if sample.source_doc_id == "golden-manager-report"
+    )
+    strategy_field = next(
+        field for field in manager_report.expected_fields if field.key == "strategy.name"
+    )
+    assert strategy_field.confidence == 0.93
 
     report = evaluate_extraction_regression(
         provider_factory=PrimaryRegexExtractionProvider,
@@ -87,6 +93,29 @@ def test_extraction_regression_reports_provider_failures_as_missing_fields() -> 
         "golden-manager-report:terms.performance_fee",
     )
     assert report.f1 == 0.0
+
+
+def test_load_golden_samples_rejects_boolean_confidence(tmp_path: Path) -> None:
+    golden_path = tmp_path / "golden.json"
+    golden_path.write_text(
+        """
+        {
+          "samples": [
+            {
+              "source_doc_id": "bad-confidence",
+              "content": "sample",
+              "expected_fields": [
+                {"key": "strategy.name", "value": "Example", "confidence": true}
+              ]
+            }
+          ]
+        }
+        """,
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="confidence must be numeric"):
+        load_golden_samples(golden_path)
 
 
 def test_trace_drift_scores_sampled_langsmith_metadata() -> None:

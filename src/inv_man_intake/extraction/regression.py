@@ -318,6 +318,8 @@ def _normalize_decimal(value: Decimal) -> str:
 def _optional_confidence(value: Any) -> float | None:
     if value is None:
         return None
+    if isinstance(value, bool):
+        raise ValueError("golden field confidence must be numeric")
     confidence = float(value)
     if not 0.0 <= confidence <= 1.0:
         raise ValueError("golden field confidence must be between 0 and 1")
