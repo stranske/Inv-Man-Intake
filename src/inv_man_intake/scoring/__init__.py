@@ -33,6 +33,11 @@ from inv_man_intake.scoring.regression import (
     detect_score_drift,
     rank_by_asset_class,
 )
+from inv_man_intake.scoring.weight_sensitivity import (
+    WeightSensitivityReport,
+    WeightSensitivityRow,
+    weight_sensitivity_report,
+)
 from inv_man_intake.scoring.weights import (
     ASSET_CLASS_ALIASES,
     COMPONENT_NAMES,
@@ -64,6 +69,8 @@ __all__ = [
     "ScoreEntry",
     "ScoreResult",
     "ScoreSubmission",
+    "WeightSensitivityReport",
+    "WeightSensitivityRow",
     "build_explainability_payload",
     "build_calibration_stats",
     "compute_score",
@@ -76,4 +83,5 @@ __all__ = [
     "percentile_rank",
     "rank_by_asset_class",
     "weights_by_asset_class_for",
+    "weight_sensitivity_report",
 ]
