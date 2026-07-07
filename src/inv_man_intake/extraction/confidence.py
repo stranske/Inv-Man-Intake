@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from dataclasses import field as dataclass_field
 from pathlib import Path
 
@@ -58,6 +58,7 @@ def load_threshold_config(path: str | Path) -> ThresholdConfig:
     profile_values: dict[str, dict[str, str]] = {}
     profile_key_fields: dict[str, list[str]] = {}
     profile_mandatory_fields: dict[str, list[str]] = {}
+    profile_lists_seen: dict[str, set[str]] = {}
 
     for raw_line in lines:
         line_without_comment = raw_line.split("#", 1)[0].rstrip()
@@ -83,11 +84,13 @@ def load_threshold_config(path: str | Path) -> ThresholdConfig:
                 profile_values.setdefault(profile_name, {})
                 profile_key_fields.setdefault(profile_name, [])
                 profile_mandatory_fields.setdefault(profile_name, [])
+                profile_lists_seen.setdefault(profile_name, set())
                 profile_list_name = None
                 continue
             elif indent == 4 and profile_name is not None:
                 if line in {"key_fields:", "mandatory_fields:"}:
                     profile_list_name = line.removesuffix(":")
+                    profile_lists_seen[profile_name].add(profile_list_name)
                     continue
                 if ":" in line:
                     profile_list_name = None
@@ -104,6 +107,7 @@ def load_threshold_config(path: str | Path) -> ThresholdConfig:
                         )
                     profile_values[profile_name][normalized_key] = value.strip().strip('"')
                     continue
+                raise ValueError(f"unexpected line in document profile {profile_name}: {line!r}")
             elif indent == 6 and line.startswith("-") and profile_name is not None:
                 value = line.removeprefix("-").strip().strip('"')
                 if profile_list_name == "key_fields":
@@ -113,6 +117,8 @@ def load_threshold_config(path: str | Path) -> ThresholdConfig:
                     profile_mandatory_fields[profile_name].append(value)
                     continue
                 raise ValueError(f"unexpected list item in document profile {profile_name}")
+            elif indent != 0:
+                raise ValueError(f"unexpected indentation in document_profiles: {raw_line!r}")
         if line == "mandatory_fields:":
             in_mandatory_list = True
             continue
@@ -159,18 +165,12 @@ def load_threshold_config(path: str | Path) -> ThresholdConfig:
             values=profile_values[name],
             key_fields=tuple(profile_key_fields[name]),
             mandatory_fields=tuple(profile_mandatory_fields[name]),
+            has_mandatory_fields="mandatory_fields" in profile_lists_seen.get(name, set()),
             base_config=base_config,
         )
         for name in profile_values
     }
-    return ThresholdConfig(
-        field_auto_accept_min=base_config.field_auto_accept_min,
-        key_field_confidence_min=base_config.key_field_confidence_min,
-        document_key_field_coverage_min=base_config.document_key_field_coverage_min,
-        mandatory_field_min=base_config.mandatory_field_min,
-        mandatory_fields=base_config.mandatory_fields,
-        document_profiles=profiles,
-    )
+    return replace(base_config, document_profiles=profiles)
 
 
 def _document_profile(
@@ -179,6 +179,7 @@ def _document_profile(
     values: dict[str, str],
     key_fields: tuple[str, ...],
     mandatory_fields: tuple[str, ...],
+    has_mandatory_fields: bool,
     base_config: ThresholdConfig,
 ) -> DocumentThresholdProfile:
     if not key_fields:
@@ -200,7 +201,9 @@ def _document_profile(
                 "document_key_field_coverage_min", merged_values
             ),
             mandatory_field_min=_threshold_value("mandatory_field_min", merged_values),
-            mandatory_fields=mandatory_fields,
+            mandatory_fields=(
+                mandatory_fields if has_mandatory_fields else base_config.mandatory_fields
+            ),
         ),
     )
 

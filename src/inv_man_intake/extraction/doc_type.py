@@ -22,16 +22,16 @@ _DOCUMENT_TYPE_KEYWORDS: tuple[tuple[DocumentType, tuple[str, ...]], ...] = (
         ("ddq", "due diligence questionnaire", "questionnaire"),
     ),
     (
-        DocumentType.MONTHLY_LETTER,
-        ("monthly letter", "investor letter", "monthly commentary", "month-end"),
-    ),
-    (
         DocumentType.TEAR_SHEET,
         ("tear sheet", "tearsheet", "factsheet", "fact sheet", "one pager"),
     ),
     (
+        DocumentType.MONTHLY_LETTER,
+        ("monthly letter", "investor letter", "monthly commentary"),
+    ),
+    (
         DocumentType.PITCHBOOK,
-        ("pitchbook", "pitch book", "private placement memorandum", "ppm"),
+        ("pitchbook", "pitch book", "private placement memorandum"),
     ),
 )
 
