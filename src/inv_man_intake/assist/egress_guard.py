@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from collections.abc import Callable, Mapping, Sequence
+from copy import deepcopy
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,6 +27,7 @@ _PROPRIETARY_PATTERNS = (
     re.compile(r"\bCONFIDENTIAL[:\-_ ][A-Za-z0-9_.:/-]+", re.IGNORECASE),
 )
 _REDACTED = "[REDACTED]"
+_LOG_WRITE_LOCK = threading.Lock()
 
 
 @dataclass(frozen=True)
@@ -54,6 +57,7 @@ class EgressLogRecord:
     provider: str
     model: str
     consent_granted_by: str
+    consent_granted_at: str
     purpose: str
     redaction_applied: bool
     outbound_payload: dict[str, JsonValue]
@@ -86,19 +90,25 @@ def send_to_llm(
 
     if consent is None:
         raise PermissionError("LLM egress requires per-call operator consent")
-    if not consent.granted_by.strip() or not consent.purpose.strip():
-        raise ValueError("LLM egress consent must include actor and purpose")
+    if (
+        not consent.granted_by.strip()
+        or not consent.purpose.strip()
+        or not consent.granted_at.strip()
+    ):
+        raise ValueError("LLM egress consent must include actor, purpose, and grant timestamp")
+    consent_granted_at = _parse_consent_granted_at(consent.granted_at)
     if not provider_config.zero_retention or not provider_config.baa_eligible:
         raise ValueError("LLM egress provider must be zero-retention and BAA eligible")
 
     outbound_payload = redact_payload(payload)
-    response = dict(client(outbound_payload, provider_config))
+    response = dict(client(deepcopy(outbound_payload), provider_config))
     timestamp = (now or _utc_now)().astimezone(UTC).isoformat()
     log_record = EgressLogRecord(
         timestamp=timestamp,
         provider=provider_config.provider,
         model=provider_config.model,
         consent_granted_by=consent.granted_by,
+        consent_granted_at=consent_granted_at,
         purpose=consent.purpose,
         redaction_applied=outbound_payload != _json_payload(payload),
         outbound_payload=outbound_payload,
@@ -140,7 +150,7 @@ def _redact_value(*, key: str, value: Any) -> JsonValue:
         return [_redact_value(key=key, value=item) for item in value]
     if isinstance(value, bool | int | float) or value is None:
         return cast(JsonValue, value)
-    return str(value)
+    return _REDACTED
 
 
 def _json_payload(payload: Mapping[str, Any]) -> dict[str, JsonValue]:
@@ -163,9 +173,16 @@ def _json_value(value: Any) -> JsonValue:
 
 def _append_log_record(log_path: Path, record: EgressLogRecord) -> None:
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    with log_path.open("a", encoding="utf-8") as handle:
+    with _LOG_WRITE_LOCK, log_path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(asdict(record), sort_keys=True) + "\n")
 
 
 def _utc_now() -> datetime:
     return datetime.now(tz=UTC)
+
+
+def _parse_consent_granted_at(value: str) -> str:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError("LLM egress consent granted_at must include a timezone")
+    return parsed.astimezone(UTC).isoformat()
