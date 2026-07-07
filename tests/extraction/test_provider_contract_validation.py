@@ -62,7 +62,7 @@ def test_validate_provider_output_rejects_cross_document_source_location() -> No
         ),
     )
 
-    with pytest.raises(ValueError, match="must match provider output"):
+    with pytest.raises(ValueError, match="source_doc_id must match output"):
         validate_provider_output(output)
 
 
@@ -157,7 +157,7 @@ def test_validate_extracted_document_result_rejects_cross_document_field_locatio
         ),
     )
 
-    with pytest.raises(ValueError, match="must match provider output"):
+    with pytest.raises(ValueError, match="source_doc_id must match output"):
         validate_extracted_document_result(result)
 
 
