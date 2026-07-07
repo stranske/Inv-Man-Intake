@@ -1,26 +1,19 @@
-"""Optional Docling-backed extraction provider.
-
-Docling stays out of the core dependency set. Import and conversion happen only
-when this provider is used, so the browser demo and baseline package install
-remain fixture-backed and lightweight.
-"""
+"""Optional shared Docling-backed extraction provider adapter."""
 
 from __future__ import annotations
 
-import re
-import tempfile
-from importlib import import_module
-from pathlib import Path
 from typing import Any
+
+from stranske_pdf_extract.providers.docling_provider import (
+    DoclingProvider,
+    DoclingUnavailableError,
+)
 
 from inv_man_intake.extraction.providers.base import (
     ExtractedDocumentResult,
     ExtractedField,
-    ExtractedTextBlock,
     ProviderExtractionOutput,
-    SourceLocation,
     validate_extracted_document_result,
-    validate_provider_output,
 )
 from inv_man_intake.extraction.providers.primary import PrimaryRegexExtractionProvider
 
@@ -30,10 +23,12 @@ class MissingDoclingDependencyError(RuntimeError):
 
 
 class DoclingPrimaryExtractionProvider:
-    """Extract document text via Docling and map it through existing contracts."""
+    """Adapt the shared Docling provider into IMI's field-extraction pipeline."""
 
-    def __init__(self, *, converter: Any | None = None) -> None:
-        self._converter = converter
+    def __init__(self, *, provider: Any | None = None, do_ocr: bool = False) -> None:
+        if provider is not None and do_ocr:
+            raise ValueError("do_ocr is only supported when using the default DoclingProvider")
+        self._provider = provider if provider is not None else DoclingProvider(do_ocr=do_ocr)
         self._field_extractor = PrimaryRegexExtractionProvider()
 
     @property
@@ -71,77 +66,14 @@ class DoclingPrimaryExtractionProvider:
         return normalized
 
     def extract_modalities(self, source_doc_id: str, content: bytes) -> ProviderExtractionOutput:
-        """Extract raw text/table/image modalities from document bytes."""
+        """Extract raw text/table/image modalities using the shared provider."""
 
-        converter = self._resolve_converter()
-        result = self._convert_bytes(
-            converter=converter, source_doc_id=source_doc_id, content=content
-        )
-        text = self._export_text(result)
-        output = ProviderExtractionOutput(
-            source_doc_id=source_doc_id,
-            provider_name=self.name,
-            text_blocks=(
-                (
-                    ExtractedTextBlock(
-                        text=text,
-                        location=SourceLocation(source_doc_id=source_doc_id, source_page=1),
-                    ),
-                )
-                if text.strip()
-                else ()
-            ),
-        )
-        validate_provider_output(output)
-        return output
-
-    def _resolve_converter(self) -> Any:
-        if self._converter is not None:
-            return self._converter
         try:
-            converter_module = import_module("docling.document_converter")
-        except ModuleNotFoundError as exc:  # pragma: no cover - depends on optional extra
+            return self._provider.extract_modalities(source_doc_id=source_doc_id, content=content)
+        except DoclingUnavailableError as exc:  # pragma: no cover - depends on optional extra
             raise MissingDoclingDependencyError(
                 "Install inv-man-intake[extraction-docling] to use DoclingPrimaryExtractionProvider"
             ) from exc
-        document_converter_cls = converter_module.DocumentConverter
-        self._converter = document_converter_cls()
-        return self._converter
-
-    @staticmethod
-    def _convert_bytes(*, converter: Any, source_doc_id: str, content: bytes) -> Any:
-        suffix = _suffix_for_source(source_doc_id=source_doc_id, content=content)
-        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as handle:
-            handle.write(content)
-            temp_path = Path(handle.name)
-        try:
-            return converter.convert(temp_path)
-        finally:
-            temp_path.unlink(missing_ok=True)
-
-    @staticmethod
-    def _export_text(result: Any) -> str:
-        document = getattr(result, "document", result)
-        for method_name in (
-            "export_to_markdown",
-            "export_to_text",
-            "export_to_document_tokens",
-        ):
-            method = getattr(document, method_name, None)
-            if callable(method):
-                exported = method()
-                if exported is not None:
-                    return str(exported)
-        return str(document)
-
-
-def _suffix_for_source(*, source_doc_id: str, content: bytes) -> str:
-    if content.startswith(b"%PDF-"):
-        return ".pdf"
-    match = re.search(r"(\.[A-Za-z0-9]{2,8})$", source_doc_id)
-    if match:
-        return match.group(1)
-    return ".bin"
 
 
 __all__ = [

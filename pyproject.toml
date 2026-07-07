@@ -22,6 +22,7 @@ classifiers = [
 ]
 dependencies = [
     "langsmith>=0.4.59",
+    "stranske-pdf-extract @ git+https://github.com/stranske/Workflows.git@a0ee3aa25c08d4eeb8e96dc6c8d7791930cd2d9a#subdirectory=packages/stranske_pdf_extract",
 ]
 
 [project.optional-dependencies]
@@ -29,7 +30,7 @@ app = [
     "streamlit==1.59.0",
 ]
 extraction-docling = [
-    "docling>=2.45.0,<3.0.0",
+    "stranske-pdf-extract[docling] @ git+https://github.com/stranske/Workflows.git@a0ee3aa25c08d4eeb8e96dc6c8d7791930cd2d9a#subdirectory=packages/stranske_pdf_extract",
 ]
 dev = [
     "playwright>=1.56.0",
@@ -41,6 +42,7 @@ dev = [
     "tomlkit==0.15.0",
     "pydantic==2.13.4",
     "pytest-regressions==2.11.0",
+    "docling",
 ]
 
 [project.urls]
@@ -113,6 +115,10 @@ no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = ["stranske_pdf_extract", "stranske_pdf_extract.*"]
+ignore_missing_imports = true
 
 [tool.black]
 line-length = 100
