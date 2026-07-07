@@ -186,17 +186,18 @@ def _parse_deviation_notes(
     raw_notes = response.get("notes")
     if not isinstance(raw_notes, list):
         raise ValueError("PPM deviation response must contain a notes list")
-    allowed_citations = {_citation(field) for field in candidates}
-    allowed_keys = {field.key for field in candidates}
+    citations_by_key: dict[str, set[str]] = {}
+    for field in candidates:
+        citations_by_key.setdefault(field.key, set()).add(_citation(field))
     notes: list[DeviationNote] = []
     for raw_note in raw_notes:
         if not isinstance(raw_note, Mapping):
             raise ValueError("PPM deviation note must be an object")
         element_key = _required_response_string(raw_note, "element_key")
         citation = _required_response_string(raw_note, "citation")
-        if element_key not in allowed_keys:
+        if element_key not in citations_by_key:
             raise ValueError(f"unknown PPM deviation element_key: {element_key}")
-        if citation not in allowed_citations:
+        if citation not in citations_by_key[element_key]:
             raise ValueError(f"uncited PPM deviation note: {element_key}")
         notes.append(
             DeviationNote(

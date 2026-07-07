@@ -141,6 +141,7 @@ class OperatorPacketView:
     packet_id: str
     coverage_rows: list[dict[str, object]]
     ppm_rows: list[dict[str, object]]
+    ppm_deviation_rows: list[dict[str, object]]
     profile_rows: list[dict[str, object]]
     graphics_rows: list[dict[str, object]]
     return_rows: list[dict[str, object]]
@@ -445,6 +446,22 @@ def _operator_library(priority: Sequence[str]) -> StandardElementLibrary:
                         "detector_name": "field_present",
                         "mandatory": doc_type in {"deck", "ppm"},
                     },
+                    *(
+                        [
+                            {
+                                "key": "ppm.strategy",
+                                "detector_name": "field_present",
+                                "mandatory": True,
+                            },
+                            {
+                                "key": "ppm.fees",
+                                "detector_name": "field_present",
+                                "mandatory": True,
+                            },
+                        ]
+                        if doc_type == "ppm"
+                        else []
+                    ),
                 ]
                 for doc_type in priority
             },
@@ -483,16 +500,29 @@ def build_operator_packet_view(
     ]
     ppm_library = _operator_library(("ppm",))
     ppm_rows: list[dict[str, object]] = []
+    ppm_deviation_rows: list[dict[str, object]] = []
     for document in profile.documents:
         if document.document_type != "ppm":
             continue
-        for item in evaluate_ppm(document.extraction, ppm_library).checklist:
+        evaluation = evaluate_ppm(document.extraction, ppm_library)
+        for item in evaluation.checklist:
             ppm_rows.append(
                 {
                     "Document": document.document_id,
                     "Element": item.key,
                     "Status": item.status,
                     "Citation": item.citation,
+                }
+            )
+        for note in evaluation.deviation_notes:
+            ppm_deviation_rows.append(
+                {
+                    "Document": document.document_id,
+                    "Element": note.element_key,
+                    "Summary": note.summary,
+                    "Why it matters": note.why_it_matters,
+                    "Citation": note.citation,
+                    "Action": "Review manually" if note.apply_manually else "No action",
                 }
             )
     profile_rows: list[dict[str, object]] = [
@@ -533,6 +563,7 @@ def build_operator_packet_view(
         packet_id=profile.packet_id,
         coverage_rows=coverage_rows,
         ppm_rows=ppm_rows,
+        ppm_deviation_rows=ppm_deviation_rows,
         profile_rows=profile_rows,
         graphics_rows=graphics_rows,
         return_rows=return_rows,
@@ -621,6 +652,8 @@ def render_operator_packet(
     st.table(view.coverage_rows)
     st.subheader("PPM checklist")
     st.table(view.ppm_rows)
+    st.subheader("PPM deviation notes")
+    st.table(view.ppm_deviation_rows)
     st.subheader("Manager profile")
     st.table(view.profile_rows)
     st.subheader("Graphics gallery")
@@ -700,7 +733,7 @@ def render_app(st: StreamlitLike | None = None) -> DemoResult:
 
     use_real_streamlit = st is None
     if st is None:
-        import streamlit as streamlit_module  # type: ignore[import-not-found]
+        import streamlit as streamlit_module
 
         st = cast(StreamlitLike, streamlit_module)
 

@@ -220,6 +220,146 @@ def test_deviation_notes_reject_uncited_response(tmp_path: Path) -> None:
         )
 
 
+def test_deviation_notes_reject_mismatched_citation_for_element(tmp_path: Path) -> None:
+    def mismatched_client(
+        payload: dict[str, Any], provider_config: ProviderConfig
+    ) -> Mapping[str, Any]:
+        first, second = payload["deviations"]
+        return {
+            "notes": [
+                {
+                    "element_key": first["element_key"],
+                    "summary": "Looks unusual.",
+                    "why_it_matters": "Needs review.",
+                    "citation": second["citation"],
+                }
+            ]
+        }
+
+    with pytest.raises(ValueError, match="uncited"):
+        evaluate_ppm(
+            _ppm_result(
+                (
+                    _field(
+                        "ppm.deviation.liquidity_gate",
+                        "NON-STANDARD quarterly gate",
+                        "clause-map",
+                        0.88,
+                    ),
+                    _field(
+                        "ppm.deviation.withdrawal_notice",
+                        "NON-STANDARD notice period",
+                        "clause-map",
+                        0.83,
+                    ),
+                )
+            ),
+            _ppm_library(),
+            consent=EgressConsent(
+                granted_by="operator",
+                purpose="describe PPM deviation notes",
+                granted_at="2026-07-07T09:00:00Z",
+            ),
+            provider_config=ProviderConfig(
+                provider="frontier-zero-retention",
+                model="secure-model",
+                zero_retention=True,
+                baa_eligible=True,
+            ),
+            log_path=tmp_path / "egress.jsonl",
+            client=mismatched_client,
+        )
+
+
+def test_deviation_notes_reject_unknown_element_key(tmp_path: Path) -> None:
+    def unknown_key_client(
+        payload: dict[str, Any], provider_config: ProviderConfig
+    ) -> Mapping[str, Any]:
+        deviation = payload["deviations"][0]
+        return {
+            "notes": [
+                {
+                    "element_key": "ppm.deviation.not_sent",
+                    "summary": "Looks unusual.",
+                    "why_it_matters": "Needs review.",
+                    "citation": deviation["citation"],
+                }
+            ]
+        }
+
+    with pytest.raises(ValueError, match="element_key"):
+        evaluate_ppm(
+            _ppm_result(
+                (
+                    _field(
+                        "ppm.deviation.liquidity_gate",
+                        "NON-STANDARD quarterly gate",
+                        "clause-map",
+                        0.88,
+                    ),
+                )
+            ),
+            _ppm_library(),
+            consent=EgressConsent(
+                granted_by="operator",
+                purpose="describe PPM deviation notes",
+                granted_at="2026-07-07T09:00:00Z",
+            ),
+            provider_config=ProviderConfig(
+                provider="frontier-zero-retention",
+                model="secure-model",
+                zero_retention=True,
+                baa_eligible=True,
+            ),
+            log_path=tmp_path / "egress.jsonl",
+            client=unknown_key_client,
+        )
+
+
+def test_deviation_notes_reject_missing_required_field(tmp_path: Path) -> None:
+    def missing_field_client(
+        payload: dict[str, Any], provider_config: ProviderConfig
+    ) -> Mapping[str, Any]:
+        deviation = payload["deviations"][0]
+        return {
+            "notes": [
+                {
+                    "element_key": deviation["element_key"],
+                    "summary": "Looks unusual.",
+                    "citation": deviation["citation"],
+                }
+            ]
+        }
+
+    with pytest.raises(ValueError, match="why_it_matters"):
+        evaluate_ppm(
+            _ppm_result(
+                (
+                    _field(
+                        "ppm.deviation.liquidity_gate",
+                        "NON-STANDARD quarterly gate",
+                        "clause-map",
+                        0.88,
+                    ),
+                )
+            ),
+            _ppm_library(),
+            consent=EgressConsent(
+                granted_by="operator",
+                purpose="describe PPM deviation notes",
+                granted_at="2026-07-07T09:00:00Z",
+            ),
+            provider_config=ProviderConfig(
+                provider="frontier-zero-retention",
+                model="secure-model",
+                zero_retention=True,
+                baa_eligible=True,
+            ),
+            log_path=tmp_path / "egress.jsonl",
+            client=missing_field_client,
+        )
+
+
 def _ppm_library():
     return load_standard_element_library(
         {

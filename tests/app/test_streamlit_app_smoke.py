@@ -305,11 +305,12 @@ def test_operator_packet_panels_render_after_existing_queue() -> None:
     assert isinstance(coverage_rows, list)
     assert {row["Document"] for row in coverage_rows} == {"track_record", "deck", "ppm"}
     assert recorder.tables[3], "PPM checklist should render standard-element coverage"
-    assert recorder.tables[4], "manager profile table should render packet fields"
-    assert recorder.tables[5], "graphics gallery table should expose a clickable target"
-    assert recorder.tables[6], "return-stream table should render extracted return metrics"
-    assert recorder.tables[7], "exception queue should consume validation_queue_api"
-    assert recorder.tables[8] == [{"Deterministic outbound calls": 0}]
+    assert recorder.tables[4] == [], "PPM deviation notes default to no deterministic egress"
+    assert recorder.tables[5], "manager profile table should render packet fields"
+    assert recorder.tables[6], "graphics gallery table should expose a clickable target"
+    assert recorder.tables[7], "return-stream table should render extracted return metrics"
+    assert recorder.tables[8], "exception queue should consume validation_queue_api"
+    assert recorder.tables[9] == [{"Deterministic outbound calls": 0}]
 
 
 def test_operator_packet_view_accepts_library_added_doc_type_without_app_code_change() -> None:
@@ -333,6 +334,7 @@ def test_operator_packet_view_accepts_library_added_doc_type_without_app_code_ch
         }
     ]
     assert view.ppm_rows == []
+    assert view.ppm_deviation_rows == []
     assert view.outbound_calls == 0
 
 
