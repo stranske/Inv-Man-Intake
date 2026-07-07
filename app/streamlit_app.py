@@ -24,6 +24,7 @@ from inv_man_intake.intake.standard_elements import (  # noqa: E402
     StandardElementLibrary,
     load_standard_element_library,
 )
+from inv_man_intake.assist.intake_assistant import IntakeRecommendation  # noqa: E402
 from inv_man_intake.observability import InMemoryTraceSink  # noqa: E402
 from inv_man_intake.packet import PacketFile, ingest_packet  # noqa: E402
 from inv_man_intake.readiness.fixture_batches import DEFAULT_BATCH_PACKAGES  # noqa: E402
@@ -143,6 +144,18 @@ class OperatorPacketView:
     return_rows: list[dict[str, object]]
     exception_rows: list[dict[str, object]]
     outbound_calls: int
+
+
+@dataclass(frozen=True)
+class AssistantPanelRecommendation:
+    """Browser-renderable assistant recommendation row."""
+
+    rank: int
+    change: str
+    rationale: str
+    citations: str
+    expected_effect: str
+    action: str
 
 
 QUEUE_ACTION_STATE_KEY = "analyst_queue_action_state"
@@ -608,6 +621,54 @@ def render_operator_packet(
     return view
 
 
+def demo_assistant_recommendations(result: DemoResult) -> tuple[IntakeRecommendation, ...]:
+    """Return deterministic recommend-only rows for the browser demo surface."""
+
+    evidence = f"{result.package_id}:score:{result.final_score:.4f}"
+    return (
+        IntakeRecommendation(
+            rank=1,
+            change="Review threshold inputs for the selected packet",
+            rationale=f"Pipeline decision: {result.decision_reason}",
+            cited_evidence=(evidence,),
+            expected_effect="Clarifies whether the next run should escalate or auto-pass",
+        ),
+    )
+
+
+def render_assistant_panel(
+    st: StreamlitLike,
+    recommendations: Sequence[IntakeRecommendation],
+) -> tuple[AssistantPanelRecommendation, ...]:
+    """Render assistant recommendations with explicit manual-apply actions."""
+
+    rows = tuple(
+        AssistantPanelRecommendation(
+            rank=recommendation.rank,
+            change=recommendation.change,
+            rationale=recommendation.rationale,
+            citations=", ".join(recommendation.cited_evidence),
+            expected_effect=recommendation.expected_effect,
+            action="Apply manually",
+        )
+        for recommendation in recommendations
+    )
+    st.table(
+        [
+            {
+                "Rank": row.rank,
+                "Recommendation": row.change,
+                "Rationale": row.rationale,
+                "Citations": row.citations,
+                "Expected effect": row.expected_effect,
+                "Action": row.action,
+            }
+            for row in rows
+        ]
+    )
+    return rows
+
+
 def render_app(st: StreamlitLike | None = None) -> DemoResult:
     """Render the browser demo and return the underlying deterministic result."""
 
@@ -638,6 +699,8 @@ def render_app(st: StreamlitLike | None = None) -> DemoResult:
     st.subheader("Analyst queue")
     render_analyst_queue(st, result)
     render_operator_packet(st, use_real_streamlit=use_real_streamlit)
+    st.subheader("Assistant")
+    render_assistant_panel(st, demo_assistant_recommendations(result))
     return result
 
 
