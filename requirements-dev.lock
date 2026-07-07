@@ -2,8 +2,19 @@
 #    uv pip compile pyproject.toml --extra dev --universal --output-file requirements-dev.lock
 annotated-types==0.7.0
     # via pydantic
-black==26.3.1
+anyio==4.14.1
+    # via httpx
+ast-serialize==0.6.0
+    # via mypy
+black==26.5.1
     # via inv-man-intake (pyproject.toml)
+certifi==2026.6.17
+    # via
+    #   httpcore
+    #   httpx
+    #   requests
+charset-normalizer==3.4.8
+    # via requests
 click==8.3.2
     # via black
 colorama==0.4.6 ; sys_platform == 'win32'
@@ -12,19 +23,37 @@ colorama==0.4.6 ; sys_platform == 'win32'
     #   pytest
 coverage==7.13.5
     # via pytest-cov
+greenlet==3.5.3
+    # via playwright
+h11==0.16.0
+    # via httpcore
+httpcore==1.0.9
+    # via httpx
+httpx==0.28.1
+    # via langsmith
+idna==3.18
+    # via
+    #   anyio
+    #   httpx
+    #   requests
 iniconfig==2.3.0
     # via pytest
 langsmith==0.4.59
     # via inv-man-intake (pyproject.toml)
+librt==0.12.0 ; platform_python_implementation != 'PyPy'
+    # via mypy
 mypy==2.1.0
     # via inv-man-intake (pyproject.toml)
 mypy-extensions==1.1.0
     # via
     #   black
     #   mypy
+orjson==3.11.9 ; platform_python_implementation != 'PyPy'
+    # via langsmith
 packaging==26.1
     # via
     #   black
+    #   langsmith
     #   pytest
 pathspec==1.0.4
     # via
@@ -32,31 +61,63 @@ pathspec==1.0.4
     #   mypy
 platformdirs==4.9.6
     # via black
+playwright==1.61.0
+    # via inv-man-intake (pyproject.toml)
 pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
 pydantic==2.13.4
-    # via inv-man-intake (pyproject.toml)
+    # via
+    #   inv-man-intake (pyproject.toml)
+    #   langsmith
 pydantic-core==2.46.4
     # via pydantic
+pyee==13.0.1
+    # via playwright
 pygments==2.20.0
     # via pytest
-pytest==9.0.3
+pytest==9.1.1
     # via
     #   inv-man-intake (pyproject.toml)
     #   pytest-cov
+    #   pytest-datadir
+    #   pytest-regressions
 pytest-cov==7.1.0
+    # via inv-man-intake (pyproject.toml)
+pytest-datadir==1.8.0
+    # via pytest-regressions
+pytest-regressions==2.11.0
     # via inv-man-intake (pyproject.toml)
 pytokens==0.4.1
     # via black
-ruff==0.15.15
+pyyaml==6.0.3
+    # via pytest-regressions
+requests==2.34.2
+    # via
+    #   langsmith
+    #   requests-toolbelt
+requests-toolbelt==1.0.0
+    # via langsmith
+ruff==0.15.20
+    # via inv-man-intake (pyproject.toml)
+stranske-pdf-extract @ git+https://github.com/stranske/Workflows.git@a0ee3aa25c08d4eeb8e96dc6c8d7791930cd2d9a#subdirectory=packages/stranske_pdf_extract
+    # via inv-man-intake (pyproject.toml)
+tomlkit==0.15.0
     # via inv-man-intake (pyproject.toml)
 typing-extensions==4.15.0
     # via
+    #   anyio
     #   mypy
     #   pydantic
     #   pydantic-core
+    #   pyee
     #   typing-inspection
 typing-inspection==0.4.2
     # via pydantic
+urllib3==2.7.0
+    # via requests
+uuid-utils==0.16.2
+    # via langsmith
+zstandard==0.25.0
+    # via langsmith
