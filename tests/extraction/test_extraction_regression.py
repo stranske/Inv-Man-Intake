@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import NoReturn
 
 import pytest
 
@@ -64,8 +65,38 @@ def test_extraction_regression_gate_fails_on_perturbed_golden_value() -> None:
         assert_regression_gate(report)
 
 
+def test_extraction_regression_reports_provider_failures_as_missing_fields() -> None:
+    samples = load_golden_samples(_GOLDEN_PATH)
+
+    report = evaluate_extraction_regression(
+        provider_factory=_FailingProvider,
+        samples=samples[:1],
+        minimum_f1=0.95,
+    )
+
+    assert report.provider_name == "failing-provider"
+    assert report.evaluated_fields == 4
+    assert report.predicted_fields == 0
+    assert report.true_positive_fields == 0
+    assert report.missing_fields == (
+        "golden-manager-report:strategy.name",
+        "golden-manager-report:benchmark.name",
+        "golden-manager-report:terms.management_fee",
+        "golden-manager-report:terms.performance_fee",
+    )
+    assert report.f1 == 0.0
+
+
 def test_trace_drift_scores_sampled_langsmith_metadata() -> None:
     samples = load_golden_samples(_GOLDEN_PATH)
+    date_numeric_sample = GoldenSample(
+        source_doc_id="golden-date-fee",
+        content=b"not used by trace drift",
+        expected_fields=(
+            GoldenField(key="terms.management_fee", value="1.50 %"),
+            GoldenField(key="document.received_at", value="2026-07-07"),
+        ),
+    )
     trace_events = (
         _trace_event(
             source_doc_id="golden-manager-report",
@@ -75,6 +106,17 @@ def test_trace_drift_scores_sampled_langsmith_metadata() -> None:
                 "terms.management_fee": "1.50%",
                 "terms.performance_fee": "15%",
             },
+            ended=False,
+        ),
+        _trace_event(
+            source_doc_id="golden-manager-report",
+            fields={
+                "strategy.name": "Global Multi-Asset Income",
+                "benchmark.name": "Bloomberg US Aggregate",
+                "terms.management_fee": "1.50%",
+                "terms.performance_fee": "15%",
+            },
+            ended=True,
         ),
         _trace_event(
             source_doc_id="golden-credit-review",
@@ -85,23 +127,50 @@ def test_trace_drift_scores_sampled_langsmith_metadata() -> None:
                 "terms.performance_fee": "99%",
             },
         ),
+        _trace_event(
+            source_doc_id="golden-date-fee",
+            fields={
+                "terms.management_fee": "1.5%",
+                "document.received_at": "2026-07-07T13:45:00+00:00",
+            },
+        ),
+        _trace_event(
+            source_doc_id="golden-date-fee",
+            fields={
+                "terms.management_fee": "9.9%",
+                "document.received_at": "2026-07-08",
+            },
+        ),
         _trace_event(source_doc_id="unrelated-doc", fields={"strategy.name": "Ignored"}),
     )
 
     drift = score_trace_drift(
-        samples=samples[:2],
+        samples=(*samples[:2], date_numeric_sample),
         trace_events=trace_events,
         minimum_f1=0.95,
     )
 
-    assert drift.trace_event_count == 3
-    assert drift.matched_trace_count == 2
-    assert drift.report.evaluated_fields == 8
+    assert drift.trace_event_count == 6
+    assert drift.matched_trace_count == 3
+    assert drift.report.evaluated_fields == 10
+    assert drift.report.true_positive_fields == 9
     assert drift.report.mismatched_fields == ("golden-credit-review:terms.performance_fee",)
     assert drift.drift_score > 0.0
 
 
-def _trace_event(*, source_doc_id: str, fields: dict[str, str]) -> TraceEvent:
+class _FailingProvider:
+    name = "failing-provider"
+
+    def extract(self, *, source_doc_id: str, content: bytes) -> NoReturn:
+        raise RuntimeError(f"failed {source_doc_id} with {len(content)} bytes")
+
+
+def _trace_event(
+    *,
+    source_doc_id: str,
+    fields: dict[str, object],
+    ended: bool = True,
+) -> TraceEvent:
     return TraceEvent(
         kind="span",
         span_id=f"span-{source_doc_id}",
@@ -112,5 +181,5 @@ def _trace_event(*, source_doc_id: str, fields: dict[str, str]) -> TraceEvent:
         parent_span_id=None,
         metadata={"source_doc_id": source_doc_id, "fields": fields},
         started_at="2026-07-07T00:00:00+00:00",
-        ended_at="2026-07-07T00:00:01+00:00",
+        ended_at="2026-07-07T00:00:01+00:00" if ended else None,
     )

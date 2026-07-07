@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from inv_man_intake.extraction.providers.base import ExtractionProvider
 from inv_man_intake.observability.tracing import TraceEvent
@@ -126,10 +129,14 @@ def evaluate_extraction_regression(
     actual_by_source: dict[str, dict[str, str]] = {}
 
     for sample in samples:
-        result = provider.extract(source_doc_id=sample.source_doc_id, content=sample.content)
-        actual_by_source[sample.source_doc_id] = {
-            _normalize(field.key): _normalize(field.value) for field in result.fields
-        }
+        try:
+            result = provider.extract(source_doc_id=sample.source_doc_id, content=sample.content)
+        except Exception:  # noqa: BLE001 - fail closed while preserving a structured report
+            actual_by_source[sample.source_doc_id] = {}
+            continue
+        actual_by_source[sample.source_doc_id] = _field_map(
+            {field.key: field.value for field in result.fields}
+        )
 
     report = _score_fields(
         provider_name=provider.name,
@@ -170,21 +177,23 @@ def score_trace_drift(
 
     actual_by_source: dict[str, dict[str, str]] = {}
     trace_event_count = 0
-    matched_trace_count = 0
+    matched_source_ids: set[str] = set()
     sample_ids = {sample.source_doc_id for sample in samples}
 
     for event in trace_events:
         trace_event_count += 1
+        if event.ended_at is None:
+            continue
         source_doc_id = event.metadata.get("source_doc_id")
         fields = event.metadata.get("fields")
         if not isinstance(source_doc_id, str) or not isinstance(fields, Mapping):
             continue
         if source_doc_id not in sample_ids:
             continue
-        matched_trace_count += 1
-        actual_by_source[source_doc_id] = {
-            _normalize(str(key)): _normalize(str(value)) for key, value in fields.items()
-        }
+        if source_doc_id in matched_source_ids:
+            continue
+        matched_source_ids.add(source_doc_id)
+        actual_by_source[source_doc_id] = _field_map(fields)
 
     report = _score_fields(
         provider_name=provider_name,
@@ -194,7 +203,7 @@ def score_trace_drift(
     )
     return DriftScore(
         trace_event_count=trace_event_count,
-        matched_trace_count=matched_trace_count,
+        matched_trace_count=len(matched_source_ids),
         report=report,
     )
 
@@ -214,9 +223,7 @@ def _score_fields(
     unexpected: list[str] = []
 
     for sample in samples:
-        expected = {
-            _normalize(field.key): _normalize(field.value) for field in sample.expected_fields
-        }
+        expected = _field_map({field.key: field.value for field in sample.expected_fields})
         actual = actual_by_source.get(sample.source_doc_id, {})
         expected_total += len(expected)
         predicted_total += len(actual)
@@ -246,5 +253,58 @@ def _score_fields(
     )
 
 
-def _normalize(value: str) -> str:
-    return " ".join(value.strip().casefold().split())
+def _field_map(fields: Mapping[Any, Any]) -> dict[str, str]:
+    return {_normalize(key): _normalize(value) for key, value in fields.items()}
+
+
+def _normalize(value: Any) -> str:
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, int | float | Decimal) and not isinstance(value, bool):
+        return _normalize_decimal(Decimal(str(value)))
+
+    text = " ".join(str(value).strip().casefold().split())
+    if not text:
+        return text
+
+    date_value = _try_parse_date(text)
+    if date_value is not None:
+        return date_value.isoformat()
+
+    percent_match = re.fullmatch(r"([-+]?\d[\d,]*(?:\.\d+)?)\s*%", text)
+    if percent_match:
+        return f"{_normalize_decimal(_decimal(percent_match.group(1)))}%"
+
+    numeric_match = re.fullmatch(r"[-+]?\d[\d,]*(?:\.\d+)?", text)
+    if numeric_match:
+        return _normalize_decimal(_decimal(text))
+
+    return text
+
+
+def _try_parse_date(text: str) -> date | None:
+    normalized = text.removesuffix("z").replace(" ", "T")
+    try:
+        return datetime.fromisoformat(normalized).date()
+    except ValueError:
+        pass
+    try:
+        return date.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def _decimal(text: str) -> Decimal:
+    try:
+        return Decimal(text.replace(",", ""))
+    except InvalidOperation:
+        return Decimal(text)
+
+
+def _normalize_decimal(value: Decimal) -> str:
+    normalized = value.normalize()
+    if normalized == normalized.to_integral():
+        return str(normalized.quantize(Decimal("1")))
+    return format(normalized, "f")
