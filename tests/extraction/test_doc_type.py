@@ -104,9 +104,16 @@ def test_classifier_consumes_standard_library_doc_types_from_data() -> None:
                         "mandatory": True,
                     }
                 ],
-                "custom_pitchbook": [
+                "custom_pitch_book": [
                     {
                         "key": "operations.aum",
+                        "detector_name": "field_present",
+                        "mandatory": True,
+                    }
+                ],
+                "not_a_pitch_book": [
+                    {
+                        "key": "operations.not_pitch_book",
                         "detector_name": "field_present",
                         "mandatory": True,
                     }
@@ -116,11 +123,18 @@ def test_classifier_consumes_standard_library_doc_types_from_data() -> None:
     )
 
     assert (
-        classify_doc_type("Fund VI custom pitchbook with AUM", standard_library=library)
+        classify_doc_type(
+            "Fund VI custom_pitch_book with AUM and capital_call_notice appendix",
+            standard_library=library,
+        )
         is DocumentType.PITCHBOOK
     )
     assert (
         classify_doc_type("Capital call notice for Fund VI", standard_library=library)
+        is DocumentType.UNKNOWN
+    )
+    assert (
+        classify_doc_type("not_a_pitch_book appendix", standard_library=library)
         is DocumentType.UNKNOWN
     )
 

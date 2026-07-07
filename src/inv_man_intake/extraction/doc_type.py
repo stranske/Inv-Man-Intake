@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from enum import StrEnum
 
@@ -56,7 +57,7 @@ def classify_doc_type(
     *,
     standard_library: StandardElementLibrary | None = None,
 ) -> DocumentType:
-    """Classify a document from deterministic text cues, falling back to unknown."""
+    """Classify a document from library IDs, then deterministic text cues."""
 
     text = _normalize_content(content)
     if not text:
@@ -81,7 +82,9 @@ def _classify_library_doc_type(
     for library_doc_type in standard_library.doc_types():
         normalized_doc_type = _normalize_identifier(library_doc_type)
         if _library_doc_type_present(text, normalized_doc_type):
-            return _document_type_from_library_id(normalized_doc_type)
+            document_type = _document_type_from_library_id(normalized_doc_type)
+            if document_type is not DocumentType.UNKNOWN:
+                return document_type
     return DocumentType.UNKNOWN
 
 
@@ -94,7 +97,15 @@ def _library_doc_type_present(text: str, normalized_doc_type: str) -> bool:
         _strip_stub_prefix(normalized_doc_type).replace("_", " "),
         _strip_stub_prefix(normalized_doc_type).replace("_", "-"),
     }
-    return any(variant and variant in text for variant in variants)
+    return any(variant and _contains_delimited_term(text, variant) for variant in variants)
+
+
+def _contains_delimited_term(text: str, term: str) -> bool:
+    parts = [re.escape(part) for part in re.split(r"[\s_-]+", term.strip()) if part]
+    if not parts:
+        return False
+    pattern = r"(?<![a-z0-9])" + r"[\s_-]+".join(parts) + r"(?![a-z0-9])"
+    return re.search(pattern, text) is not None
 
 
 def _normalize_identifier(value: str) -> str:
@@ -110,10 +121,24 @@ def _document_type_from_library_id(value: str) -> DocumentType:
     direct = _STANDARD_LIBRARY_TYPE_ALIASES.get(normalized)
     if direct is not None:
         return direct
+    tokens = tuple(token for token in normalized.split("_") if token)
     for alias, document_type in _STANDARD_LIBRARY_TYPE_ALIASES.items():
-        if normalized.endswith(f"_{alias}") or normalized.startswith(f"{alias}_"):
+        alias_tokens = tuple(alias.split("_"))
+        if _tokens_contain_alias(tokens, alias_tokens):
             return document_type
     return DocumentType.UNKNOWN
+
+
+def _tokens_contain_alias(tokens: tuple[str, ...], alias_tokens: tuple[str, ...]) -> bool:
+    if len(tokens) <= len(alias_tokens):
+        return False
+    starts_with_alias = tokens[: len(alias_tokens)] == alias_tokens
+    ends_with_alias = tokens[-len(alias_tokens) :] == alias_tokens
+    if starts_with_alias:
+        return True
+    if not ends_with_alias:
+        return False
+    return not any(token in {"no", "non", "not"} for token in tokens[: -len(alias_tokens)])
 
 
 def _normalize_content(content: str | bytes | Iterable[str]) -> str:
