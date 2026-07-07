@@ -6,6 +6,7 @@ import pytest
 
 from inv_man_intake.extraction.cross_check import (
     FieldObservation,
+    create_cross_check_queue_item,
     cross_check_extraction_results,
     cross_check_observations,
 )
@@ -91,13 +92,54 @@ def test_cross_check_accepts_within_tolerance_and_supports_provider_results() ->
 def test_unparseable_numeric_key_fails_closed() -> None:
     report = cross_check_observations(
         (
-            FieldObservation(key="operations.aum", value="about a lot", source="memo"),
-            FieldObservation(key="operations.aum", value="$100M", source="tear-sheet"),
+            FieldObservation(
+                key="operations.aum",
+                value="about a lot",
+                source="memo",
+                confidence=0.99,
+            ),
+            FieldObservation(
+                key="operations.aum",
+                value="$100M",
+                source="tear-sheet",
+                confidence=0.81,
+            ),
         )
     )
 
+    decision = report.fields[0]
     assert report.escalate is True
+    assert decision.accepted_value == "$100M"
+    assert decision.accepted_source == "tear-sheet"
     assert report.escalation_reasons == ("cross_check_unparseable:operations.aum:memo",)
+
+
+def test_cross_check_queue_item_uses_existing_validation_queue_contract() -> None:
+    report = cross_check_observations(
+        (
+            FieldObservation(key="operations.aum", value="$100.0M", source="memo"),
+            FieldObservation(key="operations.aum", value="$89.0M", source="tear-sheet"),
+        )
+    )
+
+    item = create_cross_check_queue_item(package_id="pkg-715", report=report)
+
+    assert item is not None
+    assert item.item_id == "pkg-715:validation:extraction_cross_check"
+    assert item.package_id == "pkg-715"
+    assert item.state == "pending_triage"
+    assert item.escalation_reason.startswith("cross_check_disagreement:operations.aum")
+
+
+def test_cross_check_queue_item_is_not_created_without_escalation() -> None:
+    report = cross_check_observations(
+        (
+            FieldObservation(key="operations.aum", value="$100.0M", source="memo"),
+            FieldObservation(key="operations.aum", value="$101.0M", source="tear-sheet"),
+        )
+    )
+
+    assert create_cross_check_queue_item(package_id="pkg-715", report=report) is None
 
 
 def test_invalid_tolerance_is_rejected() -> None:

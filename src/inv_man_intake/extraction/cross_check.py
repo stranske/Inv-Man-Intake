@@ -8,7 +8,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
-from inv_man_intake.performance.conflict_resolver import _relative_difference_percent
+from inv_man_intake.workflow_validation import ValidationQueueItem, create_queue_item
 
 DEFAULT_KEY_NUMERIC_FIELDS = (
     "operations.aum",
@@ -16,6 +16,7 @@ DEFAULT_KEY_NUMERIC_FIELDS = (
     "performance.net_return_1y",
 )
 DEFAULT_FIELD_TOLERANCE_PERCENT = 5.0
+_FLOAT_TOLERANCE = 1e-12
 _NUMERIC_VALUE_RE = re.compile(r"[-+]?\d[\d,]*(?:\.\d+)?")
 _MAGNITUDE_MULTIPLIERS = {
     "k": 1_000.0,
@@ -88,6 +89,24 @@ def cross_check_extraction_results(
     )
 
 
+def create_cross_check_queue_item(
+    *,
+    package_id: str,
+    report: CrossCheckReport,
+    item_id: str | None = None,
+) -> ValidationQueueItem | None:
+    """Build a validation queue item when cross-checks require escalation."""
+
+    if not report.escalate:
+        return None
+    resolved_item_id = item_id or f"{package_id}:validation:extraction_cross_check"
+    return create_queue_item(
+        item_id=resolved_item_id,
+        package_id=package_id,
+        escalation_reason=";".join(report.escalation_reasons),
+    )
+
+
 def cross_check_observations(
     observations: Iterable[FieldObservation],
     *,
@@ -152,16 +171,18 @@ def _cross_check_field(
 
     accepted = _select_accepted_observation(observations)
     if parse_failures:
+        accepted = _select_accepted_observation(tuple(observation for observation, _ in parsed))
         return FieldCrossCheck(
             key=key,
             observations=observations,
-            accepted_value=accepted.value,
-            accepted_source=accepted.source,
+            accepted_value=accepted.value if accepted is not None else None,
+            accepted_source=accepted.source if accepted is not None else None,
             escalate=True,
             reason=f"cross_check_unparseable:{key}:{','.join(sorted(parse_failures))}",
         )
 
     disagreement = _first_disagreement(parsed, tolerance_percent=tolerance_percent)
+    assert accepted is not None
     if disagreement is None:
         return FieldCrossCheck(
             key=key,
@@ -187,7 +208,11 @@ def _cross_check_field(
     )
 
 
-def _select_accepted_observation(observations: tuple[FieldObservation, ...]) -> FieldObservation:
+def _select_accepted_observation(
+    observations: tuple[FieldObservation, ...],
+) -> FieldObservation | None:
+    if not observations:
+        return None
     return max(
         observations,
         key=lambda observation: (observation.confidence, observation.source, observation.value),
@@ -205,6 +230,11 @@ def _first_disagreement(
             if percent_difference > tolerance_percent:
                 return left_observation, right_observation, percent_difference
     return None
+
+
+def _relative_difference_percent(value_a: float, value_b: float) -> float:
+    denominator = max(abs(value_a), abs(value_b), _FLOAT_TOLERANCE)
+    return (abs(value_a - value_b) / denominator) * 100.0
 
 
 def _parse_numeric_value(raw_value: str) -> float | None:
