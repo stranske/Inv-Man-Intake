@@ -38,10 +38,7 @@ def build_lineage_packet(
             "trace_refs": sorted(trace_refs),
         },
         "documents": [_document_payload(document) for document in _sort_documents(documents)],
-        "extracted_fields": [
-            _field_payload(field, correction_history.get(field.field_id, ()))
-            for field in _sort_fields(extracted_fields)
-        ],
+        "extracted_fields": _field_payloads(extracted_fields, correction_history),
         "threshold_decision": _threshold_payload(threshold_decision),
         "score": _score_payload(score),
     }
@@ -59,6 +56,26 @@ def _sort_corrections(corrections: Sequence[CorrectionRecord]) -> list[Correctio
     return sorted(
         corrections, key=lambda correction: (correction.corrected_at, correction.correction_id)
     )
+
+
+def _field_payloads(
+    fields: Sequence[ExtractedFieldRecord],
+    correction_history: Mapping[str, Sequence[CorrectionRecord]],
+) -> list[dict[str, Any]]:
+    corrections_by_field_id: dict[str, dict[int, CorrectionRecord]] = {}
+    for corrections in correction_history.values():
+        for correction in corrections:
+            corrections_by_field_id.setdefault(correction.field_id, {})[
+                correction.correction_id
+            ] = correction
+
+    return [
+        _field_payload(
+            field,
+            tuple(corrections_by_field_id.get(field.field_id, {}).values()),
+        )
+        for field in _sort_fields(fields)
+    ]
 
 
 def _document_payload(document: Document) -> dict[str, Any]:
