@@ -236,5 +236,11 @@ def _field_present_detector(extracted: Mapping[str, Any]) -> bool:
 def _numeric_field_present_detector(extracted: Mapping[str, Any]) -> bool:
     if not _field_present_detector(extracted):
         return False
-    value = extracted.get("value")
+    field_key = extracted.get("field_key")
+    values = extracted.get("values")
+    value = (
+        values.get(field_key)
+        if isinstance(field_key, str) and isinstance(values, Mapping)
+        else extracted.get("value")
+    )
     return isinstance(value, int | float) and not isinstance(value, bool)

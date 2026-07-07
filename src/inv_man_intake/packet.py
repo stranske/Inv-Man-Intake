@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from types import MappingProxyType
 
 from inv_man_intake.extraction.cross_check import (
     CrossCheckReport,
     cross_check_extraction_results,
 )
-from inv_man_intake.extraction.doc_type import DocumentType, classify_doc_type
+from inv_man_intake.extraction.doc_type import (
+    DocumentType,
+    _contains_delimited_term,
+    classify_doc_type,
+)
 from inv_man_intake.extraction.providers.base import (
     ExtractedDocumentResult,
     ExtractionProvider,
@@ -76,6 +81,7 @@ def ingest_packet(
 
     if not files:
         raise ValueError("packet must contain at least one file")
+    _validate_unique_document_ids(files)
 
     document_profiles: list[PacketDocumentProfile] = []
     for packet_file in files:
@@ -109,16 +115,18 @@ def ingest_packet(
     return ManagerProfile(
         packet_id=packet_id,
         documents=tuple(document_profiles),
-        identity=_collect_fields(extractions, prefix="identity."),
-        terms=_collect_fields(extractions, prefix="terms."),
-        returns_metrics=_collect_fields(extractions, prefix="performance."),
+        identity=MappingProxyType(_collect_fields(extractions, prefix="identity.")),
+        terms=MappingProxyType(_collect_fields(extractions, prefix="terms.")),
+        returns_metrics=MappingProxyType(_collect_fields(extractions, prefix="performance.")),
         graphics_refs=_graphics_refs(extractions),
-        per_doc_standard_element_coverage={
-            document.document_id: document.standard_element_coverage
-            for document in document_profiles
-        },
+        per_doc_standard_element_coverage=MappingProxyType(
+            {
+                document.document_id: document.standard_element_coverage
+                for document in document_profiles
+            }
+        ),
         flagged_non_standard_items=_flagged_non_standard_items(document_profiles),
-        scores=_scores(extractions),
+        scores=MappingProxyType(_scores(extractions)),
         lineage_refs=tuple(
             lineage_ref for document in document_profiles for lineage_ref in document.lineage_refs
         ),
@@ -145,7 +153,7 @@ def _classification_content(
     extraction: ExtractedDocumentResult,
 ) -> tuple[str, ...]:
     content = packet_file.content.decode("utf-8", errors="ignore")
-    field_values = tuple(field.value for field in extraction.fields)
+    field_values = tuple(str(field.value) for field in extraction.fields)
     filename = (packet_file.filename,) if packet_file.filename else ()
     return (content, *field_values, *filename)
 
@@ -162,7 +170,7 @@ def _library_doc_type_from_content(
             doc_type.casefold().replace("_", " "),
             doc_type.casefold().replace("_", "-"),
         }
-        if any(variant in normalized for variant in variants):
+        if any(_contains_delimited_term(normalized, variant) for variant in variants):
             return doc_type
     return DocumentType.UNKNOWN.value
 
@@ -209,6 +217,8 @@ def _flagged_non_standard_items(
     flags: list[str] = []
     for document in documents:
         for coverage in document.standard_element_coverage:
+            if coverage.mandatory and not coverage.detected:
+                flags.append(f"{document.document_id}:{coverage.key}:missing_mandatory")
             if coverage.standardness != "unknown":
                 flags.append(f"{document.document_id}:{coverage.key}:{coverage.standardness}")
     return tuple(flags)
@@ -228,3 +238,16 @@ def _lineage_refs(extraction: ExtractedDocumentResult) -> tuple[str, ...]:
         f"{field.source_doc_id}:{field.key}:p{field.source_page}:{field.method}"
         for field in extraction.fields
     )
+
+
+def _validate_unique_document_ids(files: Sequence[PacketFile]) -> None:
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for packet_file in files:
+        if packet_file.document_id in seen:
+            duplicates.add(packet_file.document_id)
+        seen.add(packet_file.document_id)
+    if duplicates:
+        raise ValueError(
+            "packet document_id values must be unique: " + ", ".join(sorted(duplicates))
+        )
