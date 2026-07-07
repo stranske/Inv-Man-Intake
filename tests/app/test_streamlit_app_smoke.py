@@ -6,9 +6,15 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from app.streamlit_app import QUEUE_ACTION_STATE_KEY, render_app
+from app.streamlit_app import (
+    QUEUE_ACTION_STATE_KEY,
+    _operator_queue_rows,
+    build_operator_packet_view,
+    render_app,
+)
 
 from inv_man_intake.observability import InMemoryTraceSink
+from inv_man_intake.packet import PacketFile
 
 
 class _StreamlitRecorder:
@@ -264,6 +270,57 @@ def test_app_browser_safe_score_uses_registry_weights(monkeypatch: pytest.Monkey
         "component": "performance_consistency",
         "contribution": pytest.approx(0.80),
     }
+
+
+def test_operator_packet_panels_render_after_existing_queue() -> None:
+    recorder = _StreamlitRecorder()
+
+    render_app(recorder)
+
+    assert recorder.tables[2]
+    coverage_rows = recorder.tables[2]
+    assert isinstance(coverage_rows, list)
+    assert {row["Document"] for row in coverage_rows} == {"track_record", "deck", "ppm"}
+    assert recorder.tables[3], "manager profile table should render packet fields"
+    assert recorder.tables[4], "graphics gallery table should expose a clickable target"
+    assert recorder.tables[5], "return-stream table should render extracted return metrics"
+    assert recorder.tables[6], "exception queue should consume validation_queue_api"
+    assert recorder.tables[7] == [{"Deterministic outbound calls": 0}]
+
+
+def test_operator_packet_view_accepts_library_added_doc_type_without_app_code_change() -> None:
+    view = build_operator_packet_view(
+        (
+            PacketFile(
+                document_id="custom",
+                filename="custom.txt",
+                content=b"custom_added_type Summit Arc AUM $100.0M",
+            ),
+        ),
+        priority=("custom_added_type",),
+    )
+
+    assert view.coverage_rows == [
+        {
+            "Document": "custom",
+            "Type": "custom_added_type",
+            "Coverage": "2/4",
+            "Missing": "None",
+        }
+    ]
+    assert view.outbound_calls == 0
+
+
+def test_operator_packet_view_rejects_empty_doc_type_priority() -> None:
+    with pytest.raises(ValueError, match="priority must not be empty"):
+        build_operator_packet_view(priority=())
+
+
+def test_operator_packet_queue_timestamps_remain_iso_formatted() -> None:
+    rows = _operator_queue_rows("packet", tuple(f"reason-{index}" for index in range(12)))
+
+    assert rows[9].updated_at == "2026-07-07T19:30:00Z"
+    assert all(len(row.updated_at) == len("2026-07-07T19:30:00Z") for row in rows)
 
 
 def test_live_verification_evidence_is_recorded() -> None:
