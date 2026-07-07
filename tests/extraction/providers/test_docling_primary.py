@@ -8,6 +8,7 @@ from stranske_pdf_extract.providers.docling_provider import DoclingProvider
 from inv_man_intake.extraction.providers.base import (
     ExtractionProvider,
     MultiModalExtractionProvider,
+    ProviderExtractionOutput,
     validate_extracted_document_result,
 )
 from inv_man_intake.extraction.providers.docling_primary import (
@@ -20,10 +21,9 @@ class _FakeSharedDoclingProvider:
     def __init__(self, text: str) -> None:
         self._text = text
 
-    def extract_modalities(self, source_doc_id: str, content: bytes) -> object:
+    def extract_modalities(self, source_doc_id: str, content: bytes) -> ProviderExtractionOutput:
         from inv_man_intake.extraction.providers.base import (
             ExtractedTextBlock,
-            ProviderExtractionOutput,
             SourceLocation,
         )
 
@@ -50,14 +50,22 @@ def test_docling_provider_conforms_to_protocol() -> None:
 
 def test_docling_provider_skips_cleanly_when_optional_dependency_absent() -> None:
     try:
-        import docling  # type: ignore[import-untyped]  # noqa: F401
-    except Exception:
+        import docling  # noqa: F401
+    except (ImportError, ModuleNotFoundError):
         provider = DoclingPrimaryExtractionProvider()
         with pytest.raises(MissingDoclingDependencyError):
             provider.extract_modalities(source_doc_id="sample.pdf", content=b"%PDF-1.4\n%%EOF")
         return
 
     pytest.skip("real Docling conversion requires a known-good integration fixture")
+
+
+def test_custom_provider_rejects_do_ocr_flag() -> None:
+    with pytest.raises(ValueError, match="do_ocr is only supported"):
+        DoclingPrimaryExtractionProvider(
+            provider=_FakeSharedDoclingProvider("Strategy: Test"),
+            do_ocr=True,
+        )
 
 
 def test_docling_provider_maps_docling_text_into_canonical_fields() -> None:

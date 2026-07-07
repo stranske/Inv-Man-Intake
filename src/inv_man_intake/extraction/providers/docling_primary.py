@@ -26,6 +26,8 @@ class DoclingPrimaryExtractionProvider:
     """Adapt the shared Docling provider into IMI's field-extraction pipeline."""
 
     def __init__(self, *, provider: Any | None = None, do_ocr: bool = False) -> None:
+        if provider is not None and do_ocr:
+            raise ValueError("do_ocr is only supported when using the default DoclingProvider")
         self._provider = provider if provider is not None else DoclingProvider(do_ocr=do_ocr)
         self._field_extractor = PrimaryRegexExtractionProvider()
 
