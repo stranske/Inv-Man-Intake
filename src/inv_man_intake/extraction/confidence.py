@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from pathlib import Path
 
+from inv_man_intake.extraction.doc_type import DocumentType
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
 
 
@@ -18,6 +21,17 @@ class ThresholdConfig:
     document_key_field_coverage_min: float
     mandatory_field_min: float
     mandatory_fields: tuple[str, ...]
+    document_profiles: Mapping[str, DocumentThresholdProfile] = dataclass_field(
+        default_factory=dict
+    )
+
+
+@dataclass(frozen=True)
+class DocumentThresholdProfile:
+    """Document-type-specific expected-field and confidence policy overrides."""
+
+    key_fields: tuple[str, ...]
+    config: ThresholdConfig
 
 
 @dataclass(frozen=True)
@@ -38,11 +52,67 @@ def load_threshold_config(path: str | Path) -> ThresholdConfig:
     values: dict[str, str] = {}
     mandatory_fields: list[str] = []
     in_mandatory_list = False
+    profile_name: str | None = None
+    profile_list_name: str | None = None
+    in_document_profiles = False
+    profile_values: dict[str, dict[str, str]] = {}
+    profile_key_fields: dict[str, list[str]] = {}
+    profile_mandatory_fields: dict[str, list[str]] = {}
 
     for raw_line in lines:
-        line = raw_line.split("#", 1)[0].strip()
+        line_without_comment = raw_line.split("#", 1)[0].rstrip()
+        line = line_without_comment.strip()
         if not line:
             continue
+        indent = len(line_without_comment) - len(line_without_comment.lstrip(" "))
+        if line == "document_profiles:":
+            in_document_profiles = True
+            profile_name = None
+            profile_list_name = None
+            in_mandatory_list = False
+            continue
+        if in_document_profiles:
+            if indent == 0:
+                in_document_profiles = False
+                profile_name = None
+                profile_list_name = None
+            elif indent == 2 and line.endswith(":"):
+                profile_name = line.removesuffix(":").strip()
+                if not profile_name:
+                    raise ValueError("document profile name must be non-empty")
+                profile_values.setdefault(profile_name, {})
+                profile_key_fields.setdefault(profile_name, [])
+                profile_mandatory_fields.setdefault(profile_name, [])
+                profile_list_name = None
+                continue
+            elif indent == 4 and profile_name is not None:
+                if line in {"key_fields:", "mandatory_fields:"}:
+                    profile_list_name = line.removesuffix(":")
+                    continue
+                if ":" in line:
+                    profile_list_name = None
+                    key, value = line.split(":", 1)
+                    normalized_key = key.strip()
+                    if normalized_key not in {
+                        "field_auto_accept_min",
+                        "key_field_confidence_min",
+                        "document_key_field_coverage_min",
+                        "mandatory_field_min",
+                    }:
+                        raise ValueError(
+                            f"unknown threshold config key in profile {profile_name}: {normalized_key}"
+                        )
+                    profile_values[profile_name][normalized_key] = value.strip().strip('"')
+                    continue
+            elif indent == 6 and line.startswith("-") and profile_name is not None:
+                value = line.removeprefix("-").strip().strip('"')
+                if profile_list_name == "key_fields":
+                    profile_key_fields[profile_name].append(value)
+                    continue
+                if profile_list_name == "mandatory_fields":
+                    profile_mandatory_fields[profile_name].append(value)
+                    continue
+                raise ValueError(f"unexpected list item in document profile {profile_name}")
         if line == "mandatory_fields:":
             in_mandatory_list = True
             continue
@@ -76,12 +146,62 @@ def load_threshold_config(path: str | Path) -> ThresholdConfig:
     if missing:
         raise ValueError(f"missing threshold config keys: {', '.join(missing)}")
 
-    return ThresholdConfig(
+    base_config = ThresholdConfig(
         field_auto_accept_min=_threshold_value("field_auto_accept_min", values),
         key_field_confidence_min=_threshold_value("key_field_confidence_min", values),
         document_key_field_coverage_min=_threshold_value("document_key_field_coverage_min", values),
         mandatory_field_min=_threshold_value("mandatory_field_min", values),
         mandatory_fields=tuple(mandatory_fields),
+    )
+    profiles = {
+        name: _document_profile(
+            name=name,
+            values=profile_values[name],
+            key_fields=tuple(profile_key_fields[name]),
+            mandatory_fields=tuple(profile_mandatory_fields[name]),
+            base_config=base_config,
+        )
+        for name in profile_values
+    }
+    return ThresholdConfig(
+        field_auto_accept_min=base_config.field_auto_accept_min,
+        key_field_confidence_min=base_config.key_field_confidence_min,
+        document_key_field_coverage_min=base_config.document_key_field_coverage_min,
+        mandatory_field_min=base_config.mandatory_field_min,
+        mandatory_fields=base_config.mandatory_fields,
+        document_profiles=profiles,
+    )
+
+
+def _document_profile(
+    *,
+    name: str,
+    values: dict[str, str],
+    key_fields: tuple[str, ...],
+    mandatory_fields: tuple[str, ...],
+    base_config: ThresholdConfig,
+) -> DocumentThresholdProfile:
+    if not key_fields:
+        raise ValueError(f"document profile {name} missing key_fields")
+
+    merged_values = {
+        "field_auto_accept_min": str(base_config.field_auto_accept_min),
+        "key_field_confidence_min": str(base_config.key_field_confidence_min),
+        "document_key_field_coverage_min": str(base_config.document_key_field_coverage_min),
+        "mandatory_field_min": str(base_config.mandatory_field_min),
+        **values,
+    }
+    return DocumentThresholdProfile(
+        key_fields=key_fields,
+        config=ThresholdConfig(
+            field_auto_accept_min=_threshold_value("field_auto_accept_min", merged_values),
+            key_field_confidence_min=_threshold_value("key_field_confidence_min", merged_values),
+            document_key_field_coverage_min=_threshold_value(
+                "document_key_field_coverage_min", merged_values
+            ),
+            mandatory_field_min=_threshold_value("mandatory_field_min", merged_values),
+            mandatory_fields=mandatory_fields,
+        ),
     )
 
 
@@ -163,6 +283,21 @@ def evaluate_thresholds(
         escalate=escalate,
         escalation_reason=reason,
     )
+
+
+def select_threshold_profile(
+    *,
+    document_type: DocumentType | str,
+    key_fields: tuple[str, ...],
+    config: ThresholdConfig,
+) -> tuple[tuple[str, ...], ThresholdConfig]:
+    """Return expected fields and thresholds for a document type, preserving unknown fallback."""
+
+    profile_key = document_type.value if isinstance(document_type, DocumentType) else document_type
+    profile = config.document_profiles.get(profile_key)
+    if profile is None:
+        return key_fields, config
+    return profile.key_fields, profile.config
 
 
 def attach_threshold_summary(
