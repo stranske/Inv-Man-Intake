@@ -78,3 +78,19 @@ def test_unknown_perturbation_component_is_rejected() -> None:
             "equity_market_neutral",
             {"unknown_component": 0.05},
         )
+
+
+def test_duplicate_manager_ids_are_reported_deterministically() -> None:
+    cohort = (
+        _submission("zeta", performance_consistency=0.90, risk_adjusted_returns=0.45),
+        _submission("alpha", performance_consistency=0.85, risk_adjusted_returns=0.50),
+        _submission("zeta", performance_consistency=0.80, risk_adjusted_returns=0.55),
+        _submission("alpha", performance_consistency=0.75, risk_adjusted_returns=0.60),
+    )
+
+    with pytest.raises(ValueError, match=r"cohort contains duplicate manager_id\(s\): alpha, zeta"):
+        weight_sensitivity_report(
+            cohort,
+            "equity_market_neutral",
+            {"risk_adjusted_returns": 0.05},
+        )

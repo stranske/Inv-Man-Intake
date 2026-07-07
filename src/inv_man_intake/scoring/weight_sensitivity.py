@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -112,10 +113,8 @@ def _select_cohort(
             f"cohort contains no submissions for asset class {canonical_asset_class!r}"
         )
 
-    manager_ids = [submission.manager_id for submission in selected]
-    duplicates = sorted(
-        {manager_id for manager_id in manager_ids if manager_ids.count(manager_id) > 1}
-    )
+    manager_counts = Counter(submission.manager_id for submission in selected)
+    duplicates = sorted(manager_id for manager_id, count in manager_counts.items() if count > 1)
     if duplicates:
         raise ValueError(f"cohort contains duplicate manager_id(s): {', '.join(duplicates)}")
     return selected
