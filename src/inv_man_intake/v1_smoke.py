@@ -18,7 +18,9 @@ from inv_man_intake.extraction.confidence import (
     attach_threshold_summary,
     evaluate_thresholds,
     load_threshold_config,
+    select_threshold_profile,
 )
+from inv_man_intake.extraction.doc_type import classify_doc_type
 from inv_man_intake.extraction.orchestrator import ExtractionOrchestrator
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractionProvider
 from inv_man_intake.extraction.providers.pdf_primary import PdfPrimaryExtractionProvider
@@ -207,12 +209,13 @@ def _run_pipeline_core(
     primary_document = core_repository.get_document(record.document_ids[0])
     assert primary_document is not None, "primary document must be registered"
     primary_file_name = primary_document.file_name
+    primary_content = _fixture_bytes(fixture_root=fixture_root, file_name=primary_file_name)
     extraction_result = _run_extraction_smoke(
         tracer=tracer,
         trace_context=extraction_context,
         source_doc_id=record.document_ids[0],
         primary_file_name=primary_file_name,
-        content=_fixture_bytes(fixture_root=fixture_root, file_name=primary_file_name),
+        content=primary_content,
         correlation_id=correlation_id,
     )
     secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
@@ -230,8 +233,8 @@ def _run_pipeline_core(
         effective_threshold_config = threshold_config or load_threshold_config(
             DEFAULT_THRESHOLD_CONFIG_PATH
         )
-        threshold_decision = evaluate_thresholds(
-            result=extraction_result,
+        threshold_key_fields, threshold_profile_config = select_threshold_profile(
+            document_type=classify_doc_type(primary_content),
             key_fields=(
                 "strategy.asset_class",
                 "terms.management_fee",
@@ -240,6 +243,11 @@ def _run_pipeline_core(
                 "team.key_person_risk",
             ),
             config=effective_threshold_config,
+        )
+        threshold_decision = evaluate_thresholds(
+            result=extraction_result,
+            key_fields=threshold_key_fields,
+            config=threshold_profile_config,
         )
         extraction_with_thresholds = attach_threshold_summary(
             result=extraction_result,

@@ -7,3 +7,35 @@ mandatory_fields:
   - terms.management_fee
   - performance.net_return_1y
   - operations.aum
+document_profiles:
+  pitchbook:
+    key_fields:
+      - terms.management_fee
+      - performance.net_return_1y
+      - operations.aum
+    mandatory_fields:
+      - terms.management_fee
+      - performance.net_return_1y
+      - operations.aum
+  tear_sheet:
+    key_fields:
+      - performance.net_return_1y
+      - operations.aum
+    document_key_field_coverage_min: 1.0
+    mandatory_fields:
+      - operations.aum
+  monthly_letter:
+    key_fields:
+      - performance.net_return_1y
+      - commentary.market_update
+    document_key_field_coverage_min: 0.5
+    mandatory_fields:
+      - performance.net_return_1y
+  ddq:
+    key_fields:
+      - terms.management_fee
+      - operations.aum
+      - operations.inception_date
+    mandatory_fields:
+      - terms.management_fee
+      - operations.aum
