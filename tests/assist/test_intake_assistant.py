@@ -94,6 +94,46 @@ def test_recommendations_are_grounded_and_not_auto_applied(tmp_path: Path) -> No
     assert marker.read_text(encoding="utf-8") == '{"aum": 0.05}\n'
 
 
+def test_assistant_normalizes_citation_whitespace(tmp_path: Path) -> None:
+    def fake_client(
+        payload: dict[str, Any],
+        provider_config: ProviderConfig,
+    ) -> Mapping[str, Any]:
+        return {
+            "answer": "The packet escalated because sources disagree.",
+            "citations": [" escalation:1 "],
+            "recommendations": [
+                {
+                    "change": "Review source reconciliation",
+                    "rationale": "The escalation is grounded in cross-document evidence.",
+                    "cited_evidence": [" escalation:1 "],
+                    "expected_effect": "Keeps recommendations tied to known packet signals.",
+                }
+            ],
+        }
+
+    answer = answer_intake_question(
+        manager_profile=_manager_profile(),
+        question="what should change?",
+        consent=EgressConsent(
+            granted_by="operator",
+            purpose="rank intake-improvement recommendations",
+            granted_at="2026-07-07T09:00:00Z",
+        ),
+        provider_config=ProviderConfig(
+            provider="frontier-zero-retention",
+            model="secure-model",
+            zero_retention=True,
+            baa_eligible=True,
+        ),
+        log_path=tmp_path / "egress.jsonl",
+        client=fake_client,
+    )
+
+    assert answer.citations == ("escalation:1",)
+    assert answer.recommendations[0].cited_evidence == ("escalation:1",)
+
+
 def test_assistant_rejects_uncited_recommendations(tmp_path: Path) -> None:
     def fake_client(
         payload: dict[str, Any],

@@ -16,7 +16,7 @@ DESIGN_SYSTEM_ROOT = Path(__file__).resolve().parents[1] / "design-system"
 if str(DESIGN_SYSTEM_ROOT) not in sys.path:
     sys.path.insert(0, str(DESIGN_SYSTEM_ROOT))
 
-from inv_man_intake.assist.intake_assistant import IntakeRecommendation  # noqa: E402
+from inv_man_intake.assist import IntakeRecommendation  # noqa: E402
 from inv_man_intake.extraction.providers.base import (  # noqa: E402
     ExtractedDocumentResult,
     ExtractedField,
@@ -649,7 +649,11 @@ def render_assistant_panel(
             rationale=recommendation.rationale,
             citations=", ".join(recommendation.cited_evidence),
             expected_effect=recommendation.expected_effect,
-            action="Apply manually",
+            action=(
+                "Apply manually"
+                if recommendation.apply_manually
+                else "Blocked (auto-apply not permitted)"
+            ),
         )
         for recommendation in recommendations
     )

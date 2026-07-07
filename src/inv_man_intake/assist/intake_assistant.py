@@ -20,6 +20,11 @@ from inv_man_intake.data.provenance import CorrectionRecord
 from inv_man_intake.packet import ManagerProfile
 from inv_man_intake.scoring.contracts import ScoreResult
 
+_ESCALATION_SEVERITY = 0.95
+_STANDARDNESS_SEVERITY = 0.80
+_CORRECTION_SEVERITY = 0.70
+_SCORE_RED_FLAG_SEVERITY = 0.90
+
 
 @dataclass(frozen=True)
 class RunSignal:
@@ -53,6 +58,13 @@ class AssistantAnswer:
     recommendations: tuple[IntakeRecommendation, ...]
 
 
+def _require_non_empty_citations(value: tuple[str, ...]) -> tuple[str, ...]:
+    stripped = tuple(citation.strip() for citation in value)
+    if any(not citation for citation in stripped):
+        raise ValueError("citations must be non-empty strings")
+    return stripped
+
+
 class _RecommendationPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -65,9 +77,7 @@ class _RecommendationPayload(BaseModel):
     @field_validator("cited_evidence")
     @classmethod
     def _citations_must_be_non_empty(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        if any(not citation.strip() for citation in value):
-            raise ValueError("citations must be non-empty strings")
-        return value
+        return _require_non_empty_citations(value)
 
 
 class _AssistantResponsePayload(BaseModel):
@@ -80,9 +90,7 @@ class _AssistantResponsePayload(BaseModel):
     @field_validator("citations")
     @classmethod
     def _citations_must_be_non_empty(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        if any(not citation.strip() for citation in value):
-            raise ValueError("citations must be non-empty strings")
-        return value
+        return _require_non_empty_citations(value)
 
 
 def answer_intake_question(
@@ -156,7 +164,7 @@ def collect_run_signals(
                     if manager_profile.lineage_refs
                     else manager_profile.packet_id
                 ),
-                severity=0.95,
+                severity=_ESCALATION_SEVERITY,
             )
         )
     for index, flag in enumerate(manager_profile.flagged_non_standard_items, start=1):
@@ -167,7 +175,7 @@ def collect_run_signals(
                 category="standardness",
                 summary=flag,
                 source_ref=document_id or manager_profile.packet_id,
-                severity=0.80,
+                severity=_STANDARDNESS_SEVERITY,
             )
         )
     for correction in corrections:
@@ -177,7 +185,7 @@ def collect_run_signals(
                 category="correction",
                 summary=correction.reason or f"corrected {correction.field_id}",
                 source_ref=correction.field_id,
-                severity=0.70,
+                severity=_CORRECTION_SEVERITY,
             )
         )
     if score_result and score_result.red_flag_reason:
@@ -187,7 +195,7 @@ def collect_run_signals(
                 category="score",
                 summary=score_result.red_flag_reason,
                 source_ref=score_result.manager_id,
-                severity=0.90,
+                severity=_SCORE_RED_FLAG_SEVERITY,
             )
         )
     return tuple(signals)
