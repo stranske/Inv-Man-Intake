@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: Add `frontend_verify.py` with an automated verifier entry point that launches
       the app in a deterministic test harness.
-    status: doing
+    status: done
     started_at: '2026-07-07T22:43:22Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-07-07T22:43:36Z'
+    commit: 204e901f6f6d34066c6f8c5a376522db17e7cb78
     notes: []
   - id: task-02
     title: 'Create the frontend_verify.py module with basic structure (verify: confirm
