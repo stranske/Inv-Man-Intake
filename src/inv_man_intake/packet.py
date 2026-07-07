@@ -1,0 +1,230 @@
+"""Packet-level ingestion orchestration for multi-document manager profiles."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+
+from inv_man_intake.extraction.cross_check import (
+    CrossCheckReport,
+    cross_check_extraction_results,
+)
+from inv_man_intake.extraction.doc_type import DocumentType, classify_doc_type
+from inv_man_intake.extraction.providers.base import (
+    ExtractedDocumentResult,
+    ExtractionProvider,
+)
+from inv_man_intake.intake.standard_elements import (
+    ElementCoverage,
+    StandardElementLibrary,
+)
+
+
+@dataclass(frozen=True)
+class PacketFile:
+    """One source document in a packet."""
+
+    document_id: str
+    content: bytes
+    filename: str | None = None
+
+
+@dataclass(frozen=True)
+class PacketDocumentProfile:
+    """Per-document extraction, routing, coverage, and lineage."""
+
+    document_id: str
+    filename: str | None
+    document_type: str
+    extraction: ExtractedDocumentResult
+    standard_element_coverage: tuple[ElementCoverage, ...]
+    lineage_refs: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ManagerProfile:
+    """Unified packet output consumed by the operator app and CLI."""
+
+    packet_id: str
+    documents: tuple[PacketDocumentProfile, ...]
+    identity: Mapping[str, str]
+    terms: Mapping[str, str]
+    returns_metrics: Mapping[str, str]
+    graphics_refs: tuple[str, ...]
+    per_doc_standard_element_coverage: Mapping[str, tuple[ElementCoverage, ...]]
+    flagged_non_standard_items: tuple[str, ...]
+    scores: Mapping[str, float]
+    lineage_refs: tuple[str, ...]
+    reconciliation: CrossCheckReport
+
+    @property
+    def escalations(self) -> tuple[str, ...]:
+        """Field-level reconciliation reasons that need analyst triage."""
+
+        return self.reconciliation.escalation_reasons
+
+
+def ingest_packet(
+    files: Sequence[PacketFile],
+    *,
+    provider: ExtractionProvider,
+    standard_library: StandardElementLibrary,
+    packet_id: str = "packet",
+    tolerance_percent: float = 5.0,
+) -> ManagerProfile:
+    """Extract a packet of documents and assemble one reconciled manager profile."""
+
+    if not files:
+        raise ValueError("packet must contain at least one file")
+
+    document_profiles: list[PacketDocumentProfile] = []
+    for packet_file in files:
+        extraction = provider.extract(packet_file.document_id, packet_file.content)
+        document_type = _classify_packet_document(
+            packet_file=packet_file,
+            extraction=extraction,
+            standard_library=standard_library,
+        )
+        coverage = _evaluate_coverage(
+            document_type=document_type,
+            extraction=extraction,
+            standard_library=standard_library,
+        )
+        document_profiles.append(
+            PacketDocumentProfile(
+                document_id=packet_file.document_id,
+                filename=packet_file.filename,
+                document_type=document_type,
+                extraction=extraction,
+                standard_element_coverage=coverage,
+                lineage_refs=_lineage_refs(extraction),
+            )
+        )
+
+    extractions = tuple(document.extraction for document in document_profiles)
+    reconciliation = cross_check_extraction_results(
+        extractions,
+        tolerance_percent=tolerance_percent,
+    )
+    return ManagerProfile(
+        packet_id=packet_id,
+        documents=tuple(document_profiles),
+        identity=_collect_fields(extractions, prefix="identity."),
+        terms=_collect_fields(extractions, prefix="terms."),
+        returns_metrics=_collect_fields(extractions, prefix="performance."),
+        graphics_refs=_graphics_refs(extractions),
+        per_doc_standard_element_coverage={
+            document.document_id: document.standard_element_coverage
+            for document in document_profiles
+        },
+        flagged_non_standard_items=_flagged_non_standard_items(document_profiles),
+        scores=_scores(extractions),
+        lineage_refs=tuple(
+            lineage_ref for document in document_profiles for lineage_ref in document.lineage_refs
+        ),
+        reconciliation=reconciliation,
+    )
+
+
+def _classify_packet_document(
+    *,
+    packet_file: PacketFile,
+    extraction: ExtractedDocumentResult,
+    standard_library: StandardElementLibrary,
+) -> str:
+    content = _classification_content(packet_file=packet_file, extraction=extraction)
+    document_type = classify_doc_type(content, standard_library=standard_library)
+    if document_type is DocumentType.UNKNOWN:
+        return _library_doc_type_from_content(content, standard_library=standard_library)
+    return document_type.value
+
+
+def _classification_content(
+    *,
+    packet_file: PacketFile,
+    extraction: ExtractedDocumentResult,
+) -> tuple[str, ...]:
+    content = packet_file.content.decode("utf-8", errors="ignore")
+    field_values = tuple(field.value for field in extraction.fields)
+    filename = (packet_file.filename,) if packet_file.filename else ()
+    return (content, *field_values, *filename)
+
+
+def _library_doc_type_from_content(
+    content: Sequence[str],
+    *,
+    standard_library: StandardElementLibrary,
+) -> str:
+    normalized = "\n".join(content).casefold()
+    for doc_type in standard_library.doc_types():
+        variants = {
+            doc_type.casefold(),
+            doc_type.casefold().replace("_", " "),
+            doc_type.casefold().replace("_", "-"),
+        }
+        if any(variant in normalized for variant in variants):
+            return doc_type
+    return DocumentType.UNKNOWN.value
+
+
+def _evaluate_coverage(
+    *,
+    document_type: str,
+    extraction: ExtractedDocumentResult,
+    standard_library: StandardElementLibrary,
+) -> tuple[ElementCoverage, ...]:
+    if document_type not in standard_library.doc_types():
+        return ()
+    extracted = {
+        "fields": {field.key for field in extraction.fields},
+        "values": {field.key: field.value for field in extraction.fields},
+    }
+    return standard_library.evaluate_coverage(document_type, extracted)
+
+
+def _collect_fields(
+    results: Sequence[ExtractedDocumentResult],
+    *,
+    prefix: str,
+) -> dict[str, str]:
+    collected: dict[str, str] = {}
+    for result in results:
+        for field in result.fields:
+            if field.key.startswith(prefix):
+                collected.setdefault(field.key, field.value)
+    return collected
+
+
+def _graphics_refs(results: Sequence[ExtractedDocumentResult]) -> tuple[str, ...]:
+    refs: list[str] = []
+    for result in results:
+        images = getattr(result, "images", ())
+        refs.extend(f"{result.source_doc_id}:image:{index}" for index, _ in enumerate(images))
+    return tuple(refs)
+
+
+def _flagged_non_standard_items(
+    documents: Sequence[PacketDocumentProfile],
+) -> tuple[str, ...]:
+    flags: list[str] = []
+    for document in documents:
+        for coverage in document.standard_element_coverage:
+            if coverage.standardness != "unknown":
+                flags.append(f"{document.document_id}:{coverage.key}:{coverage.standardness}")
+    return tuple(flags)
+
+
+def _scores(results: Sequence[ExtractedDocumentResult]) -> dict[str, float]:
+    fields = [field for result in results for field in result.fields]
+    if not fields:
+        return {"extraction_confidence": 0.0}
+    return {
+        "extraction_confidence": sum(field.confidence for field in fields) / len(fields),
+    }
+
+
+def _lineage_refs(extraction: ExtractedDocumentResult) -> tuple[str, ...]:
+    return tuple(
+        f"{field.source_doc_id}:{field.key}:p{field.source_page}:{field.method}"
+        for field in extraction.fields
+    )
