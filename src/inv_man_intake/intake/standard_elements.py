@@ -34,6 +34,8 @@ class ElementCoverage:
 class StandardElementLibrary(Protocol):
     """Minimal port the intake app consumes from a standard-element library."""
 
+    non_authoritative: bool
+
     def doc_types(self) -> tuple[str, ...]:
         """Return document type identifiers supplied by library data."""
 
@@ -64,11 +66,11 @@ class DataDrivenStandardElementLibrary:
         self.version = version
         self.non_authoritative = non_authoritative
         self._elements_by_doc_type = dict(elements_by_doc_type)
-        self._detectors = dict(detectors or default_detector_registry())
+        self._detectors = dict(detectors if detectors is not None else default_detector_registry())
         self._validate_detector_references()
 
     def doc_types(self) -> tuple[str, ...]:
-        return tuple(self._elements_by_doc_type)
+        return tuple(sorted(self._elements_by_doc_type))
 
     def elements_for(self, doc_type: str) -> tuple[StandardElement, ...]:
         try:
@@ -151,14 +153,23 @@ def load_standard_element_library(
             raise ValueError("document type identifiers must be non-empty strings")
         if not isinstance(raw_elements, list) or not raw_elements:
             raise ValueError(f"doc_type {doc_type!r} must define a non-empty element list")
-        elements_by_doc_type[doc_type] = tuple(
+        elements = tuple(
             _parse_standard_element(doc_type=doc_type, raw_element=raw_element)
             for raw_element in raw_elements
         )
+        duplicate_keys = sorted(
+            key for key in {element.key for element in elements} if _count_key(elements, key) > 1
+        )
+        if duplicate_keys:
+            raise ValueError(
+                f"doc_type {doc_type!r} contains duplicate element key(s): "
+                + ", ".join(duplicate_keys)
+            )
+        elements_by_doc_type[doc_type] = elements
 
     return DataDrivenStandardElementLibrary(
         version=_required_string(payload, "version"),
-        non_authoritative=bool(payload.get("non_authoritative", False)),
+        non_authoritative=_required_bool(payload, "non_authoritative"),
         elements_by_doc_type=elements_by_doc_type,
         detectors=detectors,
     )
@@ -192,7 +203,7 @@ def _parse_standard_element(
     return StandardElement(
         key=_required_string(raw_element, "key"),
         detector_name=_required_string(raw_element, "detector_name"),
-        mandatory=bool(raw_element.get("mandatory", False)),
+        mandatory=_required_bool(raw_element, "mandatory"),
     )
 
 
@@ -201,6 +212,17 @@ def _required_string(payload: Mapping[str, Any], key: str) -> str:
     if not isinstance(value, str) or not value:
         raise ValueError(f"standard element library field {key!r} must be a non-empty string")
     return value
+
+
+def _required_bool(payload: Mapping[str, Any], key: str) -> bool:
+    value = payload.get(key)
+    if not isinstance(value, bool):
+        raise ValueError(f"standard element library field {key!r} must be a boolean")
+    return value
+
+
+def _count_key(elements: tuple[StandardElement, ...], key: str) -> int:
+    return sum(1 for element in elements if element.key == key)
 
 
 def _field_present_detector(extracted: Mapping[str, Any]) -> bool:
