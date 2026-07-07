@@ -108,6 +108,12 @@ def _contains_delimited_term(text: str, term: str) -> bool:
     return re.search(pattern, text) is not None
 
 
+def contains_delimited_term(text: str, term: str) -> bool:
+    """Return whether a normalized term appears on token boundaries."""
+
+    return _contains_delimited_term(text, term)
+
+
 def _normalize_identifier(value: str) -> str:
     return value.strip().casefold().replace("-", "_").replace(" ", "_")
 

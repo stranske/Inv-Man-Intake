@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
-from typing import cast
 
 import inv_man_intake.packet
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
@@ -271,7 +270,7 @@ def test_packet_numeric_detector_uses_field_values_payload() -> None:
                 "deck": _result(
                     source_doc_id="deck",
                     provider_name="deck-provider",
-                    fields=(_field("operations.aum", cast(str, 100.0), "deck", 0.8),),
+                    fields=(_field("operations.aum", "$100.0M", "deck", 0.8),),
                 )
             }
         ),

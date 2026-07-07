@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -12,8 +13,8 @@ from inv_man_intake.extraction.cross_check import (
 )
 from inv_man_intake.extraction.doc_type import (
     DocumentType,
-    _contains_delimited_term,
     classify_doc_type,
+    contains_delimited_term,
 )
 from inv_man_intake.extraction.providers.base import (
     ExtractedDocumentResult,
@@ -170,7 +171,7 @@ def _library_doc_type_from_content(
             doc_type.casefold().replace("_", " "),
             doc_type.casefold().replace("_", "-"),
         }
-        if any(_contains_delimited_term(normalized, variant) for variant in variants):
+        if any(contains_delimited_term(normalized, variant) for variant in variants):
             return doc_type
     return DocumentType.UNKNOWN.value
 
@@ -185,9 +186,30 @@ def _evaluate_coverage(
         return ()
     extracted = {
         "fields": {field.key for field in extraction.fields},
-        "values": {field.key: field.value for field in extraction.fields},
+        "values": {field.key: _coverage_value(field.value) for field in extraction.fields},
     }
     return standard_library.evaluate_coverage(document_type, extracted)
+
+
+_NUMERIC_VALUE_RE = re.compile(
+    r"^\s*[$€£]?\s*([+-]?(?:\d+(?:,\d{3})*|\d*)(?:\.\d+)?)\s*([%kmb])?\s*$",
+    re.IGNORECASE,
+)
+
+
+def _coverage_value(value: str) -> str | float:
+    match = _NUMERIC_VALUE_RE.match(value)
+    if match is None:
+        return value
+    number_text = match.group(1)
+    if not number_text or number_text in {"+", "-", "."}:
+        return value
+    numeric = float(number_text.replace(",", ""))
+    suffix = (match.group(2) or "").casefold()
+    multipliers = {"k": 1_000.0, "m": 1_000_000.0, "b": 1_000_000_000.0}
+    if suffix in multipliers:
+        numeric *= multipliers[suffix]
+    return numeric
 
 
 def _collect_fields(
