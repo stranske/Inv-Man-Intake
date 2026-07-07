@@ -24,6 +24,8 @@ _GOLDEN_PATH = Path(__file__).resolve().parent / "golden" / "extraction_regressi
 def test_extraction_matches_golden() -> None:
     samples = load_golden_samples(_GOLDEN_PATH)
 
+    assert samples[0].expected_fields[0].confidence == 0.93
+
     report = evaluate_extraction_regression(
         provider_factory=PrimaryRegexExtractionProvider,
         samples=samples,

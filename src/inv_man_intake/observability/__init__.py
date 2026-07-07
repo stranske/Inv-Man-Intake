@@ -1,6 +1,7 @@
 """Observability utilities for trace and metric instrumentation."""
 
 from .entrypoints import PipelineEntrypoint, audit_intake_extraction_entrypoints
+from .extraction_drift import ExtractionDriftRecord, score_extraction_trace_drift
 from .langsmith_fleet import (
     ARTIFACT_NAME,
     DEFAULT_PROJECT,
@@ -58,6 +59,7 @@ from .tracing import (
 __all__ = [
     "CORRELATION_ID_KEY",
     "ESCALATION_COUNT",
+    "ExtractionDriftRecord",
     "FAILURE_COUNT",
     "FALLBACK_COUNT",
     "InMemoryMetrics",
@@ -98,6 +100,7 @@ __all__ = [
     "inject_trace_context",
     "new_correlation_id",
     "new_trace_context",
+    "score_extraction_trace_drift",
     "traced_run",
     "traced_span",
     "tracing_enabled_from_env",
