@@ -16,6 +16,8 @@ from inv_man_intake.assist.egress_guard import (
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
 from inv_man_intake.intake.standard_elements import ElementCoverage, StandardElementLibrary
 
+_MAX_DEVIATION_DESCRIPTION_CHARS = 500
+
 
 @dataclass(frozen=True)
 class PpmChecklistItem:
@@ -134,10 +136,17 @@ def _describe_deviations(
     log_path: Path | None,
     client: LlmClient | None,
 ) -> tuple[DeviationNote, ...]:
-    if consent is None or provider_config is None or log_path is None or client is None:
+    egress_config = (consent, provider_config, log_path, client)
+    if all(item is None for item in egress_config):
+        return ()
+    if any(item is None for item in egress_config):
         raise ValueError(
             "PPM deviation notes require consent, provider_config, log_path, and client"
         )
+    assert consent is not None
+    assert provider_config is not None
+    assert log_path is not None
+    assert client is not None
 
     payload = {
         "task": "describe ppm deviation notes",
@@ -154,7 +163,7 @@ def _describe_deviations(
         "deviations": [
             {
                 "element_key": field.key,
-                "source_text": field.value,
+                "clause_description": field.value[:_MAX_DEVIATION_DESCRIPTION_CHARS],
                 "citation": _citation(field),
             }
             for field in candidates

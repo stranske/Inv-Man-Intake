@@ -20,7 +20,7 @@ def test_coverage_checklist_and_deviation_flagging(tmp_path: Path) -> None:
     def fake_client(payload: dict[str, Any], provider_config: ProviderConfig) -> Mapping[str, Any]:
         outbound_calls.append(payload)
         deviation = payload["deviations"][0]
-        assert deviation["source_text"] == "[REDACTED]"
+        assert deviation["clause_description"] == "NON-STANDARD quarterly gate"
         return {
             "notes": [
                 {
@@ -104,6 +104,48 @@ def test_deterministic_coverage_does_not_call_llm(tmp_path: Path) -> None:
 
     assert evaluation.deviation_notes == ()
     assert not (tmp_path / "egress.jsonl").exists()
+
+
+def test_deviation_candidates_without_egress_wiring_only_return_coverage() -> None:
+    evaluation = evaluate_ppm(
+        _ppm_result(
+            (
+                _field(
+                    "ppm.deviation.liquidity_gate",
+                    "NON-STANDARD quarterly gate",
+                    "clause-map",
+                    0.88,
+                ),
+            )
+        ),
+        _ppm_library(),
+    )
+
+    assert evaluation.checklist
+    assert evaluation.deviation_notes == ()
+
+
+def test_partial_deviation_egress_wiring_is_rejected(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="consent, provider_config, log_path, and client"):
+        evaluate_ppm(
+            _ppm_result(
+                (
+                    _field(
+                        "ppm.deviation.liquidity_gate",
+                        "NON-STANDARD quarterly gate",
+                        "clause-map",
+                        0.88,
+                    ),
+                )
+            ),
+            _ppm_library(),
+            consent=EgressConsent(
+                granted_by="operator",
+                purpose="describe PPM deviation notes",
+                granted_at="2026-07-07T09:00:00Z",
+            ),
+            log_path=tmp_path / "egress.jsonl",
+        )
 
 
 def test_ppm_decoupling_includes_library_added_element_without_code_change() -> None:
