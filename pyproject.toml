@@ -29,7 +29,7 @@ app = [
     "streamlit==1.59.0",
 ]
 extraction-docling = [
-    "docling>=2.45.0",
+    "docling>=2.45.0,<3.0.0",
 ]
 dev = [
     "playwright>=1.56.0",

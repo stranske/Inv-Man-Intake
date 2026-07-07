@@ -17,8 +17,6 @@ from inv_man_intake.extraction.providers.base import (
     ExtractedDocumentResult,
     ExtractedField,
     ExtractedTextBlock,
-    ExtractionProvider,
-    MultiModalExtractionProvider,
     ProviderExtractionOutput,
     SourceLocation,
     validate_extracted_document_result,
@@ -150,8 +148,3 @@ __all__ = [
     "DoclingPrimaryExtractionProvider",
     "MissingDoclingDependencyError",
 ]
-
-
-_provider = DoclingPrimaryExtractionProvider()
-assert isinstance(_provider, ExtractionProvider)
-assert isinstance(_provider, MultiModalExtractionProvider)

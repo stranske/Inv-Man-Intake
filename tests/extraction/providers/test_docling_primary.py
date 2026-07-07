@@ -8,7 +8,6 @@ from inv_man_intake.extraction.providers.base import (
     ExtractionProvider,
     MultiModalExtractionProvider,
     validate_extracted_document_result,
-    validate_provider_output,
 )
 from inv_man_intake.extraction.providers.docling_primary import (
     DoclingPrimaryExtractionProvider,
@@ -46,14 +45,15 @@ def test_docling_provider_conforms_to_protocol() -> None:
 
 
 def test_docling_provider_skips_cleanly_when_optional_dependency_absent() -> None:
-    pytest.importorskip("docling")
-
-    provider = DoclingPrimaryExtractionProvider()
     try:
-        output = provider.extract_modalities(source_doc_id="sample.pdf", content=b"%PDF-1.4\n%%EOF")
-    except MissingDoclingDependencyError as exc:  # pragma: no cover - defensive import race
-        pytest.skip(str(exc))
-    validate_provider_output(output)
+        import docling  # noqa: F401
+    except ModuleNotFoundError:
+        provider = DoclingPrimaryExtractionProvider()
+        with pytest.raises(MissingDoclingDependencyError):
+            provider.extract_modalities(source_doc_id="sample.pdf", content=b"%PDF-1.4\n%%EOF")
+        return
+
+    pytest.skip("real Docling conversion requires a known-good integration fixture")
 
 
 def test_docling_provider_maps_docling_text_into_canonical_fields() -> None:

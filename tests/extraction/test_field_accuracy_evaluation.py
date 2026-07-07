@@ -11,7 +11,7 @@ from inv_man_intake.extraction.providers.primary import PrimaryRegexExtractionPr
 
 
 def test_field_accuracy_harness_scores_real_sample_bytes() -> None:
-    sample = EvaluationSample(
+    matched_sample = EvaluationSample(
         source_doc_id="real-sample.txt",
         content=(
             b"Strategy: Summit Arc Credit\n"
@@ -26,15 +26,28 @@ def test_field_accuracy_harness_scores_real_sample_bytes() -> None:
             FieldExpectation(key="benchmark.name", value="S&P 500"),
         ),
     )
+    missing_sample = EvaluationSample(
+        source_doc_id="missing-sample.txt",
+        content=b"Strategy: Summit Arc Credit\n",
+        expected_fields=(
+            FieldExpectation(key="strategy.name", value="Summit Arc Credit"),
+            FieldExpectation(key="terms.management_fee", value="1.25%"),
+        ),
+    )
+    mismatched_sample = EvaluationSample(
+        source_doc_id="mismatched-sample.txt",
+        content=b"Management fee: 1.50%\n",
+        expected_fields=(FieldExpectation(key="terms.management_fee", value="1.25%"),),
+    )
 
     report = evaluate_field_accuracy(
         provider_factory=PrimaryRegexExtractionProvider,
-        samples=(sample,),
+        samples=(matched_sample, missing_sample, mismatched_sample),
     )
 
     assert report.provider_name == "primary-regex"
-    assert report.evaluated_fields == 4
-    assert report.matched_fields == 4
-    assert report.accuracy == 1.0
-    assert report.missing_fields == ()
-    assert report.mismatched_fields == ()
+    assert report.evaluated_fields == 7
+    assert report.matched_fields == 5
+    assert report.accuracy == 5 / 7
+    assert report.missing_fields == ("missing-sample.txt:terms.management_fee",)
+    assert report.mismatched_fields == ("mismatched-sample.txt:terms.management_fee",)

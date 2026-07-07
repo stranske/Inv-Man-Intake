@@ -60,8 +60,22 @@ def evaluate_field_accuracy(
     mismatched: list[str] = []
 
     for sample in samples:
-        result = provider.extract(source_doc_id=sample.source_doc_id, content=sample.content)
-        actual = {_normalize(field.key): _normalize(field.value) for field in result.fields}
+        try:
+            result = provider.extract(source_doc_id=sample.source_doc_id, content=sample.content)
+        except Exception:  # noqa: BLE001 - record the sample failure and continue.
+            for expected in sample.expected_fields:
+                evaluated += 1
+                missing.append(f"{sample.source_doc_id}:{expected.key}")
+            continue
+
+        actual: dict[str, str] = {}
+        duplicate_keys: set[str] = set()
+        for field in result.fields:
+            key = _normalize(field.key)
+            if key in actual:
+                duplicate_keys.add(key)
+            actual[key] = _normalize(field.value)
+
         for expected in sample.expected_fields:
             evaluated += 1
             key = _normalize(expected.key)
@@ -70,6 +84,8 @@ def evaluate_field_accuracy(
             field_ref = f"{sample.source_doc_id}:{expected.key}"
             if actual_value is None:
                 missing.append(field_ref)
+            elif key in duplicate_keys:
+                mismatched.append(field_ref)
             elif actual_value == expected_value:
                 matched += 1
             else:
