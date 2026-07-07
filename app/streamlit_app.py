@@ -7,7 +7,7 @@ import sys
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Any, Protocol, TypedDict, cast
 
 SRC_ROOT = Path(__file__).resolve().parents[1] / "src"
 if str(SRC_ROOT) not in sys.path:
@@ -20,7 +20,10 @@ from inv_man_intake.extraction.providers.base import (  # noqa: E402
     ExtractedDocumentResult,
     ExtractedField,
 )
-from inv_man_intake.intake.standard_elements import load_standard_element_library  # noqa: E402
+from inv_man_intake.intake.standard_elements import (  # noqa: E402
+    StandardElementLibrary,
+    load_standard_element_library,
+)
 from inv_man_intake.observability import InMemoryTraceSink  # noqa: E402
 from inv_man_intake.packet import PacketFile, ingest_packet  # noqa: E402
 from inv_man_intake.readiness.fixture_batches import DEFAULT_BATCH_PACKAGES  # noqa: E402
@@ -34,9 +37,7 @@ from inv_man_intake.validation_queue_api import (  # noqa: E402
 from inv_man_intake.workflow_validation import ValidationQueueRow  # noqa: E402
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "intake"
-FIXTURE_OPTIONS = tuple(
-    cast(str, package["intake_bundle_file"]) for package in DEFAULT_BATCH_PACKAGES
-)
+FIXTURE_OPTIONS = tuple(package["intake_bundle_file"] for package in DEFAULT_BATCH_PACKAGES)
 FIXTURE_DISPLAY_METADATA = {
     "pdf_primary_mixed_bundle.json": {
         "label": "Mixed-source PDF intake sample",
@@ -47,10 +48,17 @@ FIXTURE_DISPLAY_METADATA = {
         "description": "Presentation-led sample package for checking intake and scoring output.",
     },
 }
-PACKAGE_CONFIG_BY_FIXTURE = {
-    cast(str, package["intake_bundle_file"]): {
-        "package_id": cast(str, package["package_id"]),
-        "expected_document_ids": cast(tuple[str, ...], package["expected_document_ids"]),
+
+
+class PackageConfig(TypedDict):
+    package_id: str
+    expected_document_ids: tuple[str, ...]
+
+
+PACKAGE_CONFIG_BY_FIXTURE: dict[str, PackageConfig] = {
+    package["intake_bundle_file"]: {
+        "package_id": package["package_id"],
+        "expected_document_ids": package["expected_document_ids"],
     }
     for package in DEFAULT_BATCH_PACKAGES
 }
@@ -139,8 +147,8 @@ class OperatorPacketView:
 
 QUEUE_ACTION_STATE_KEY = "analyst_queue_action_state"
 OPERATOR_GRAPHIC_STATE_KEY = "operator_graphic_open_state"
-DEFAULT_DOC_TYPE_PRIORITY = ("track_record", "deck", "ppm")
-SAMPLE_PACKET_FILES = (
+DEFAULT_DOC_TYPE_PRIORITY: tuple[str, ...] = ("track_record", "deck", "ppm")
+SAMPLE_PACKET_FILES: tuple[PacketFile, ...] = (
     PacketFile(
         document_id="track_record",
         filename="track-record.txt",
@@ -263,7 +271,7 @@ def _browser_safe_demo_fixture(fixture_name: str) -> DemoResult:
     )
     return DemoResult(
         fixture_name=fixture_name,
-        package_id=cast(str, package["package_id"]),
+        package_id=package["package_id"],
         final_score=float(score.final_score),
         components=[
             {"component": name, "contribution": contribution}
@@ -389,7 +397,10 @@ def _operator_field(source_doc_id: str, key: str, value: str, confidence: float)
     )
 
 
-def _operator_library(priority: Sequence[str]):
+def _operator_library(priority: Sequence[str]) -> StandardElementLibrary:
+    if not priority:
+        raise ValueError("operator packet doc-type priority must not be empty")
+
     return load_standard_element_library(
         {
             "version": "operator-browser-mvp",
@@ -437,7 +448,7 @@ def build_operator_packet_view(
         standard_library=_operator_library(tuple(priority)),
         packet_id="operator-browser-packet",
     )
-    coverage_rows = [
+    coverage_rows: list[dict[str, object]] = [
         {
             "Document": document.document_id,
             "Type": document.document_type,
@@ -452,7 +463,7 @@ def build_operator_packet_view(
         }
         for document in profile.documents
     ]
-    profile_rows = [
+    profile_rows: list[dict[str, object]] = [
         {"Field": key, "Value": value}
         for group in (profile.identity, profile.terms, profile.returns_metrics)
         for key, value in group.items()
@@ -462,18 +473,18 @@ def build_operator_packet_view(
         for document in profile.documents
         if document.document_type == "deck"
     )
-    graphics_rows = [
+    graphics_rows: list[dict[str, object]] = [
         {
             "Graphic": graphic_ref,
             "Status": (action_state or {}).get(graphic_ref, "Ready"),
         }
         for graphic_ref in graphic_refs
     ]
-    return_rows = [
+    return_rows: list[dict[str, object]] = [
         {"Metric": key, "Value": value} for key, value in profile.returns_metrics.items()
     ] or [{"Metric": "performance.net_return_1y", "Value": "Not supplied"}]
     queue_rows = _operator_queue_rows(profile.packet_id, profile.escalations)
-    exception_rows = [
+    exception_rows: list[dict[str, object]] = [
         {
             "Item": row.item_id,
             "State": row.state,
@@ -514,7 +525,7 @@ def _operator_queue_rows(
             owner_role="analyst",
             escalation_reason=reason,
             next_action="Review packet evidence",
-            updated_at=f"2026-07-07T19:2{index}:00Z",
+            updated_at=f"2026-07-07T19:{20 + index:02d}:00Z",
         )
         for index, reason in enumerate(reasons, start=1)
     )
@@ -548,8 +559,8 @@ def render_operator_packet(
 ) -> OperatorPacketView:
     """Render the packet-level operator app MVP."""
 
-    priority = DEFAULT_DOC_TYPE_PRIORITY
-    files = SAMPLE_PACKET_FILES
+    priority: tuple[str, ...] = DEFAULT_DOC_TYPE_PRIORITY
+    files: tuple[PacketFile, ...] = SAMPLE_PACKET_FILES
     graphic_state = st.session_state.setdefault(OPERATOR_GRAPHIC_STATE_KEY, {})
     if not isinstance(graphic_state, dict):
         graphic_state = {}
@@ -602,13 +613,13 @@ def render_app(st: StreamlitLike | None = None) -> DemoResult:
 
     use_real_streamlit = st is None
     if st is None:
-        import streamlit as streamlit_module
+        import streamlit as streamlit_module  # type: ignore[import-not-found]
 
         st = cast(StreamlitLike, streamlit_module)
 
     st.set_page_config(page_title="Inv-Man-Intake Demo", layout="wide")
     if use_real_streamlit:
-        from ds_streamlit import inject_theme
+        from ds_streamlit import inject_theme  # type: ignore[import-not-found]
 
         inject_theme()
     st.title("Inv-Man-Intake")

@@ -6,7 +6,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from app.streamlit_app import QUEUE_ACTION_STATE_KEY, build_operator_packet_view, render_app
+from app.streamlit_app import (
+    QUEUE_ACTION_STATE_KEY,
+    _operator_queue_rows,
+    build_operator_packet_view,
+    render_app,
+)
 
 from inv_man_intake.observability import InMemoryTraceSink
 from inv_man_intake.packet import PacketFile
@@ -304,6 +309,18 @@ def test_operator_packet_view_accepts_library_added_doc_type_without_app_code_ch
         }
     ]
     assert view.outbound_calls == 0
+
+
+def test_operator_packet_view_rejects_empty_doc_type_priority() -> None:
+    with pytest.raises(ValueError, match="priority must not be empty"):
+        build_operator_packet_view(priority=())
+
+
+def test_operator_packet_queue_timestamps_remain_iso_formatted() -> None:
+    rows = _operator_queue_rows("packet", tuple(f"reason-{index}" for index in range(12)))
+
+    assert rows[9].updated_at == "2026-07-07T19:30:00Z"
+    assert all(len(row.updated_at) == len("2026-07-07T19:30:00Z") for row in rows)
 
 
 def test_live_verification_evidence_is_recorded() -> None:
