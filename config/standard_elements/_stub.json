@@ -1,0 +1,25 @@
+{
+  "version": "stub-2026-07-07",
+  "non_authoritative": true,
+  "doc_types": {
+    "stub_pitchbook": [
+      {
+        "key": "operations.aum",
+        "detector_name": "numeric_field_present",
+        "mandatory": true
+      },
+      {
+        "key": "terms.management_fee",
+        "detector_name": "field_present",
+        "mandatory": false
+      }
+    ],
+    "stub_tear_sheet": [
+      {
+        "key": "performance.net_return_1y",
+        "detector_name": "numeric_field_present",
+        "mandatory": true
+      }
+    ]
+  }
+}
