@@ -1,0 +1,541 @@
+version: 1
+issue: 758
+base: main
+branch: codex/issue-758
+tasks:
+  - id: task-01
+    title: Add `frontend_verify.py` with an automated verifier entry point that launches
+      the app in a deterministic test harness.
+    status: doing
+    started_at: '2026-07-07T22:43:22Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Create the frontend_verify.py module with basic structure (verify: confirm
+      completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Create the frontend_verify.py module with imports (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Implement a deterministic test harness launcher function that initializes
+      the app in a controlled environment (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'Define the automated verifier entry point that coordinates test execution
+      through the harness (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Write `tests/frontend_verify.py` to simulate key MVP interactions, including
+      file upload, and assert concrete accessibility-tree or UI state changes.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Write tests in tests/frontend_verify.py that simulate file upload interactions
+      (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'assert accessibility-tree changes (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'Add tests for navigation MVP interactions with concrete UI state assertions
+      (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: 'Implement tests for data display MVP interactions with accessibility-tree
+      verification (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: 'Create tests for form submission MVP interactions with state change assertions
+      (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Add a deliberate-break test in `tests/frontend_verify.py` or `tests/test_graphics_gallery_break.py`
+      that disables the graphics-gallery click handler and asserts the expected open/detail
+      behavior does not appear.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Create `ux_review.py` and `tests/ux_review.py` to run a deterministic end-to-end
+      usability review with normal and adversarial-agent paths, failing on score `<
+      7.0` or any severity-4 blocker.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: 'Create the ux_review.py module with the usability review framework (verify:
+      confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: 'Create the ux_review.py module with scoring logic (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: 'Implement the normal-path usability review scenario in ux_review.py with
+      deterministic fixtures (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: 'Add the adversarial-agent path scenario to ux_review.py with edge case
+      handling (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: 'Write tests/ux_review.py to exercise both review paths (verify: tests
+      pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: _(2 further sub-tasks elided; split this issue)_
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: Add `tests/test_offline_static_bundle.py` to launch the built static bundle
+      with outbound network access intercepted and assert startup plus the deterministic
+      interaction path complete with `0` outbound requests.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: 'Create tests/test_offline_static_bundle.py with network interception mocking
+      infrastructure (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-22
+    title: 'Implement the static bundle launcher that loads the built artifact instead
+      of development server (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-23
+    title: 'Add startup verification tests that assert successful initialization with
+      zero network requests (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-24
+    title: 'Write deterministic interaction path tests that complete workflows while
+      maintaining zero outbound request count (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-25
+    title: Add `tests/test_decoupling_doc_type.py` to inject a throwaway document
+      type into the issue `#721` stub data and assert the coverage matrix or rendered
+      coverage output includes the injected type without application code changes.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-26
+    title: 'Create tests/test_decoupling_doc_type.py with fixture injection setup
+      for issue #721 stub data (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-27
+    title: 'Implement the throwaway document type injection mechanism that modifies
+      test fixtures only (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-28
+    title: Add assertions that verify the coverage matrix includes the injected document
+      type by name
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-29
+    title: 'Write verification that confirms no application source code was modified
+      for the injected type (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-30
+    title: '`frontend_verify.py` exists and defines an automated verifier entry point
+      used by `tests/frontend_verify.py`.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-31
+    title: '`tests/frontend_verify.py` includes at least one automated test that simulates
+      a file upload through the deterministic harness and asserts an uploaded-file-related
+      control or state indicator appears in the accessibility tree after upload.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-32
+    title: '`tests/frontend_verify.py` covers each key MVP interaction defined for
+      the verifier harness and, for each interaction, asserts a concrete accessibility-tree
+      change or UI state change.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-33
+    title: A deliberate-break test exists in `tests/frontend_verify.py` or `tests/test_graphics_gallery_break.py`
+      that disables or unbinds the graphics-gallery click handler before interaction
+      and asserts the expected graphic open/detail behavior does not appear.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-34
+    title: The deliberate-break test fails if the graphics-gallery open/detail state
+      still appears in the accessibility tree or exposed UI state after the handler
+      is disabled.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-35
+    title: '`ux_review.py` exists and is exercised by `tests/ux_review.py` to run
+      a deterministic end-to-end usability review scenario with both a normal path
+      and an adversarial-agent path.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-36
+    title: '`tests/ux_review.py` reads the owner calibration/usability score from
+      a fixture or deterministic stub and fails when the recorded overall score is
+      less than `7.0`.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-37
+    title: '`tests/ux_review.py` fails when any severity-4 blocker is present in the
+      deterministic usability review results.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-38
+    title: '`tests/test_offline_static_bundle.py` exists and launches the application
+      from the built static bundle, not a development server or source-only runtime
+      path.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-39
+    title: '`tests/test_offline_static_bundle.py` intercepts or mocks outbound network
+      access so any attempted outbound request is recorded and causes the test to
+      fail.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-40
+    title: In the offline static-bundle test, the app completes startup and the defined
+      deterministic interaction path while the recorded outbound network request count
+      remains exactly `0`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-41
+    title: '`tests/test_decoupling_doc_type.py` exists and injects a throwaway document
+      type into the issue `#721` stub data within test setup rather than by modifying
+      application source logic.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-42
+    title: After injection, `tests/test_decoupling_doc_type.py` asserts that the generated
+      coverage matrix or rendered coverage output includes the injected type by name.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-43
+    title: '`tests/test_decoupling_doc_type.py` requires no hard-coded application
+      branch, enum update, or source edit for the throwaway document type beyond fixture
+      or stub injection.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-44
+    title: Add a new test module `frontend_verify.py` that launches the app in a deterministic
+      test harness, simulates key MVP interactions including file upload, and asserts
+      that the resulting controls and state changes are exposed in the accessibility
+      tree.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-45
+    title: Implement a deliberate-break test in `frontend_verify.py` or a companion
+      test file that programmatically disables the graphics-gallery click handler
+      and asserts that the expected open/detail behavior no longer appears in the
+      accessibility tree or UI state.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-46
+    title: Create a new test module `ux_review.py` that runs an end-to-end usability
+      review scenario, including an adversarial-agent path, records the owner calibration/usability
+      score from fixtures or deterministic stubs, and fails if the score is below
+      7.0 or any severity-4 blocker is present.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-47
+    title: Add a test that runs the app from the built static bundle with outbound
+      network access intercepted or mocked to fail, and assert that startup and the
+      deterministic interaction path complete with zero outbound requests.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-48
+    title: 'Add a decoupling test that injects a throwaway document type into the
+      issue #721 stub data and asserts that the coverage matrix/rendered coverage
+      output includes the new type without any application code changes.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-49
+    title: A file named `frontend_verify.py` exists in the repository and defines
+      an automated verifier entry point that launches the app in a deterministic test
+      harness used by `tests/frontend_verify.py`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-50
+    title: '`tests/frontend_verify.py` includes at least one automated test that simulates
+      a file upload through the deterministic harness and asserts, after the upload
+      action completes, that the expected uploaded-file-related control or state indicator
+      is present in the accessibility tree.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-51
+    title: '`tests/frontend_verify.py` covers each key MVP interaction defined for
+      the verifier harness, and for each interaction asserts a concrete accessibility-tree
+      change or UI state change caused by that interaction rather than only asserting
+      that no exception occurred.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-52
+    title: A deliberate-break test exists in `tests/frontend_verify.py` or `tests/test_graphics_gallery_break.py`
+      that programmatically disables or unbinds the graphics-gallery click handler
+      before interaction and asserts that the expected graphic open/detail behavior
+      does not appear.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-53
+    title: The deliberate-break test fails if the graphics-gallery open/detail state
+      still appears in the accessibility tree or exposed UI state after the handler
+      is disabled, proving the verifier detects broken wiring rather than only checking
+      for process completion.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-54
+    title: A file named `ux_review.py` exists and is exercised by `tests/ux_review.py`
+      to run a deterministic end-to-end usability review scenario that includes both
+      a normal path and an adversarial-agent path.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-55
+    title: '`tests/ux_review.py` reads the owner calibration/usability score from
+      a fixture or deterministic stub and asserts failure when the recorded overall
+      score is less than `7.0`.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-56
+    title: '`tests/ux_review.py` asserts failure when any severity-4 blocker is present
+      in the deterministic usability review results, regardless of the numeric usability
+      score.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-57
+    title: A test file `tests/test_offline_static_bundle.py` exists and launches the
+      application from the built static bundle, not from a development server or source-only
+      runtime path.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-58
+    title: '`tests/test_offline_static_bundle.py` intercepts or mocks outbound network
+      access so that any attempted outbound request is recorded and causes the test
+      to fail.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-59
+    title: During the offline static-bundle test, the app completes startup and the
+      defined deterministic interaction path successfully while the recorded outbound
+      network request count remains exactly `0`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-60
+    title: A test file `tests/test_decoupling_doc_type.py` exists and injects a throwaway
+      document type into the issue `#721` stub data within the test setup rather than
+      by modifying application source logic.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-61
+    title: After injecting the throwaway document type, `tests/test_decoupling_doc_type.py`
+      asserts that the generated coverage matrix or rendered coverage output includes
+      the injected type by name.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-62
+    title: '`tests/test_decoupling_doc_type.py` does not require any hard-coded application
+      branch, enum update, or source edit for the throwaway document type beyond fixture/stub
+      injection; code review must show no app logic change that explicitly names the
+      throwaway type.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
