@@ -304,11 +304,12 @@ def test_operator_packet_panels_render_after_existing_queue() -> None:
     coverage_rows = recorder.tables[2]
     assert isinstance(coverage_rows, list)
     assert {row["Document"] for row in coverage_rows} == {"track_record", "deck", "ppm"}
-    assert recorder.tables[3], "manager profile table should render packet fields"
-    assert recorder.tables[4], "graphics gallery table should expose a clickable target"
-    assert recorder.tables[5], "return-stream table should render extracted return metrics"
-    assert recorder.tables[6], "exception queue should consume validation_queue_api"
-    assert recorder.tables[7] == [{"Deterministic outbound calls": 0}]
+    assert recorder.tables[3], "PPM checklist should render standard-element coverage"
+    assert recorder.tables[4], "manager profile table should render packet fields"
+    assert recorder.tables[5], "graphics gallery table should expose a clickable target"
+    assert recorder.tables[6], "return-stream table should render extracted return metrics"
+    assert recorder.tables[7], "exception queue should consume validation_queue_api"
+    assert recorder.tables[8] == [{"Deterministic outbound calls": 0}]
 
 
 def test_operator_packet_view_accepts_library_added_doc_type_without_app_code_change() -> None:
@@ -331,6 +332,7 @@ def test_operator_packet_view_accepts_library_added_doc_type_without_app_code_ch
             "Missing": "None",
         }
     ]
+    assert view.ppm_rows == []
     assert view.outbound_calls == 0
 
 
@@ -376,6 +378,8 @@ def test_stlite_mount_bundles_package_and_fixture_files() -> None:
     stlite_lock = set(Path("requirements-stlite.lock").read_text(encoding="utf-8").splitlines())
 
     assert '"src/inv_man_intake/v1_smoke.py"' in content
+    assert '"src/inv_man_intake/docproc/ppm.py"' in content
+    assert '"src/inv_man_intake/assist/egress_guard.py"' in content
     assert '"src/inv_man_intake/data/migrations/sql/0001_core_firm_fund_document.up.sql"' in content
     assert '"tests/fixtures/intake/pdf_primary_mixed_bundle.json"' in content
     assert "Object.fromEntries" in content
