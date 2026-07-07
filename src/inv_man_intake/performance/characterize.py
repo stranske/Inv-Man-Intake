@@ -120,7 +120,8 @@ def characterize_series(
         doc_types=doc_types,
         operator_confirmed=operator_confirmed,
     )
-    if deterministic.tag != "standard" or not source_notes:
+    evidence = _evidence(source_notes=tuple(source_notes), source_names=tuple(source_names))
+    if deterministic.tag != "standard" or not evidence:
         return deterministic
     if consent is None and provider_config is None and log_path is None and client is None:
         return deterministic
@@ -142,7 +143,7 @@ def characterize_series(
         rationale=llm.rationale,
         confidence=llm.confidence,
         metrics=metrics,
-        evidence=tuple(source_notes),
+        evidence=evidence,
         doc_types_available=doc_types,
         operator_confirmed=operator_confirmed,
     )
@@ -222,7 +223,7 @@ def _llm_characterization(
             "task": "classify ambiguous return-stream shape",
             "source_notes": source_notes,
             "source_names": source_names,
-            "allowed_tags": tuple(_NON_STANDARD_TAGS),
+            "allowed_tags": _TAG_PRIORITY,
             "constraints": {
                 "numbers_are_deterministic": True,
                 "do_not_compute_or_change_returns": True,

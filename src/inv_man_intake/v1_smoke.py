@@ -44,6 +44,7 @@ from inv_man_intake.observability import (
     new_trace_context,
 )
 from inv_man_intake.observability.langsmith_fleet import DEFAULT_PROJECT
+from inv_man_intake.performance.characterize import characterize_series, gate_scoring_submission
 from inv_man_intake.performance.conflict_resolver import resolve_source_conflicts
 from inv_man_intake.performance.contracts import (
     PerformancePayload,
@@ -275,6 +276,11 @@ def _run_pipeline_core(
             PerformancePayload(monthly=normalized.monthly),
             benchmark_monthly=benchmark_series,
         )
+        characterization = characterize_series(
+            normalized.monthly,
+            metrics,
+            source_names=record.document_ids,
+        )
 
     performance_start = _start_event(sink, "v1_acceptance.performance_normalize")
     queue_context = child_trace_context(
@@ -308,12 +314,16 @@ def _run_pipeline_core(
         },
     ):
         components = _score_components(metrics.benchmark_correlation)
-        score = compute_score(
+        submission = gate_scoring_submission(
             ScoreSubmission(
                 manager_id=record.fund_id,
                 asset_class="credit",
                 components=components,
             ),
+            characterization=characterization,
+        )
+        score = compute_score(
+            submission,
             weights_by_asset_class=weights_for_registry(),
         )
         explainability = build_explainability_payload(
