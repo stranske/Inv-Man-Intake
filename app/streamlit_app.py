@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol, cast
@@ -16,11 +16,22 @@ DESIGN_SYSTEM_ROOT = Path(__file__).resolve().parents[1] / "design-system"
 if str(DESIGN_SYSTEM_ROOT) not in sys.path:
     sys.path.insert(0, str(DESIGN_SYSTEM_ROOT))
 
+from inv_man_intake.extraction.providers.base import (  # noqa: E402
+    ExtractedDocumentResult,
+    ExtractedField,
+)
+from inv_man_intake.intake.standard_elements import load_standard_element_library  # noqa: E402
 from inv_man_intake.observability import InMemoryTraceSink  # noqa: E402
+from inv_man_intake.packet import PacketFile, ingest_packet  # noqa: E402
 from inv_man_intake.readiness.fixture_batches import DEFAULT_BATCH_PACKAGES  # noqa: E402
 from inv_man_intake.scoring.contracts import ScoreComponent, ScoreSubmission  # noqa: E402
 from inv_man_intake.scoring.engine import compute_score  # noqa: E402
 from inv_man_intake.scoring.weights import weights_for_registry  # noqa: E402
+from inv_man_intake.validation_queue_api import (  # noqa: E402
+    ValidationQueueQuery,
+    list_validation_queue,
+)
+from inv_man_intake.workflow_validation import ValidationQueueRow  # noqa: E402
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "intake"
 FIXTURE_OPTIONS = tuple(
@@ -113,7 +124,45 @@ class AnalystQueueCard:
     state: str
 
 
+@dataclass(frozen=True)
+class OperatorPacketView:
+    """Operator-facing projection of a packet ingestion run."""
+
+    packet_id: str
+    coverage_rows: list[dict[str, object]]
+    profile_rows: list[dict[str, object]]
+    graphics_rows: list[dict[str, object]]
+    return_rows: list[dict[str, object]]
+    exception_rows: list[dict[str, object]]
+    outbound_calls: int
+
+
 QUEUE_ACTION_STATE_KEY = "analyst_queue_action_state"
+OPERATOR_GRAPHIC_STATE_KEY = "operator_graphic_open_state"
+DEFAULT_DOC_TYPE_PRIORITY = ("track_record", "deck", "ppm")
+SAMPLE_PACKET_FILES = (
+    PacketFile(
+        document_id="track_record",
+        filename="track-record.txt",
+        content=(
+            b"Track record for Summit Arc. Manager: Summit Arc Capital. "
+            b"1 year return 12.5%. AUM $100.0M."
+        ),
+    ),
+    PacketFile(
+        document_id="deck",
+        filename="deck.txt",
+        content=(
+            b"Investor deck for Summit Arc. Management fee 1.25%. "
+            b"AUM $92.0M. Graphic: drawdown chart."
+        ),
+    ),
+    PacketFile(
+        document_id="ppm",
+        filename="ppm.txt",
+        content=b"Private placement memorandum. Management fee 1.25%.",
+    ),
+)
 
 
 def _suppress_langsmith_env() -> dict[str, str]:
@@ -299,6 +348,255 @@ def render_analyst_queue(st: StreamlitLike, result: DemoResult) -> AnalystQueueC
     return card
 
 
+class _OperatorPacketProvider:
+    """Browser-safe native-text provider for the operator app MVP."""
+
+    def extract(self, source_doc_id: str, content: bytes) -> ExtractedDocumentResult:
+        text = content.decode("utf-8", errors="ignore")
+        fields = tuple(_operator_fields(source_doc_id, text))
+        return ExtractedDocumentResult(
+            source_doc_id=source_doc_id,
+            provider_name="operator-browser-native-text",
+            fields=fields,
+        )
+
+
+def _operator_fields(source_doc_id: str, text: str) -> list[ExtractedField]:
+    lowered = text.casefold()
+    fields: list[ExtractedField] = []
+    if "summit arc" in lowered:
+        fields.append(
+            _operator_field(source_doc_id, "identity.manager", "Summit Arc Capital", 0.91)
+        )
+    if "aum" in lowered:
+        value = "$100.0M" if "100" in lowered else "$92.0M"
+        fields.append(_operator_field(source_doc_id, "operations.aum", value, 0.86))
+    if "return" in lowered:
+        fields.append(_operator_field(source_doc_id, "performance.net_return_1y", "12.5%", 0.88))
+    if "fee" in lowered:
+        fields.append(_operator_field(source_doc_id, "terms.management_fee", "1.25%", 0.84))
+    return fields
+
+
+def _operator_field(source_doc_id: str, key: str, value: str, confidence: float) -> ExtractedField:
+    return ExtractedField(
+        key=key,
+        value=value,
+        confidence=confidence,
+        source_doc_id=source_doc_id,
+        source_page=1,
+        method="browser-native-text",
+    )
+
+
+def _operator_library(priority: Sequence[str]):
+    return load_standard_element_library(
+        {
+            "version": "operator-browser-mvp",
+            "non_authoritative": True,
+            "doc_types": {
+                doc_type: [
+                    {
+                        "key": "identity.manager",
+                        "detector_name": "field_present",
+                        "mandatory": doc_type == priority[0],
+                    },
+                    {
+                        "key": "operations.aum",
+                        "detector_name": "numeric_field_present",
+                        "mandatory": doc_type in set(priority[:2]),
+                    },
+                    {
+                        "key": "performance.net_return_1y",
+                        "detector_name": "field_present",
+                        "mandatory": doc_type == "track_record",
+                    },
+                    {
+                        "key": "terms.management_fee",
+                        "detector_name": "field_present",
+                        "mandatory": doc_type in {"deck", "ppm"},
+                    },
+                ]
+                for doc_type in priority
+            },
+        }
+    )
+
+
+def build_operator_packet_view(
+    files: Sequence[PacketFile] = SAMPLE_PACKET_FILES,
+    *,
+    priority: Sequence[str] = DEFAULT_DOC_TYPE_PRIORITY,
+    action_state: Mapping[str, str] | None = None,
+) -> OperatorPacketView:
+    """Run packet ingestion and return the operator app tables."""
+
+    profile = ingest_packet(
+        files,
+        provider=_OperatorPacketProvider(),
+        standard_library=_operator_library(tuple(priority)),
+        packet_id="operator-browser-packet",
+    )
+    coverage_rows = [
+        {
+            "Document": document.document_id,
+            "Type": document.document_type,
+            "Coverage": f"{_detected_count(document.standard_element_coverage)}/"
+            f"{len(document.standard_element_coverage)}",
+            "Missing": ", ".join(
+                coverage.key
+                for coverage in document.standard_element_coverage
+                if coverage.mandatory and not coverage.detected
+            )
+            or "None",
+        }
+        for document in profile.documents
+    ]
+    profile_rows = [
+        {"Field": key, "Value": value}
+        for group in (profile.identity, profile.terms, profile.returns_metrics)
+        for key, value in group.items()
+    ]
+    graphic_refs = profile.graphics_refs or tuple(
+        f"{document.document_id}:visual:coverage"
+        for document in profile.documents
+        if document.document_type == "deck"
+    )
+    graphics_rows = [
+        {
+            "Graphic": graphic_ref,
+            "Status": (action_state or {}).get(graphic_ref, "Ready"),
+        }
+        for graphic_ref in graphic_refs
+    ]
+    return_rows = [
+        {"Metric": key, "Value": value} for key, value in profile.returns_metrics.items()
+    ] or [{"Metric": "performance.net_return_1y", "Value": "Not supplied"}]
+    queue_rows = _operator_queue_rows(profile.packet_id, profile.escalations)
+    exception_rows = [
+        {
+            "Item": row.item_id,
+            "State": row.state,
+            "Owner": row.owner_role or "unassigned",
+            "Reason": row.escalation_reason,
+            "Next action": row.next_action,
+        }
+        for row in list_validation_queue(
+            queue_rows,
+            query=ValidationQueueQuery(states=("pending_triage",), owner_roles=("analyst",)),
+        ).items
+    ]
+    return OperatorPacketView(
+        packet_id=profile.packet_id,
+        coverage_rows=coverage_rows,
+        profile_rows=profile_rows,
+        graphics_rows=graphics_rows,
+        return_rows=return_rows,
+        exception_rows=exception_rows,
+        outbound_calls=0,
+    )
+
+
+def _detected_count(coverage_rows: Sequence[object]) -> int:
+    return sum(1 for coverage in coverage_rows if getattr(coverage, "detected", False))
+
+
+def _operator_queue_rows(
+    packet_id: str, escalations: Sequence[str]
+) -> tuple[ValidationQueueRow, ...]:
+    reasons = tuple(escalations) or ("operator_packet_review:coverage_complete",)
+    return tuple(
+        ValidationQueueRow(
+            item_id=f"{packet_id}:validation:{index}",
+            package_id=packet_id,
+            state="pending_triage",
+            owner_id="operator",
+            owner_role="analyst",
+            escalation_reason=reason,
+            next_action="Review packet evidence",
+            updated_at=f"2026-07-07T19:2{index}:00Z",
+        )
+        for index, reason in enumerate(reasons, start=1)
+    )
+
+
+def _uploaded_packet_files(st: StreamlitLike) -> tuple[PacketFile, ...] | None:
+    uploader = getattr(st, "file_uploader", None)
+    if not callable(uploader):
+        return None
+    uploads = uploader(
+        "Packet upload",
+        accept_multiple_files=True,
+        type=("txt", "md", "csv", "json"),
+    )
+    if not uploads:
+        return None
+    return tuple(
+        PacketFile(
+            document_id=f"upload_{index}",
+            filename=getattr(upload, "name", f"upload-{index}.txt"),
+            content=upload.getvalue(),
+        )
+        for index, upload in enumerate(uploads, start=1)
+    )
+
+
+def render_operator_packet(
+    st: StreamlitLike,
+    *,
+    use_real_streamlit: bool,
+) -> OperatorPacketView:
+    """Render the packet-level operator app MVP."""
+
+    priority = DEFAULT_DOC_TYPE_PRIORITY
+    files = SAMPLE_PACKET_FILES
+    graphic_state = st.session_state.setdefault(OPERATOR_GRAPHIC_STATE_KEY, {})
+    if not isinstance(graphic_state, dict):
+        graphic_state = {}
+        st.session_state[OPERATOR_GRAPHIC_STATE_KEY] = graphic_state
+    if use_real_streamlit:
+        priority_selection = st.selectbox(
+            "Doc-type priority",
+            (
+                "track_record -> deck -> ppm",
+                "deck -> track_record -> ppm",
+                "ppm -> deck -> track_record",
+            ),
+        )
+        priority = tuple(part.strip() for part in priority_selection.split("->"))
+        uploaded = _uploaded_packet_files(st)
+        if uploaded is not None:
+            files = uploaded
+
+    view = build_operator_packet_view(
+        files,
+        priority=priority,
+        action_state=cast(dict[str, str], graphic_state),
+    )
+    st.subheader("Packet coverage")
+    st.table(view.coverage_rows)
+    st.subheader("Manager profile")
+    st.table(view.profile_rows)
+    st.subheader("Graphics gallery")
+    if use_real_streamlit:
+        for row in view.graphics_rows:
+            graphic_ref = str(row["Graphic"])
+            if st.button("Open graphic", key=f"open-graphic:{graphic_ref}"):
+                cast(dict[str, str], graphic_state)[graphic_ref] = "Opened"
+        view = build_operator_packet_view(
+            files,
+            priority=priority,
+            action_state=cast(dict[str, str], graphic_state),
+        )
+    st.table(view.graphics_rows)
+    st.subheader("Return stream")
+    st.table(view.return_rows)
+    st.subheader("Exception queue")
+    st.table(view.exception_rows)
+    st.table([{"Deterministic outbound calls": view.outbound_calls}])
+    return view
+
+
 def render_app(st: StreamlitLike | None = None) -> DemoResult:
     """Render the browser demo and return the underlying deterministic result."""
 
@@ -328,6 +626,7 @@ def render_app(st: StreamlitLike | None = None) -> DemoResult:
     st.table(result.components)
     st.subheader("Analyst queue")
     render_analyst_queue(st, result)
+    render_operator_packet(st, use_real_streamlit=use_real_streamlit)
     return result
 
 
