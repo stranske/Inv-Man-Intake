@@ -1,5 +1,7 @@
 """Observability utilities for trace and metric instrumentation."""
 
+from typing import TYPE_CHECKING
+
 from .entrypoints import PipelineEntrypoint, audit_intake_extraction_entrypoints
 from .langsmith_fleet import (
     ARTIFACT_NAME,
@@ -55,9 +57,26 @@ from .tracing import (
     tracing_enabled_from_env,
 )
 
+if TYPE_CHECKING:
+    from .extraction_drift import ExtractionDriftRecord
+
+
+def __getattr__(name: str) -> object:
+    if name in {"ExtractionDriftRecord", "score_extraction_trace_drift"}:
+        from .extraction_drift import ExtractionDriftRecord, score_extraction_trace_drift
+
+        exports = {
+            "ExtractionDriftRecord": ExtractionDriftRecord,
+            "score_extraction_trace_drift": score_extraction_trace_drift,
+        }
+        return exports[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 __all__ = [
     "CORRELATION_ID_KEY",
     "ESCALATION_COUNT",
+    "ExtractionDriftRecord",
     "FAILURE_COUNT",
     "FALLBACK_COUNT",
     "InMemoryMetrics",
@@ -98,6 +117,7 @@ __all__ = [
     "inject_trace_context",
     "new_correlation_id",
     "new_trace_context",
+    "score_extraction_trace_drift",
     "traced_run",
     "traced_span",
     "tracing_enabled_from_env",

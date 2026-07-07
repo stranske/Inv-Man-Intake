@@ -21,6 +21,7 @@ class GoldenField:
 
     key: str
     value: str
+    confidence: float | None = None
 
 
 @dataclass(frozen=True)
@@ -101,7 +102,11 @@ def load_golden_samples(path: Path) -> tuple[GoldenSample, ...]:
             )
         else:
             expected_fields = tuple(
-                GoldenField(key=str(field["key"]), value=str(field["value"]))
+                GoldenField(
+                    key=str(field["key"]),
+                    value=str(field["value"]),
+                    confidence=_optional_confidence(field.get("confidence")),
+                )
                 for field in expected_payload
             )
         samples.append(
@@ -308,3 +313,14 @@ def _normalize_decimal(value: Decimal) -> str:
     if normalized == normalized.to_integral():
         return str(normalized.quantize(Decimal("1")))
     return format(normalized, "f")
+
+
+def _optional_confidence(value: Any) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise ValueError("golden field confidence must be numeric")
+    confidence = float(value)
+    if not 0.0 <= confidence <= 1.0:
+        raise ValueError("golden field confidence must be between 0 and 1")
+    return confidence
