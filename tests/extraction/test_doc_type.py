@@ -13,6 +13,7 @@ from inv_man_intake.extraction.confidence import (
 )
 from inv_man_intake.extraction.doc_type import DocumentType, classify_doc_type
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
+from inv_man_intake.intake.standard_elements import load_standard_element_library
 
 _CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "extraction_thresholds.yaml"
 _GLOBAL_KEY_FIELDS = (
@@ -88,6 +89,61 @@ def test_classifier_handles_specific_document_types_without_ambiguous_matches() 
     assert classify_doc_type("Monthly commentary for investors") is DocumentType.MONTHLY_LETTER
     assert classify_doc_type("Private placement memorandum for Fund VI") is DocumentType.PITCHBOOK
     assert classify_doc_type("ESG parts per million emissions appendix") is DocumentType.UNKNOWN
+
+
+def test_classifier_consumes_standard_library_doc_types_from_data() -> None:
+    library = load_standard_element_library(
+        {
+            "version": "test",
+            "non_authoritative": True,
+            "doc_types": {
+                "capital_call_notice": [
+                    {
+                        "key": "operations.capital_call_due_date",
+                        "detector_name": "field_present",
+                        "mandatory": True,
+                    }
+                ],
+                "custom_pitch_book": [
+                    {
+                        "key": "operations.aum",
+                        "detector_name": "field_present",
+                        "mandatory": True,
+                    }
+                ],
+                "not_a_pitch_book": [
+                    {
+                        "key": "operations.not_pitch_book",
+                        "detector_name": "field_present",
+                        "mandatory": True,
+                    }
+                ],
+            },
+        }
+    )
+
+    assert (
+        classify_doc_type(
+            "Fund VI custom_pitch_book with AUM and capital_call_notice appendix",
+            standard_library=library,
+        )
+        is DocumentType.PITCHBOOK
+    )
+    assert (
+        classify_doc_type("Capital call notice for Fund VI", standard_library=library)
+        is DocumentType.UNKNOWN
+    )
+    assert (
+        classify_doc_type("not_a_pitch_book appendix", standard_library=library)
+        is DocumentType.UNKNOWN
+    )
+
+    source_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (Path(__file__).resolve().parents[2] / "src" / "inv_man_intake").rglob("*.py")
+    )
+    assert "capital_call_notice" not in source_text
+    assert "operations.capital_call_due_date" not in source_text
 
 
 def test_profile_overrides_are_merged_for_each_document_type() -> None:
