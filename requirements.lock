@@ -75,7 +75,9 @@ distro==1.9.0
 doclang==0.7.2
     # via docling-core
 docling==2.110.0
-    # via stranske-pdf-extract
+    # via
+    #   inv-man-intake (pyproject.toml)
+    #   stranske-pdf-extract
 docling-core==2.86.0
     # via
     #   docling-ibm-models
