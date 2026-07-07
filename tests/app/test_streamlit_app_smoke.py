@@ -11,8 +11,10 @@ from app.streamlit_app import (
     _operator_queue_rows,
     build_operator_packet_view,
     render_app,
+    render_assistant_panel,
 )
 
+from inv_man_intake.assist import IntakeRecommendation
 from inv_man_intake.observability import InMemoryTraceSink
 from inv_man_intake.packet import PacketFile
 
@@ -122,6 +124,27 @@ def test_app_renders_score_for_fixture_bundle(monkeypatch: pytest.MonkeyPatch) -
     assert "langsmith_project" not in result.trace_tags
     assert recorder.metrics == [("Final score", "0.7809")]
     assert recorder.tables[0] == result.components
+
+
+def test_assistant_panel_honors_manual_apply_contract() -> None:
+    recorder = _StreamlitRecorder()
+
+    rows = render_assistant_panel(
+        recorder,
+        (
+            IntakeRecommendation(
+                rank=1,
+                change="Review threshold inputs",
+                rationale="Grounded in packet evidence.",
+                cited_evidence=("escalation:1",),
+                expected_effect="Keeps the operator in control.",
+                apply_manually=False,
+            ),
+        ),
+    )
+
+    assert rows[0].action == "Blocked (auto-apply not permitted)"
+    assert recorder.tables[0][0]["Action"] == "Blocked (auto-apply not permitted)"
 
 
 def test_demo_presentation_hides_developer_observability_details() -> None:
