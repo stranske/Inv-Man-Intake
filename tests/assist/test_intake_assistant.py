@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 
+import inv_man_intake.assist.intake_assistant as assistant_module
 from inv_man_intake.assist.egress_guard import EgressConsent, ProviderConfig
 from inv_man_intake.assist.intake_assistant import answer_intake_question, collect_run_signals
 from inv_man_intake.data.provenance import CorrectionRecord
@@ -236,6 +237,91 @@ def test_assistant_routes_through_egress_guard(tmp_path: Path) -> None:
 
     log_record = json.loads((tmp_path / "egress.jsonl").read_text(encoding="utf-8"))
     assert log_record["purpose"] == "rank intake-improvement recommendations"
+
+
+def test_direct_provider_call_rejected_without_egress_guard(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    guard_calls = 0
+
+    def fake_guard(*args: object, **kwargs: object) -> object:
+        nonlocal guard_calls
+        guard_calls += 1
+        raise AssertionError("direct provider path must not call egress guard")
+
+    def direct_provider(
+        payload: dict[str, Any],
+        provider_config: ProviderConfig,
+    ) -> Mapping[str, Any]:
+        raise PermissionError("provider calls must cross egress_guard.send_to_llm")
+
+    monkeypatch.setattr(assistant_module, "send_to_llm", fake_guard)
+
+    with pytest.raises(PermissionError, match="egress_guard.send_to_llm"):
+        direct_provider(
+            {"question": "what should change?"},
+            ProviderConfig(
+                provider="frontier-zero-retention",
+                model="secure-model",
+                zero_retention=True,
+                baa_eligible=True,
+            ),
+        )
+
+    assert guard_calls == 0
+
+
+def test_assistant_flows_do_not_mutate_config_directory(tmp_path: Path) -> None:
+    def fake_client(
+        payload: dict[str, Any],
+        provider_config: ProviderConfig,
+    ) -> Mapping[str, Any]:
+        return {
+            "answer": "The packet escalated because sources disagree.",
+            "citations": ["escalation:1"],
+            "recommendations": [
+                {
+                    "change": "Review source reconciliation",
+                    "rationale": "The escalation is grounded in cross-document evidence.",
+                    "cited_evidence": ["escalation:1"],
+                    "expected_effect": "Keeps recommendations tied to known packet signals.",
+                }
+            ],
+        }
+
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    config_file = config_dir / "thresholds.json"
+    config_file.write_text('{"aum": 0.05}\n', encoding="utf-8")
+    before = _snapshot_tree(config_dir)
+
+    answer_intake_question(
+        manager_profile=_manager_profile(),
+        question="what should change?",
+        consent=EgressConsent(
+            granted_by="operator",
+            purpose="rank intake-improvement recommendations",
+            granted_at="2026-07-07T09:00:00Z",
+        ),
+        provider_config=ProviderConfig(
+            provider="frontier-zero-retention",
+            model="secure-model",
+            zero_retention=True,
+            baa_eligible=True,
+        ),
+        log_path=tmp_path / "egress.jsonl",
+        client=fake_client,
+    )
+
+    assert _snapshot_tree(config_dir) == before
+
+
+def _snapshot_tree(root: Path) -> dict[str, tuple[int, bytes]]:
+    return {
+        str(path.relative_to(root)): (path.stat().st_size, path.read_bytes())
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
 
 
 def _manager_profile() -> ManagerProfile:

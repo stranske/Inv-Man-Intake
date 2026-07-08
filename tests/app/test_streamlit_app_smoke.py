@@ -4,17 +4,19 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 import pytest
 from app.streamlit_app import (
+    ASSISTANT_FOLLOWUP_STATE_KEY,
     QUEUE_ACTION_STATE_KEY,
     _operator_queue_rows,
+    build_operator_assistant_session,
     build_operator_packet_view,
     render_app,
     render_assistant_panel,
 )
 
-from inv_man_intake.assist import IntakeRecommendation
 from inv_man_intake.observability import InMemoryTraceSink
 from inv_man_intake.packet import PacketFile
 
@@ -128,23 +130,33 @@ def test_app_renders_score_for_fixture_bundle(monkeypatch: pytest.MonkeyPatch) -
 
 def test_assistant_panel_honors_manual_apply_contract() -> None:
     recorder = _StreamlitRecorder()
+    view = build_operator_packet_view()
+    session = build_operator_assistant_session(view)
 
-    rows = render_assistant_panel(
-        recorder,
-        (
-            IntakeRecommendation(
-                rank=1,
-                change="Review threshold inputs",
-                rationale="Grounded in packet evidence.",
-                cited_evidence=("escalation:1",),
-                expected_effect="Keeps the operator in control.",
-                apply_manually=False,
-            ),
-        ),
-    )
+    rows = render_assistant_panel(recorder, session)
 
-    assert rows[0].action == "Blocked (auto-apply not permitted)"
-    assert recorder.tables[0][0]["Action"] == "Blocked (auto-apply not permitted)"
+    assert rows[0].action == "Apply manually"
+    table_rows = cast(list[dict[str, object]], recorder.tables[0])
+    assert table_rows[0]["Action"] == "Apply manually"
+    assert rows[0].citations == "escalation:1"
+    assert "demo_assistant_recommendations" not in render_assistant_panel.__code__.co_names
+
+
+def test_assistant_panel_followup_uses_same_run_signal_state() -> None:
+    recorder = _StreamlitRecorder()
+    recorder.session_state[ASSISTANT_FOLLOWUP_STATE_KEY] = "what is the strongest signal?"
+    view = build_operator_packet_view()
+    session = build_operator_assistant_session(view)
+
+    rows = render_assistant_panel(recorder, session)
+
+    assert rows
+    assert [row.rank for row in rows] == sorted(row.rank for row in rows)
+    assert all(row.action == "Apply manually" for row in rows)
+    assert recorder.write_calls
+    assert session.session_id in str(recorder.write_calls[0])
+    assert session.answer.citations[0] in str(recorder.write_calls[0])
+    assert "Blocked (auto-appl" not in Path("app/streamlit_app.py").read_text(encoding="utf-8")
 
 
 def test_demo_presentation_hides_developer_observability_details() -> None:
