@@ -27,7 +27,7 @@ dependencies = [
 
 [project.optional-dependencies]
 app = [
-    "streamlit==1.59.0",
+    "streamlit==1.59.1",
 ]
 extraction-docling = [
     "stranske-pdf-extract[docling] @ git+https://github.com/stranske/Workflows.git@a0ee3aa25c08d4eeb8e96dc6c8d7791930cd2d9a#subdirectory=packages/stranske_pdf_extract",
