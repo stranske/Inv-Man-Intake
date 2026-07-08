@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: Create a test fixture that generates realistic run-signal data for assistant
       testing
-    status: doing
+    status: done
     started_at: '2026-07-08T01:34:27Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-07-08T01:34:36Z'
+    commit: 532350ace3ef252761819194b4db1af618adc98b
     notes: []
   - id: task-02
     title: Implement a test that builds assistant responses from run-signal fixtures
