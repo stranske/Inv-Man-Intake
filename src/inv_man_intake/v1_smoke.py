@@ -28,6 +28,7 @@ from inv_man_intake.extraction.providers.pptx_primary import PptxPrimaryExtracti
 from inv_man_intake.intake.integration import register_intake_bundle_file
 from inv_man_intake.intake.models import IngestRecord
 from inv_man_intake.intake.service import IngestionService
+from inv_man_intake.intake.standard_elements import load_standard_element_library
 from inv_man_intake.observability import (
     FleetRunContext,
     InMemoryTraceSink,
@@ -44,6 +45,7 @@ from inv_man_intake.observability import (
     new_trace_context,
 )
 from inv_man_intake.observability.langsmith_fleet import DEFAULT_PROJECT
+from inv_man_intake.performance.characterize import characterize_series, gate_scoring_submission
 from inv_man_intake.performance.conflict_resolver import resolve_source_conflicts
 from inv_man_intake.performance.contracts import (
     PerformancePayload,
@@ -67,6 +69,9 @@ from inv_man_intake.storage.document_store import InMemoryDocumentStore
 # (run.py) loads this same file; the smoke/demo fallback must not drift from it (see #694).
 DEFAULT_THRESHOLD_CONFIG_PATH = (
     Path(__file__).resolve().parents[2] / "config" / "extraction_thresholds.yaml"
+)
+DEFAULT_STANDARD_ELEMENT_LIBRARY_PATH = (
+    Path(__file__).resolve().parents[2] / "config" / "standard_elements" / "_stub.json"
 )
 
 
@@ -275,6 +280,15 @@ def _run_pipeline_core(
             PerformancePayload(monthly=normalized.monthly),
             benchmark_monthly=benchmark_series,
         )
+        characterization = characterize_series(
+            normalized.monthly,
+            metrics,
+            source_names=_document_source_names(
+                repository=core_repository,
+                document_ids=record.document_ids,
+            ),
+            standard_library=load_standard_element_library(DEFAULT_STANDARD_ELEMENT_LIBRARY_PATH),
+        )
 
     performance_start = _start_event(sink, "v1_acceptance.performance_normalize")
     queue_context = child_trace_context(
@@ -308,12 +322,16 @@ def _run_pipeline_core(
         },
     ):
         components = _score_components(metrics.benchmark_correlation)
-        score = compute_score(
+        submission = gate_scoring_submission(
             ScoreSubmission(
                 manager_id=record.fund_id,
                 asset_class="credit",
                 components=components,
             ),
+            characterization=characterization,
+        )
+        score = compute_score(
+            submission,
             weights_by_asset_class=weights_for_registry(),
         )
         explainability = build_explainability_payload(
@@ -629,6 +647,16 @@ def _derive_document_types(
         suffix = Path(document.file_name).suffix.lstrip(".").lower()
         types.append(suffix or "unknown")
     return tuple(sorted(set(types)))
+
+
+def _document_source_names(
+    *, repository: CoreRepository, document_ids: tuple[str, ...]
+) -> tuple[str, ...]:
+    names: list[str] = []
+    for document_id in document_ids:
+        document = repository.get_document(document_id)
+        names.append(document.file_name if document is not None else document_id)
+    return tuple(names)
 
 
 def _pipeline_latency_ms(*, sink: InMemoryTraceSink, root_span_name: str) -> int | None:

@@ -16,7 +16,9 @@ from inv_man_intake.scoring import weights as scoring_weights
 from inv_man_intake.scoring.contracts import ScoreSubmission
 from inv_man_intake.scoring.engine import compute_score
 from inv_man_intake.v1_smoke import (
+    DEFAULT_STANDARD_ELEMENT_LIBRARY_PATH,
     _assert_registered_package_state,
+    _document_source_names,
     _score_components,
     run_v1_smoke_pipeline,
 )
@@ -205,6 +207,19 @@ def test_v1_smoke_pipeline_score_uses_toml_weight_registry(
         if item["component"] == "performance_consistency"
     )
     assert performance_component["weight"] == pytest.approx(1.00)
+
+
+def test_v1_smoke_characterizer_inputs_use_source_names_and_standard_library(
+    v1_smoke_artifacts,
+) -> None:
+    source_names = _document_source_names(
+        repository=v1_smoke_artifacts.core_repository,
+        document_ids=v1_smoke_artifacts.record.document_ids,
+    )
+
+    assert source_names != v1_smoke_artifacts.record.document_ids
+    assert "summit_arc_track_record.xlsx" in source_names
+    assert DEFAULT_STANDARD_ELEMENT_LIBRARY_PATH.exists()
 
 
 def test_v1_acceptance_smoke_fails_when_intake_registration_is_bypassed() -> None:

@@ -1,5 +1,12 @@
 """Performance ingestion contracts and helpers."""
 
+from inv_man_intake.performance.characterize import (
+    CharacterizationTag,
+    SeriesCharacterization,
+    characterize_series,
+    gate_scoring_submission,
+    require_operator_confirmation,
+)
 from inv_man_intake.performance.conflict_resolver import (
     ConflictAuditEntry,
     ConflictResolutionResult,
@@ -34,6 +41,7 @@ __all__ = [
     "BenchmarkAlignmentPoint",
     "CanonicalMonthPoint",
     "CanonicalMetricsSchema",
+    "CharacterizationTag",
     "ConflictAuditEntry",
     "ConflictResolutionResult",
     "NormalizedPerformancePayload",
@@ -41,16 +49,20 @@ __all__ = [
     "PerformancePayload",
     "PerformancePoint",
     "PerformanceSeries",
+    "SeriesCharacterization",
     "build_benchmark_alignment",
+    "characterize_series",
     "correlation_inputs",
     "compute_metrics",
     "compute_metrics_canonical",
     "describe_normalization_contract",
     "detect_missing_months",
+    "gate_scoring_submission",
     "load_document_timeseries",
     "load_xlsx_timeseries",
     "normalize_payload",
     "normalize_series",
+    "require_operator_confirmation",
     "resolve_source_conflicts",
     "validate_payload",
 ]
