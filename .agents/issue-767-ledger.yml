@@ -1,0 +1,179 @@
+version: 1
+issue: 767
+base: main
+branch: codex/issue-767
+tasks:
+  - id: task-01
+    title: Add logic to detect when multiple source values exist for aum, management_fee,
+      or net_return fields in the orchestrator
+    status: doing
+    started_at: '2026-07-08T11:34:39Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Implement the invocation of cross-check logic from the orchestrator for
+      each field with multiple sources
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Handle the cross-check results in the orchestrator flow and route them
+      appropriately
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Import and integrate the tolerance comparison behavior from conflict_resolver.py
+      into cross_check.py
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Remove the separate hard-coded discrepancy threshold logic from cross_check.py
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Update cross_check.py to use conflict_resolver tolerance for aum, management_fee,
+      and net_return comparisons
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Import and make create_cross_check_queue_item available in the orchestrator
+      module
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Add conditional logic to detect when numeric field disagreements exceed
+      tolerance thresholds
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Invoke create_cross_check_queue_item to generate escalation queue items
+      when disagreements are detected
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Add a configurable deliberate-break switch in `src/inv_man_intake/extraction/cross_check.py`
+      that disables the discrepancy check or sets tolerance to infinity for testable
+      break-state behavior.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Add test case for disagreeing source values that exceed tolerance and verify
+      escalation queue item creation
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Add test case for disagreeing source values with deliberate-break switch
+      enabled and verify no escalation occurs
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Decide the production-facing configuration and triggering rules for the
+      deliberate-break switch. This requires human judgment about intended operational
+      behavior and should not be guessed by an automated coding agent.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: When the extraction orchestrator processes a field set containing at least
+      two source values for aum, management_fee, or net_return, the cross-check function
+      is called with those values as verified by test assertions on function invocation;
+      when only one source value is present, the cross-check function is not called
+      for that field as verified by mock call counts.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: The cross_check.py module imports and directly calls the comparison function
+      from conflict_resolver.py (e.g., conflict_resolver.compare_values or similar)
+      for all numeric field comparisons, and code review confirms no numeric threshold
+      constants are defined within cross_check.py for aum, management_fee, or net_return.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: Given an orchestrator extraction input where two source values for `aum`,
+      `management_fee`, or `net_return` differ by more than the tolerance defined
+      by `conflict_resolver.py`, the orchestrator path creates exactly one escalation
+      queue item for that field via `create_cross_check_queue_item`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: Given an orchestrator extraction input where two source values for `aum`,
+      `management_fee`, or `net_return` are within the tolerance defined by `conflict_resolver.py`,
+      the orchestrator path does not create any escalation queue item for that field.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: The cross-check module exposes a configurable deliberate-break switch that,
+      when enabled, causes an otherwise out-of-tolerance disagreement for `aum`, `management_fee`,
+      or `net_return` to be treated as non-discrepant by disabling the check or applying
+      infinite tolerance.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: '`tests/extraction/test_cross_check.py` contains an automated test covering
+      the normal path where disagreeing numeric source values beyond tolerance cause
+      escalation through the orchestrator/cross-check flow.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: '`tests/extraction/test_cross_check.py` contains an automated test covering
+      the deliberate-break path where the same disagreeing numeric source values that
+      would normally escalate do not create an escalation queue item when the deliberate-break
+      switch is enabled.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
