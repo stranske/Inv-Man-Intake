@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: Add logic to detect when multiple source values exist for aum, management_fee,
       or net_return fields in the orchestrator
-    status: doing
+    status: done
     started_at: '2026-07-08T11:34:39Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-07-08T11:34:52Z'
+    commit: f4c2e7647d05c3ad78391a4eb7c8552cb6361f21
     notes: []
   - id: task-02
     title: Implement the invocation of cross-check logic from the orchestrator for
