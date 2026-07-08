@@ -16,7 +16,12 @@ DESIGN_SYSTEM_ROOT = Path(__file__).resolve().parents[1] / "design-system"
 if str(DESIGN_SYSTEM_ROOT) not in sys.path:
     sys.path.insert(0, str(DESIGN_SYSTEM_ROOT))
 
-from inv_man_intake.assist import IntakeRecommendation  # noqa: E402
+from inv_man_intake.assist import (  # noqa: E402
+    AssistantSessionState,
+    RunSignal,
+    answer_followup_from_state,
+    build_assistant_session,
+)
 from inv_man_intake.docproc.ppm import evaluate_ppm  # noqa: E402
 from inv_man_intake.extraction.providers.base import (  # noqa: E402
     ExtractedDocumentResult,
@@ -163,6 +168,7 @@ class AssistantPanelRecommendation:
 
 QUEUE_ACTION_STATE_KEY = "analyst_queue_action_state"
 OPERATOR_GRAPHIC_STATE_KEY = "operator_graphic_open_state"
+ASSISTANT_FOLLOWUP_STATE_KEY = "operator_assistant_followup"
 DEFAULT_DOC_TYPE_PRIORITY: tuple[str, ...] = ("track_record", "deck", "ppm")
 SAMPLE_PACKET_FILES: tuple[PacketFile, ...] = (
     PacketFile(
@@ -676,24 +682,46 @@ def render_operator_packet(
     return view
 
 
-def demo_assistant_recommendations(result: DemoResult) -> tuple[IntakeRecommendation, ...]:
-    """Return deterministic recommend-only rows for the browser demo surface."""
+def build_operator_assistant_session(view: OperatorPacketView) -> AssistantSessionState:
+    """Build run-signal-backed assistant state for the current operator packet."""
 
-    evidence = f"{result.package_id}:score:{result.final_score:.4f}"
-    return (
-        IntakeRecommendation(
-            rank=1,
-            change="Review threshold inputs for the selected packet",
-            rationale=f"Pipeline decision: {result.decision_reason}",
-            cited_evidence=(evidence,),
-            expected_effect="Clarifies whether the next run should escalate or auto-pass",
-        ),
+    return build_assistant_session(
+        packet_id=view.packet_id,
+        question="What intake improvement should the operator review first?",
+        signals=_operator_assistant_signals(view),
     )
+
+
+def _operator_assistant_signals(view: OperatorPacketView) -> tuple[RunSignal, ...]:
+    signals: list[RunSignal] = []
+    for index, row in enumerate(view.exception_rows, start=1):
+        signals.append(
+            RunSignal(
+                signal_id=f"escalation:{index}",
+                category="escalation",
+                summary=str(row["Reason"]),
+                source_ref=str(row["Item"]),
+                severity=0.95,
+            )
+        )
+    for index, row in enumerate(view.coverage_rows, start=1):
+        if str(row["Missing"]) == "None":
+            continue
+        signals.append(
+            RunSignal(
+                signal_id=f"standardness:{index}",
+                category="standardness",
+                summary=f"{row['Document']} missing {row['Missing']}",
+                source_ref=str(row["Document"]),
+                severity=0.80,
+            )
+        )
+    return tuple(signals)
 
 
 def render_assistant_panel(
     st: StreamlitLike,
-    recommendations: Sequence[IntakeRecommendation],
+    session: AssistantSessionState,
 ) -> tuple[AssistantPanelRecommendation, ...]:
     """Render assistant recommendations with explicit manual-apply actions."""
 
@@ -707,10 +735,10 @@ def render_assistant_panel(
             action=(
                 "Apply manually"
                 if recommendation.apply_manually
-                else "Blocked (auto-apply not permitted)"
+                else "Manual review required; recommendations are never auto-applied"
             ),
         )
-        for recommendation in recommendations
+        for recommendation in session.answer.recommendations
     )
     st.table(
         [
@@ -725,6 +753,16 @@ def render_assistant_panel(
             for row in rows
         ]
     )
+    followup_input = st.session_state.get(ASSISTANT_FOLLOWUP_STATE_KEY)
+    text_input = getattr(st, "text_input", None)
+    if callable(text_input):
+        followup_input = text_input(
+            "Assistant follow-up",
+            key=ASSISTANT_FOLLOWUP_STATE_KEY,
+        )
+    if isinstance(followup_input, str) and followup_input.strip():
+        followup = answer_followup_from_state(state=session, question=followup_input)
+        st.write(followup.answer)
     return rows
 
 
@@ -757,9 +795,9 @@ def render_app(st: StreamlitLike | None = None) -> DemoResult:
     st.table(result.components)
     st.subheader("Analyst queue")
     render_analyst_queue(st, result)
-    render_operator_packet(st, use_real_streamlit=use_real_streamlit)
+    operator_view = render_operator_packet(st, use_real_streamlit=use_real_streamlit)
     st.subheader("Assistant")
-    render_assistant_panel(st, demo_assistant_recommendations(result))
+    render_assistant_panel(st, build_operator_assistant_session(operator_view))
     return result
 
 

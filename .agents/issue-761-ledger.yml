@@ -1,0 +1,201 @@
+version: 1
+issue: 761
+base: main
+branch: codex/issue-761
+tasks:
+  - id: task-01
+    title: Create a test fixture that generates realistic run-signal data for assistant
+      testing
+    status: done
+    started_at: '2026-07-08T01:34:27Z'
+    finished_at: '2026-07-08T01:34:36Z'
+    commit: 532350ace3ef252761819194b4db1af618adc98b
+    notes: []
+  - id: task-02
+    title: Implement a test that builds assistant responses from run-signal fixtures
+      instead of demo data
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Add assertions to verify that assistant responses contain at least one
+      grounded answer
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Add assertions to verify that recommendations are returned as an ordered
+      ranked list
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Add assertions to verify that no recommendation is marked as applied or
+      auto-applied
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Add a negative-path unit test that invokes the provider directly instead
+      of going through `egress_guard.send_to_llm` and assert that the call is rejected
+      or fails in the expected way.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Add a test that runs assistant-related flows, including provider-call paths
+      and panel interaction handlers, while asserting that no files under `config/`
+      are created or modified.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Remove all references to demo_assistant_recommendations from the operator
+      assistant panel
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Integrate the assistant module to source recommendation data from real
+      run signals
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Create a state management mechanism to persist assistant session context
+      across interactions
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Wire the follow-up question handler to use the same assistant-generated
+      state object
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Verify that initial recommendations and follow-up answers share the same
+      run-signal context
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Fix the truncated assistant panel status string literal (for example, the
+      `Blocked (auto-appl` message) so the full user-facing text renders correctly.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: 'File `tests/assist/test_intake_assistant.py` contains a test named `test_recommendations_are_grounded_and_not_auto_applied`
+      that constructs assistant output from run-signal fixtures (not `demo_assistant_recommendations`)
+      and asserts all of the following in one execution path: at least one grounded
+      answer is present, the recommendations are returned as an ordered/ranked list,
+      and no recommendation is marked as applied or auto-applied.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: The grounded-recommendations test in `tests/assist/test_intake_assistant.py`
+      verifies follow-up Q&A behavior using the same run-signal-backed assistant context
+      by asserting that a follow-up question produces a non-empty answer tied to the
+      previously constructed assistant session/state rather than a separate demo data
+      source.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: File `tests/assist/test_intake_assistant.py` contains a negative-path test
+      that invokes the provider directly without going through `egress_guard.send_to_llm`
+      and asserts the direct call raises the expected exception or returns the expected
+      explicit rejection result.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: The direct-provider negative-path test explicitly proves bypass behavior
+      by asserting that `egress_guard.send_to_llm` is not called during the direct
+      invocation attempt.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: File `tests/assist/test_intake_assistant.py` contains a mutation-safety
+      test that executes assistant-related flows including at least one provider-call
+      path and at least one assistant panel interaction handler, snapshots the contents
+      and metadata of files under `config/` before and after execution, and asserts
+      that no file is added, removed, or modified.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: The mutation-safety test fails if any assistant path writes to `config/`
+      by comparing both the set of file paths under `config/` and each file's contents
+      (or content hash) before and after the run.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: File `src/inv_man_intake/operator_app/render_assistant_panel.py` no longer
+      references `demo_assistant_recommendations`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: The assistant panel obtains recommendation data by calling a specific function
+      in `src/inv_man_intake/assist/intake_assistant.py` that accepts run-signal inputs
+      and returns a state object, and the panel follow-up question handler passes
+      this state object (by reference or identifier) to the assistant module's follow-up
+      handler function, which can be verified by inspecting the function call signatures
+      and data flow.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-22
+    title: The replacement status string in `src/inv_man_intake/operator_app/render_assistant_panel.py`
+      contains the complete phrase 'auto-applied' and the string literal is not truncated
+      (verified by the absence of the substring 'Blocked (auto-appl' in the file).
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []

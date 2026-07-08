@@ -58,6 +58,79 @@ class AssistantAnswer:
     recommendations: tuple[IntakeRecommendation, ...]
 
 
+@dataclass(frozen=True)
+class AssistantSessionState:
+    """Run-signal-backed assistant context shared by recommendations and follow-ups."""
+
+    session_id: str
+    question: str
+    signals: tuple[RunSignal, ...]
+    answer: AssistantAnswer
+
+
+def build_assistant_session(
+    *,
+    packet_id: str,
+    question: str,
+    signals: Sequence[RunSignal],
+) -> AssistantSessionState:
+    """Build deterministic recommend-only assistant state from current run signals."""
+
+    signal_tuple = tuple(signals)
+    ranked_signals = tuple(
+        sorted(signal_tuple, key=lambda signal: (-signal.severity, signal.signal_id))
+    )
+    recommendations = tuple(
+        IntakeRecommendation(
+            rank=index,
+            change=_recommendation_change(signal),
+            rationale=f"Grounded in {signal.category} signal: {signal.summary}",
+            cited_evidence=(signal.signal_id,),
+            expected_effect="Keeps the operator review tied to current packet evidence.",
+        )
+        for index, signal in enumerate(ranked_signals[:3], start=1)
+    )
+    citations = tuple(signal.signal_id for signal in ranked_signals[:1])
+    answer = AssistantAnswer(
+        answer=(
+            f"Review {ranked_signals[0].category} evidence before changing intake behavior."
+            if ranked_signals
+            else "No current run signals require an assistant recommendation."
+        ),
+        citations=citations,
+        recommendations=recommendations,
+    )
+    return AssistantSessionState(
+        session_id=f"{packet_id}:assistant:{len(signal_tuple)}",
+        question=question,
+        signals=signal_tuple,
+        answer=answer,
+    )
+
+
+def answer_followup_from_state(*, state: AssistantSessionState, question: str) -> AssistantAnswer:
+    """Answer a follow-up question using the existing assistant session context."""
+
+    ranked_signals = tuple(
+        sorted(state.signals, key=lambda signal: (-signal.severity, signal.signal_id))
+    )
+    if not ranked_signals:
+        return AssistantAnswer(
+            answer=f"No run-signal context is available for follow-up: {question}",
+            citations=(),
+            recommendations=(),
+        )
+    primary = ranked_signals[0]
+    return AssistantAnswer(
+        answer=(
+            f"Using session {state.session_id}, the strongest signal remains "
+            f"{primary.signal_id}: {primary.summary}"
+        ),
+        citations=(primary.signal_id,),
+        recommendations=state.answer.recommendations,
+    )
+
+
 def _require_non_empty_citations(value: tuple[str, ...]) -> tuple[str, ...]:
     stripped = tuple(citation.strip() for citation in value)
     if any(not citation for citation in stripped):
@@ -238,3 +311,15 @@ def _recommendation_from_payload(
         rank=payload.rank or index,
         apply_manually=True,
     )
+
+
+def _recommendation_change(signal: RunSignal) -> str:
+    if signal.category == "escalation":
+        return "Review the escalated packet evidence"
+    if signal.category == "standardness":
+        return "Check non-standard document coverage"
+    if signal.category == "score":
+        return "Confirm score red-flag handling"
+    if signal.category == "correction":
+        return "Reconcile corrected source values"
+    return "Review current intake signal"
