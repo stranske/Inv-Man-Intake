@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from inv_man_intake.assist.egress_guard import (
     EgressConsent,
@@ -190,7 +191,7 @@ def _deterministic_characterization(
     if tag is None:
         return SeriesCharacterization(
             tag="standard",
-            rationale="No non-standard return-stream markers were detected.",
+            rationale=_rationale_for_tag("standard"),
             confidence=0.92,
             metrics=metrics,
             evidence=evidence,
@@ -235,7 +236,10 @@ def _llm_characterization(
         client=client,
         now=now,
     )
-    return _LlmCharacterizationPayload.model_validate(guarded.provider_response)
+    try:
+        return _LlmCharacterizationPayload.model_validate(guarded.provider_response)
+    except ValidationError as exc:
+        raise ValueError("invalid LLM characterization payload") from exc
 
 
 def _evidence(*, source_notes: tuple[str, ...], source_names: tuple[str, ...]) -> tuple[str, ...]:
@@ -244,7 +248,15 @@ def _evidence(*, source_notes: tuple[str, ...], source_names: tuple[str, ...]) -
 
 def _tags_from_text(evidence: tuple[str, ...]) -> list[CharacterizationTag]:
     haystack = " ".join(evidence).lower()
-    return [tag for tag, needles in _KEYWORD_TAGS if any(needle in haystack for needle in needles)]
+    return [
+        tag
+        for tag, needles in _KEYWORD_TAGS
+        if any(_contains_keyword(haystack, needle) for needle in needles)
+    ]
+
+
+def _contains_keyword(haystack: str, needle: str) -> bool:
+    return re.search(rf"\b{re.escape(needle)}\b", haystack) is not None
 
 
 def _highest_priority_tag(

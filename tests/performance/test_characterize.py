@@ -8,7 +8,6 @@ from typing import Any
 
 import pytest
 
-import inv_man_intake.performance.characterize as characterize_module
 from inv_man_intake.assist.egress_guard import EgressConsent, ProviderConfig
 from inv_man_intake.intake.standard_elements import (
     DataDrivenStandardElementLibrary,
@@ -95,6 +94,22 @@ def test_metrics_are_byte_identical_to_deterministic_output() -> None:
     assert characterization.metrics.to_canonical_dict() == metrics.to_canonical_dict()
 
 
+def test_short_currency_keywords_require_token_boundary() -> None:
+    series = _monthly_series(
+        (
+            (date(2025, 1, 31), 0.02),
+            (date(2025, 2, 28), 0.03),
+        )
+    )
+    metrics = compute_metrics(PerformancePayload(monthly=series))
+
+    standard = characterize_series(series, metrics, source_notes=("Amateur sleeve upload",))
+    currency = characterize_series(series, metrics, source_notes=("USD sleeve upload",))
+
+    assert standard.tag == "standard"
+    assert currency.tag == "currency_noted"
+
+
 def test_ambiguous_tail_routes_through_egress_guard(tmp_path: Path) -> None:
     series = _monthly_series(
         (
@@ -137,6 +152,45 @@ def test_ambiguous_tail_routes_through_egress_guard(tmp_path: Path) -> None:
     assert calls
     assert calls[0]["payload"]["constraints"]["do_not_compute_or_change_returns"] is True
     assert (tmp_path / "egress.ndjson").read_text(encoding="utf-8")
+
+
+def test_invalid_llm_payload_raises_domain_error(tmp_path: Path) -> None:
+    series = _monthly_series(
+        (
+            (date(2025, 1, 31), 0.01),
+            (date(2025, 2, 28), 0.02),
+        )
+    )
+    metrics = compute_metrics(PerformancePayload(monthly=series))
+
+    def client(payload: dict[str, Any], provider_config: ProviderConfig) -> dict[str, Any]:
+        return {
+            "tag": "gross_net_ambiguous",
+            "rationale": "The notes require gross/net treatment review.",
+            "confidence": 0.73,
+            "provider_metadata": {"trace_id": "abc"},
+        }
+
+    with pytest.raises(ValueError, match="invalid LLM characterization payload"):
+        characterize_series(
+            series,
+            metrics,
+            source_notes=("Manager says treatment needs review.",),
+            consent=EgressConsent(
+                granted_by="operator",
+                purpose="classify ambiguous return stream",
+                granted_at="2026-07-07T23:00:00Z",
+            ),
+            provider_config=ProviderConfig(
+                provider="frontier",
+                model="review-model",
+                zero_retention=True,
+                baa_eligible=True,
+            ),
+            log_path=tmp_path / "egress.ndjson",
+            client=client,
+            now=lambda: datetime(2026, 7, 7, 23, 0, tzinfo=UTC),
+        )
 
 
 def test_ambiguous_source_names_route_through_egress_guard(tmp_path: Path) -> None:
@@ -215,9 +269,7 @@ def test_doc_type_handling_uses_standard_element_library_port() -> None:
 
     characterization = characterize_series(series, metrics, standard_library=library)
 
-    assert throwaway_doc_type in characterization.doc_types_available
-    source_text = Path(characterize_module.__file__).read_text(encoding="utf-8")
-    assert throwaway_doc_type not in source_text
+    assert characterization.doc_types_available == library.doc_types()
 
 
 def _monthly_series(points: tuple[tuple[date, float], ...]) -> PerformanceSeries:
