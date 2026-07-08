@@ -142,6 +142,19 @@ def test_cross_check_queue_item_is_not_created_without_escalation() -> None:
     assert create_cross_check_queue_item(package_id="pkg-715", report=report) is None
 
 
+def test_deliberate_break_switch_suppresses_disagreement_escalation() -> None:
+    report = cross_check_observations(
+        (
+            FieldObservation(key="operations.aum", value="$100.0M", source="memo"),
+            FieldObservation(key="operations.aum", value="$1.0M", source="tear-sheet"),
+        ),
+        disable_discrepancy_check=True,
+    )
+
+    assert report.escalate is False
+    assert report.escalation_reasons == ()
+
+
 def test_invalid_tolerance_is_rejected() -> None:
     with pytest.raises(ValueError, match="tolerance_percent"):
         cross_check_observations((), tolerance_percent=float("inf"))

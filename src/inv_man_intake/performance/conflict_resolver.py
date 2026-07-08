@@ -11,7 +11,7 @@ from inv_man_intake.performance.contracts import (
     validate_series,
 )
 
-_DEFAULT_ESCALATION_THRESHOLD_PERCENT = 5.0
+DEFAULT_ESCALATION_THRESHOLD_PERCENT = 5.0
 _FLOAT_TOLERANCE = 1e-12
 
 
@@ -43,7 +43,7 @@ def resolve_source_conflicts(
     *,
     xlsx_series: PerformanceSeries | None,
     other_series: PerformanceSeries | None,
-    escalation_threshold_percent: float = _DEFAULT_ESCALATION_THRESHOLD_PERCENT,
+    escalation_threshold_percent: float = DEFAULT_ESCALATION_THRESHOLD_PERCENT,
 ) -> ConflictResolutionResult:
     """Resolve source conflicts using XLSX precedence and >threshold escalation."""
 
@@ -117,7 +117,7 @@ def _build_audit_entries(
         xlsx_value = xlsx_map[as_of]
         other_value = other_map[as_of]
         absolute_difference = abs(xlsx_value - other_value)
-        percent_difference = _relative_difference_percent(xlsx_value, other_value)
+        percent_difference = relative_difference_percent(xlsx_value, other_value)
         entries.append(
             ConflictAuditEntry(
                 as_of=as_of,
@@ -131,6 +131,19 @@ def _build_audit_entries(
     return tuple(entries)
 
 
-def _relative_difference_percent(value_a: float, value_b: float) -> float:
+def relative_difference_percent(value_a: float, value_b: float) -> float:
+    """Return the existing conflict-resolver percentage difference calculation."""
+
     denominator = max(abs(value_a), abs(value_b), _FLOAT_TOLERANCE)
     return (abs(value_a - value_b) / denominator) * 100.0
+
+
+def values_exceed_tolerance(
+    value_a: float, value_b: float, *, tolerance_percent: float
+) -> tuple[bool, float]:
+    """Compare two numeric values with the shared performance-conflict tolerance."""
+
+    if tolerance_percent < 0.0 or tolerance_percent > 100.0:
+        raise ValueError("tolerance_percent must be between 0 and 100 inclusive")
+    percent_difference = relative_difference_percent(value_a, value_b)
+    return percent_difference > tolerance_percent, percent_difference
