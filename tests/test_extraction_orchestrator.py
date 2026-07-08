@@ -7,6 +7,7 @@ from inv_man_intake.extraction.orchestrator import (
     ExtractionOrchestrator,
     RetryPolicy,
 )
+from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
 from inv_man_intake.observability import InMemoryTraceSink, Tracer
 
 
@@ -333,3 +334,130 @@ def test_orchestrator_defaults_to_tracer_from_env(monkeypatch) -> None:
 
     assert calls["count"] == 1
     assert orchestrator._tracer is tracer
+
+
+def test_orchestrator_cross_checks_multi_source_key_fields() -> None:
+    orchestrator = ExtractionOrchestrator(
+        primary_name="primary-provider",
+        primary_extractor=lambda _: {
+            "package_id": "pkg-767",
+            "extraction_results": (
+                _result(
+                    provider_name="primary",
+                    fields=(_field("operations.aum", "$100.0M", "primary-regex", 0.91),),
+                ),
+                _result(
+                    provider_name="docling",
+                    fields=(_field("operations.aum", "$89.0M", "docling", 0.89),),
+                ),
+            ),
+        },
+        fallback_name="fallback-provider",
+        fallback_extractor=lambda _: {"status": "unused"},
+    )
+
+    result = orchestrator.run({"id": "pkg-767:extract", "package_id": "pkg-767"})
+
+    assert result.resolved is True
+    assert result.escalation_route == "pending_triage"
+    assert result.escalation_reason is not None
+    assert result.escalation_reason.startswith("cross_check_disagreement:operations.aum")
+    assert result.escalation_payload is not None
+    assert result.escalation_payload["queue_item_id"] == (
+        "pkg-767:validation:extraction_cross_check"
+    )
+    assert result.data is not None
+    assert result.data["cross_check_queue_item"].package_id == "pkg-767"
+
+
+def test_orchestrator_skips_cross_check_for_single_source_key_field() -> None:
+    calls = 0
+
+    def primary(_: dict[str, object]) -> dict[str, object]:
+        nonlocal calls
+        calls += 1
+        return {
+            "package_id": "pkg-767",
+            "extraction_results": (
+                _result(
+                    provider_name="primary",
+                    fields=(_field("operations.aum", "$100.0M", "primary-regex", 0.91),),
+                ),
+            ),
+        }
+
+    orchestrator = ExtractionOrchestrator(
+        primary_name="primary-provider",
+        primary_extractor=primary,
+        fallback_name="fallback-provider",
+        fallback_extractor=lambda _: {"status": "unused"},
+    )
+
+    result = orchestrator.run({"id": "pkg-767:extract", "package_id": "pkg-767"})
+
+    assert calls == 1
+    assert result.escalation_payload is None
+    assert result.data is not None
+    assert "cross_check_queue_item" not in result.data
+
+
+def test_orchestrator_deliberate_break_switch_suppresses_cross_check_queue_item() -> None:
+    orchestrator = ExtractionOrchestrator(
+        primary_name="primary-provider",
+        primary_extractor=lambda _: {
+            "package_id": "pkg-767",
+            "extraction_results": (
+                _result(
+                    provider_name="primary",
+                    fields=(_field("operations.aum", "$100.0M", "primary-regex", 0.91),),
+                ),
+                _result(
+                    provider_name="docling",
+                    fields=(_field("operations.aum", "$1.0M", "docling", 0.89),),
+                ),
+            ),
+        },
+        fallback_name="fallback-provider",
+        fallback_extractor=lambda _: {"status": "unused"},
+    )
+
+    result = orchestrator.run(
+        {
+            "id": "pkg-767:extract",
+            "package_id": "pkg-767",
+            "disable_cross_check_discrepancy": True,
+        }
+    )
+
+    assert result.escalation_payload is None
+    assert result.data is not None
+    assert result.data["cross_check_queue_item"] is None
+    assert result.data["cross_check_report"].escalate is False
+
+
+def _result(
+    *,
+    provider_name: str,
+    fields: tuple[ExtractedField, ...],
+) -> ExtractedDocumentResult:
+    return ExtractedDocumentResult(
+        source_doc_id="manager-doc",
+        provider_name=provider_name,
+        fields=fields,
+    )
+
+
+def _field(
+    key: str,
+    value: str,
+    method: str,
+    confidence: float,
+) -> ExtractedField:
+    return ExtractedField(
+        key=key,
+        value=value,
+        confidence=confidence,
+        source_doc_id="manager-doc",
+        source_page=1,
+        method=method,
+    )

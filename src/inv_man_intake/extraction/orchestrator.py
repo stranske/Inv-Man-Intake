@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from inv_man_intake.extraction.cross_check import (
+    CrossCheckReport,
+    create_cross_check_queue_item,
+    cross_check_extraction_results,
+)
+from inv_man_intake.extraction.providers.base import ExtractedDocumentResult
 from inv_man_intake.observability import TraceContext, Tracer, new_trace_context
+from inv_man_intake.workflow_validation import ValidationQueueItem
 
 Extractor = Callable[[dict[str, Any]], dict[str, Any]]
 MetricsHook = Callable[[dict[str, Any]], None]
@@ -104,14 +111,18 @@ class ExtractionOrchestrator:
                 )
             )
             if primary_result is not None:
-                result = OrchestrationResult(
-                    resolved=True,
-                    data=primary_result,
-                    provider_used=self._primary.name,
-                    attempts=attempts,
-                    retry_count=retry_count,
-                    failure_count=0,
-                    correlation_id=correlation_id,
+                result = self._with_cross_check(
+                    OrchestrationResult(
+                        resolved=True,
+                        data=primary_result,
+                        provider_used=self._primary.name,
+                        attempts=attempts,
+                        retry_count=retry_count,
+                        failure_count=0,
+                        correlation_id=correlation_id,
+                    ),
+                    payload=payload,
+                    provider_result=primary_result,
                 )
                 self._emit_metrics(result)
                 return result
@@ -150,14 +161,18 @@ class ExtractionOrchestrator:
                 )
                 if fallback_result is not None:
                     failed_attempts = [attempt for attempt in attempts if not attempt.success]
-                    result = OrchestrationResult(
-                        resolved=True,
-                        data=fallback_result,
-                        provider_used=self._fallback.name,
-                        attempts=attempts,
-                        retry_count=retry_count,
-                        failure_count=len(failed_attempts),
-                        correlation_id=correlation_id,
+                    result = self._with_cross_check(
+                        OrchestrationResult(
+                            resolved=True,
+                            data=fallback_result,
+                            provider_used=self._fallback.name,
+                            attempts=attempts,
+                            retry_count=retry_count,
+                            failure_count=len(failed_attempts),
+                            correlation_id=correlation_id,
+                        ),
+                        payload=payload,
+                        provider_result=fallback_result,
                     )
                     self._emit_metrics(result)
                     return result
@@ -265,6 +280,58 @@ class ExtractionOrchestrator:
             return "ops_review"
         return "pending_triage"
 
+    @staticmethod
+    def _with_cross_check(
+        result: OrchestrationResult,
+        *,
+        payload: dict[str, Any],
+        provider_result: dict[str, Any],
+    ) -> OrchestrationResult:
+        extraction_results = _extract_document_results(provider_result)
+        if len(extraction_results) < 2:
+            return result
+
+        report = cross_check_extraction_results(
+            extraction_results,
+            disable_discrepancy_check=bool(payload.get("disable_cross_check_discrepancy")),
+        )
+        queue_item = create_cross_check_queue_item(
+            package_id=_resolve_cross_check_package_id(payload=payload, result=provider_result),
+            report=report,
+        )
+        data = dict(provider_result)
+        data["cross_check_report"] = report
+        data["cross_check_queue_item"] = queue_item
+        if queue_item is None:
+            return OrchestrationResult(
+                resolved=result.resolved,
+                data=data,
+                provider_used=result.provider_used,
+                attempts=result.attempts,
+                retry_count=result.retry_count,
+                failure_count=result.failure_count,
+                correlation_id=result.correlation_id,
+            )
+
+        escalation_payload = _cross_check_escalation_payload(
+            payload=payload,
+            report=report,
+            queue_item=queue_item,
+            correlation_id=result.correlation_id,
+        )
+        return OrchestrationResult(
+            resolved=result.resolved,
+            data=data,
+            provider_used=result.provider_used,
+            attempts=result.attempts,
+            retry_count=result.retry_count,
+            failure_count=result.failure_count,
+            correlation_id=result.correlation_id,
+            escalation_route="pending_triage",
+            escalation_reason=queue_item.escalation_reason,
+            escalation_payload=escalation_payload,
+        )
+
     def _emit_metrics(self, result: OrchestrationResult) -> None:
         if self._metrics_hook is None:
             return
@@ -277,3 +344,59 @@ class ExtractionOrchestrator:
                 "correlation_id": result.correlation_id,
             }
         )
+
+
+def _extract_document_results(
+    provider_result: dict[str, Any],
+) -> tuple[ExtractedDocumentResult, ...]:
+    candidates = (
+        provider_result.get("extraction_results"),
+        provider_result.get("results"),
+        provider_result.get("documents"),
+    )
+    for candidate in candidates:
+        results = _coerce_document_results(candidate)
+        if results:
+            return results
+    return _coerce_document_results(provider_result.get("result"))
+
+
+def _coerce_document_results(candidate: object) -> tuple[ExtractedDocumentResult, ...]:
+    if isinstance(candidate, ExtractedDocumentResult):
+        return (candidate,)
+    if isinstance(candidate, Sequence) and not isinstance(candidate, (str, bytes, bytearray)):
+        return tuple(item for item in candidate if isinstance(item, ExtractedDocumentResult))
+    return ()
+
+
+def _resolve_cross_check_package_id(*, payload: dict[str, Any], result: dict[str, Any]) -> str:
+    for key in ("package_id", "id", "item_id"):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    for key in ("package_id", "id", "item_id"):
+        value = result.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return "unknown-package"
+
+
+def _cross_check_escalation_payload(
+    *,
+    payload: dict[str, Any],
+    report: CrossCheckReport,
+    queue_item: ValidationQueueItem,
+    correlation_id: str | None,
+) -> dict[str, Any]:
+    return {
+        "item_id": payload.get("id"),
+        "input_payload": dict(payload),
+        "escalation_route": "pending_triage",
+        "escalation_reason": queue_item.escalation_reason,
+        "retry_count": 0,
+        "failure_count": 0,
+        "correlation_id": correlation_id,
+        "queue_item_id": queue_item.item_id,
+        "package_id": queue_item.package_id,
+        "cross_check_reasons": list(report.escalation_reasons),
+    }

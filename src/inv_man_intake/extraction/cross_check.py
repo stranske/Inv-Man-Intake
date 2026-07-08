@@ -15,8 +15,6 @@ DEFAULT_KEY_NUMERIC_FIELDS = (
     "terms.management_fee",
     "performance.net_return_1y",
 )
-DEFAULT_FIELD_TOLERANCE_PERCENT = 5.0
-_FLOAT_TOLERANCE = 1e-12
 _NUMERIC_VALUE_RE = re.compile(r"[-+]?\d[\d,]*(?:\.\d+)?")
 _MAGNITUDE_MULTIPLIERS = {
     "k": 1_000.0,
@@ -75,7 +73,8 @@ def cross_check_extraction_results(
     results: Sequence[ExtractedDocumentResult],
     *,
     key_fields: Iterable[str] = DEFAULT_KEY_NUMERIC_FIELDS,
-    tolerance_percent: float = DEFAULT_FIELD_TOLERANCE_PERCENT,
+    tolerance_percent: float | None = None,
+    disable_discrepancy_check: bool = False,
 ) -> CrossCheckReport:
     """Cross-check key numeric fields whenever multiple provider/source values exist."""
 
@@ -86,6 +85,7 @@ def cross_check_extraction_results(
         observations,
         key_fields=key_fields,
         tolerance_percent=tolerance_percent,
+        disable_discrepancy_check=disable_discrepancy_check,
     )
 
 
@@ -111,11 +111,15 @@ def cross_check_observations(
     observations: Iterable[FieldObservation],
     *,
     key_fields: Iterable[str] = DEFAULT_KEY_NUMERIC_FIELDS,
-    tolerance_percent: float = DEFAULT_FIELD_TOLERANCE_PERCENT,
+    tolerance_percent: float | None = None,
+    disable_discrepancy_check: bool = False,
 ) -> CrossCheckReport:
     """Reconcile key field observations and escalate disagreements beyond tolerance."""
 
-    if tolerance_percent < 0.0 or tolerance_percent > 100.0:
+    resolved_tolerance_percent = (
+        _shared_default_tolerance_percent() if tolerance_percent is None else tolerance_percent
+    )
+    if resolved_tolerance_percent < 0.0 or resolved_tolerance_percent > 100.0:
         raise ValueError("tolerance_percent must be between 0 and 100 inclusive")
 
     fields_by_key: dict[str, list[FieldObservation]] = {key: [] for key in key_fields}
@@ -127,7 +131,8 @@ def cross_check_observations(
         _cross_check_field(
             key=key,
             observations=tuple(field_observations),
-            tolerance_percent=tolerance_percent,
+            tolerance_percent=resolved_tolerance_percent,
+            disable_discrepancy_check=disable_discrepancy_check,
         )
         for key, field_observations in fields_by_key.items()
         if len(field_observations) > 1
@@ -159,6 +164,7 @@ def _cross_check_field(
     key: str,
     observations: tuple[FieldObservation, ...],
     tolerance_percent: float,
+    disable_discrepancy_check: bool,
 ) -> FieldCrossCheck:
     parsed: list[tuple[FieldObservation, float]] = []
     parse_failures: list[str] = []
@@ -181,8 +187,18 @@ def _cross_check_field(
             reason=f"cross_check_unparseable:{key}:{','.join(sorted(parse_failures))}",
         )
 
-    disagreement = _first_disagreement(parsed, tolerance_percent=tolerance_percent)
     assert accepted is not None
+    if disable_discrepancy_check:
+        return FieldCrossCheck(
+            key=key,
+            observations=observations,
+            accepted_value=accepted.value,
+            accepted_source=accepted.source,
+            escalate=False,
+            reason=None,
+        )
+
+    disagreement = _first_disagreement(parsed, tolerance_percent=tolerance_percent)
     if disagreement is None:
         return FieldCrossCheck(
             key=key,
@@ -226,15 +242,28 @@ def _first_disagreement(
 ) -> tuple[FieldObservation, FieldObservation, float] | None:
     for left_index, (left_observation, left_value) in enumerate(parsed):
         for right_observation, right_value in parsed[left_index + 1 :]:
-            percent_difference = _relative_difference_percent(left_value, right_value)
-            if percent_difference > tolerance_percent:
+            exceeds_tolerance, percent_difference = _values_exceed_tolerance(
+                left_value,
+                right_value,
+                tolerance_percent=tolerance_percent,
+            )
+            if exceeds_tolerance:
                 return left_observation, right_observation, percent_difference
     return None
 
 
-def _relative_difference_percent(value_a: float, value_b: float) -> float:
-    denominator = max(abs(value_a), abs(value_b), _FLOAT_TOLERANCE)
-    return (abs(value_a - value_b) / denominator) * 100.0
+def _shared_default_tolerance_percent() -> float:
+    from inv_man_intake.performance.conflict_resolver import DEFAULT_ESCALATION_THRESHOLD_PERCENT
+
+    return DEFAULT_ESCALATION_THRESHOLD_PERCENT
+
+
+def _values_exceed_tolerance(
+    value_a: float, value_b: float, *, tolerance_percent: float
+) -> tuple[bool, float]:
+    from inv_man_intake.performance.conflict_resolver import values_exceed_tolerance
+
+    return values_exceed_tolerance(value_a, value_b, tolerance_percent=tolerance_percent)
 
 
 def _parse_numeric_value(raw_value: str) -> float | None:
