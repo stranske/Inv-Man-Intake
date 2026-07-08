@@ -17,6 +17,7 @@ if str(DESIGN_SYSTEM_ROOT) not in sys.path:
     sys.path.insert(0, str(DESIGN_SYSTEM_ROOT))
 
 from inv_man_intake.assist import IntakeRecommendation  # noqa: E402
+from inv_man_intake.docproc.ppm import evaluate_ppm  # noqa: E402
 from inv_man_intake.extraction.providers.base import (  # noqa: E402
     ExtractedDocumentResult,
     ExtractedField,
@@ -139,6 +140,8 @@ class OperatorPacketView:
 
     packet_id: str
     coverage_rows: list[dict[str, object]]
+    ppm_rows: list[dict[str, object]]
+    ppm_deviation_rows: list[dict[str, object]]
     profile_rows: list[dict[str, object]]
     graphics_rows: list[dict[str, object]]
     return_rows: list[dict[str, object]]
@@ -181,7 +184,7 @@ SAMPLE_PACKET_FILES: tuple[PacketFile, ...] = (
     PacketFile(
         document_id="ppm",
         filename="ppm.txt",
-        content=b"Private placement memorandum. Management fee 1.25%.",
+        content=b"PPM document. Management fee 1.25%. Strategy: credit opportunities.",
     ),
 )
 
@@ -396,6 +399,9 @@ def _operator_fields(source_doc_id: str, text: str) -> list[ExtractedField]:
         fields.append(_operator_field(source_doc_id, "performance.net_return_1y", "12.5%", 0.88))
     if "fee" in lowered:
         fields.append(_operator_field(source_doc_id, "terms.management_fee", "1.25%", 0.84))
+    if "private placement memorandum" in lowered or "ppm" in lowered:
+        fields.append(_operator_field(source_doc_id, "ppm.strategy", "Credit opportunities", 0.82))
+        fields.append(_operator_field(source_doc_id, "ppm.fees", "1.25% management fee", 0.84))
     return fields
 
 
@@ -440,6 +446,22 @@ def _operator_library(priority: Sequence[str]) -> StandardElementLibrary:
                         "detector_name": "field_present",
                         "mandatory": doc_type in {"deck", "ppm"},
                     },
+                    *(
+                        [
+                            {
+                                "key": "ppm.strategy",
+                                "detector_name": "field_present",
+                                "mandatory": True,
+                            },
+                            {
+                                "key": "ppm.fees",
+                                "detector_name": "field_present",
+                                "mandatory": True,
+                            },
+                        ]
+                        if doc_type == "ppm"
+                        else []
+                    ),
                 ]
                 for doc_type in priority
             },
@@ -476,6 +498,33 @@ def build_operator_packet_view(
         }
         for document in profile.documents
     ]
+    ppm_library = _operator_library(("ppm",))
+    ppm_rows: list[dict[str, object]] = []
+    ppm_deviation_rows: list[dict[str, object]] = []
+    for document in profile.documents:
+        if document.document_type != "ppm":
+            continue
+        evaluation = evaluate_ppm(document.extraction, ppm_library)
+        for item in evaluation.checklist:
+            ppm_rows.append(
+                {
+                    "Document": document.document_id,
+                    "Element": item.key,
+                    "Status": item.status,
+                    "Citation": item.citation,
+                }
+            )
+        for note in evaluation.deviation_notes:
+            ppm_deviation_rows.append(
+                {
+                    "Document": document.document_id,
+                    "Element": note.element_key,
+                    "Summary": note.summary,
+                    "Why it matters": note.why_it_matters,
+                    "Citation": note.citation,
+                    "Action": "Review manually" if note.apply_manually else "No action",
+                }
+            )
     profile_rows: list[dict[str, object]] = [
         {"Field": key, "Value": value}
         for group in (profile.identity, profile.terms, profile.returns_metrics)
@@ -513,6 +562,8 @@ def build_operator_packet_view(
     return OperatorPacketView(
         packet_id=profile.packet_id,
         coverage_rows=coverage_rows,
+        ppm_rows=ppm_rows,
+        ppm_deviation_rows=ppm_deviation_rows,
         profile_rows=profile_rows,
         graphics_rows=graphics_rows,
         return_rows=return_rows,
@@ -599,6 +650,10 @@ def render_operator_packet(
     )
     st.subheader("Packet coverage")
     st.table(view.coverage_rows)
+    st.subheader("PPM checklist")
+    st.table(view.ppm_rows)
+    st.subheader("PPM deviation notes")
+    st.table(view.ppm_deviation_rows)
     st.subheader("Manager profile")
     st.table(view.profile_rows)
     st.subheader("Graphics gallery")
@@ -678,7 +733,7 @@ def render_app(st: StreamlitLike | None = None) -> DemoResult:
 
     use_real_streamlit = st is None
     if st is None:
-        import streamlit as streamlit_module  # type: ignore[import-not-found]
+        import streamlit as streamlit_module
 
         st = cast(StreamlitLike, streamlit_module)
 
