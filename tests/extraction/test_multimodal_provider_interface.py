@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from inv_man_intake.extraction.providers.base import (
+    ExtractedDocumentResult,
     ExtractedImage,
     ExtractedTable,
     ExtractedTableCell,
@@ -17,6 +18,10 @@ class _DummyMultiModalProvider:
     @property
     def name(self) -> str:
         return "dummy-multimodal"
+
+    def extract(self, source_doc_id: str, content: bytes) -> ExtractedDocumentResult:
+        _ = content
+        return ExtractedDocumentResult(source_doc_id=source_doc_id, provider_name=self.name)
 
     def extract_modalities(self, source_doc_id: str, content: bytes) -> ProviderExtractionOutput:
         _ = content
