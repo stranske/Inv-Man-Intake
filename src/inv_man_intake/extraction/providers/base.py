@@ -6,6 +6,8 @@ while delegating the shared provider contract to ``stranske-pdf-extract``.
 
 from __future__ import annotations
 
+from typing import Any, Protocol, runtime_checkable
+
 try:
     from stranske_pdf_extract.contract import (
         ExtractedDocumentResult,
@@ -20,13 +22,11 @@ try:
         validate_extracted_document_result,
         validate_provider_output,
     )
-    from stranske_pdf_extract.provider import ExtractionProvider, MultiModalExtractionProvider
 except ModuleNotFoundError as exc:  # pragma: no cover - exercised in the Pyodide browser bundle.
     if exc.name and not exc.name.startswith("stranske_pdf_extract"):
         raise
 
     from dataclasses import dataclass
-    from typing import Any, Protocol
 
     @dataclass(frozen=True)
     class SourceLocation:  # type: ignore[no-redef]
@@ -96,12 +96,6 @@ except ModuleNotFoundError as exc:  # pragma: no cover - exercised in the Pyodid
         tables: tuple[ExtractedTable, ...] = ()
         images: tuple[ExtractedImage, ...] = ()
 
-    class ExtractionProvider(Protocol):  # type: ignore[no-redef]
-        def extract(self, source_doc_id: str, content: bytes) -> ExtractedDocumentResult: ...
-
-    class MultiModalExtractionProvider(ExtractionProvider, Protocol):  # type: ignore[no-redef,misc]
-        pass
-
     def validate_extracted_document_result(result: ExtractedDocumentResult) -> None:
         for field_item in result.fields:
             if field_item.source_doc_id != result.source_doc_id:
@@ -147,6 +141,21 @@ except ModuleNotFoundError as exc:  # pragma: no cover - exercised in the Pyodid
             and metadata.char_end < metadata.char_start
         ):
             raise ValueError("char_end must be greater than or equal to char_start")
+
+
+@runtime_checkable
+class ExtractionProvider(Protocol):
+    @property
+    def name(self) -> str: ...
+
+    def extract(self, source_doc_id: str, content: bytes) -> ExtractedDocumentResult: ...
+
+
+@runtime_checkable
+class MultiModalExtractionProvider(ExtractionProvider, Protocol):
+    def extract_modalities(
+        self, source_doc_id: str, content: bytes
+    ) -> ProviderExtractionOutput: ...
 
 
 __all__ = [
