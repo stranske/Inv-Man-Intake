@@ -92,7 +92,7 @@ class StreamlitRecorder:
         self._nodes.append(AccessibilityNode("heading", body))
 
     def table(self, data: object) -> None:
-        rows = list(data) if isinstance(data, list) else [data]
+        rows = list(data) if isinstance(data, (list, tuple)) else [data]
         for row in rows:
             if isinstance(row, dict):
                 for key, value in row.items():

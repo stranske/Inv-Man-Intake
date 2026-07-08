@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from inv_man_intake.extraction.providers.base import (  # type: ignore[import-untyped]
+from inv_man_intake.extraction.providers.base import (
     ExtractedDocumentResult,
     ExtractedField,
 )
-from inv_man_intake.intake.standard_elements import (  # type: ignore[import-untyped]
+from inv_man_intake.intake.standard_elements import (
     load_standard_element_library,
 )
-from inv_man_intake.packet import PacketFile, ingest_packet  # type: ignore[import-untyped]
+from inv_man_intake.packet import PacketFile, ingest_packet
 
 ROOT = Path(__file__).resolve().parents[1]
 THROWAWAY_DOC_TYPE = "issue_721_throwaway_side_letter"

@@ -53,7 +53,7 @@ Repository = "https://github.com/stranske/Inv-Man-Intake"
 inv-man-ingest = "inv_man_intake.cli.ingest:main"
 
 [tool.setuptools.package-data]
-inv_man_intake = ["data/migrations/sql/*.sql"]
+inv_man_intake = ["data/migrations/sql/*.sql", "py.typed"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
