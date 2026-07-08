@@ -18,10 +18,10 @@ tasks:
       that temporarily removes or monkeypatches away one required `ExtractionProvider`
       method from the Docling provider class/instance, asserts `isinstance(..., ExtractionProvider)`
       is `False`, and restores the original method after the assertion.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-07-08T09:22:00Z'
+    finished_at: '2026-07-08T09:22:00Z'
+    commit: 217f827ba331bea977776af34279c2571811990c
     notes: []
   - id: task-03
     title: Move or recreate the Docling evaluation harness under a dedicated evaluation
@@ -60,10 +60,10 @@ tasks:
   - id: task-07
     title: Refactor Docling-specific imports to use lazy loading or conditional imports
       within the docling_primary provider module.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-07-08T09:22:00Z'
+    finished_at: '2026-07-08T09:22:00Z'
+    commit: 217f827ba331bea977776af34279c2571811990c
     notes: []
   - id: task-08
     title: Update pyproject.toml to declare extraction-docling as an optional extra
@@ -86,10 +86,10 @@ tasks:
       extraction paths in an environment without the `extraction-docling` extra, confirming
       that only Docling-specific tests are skipped rather than causing package-wide
       import failures.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-07-08T09:22:00Z'
+    finished_at: '2026-07-08T09:22:00Z'
+    commit: 217f827ba331bea977776af34279c2571811990c
     notes: []
   - id: task-11
     title: Remove the unrelated lineage audit implementation and its associated test
@@ -121,20 +121,20 @@ tasks:
       a test named `test_docling_provider_conforms_to_protocol` that, when Docling
       dependencies are available, instantiates the Docling provider and asserts `isinstance(provider,
       ExtractionProvider)` is `True`.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-07-08T09:22:00Z'
+    finished_at: '2026-07-08T09:22:00Z'
+    commit: 217f827ba331bea977776af34279c2571811990c
     notes: []
   - id: task-15
     title: The test `tests/extraction/providers/test_docling_primary.py::test_docling_provider_conforms_to_protocol`
       skips instead of failing when the `extraction-docling` extra is not installed,
       and the skip reason explicitly mentions that the `extraction-docling` extra
       or Docling dependency is required.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-07-08T09:22:00Z'
+    finished_at: '2026-07-08T09:22:00Z'
+    commit: 217f827ba331bea977776af34279c2571811990c
     notes: []
   - id: task-16
     title: The file `tests/extraction/providers/test_docling_primary.py` contains
@@ -142,20 +142,20 @@ tasks:
       one required `ExtractionProvider` method from the Docling provider, asserts
       `isinstance(provider, ExtractionProvider)` is `False` while the method is absent,
       and restores the method before test completion.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-07-08T09:22:00Z'
+    finished_at: '2026-07-08T09:22:00Z'
+    commit: 217f827ba331bea977776af34279c2571811990c
     notes: []
   - id: task-17
     title: 'The deliberate-break regression test is self-contained: after it runs,
       a subsequent protocol conformance check in the same pytest session still reports
       `isinstance(provider, ExtractionProvider)` as `True` for an unmodified Docling
       provider instance.'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-07-08T09:22:00Z'
+    finished_at: '2026-07-08T09:22:00Z'
+    commit: 217f827ba331bea977776af34279c2571811990c
     notes: []
   - id: task-18
     title: A Docling evaluation harness exists under `eval/benchmarks/` and is not
@@ -202,10 +202,10 @@ tasks:
       does not require Docling to be installed: in an environment without the `extraction-docling`
       extra, importing the package modules outside the optional Docling provider path
       completes without `ImportError` or `ModuleNotFoundError` for Docling.'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-07-08T09:22:00Z'
+    finished_at: '2026-07-08T09:22:00Z'
+    commit: 217f827ba331bea977776af34279c2571811990c
     notes: []
   - id: task-23
     title: '`pyproject.toml` declares the Docling integration as an optional extra
@@ -221,19 +221,19 @@ tasks:
     title: There is at least one automated test that exercises a non-Docling import
       or extraction path in a no-Docling environment and passes while Docling-specific
       tests are skipped rather than causing collection-time or import-time failures.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-07-08T09:22:00Z'
+    finished_at: '2026-07-08T09:22:00Z'
+    commit: 217f827ba331bea977776af34279c2571811990c
     notes: []
   - id: task-25
     title: Pytest test collection succeeds in an environment without the `extraction-docling`
       extra, meaning no module-level Docling import in the test suite or package causes
       collection to abort before skips can be applied.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
+    status: done
+    started_at: '2026-07-08T09:22:00Z'
+    finished_at: '2026-07-08T09:22:00Z'
+    commit: 217f827ba331bea977776af34279c2571811990c
     notes: []
   - id: task-26
     title: The files `src/inv_man_intake/audit/lineage.py` and `tests/test_lineage_packet.py`
