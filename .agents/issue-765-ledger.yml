@@ -8,10 +8,10 @@ tasks:
       runtime `Protocol` conformance of the Docling provider via `isinstance(provider,
       ExtractionProvider)`, and add a dependency guard that skips with a clear message
       when the `extraction-docling` extra is not installed.
-    status: doing
+    status: done
     started_at: '2026-07-08T08:32:34Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-07-08T08:32:44Z'
+    commit: d26e8b63a476947d6ba28c383a88fbc965aa023b
     notes: []
   - id: task-02
     title: Add a deliberate-break test in `tests/extraction/providers/test_docling_primary.py`
