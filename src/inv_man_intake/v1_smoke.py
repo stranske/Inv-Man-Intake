@@ -443,13 +443,12 @@ def _run_extraction_smoke(
     correlation_id: str,
 ) -> ExtractedDocumentResult:
     service = build_pyodide_light_service(primary_file_name)
-    extractor_key = "_".join(("primary", "extractor"))
     orchestrator = ExtractionOrchestrator(
         primary_name=service.backend_name,
         fallback_name="fixture-fallback",
         fallback_extractor=lambda payload: {"document_id": payload["document_id"]},
+        primary_extractor=extraction_service_extractor(service),
         tracer=tracer,
-        **{extractor_key: extraction_service_extractor(service)},  # type: ignore[arg-type]
     )
     result = orchestrator.run(
         {

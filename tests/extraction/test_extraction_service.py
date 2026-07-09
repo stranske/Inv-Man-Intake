@@ -16,16 +16,18 @@ from inv_man_intake.extraction.service import (
     extraction_service_extractor,
 )
 
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
 
 def test_backend_is_swappable() -> None:
     content = b"Manager: Summit Arc\nAUM: $42M"
     source_doc_id = "sample-manager.pdf"
     pyodide_service = DefaultExtractionService(
-        backend=PyodideLightTransportBackend(_StaticProvider("pyodide-provider"))
+        backend=PyodideLightTransportBackend(_StaticProvider())
     )
     service_backend = DefaultExtractionService(
         backend=ProviderTransportBackend(
-            provider=_StaticProvider("service-provider"),
+            provider=_StaticProvider(),
             transport_name="localhost-service-fake",
         )
     )
@@ -33,7 +35,7 @@ def test_backend_is_swappable() -> None:
     pyodide_result = pyodide_service.extract(source_doc_id=source_doc_id, content=content)
     service_result = service_backend.extract(source_doc_id=source_doc_id, content=content)
 
-    assert _stable_payload(pyodide_result) == _stable_payload(service_result)
+    assert pyodide_result == service_result
     assert pyodide_service.backend_name == "pyodide-light"
     assert service_backend.backend_name == "localhost-service-fake"
 
@@ -60,8 +62,8 @@ def test_future_service_backends_are_documented_stubs() -> None:
 
 def test_consumers_do_not_import_concrete_extractors_directly() -> None:
     consumer_sources = (
-        Path("src/inv_man_intake/packet.py"),
-        Path("src/inv_man_intake/v1_smoke.py"),
+        _REPO_ROOT / "src/inv_man_intake/packet.py",
+        _REPO_ROOT / "src/inv_man_intake/v1_smoke.py",
     )
     banned_tokens = (
         "PdfPrimaryExtractionProvider",
@@ -103,7 +105,3 @@ class _StaticProvider:
                 ),
             ),
         )
-
-
-def _stable_payload(result: ExtractedDocumentResult) -> tuple[tuple[str, str, int], ...]:
-    return tuple((field.key, field.value, field.source_page) for field in result.fields)

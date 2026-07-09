@@ -8,6 +8,8 @@ instead of importing concrete extractors.
 
 - `pyodide-light`: current Tier-A backend. It wraps the in-process PDF/PPTX
   providers and keeps the browser path dependency-light and no-egress.
+- `docling-local`: optional in-process Docling adapter. It is local to the
+  Python process and is distinct from the future localhost service transport.
 - `localhost-service`: documented future adapter for a packaged local process,
   including Docling/OCR when local execution is permitted.
 - `remote-service`: documented future adapter using the same API against a

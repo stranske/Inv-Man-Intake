@@ -123,7 +123,7 @@ def build_docling_service(*, do_ocr: bool = False) -> ExtractionService:
     return DefaultExtractionService(
         backend=ProviderTransportBackend(
             provider=DoclingPrimaryExtractionProvider(do_ocr=do_ocr),
-            transport_name="localhost-docling-service",
+            transport_name="docling-local",
         )
     )
 

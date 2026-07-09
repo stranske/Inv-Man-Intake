@@ -29,11 +29,14 @@ from inv_man_intake.extraction.service import (
     ExtractionService,
     ProviderTransportBackend,
     PyodideLightTransportBackend,
+    StubServiceTransportBackend,
     TransportBackend,
     build_docling_service,
     build_future_localhost_service,
     build_future_remote_service,
     build_pyodide_light_service,
+    ensure_extraction_service,
+    extraction_service_extractor,
 )
 
 __all__ = [
@@ -48,6 +51,7 @@ __all__ = [
     "ProviderTransportBackend",
     "PyodideLightTransportBackend",
     "RetryPolicy",
+    "StubServiceTransportBackend",
     "TransportBackend",
     "DocumentThresholdProfile",
     "DocumentType",
@@ -62,7 +66,9 @@ __all__ = [
     "create_cross_check_queue_item",
     "cross_check_extraction_results",
     "cross_check_observations",
+    "ensure_extraction_service",
     "evaluate_thresholds",
+    "extraction_service_extractor",
     "load_threshold_config",
     "select_threshold_profile",
 ]
