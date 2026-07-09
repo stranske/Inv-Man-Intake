@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 
+import pytest
+
 import inv_man_intake.packet
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
 from inv_man_intake.intake.standard_elements import load_standard_element_library
@@ -105,6 +107,34 @@ def test_packet_rejects_duplicate_document_ids() -> None:
         assert "document_id values must be unique" in str(exc)
     else:  # pragma: no cover - assertion branch
         raise AssertionError("duplicate document ids should fail fast")
+
+
+def test_packet_requires_one_extraction_source() -> None:
+    with pytest.raises(TypeError, match="extraction_service or provider"):
+        ingest_packet(
+            (PacketFile(document_id="deck", content=b"deck"),),
+            standard_library=_library_for_doc_type("deck"),
+        )
+
+
+def test_packet_rejects_ambiguous_extraction_sources() -> None:
+    provider = _PacketProvider(
+        {
+            "deck": _result(
+                source_doc_id="deck",
+                provider_name="deck-provider",
+                fields=(),
+            )
+        }
+    )
+
+    with pytest.raises(TypeError, match="not both"):
+        ingest_packet(
+            (PacketFile(document_id="deck", content=b"deck"),),
+            extraction_service=provider,
+            provider=provider,
+            standard_library=_library_for_doc_type("deck"),
+        )
 
 
 def test_manager_profile_mappings_are_read_only() -> None:

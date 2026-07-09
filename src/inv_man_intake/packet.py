@@ -16,10 +16,8 @@ from inv_man_intake.extraction.doc_type import (
     classify_doc_type,
     contains_delimited_term,
 )
-from inv_man_intake.extraction.providers.base import (
-    ExtractedDocumentResult,
-    ExtractionProvider,
-)
+from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractionProvider
+from inv_man_intake.extraction.service import ExtractionService, ensure_extraction_service
 from inv_man_intake.intake.standard_elements import (
     ElementCoverage,
     StandardElementLibrary,
@@ -73,7 +71,8 @@ class ManagerProfile:
 def ingest_packet(
     files: Sequence[PacketFile],
     *,
-    provider: ExtractionProvider,
+    extraction_service: ExtractionService | None = None,
+    provider: ExtractionProvider | ExtractionService | None = None,
     standard_library: StandardElementLibrary,
     packet_id: str = "packet",
     tolerance_percent: float = 5.0,
@@ -83,10 +82,16 @@ def ingest_packet(
     if not files:
         raise ValueError("packet must contain at least one file")
     _validate_unique_document_ids(files)
+    if extraction_service is not None and provider is not None:
+        raise TypeError("ingest_packet accepts extraction_service or provider, not both")
+    service_source = extraction_service if extraction_service is not None else provider
+    if service_source is None:
+        raise TypeError("ingest_packet requires extraction_service or provider")
+    service = ensure_extraction_service(service_source)
 
     document_profiles: list[PacketDocumentProfile] = []
     for packet_file in files:
-        extraction = provider.extract(packet_file.document_id, packet_file.content)
+        extraction = service.extract(packet_file.document_id, packet_file.content)
         document_type = _classify_packet_document(
             packet_file=packet_file,
             extraction=extraction,

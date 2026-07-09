@@ -6,7 +6,6 @@ import io
 import os
 import sqlite3
 import zipfile
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -22,9 +21,11 @@ from inv_man_intake.extraction.confidence import (
 )
 from inv_man_intake.extraction.doc_type import classify_doc_type
 from inv_man_intake.extraction.orchestrator import ExtractionOrchestrator
-from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractionProvider
-from inv_man_intake.extraction.providers.pdf_primary import PdfPrimaryExtractionProvider
-from inv_man_intake.extraction.providers.pptx_primary import PptxPrimaryExtractionProvider
+from inv_man_intake.extraction.providers.base import ExtractedDocumentResult
+from inv_man_intake.extraction.service import (
+    build_pyodide_light_service,
+    extraction_service_extractor,
+)
 from inv_man_intake.intake.integration import register_intake_bundle_file
 from inv_man_intake.intake.models import IngestRecord
 from inv_man_intake.intake.service import IngestionService
@@ -432,12 +433,6 @@ def _langsmith_context_tags() -> dict[str, str]:
     }
 
 
-def _select_primary_provider(file_name: str) -> ExtractionProvider:
-    if file_name.lower().endswith(".pptx"):
-        return PptxPrimaryExtractionProvider()
-    return PdfPrimaryExtractionProvider()
-
-
 def _run_extraction_smoke(
     *,
     tracer: Tracer,
@@ -447,14 +442,13 @@ def _run_extraction_smoke(
     content: bytes,
     correlation_id: str,
 ) -> ExtractedDocumentResult:
-    provider = _select_primary_provider(primary_file_name)
-    extractor_key = "_".join(("primary", "extractor"))
+    service = build_pyodide_light_service(primary_file_name)
     orchestrator = ExtractionOrchestrator(
-        primary_name=provider.name,
+        primary_name=service.backend_name,
         fallback_name="fixture-fallback",
         fallback_extractor=lambda payload: {"document_id": payload["document_id"]},
+        primary_extractor=extraction_service_extractor(service),
         tracer=tracer,
-        **{extractor_key: _provider_extractor(provider)},  # type: ignore[arg-type]
     )
     result = orchestrator.run(
         {
@@ -466,7 +460,7 @@ def _run_extraction_smoke(
         trace_context=trace_context,
     )
     assert result.resolved is True
-    assert result.provider_used == provider.name
+    assert result.provider_used == service.backend_name
     assert result.data is not None
     extracted = result.data["result"]
     assert isinstance(extracted, ExtractedDocumentResult)
@@ -481,14 +475,14 @@ def _run_secondary_extraction_boundary_smoke(
     content: bytes,
     correlation_id: str,
 ) -> object:
-    provider = PdfPrimaryExtractionProvider()
+    service = build_pyodide_light_service("boundary.pdf")
     extractor_key = "_".join(("primary", "extractor"))
     orchestrator = ExtractionOrchestrator(
-        primary_name=provider.name,
+        primary_name=service.backend_name,
         fallback_name="secondary-unsupported-escalation",
         fallback_extractor=_unsupported_secondary_extractor,
         tracer=tracer,
-        **{extractor_key: _provider_extractor(provider)},  # type: ignore[arg-type]
+        **{extractor_key: extraction_service_extractor(service)},  # type: ignore[arg-type]
     )
     result = orchestrator.run(
         {
@@ -502,23 +496,6 @@ def _run_secondary_extraction_boundary_smoke(
     assert result.resolved is False
     assert result.escalation_route == "ops_review"
     return result
-
-
-def _provider_extractor(
-    provider: ExtractionProvider,
-) -> Callable[[dict[str, Any]], dict[str, ExtractedDocumentResult]]:
-    def extract(payload: dict[str, Any]) -> dict[str, ExtractedDocumentResult]:
-        content = payload["content"]
-        if not isinstance(content, (bytes, bytearray)):
-            raise TypeError("document content must be bytes")
-        return {
-            "result": provider.extract(
-                source_doc_id=str(payload["document_id"]),
-                content=bytes(content),
-            )
-        }
-
-    return extract
 
 
 def _unsupported_secondary_extractor(payload: dict[str, Any]) -> dict[str, object]:
