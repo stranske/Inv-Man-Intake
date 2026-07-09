@@ -1,0 +1,45 @@
+{
+  "summit-arc-investment-update-pdf": {
+    "source_path": "tests/fixtures/extraction/summit_arc_investment_update.pdf",
+    "description": "Text-bearing PDF manager update.",
+    "expected_fields": {
+      "strategy.asset_class": "credit",
+      "terms.management_fee": "1.25%",
+      "performance.net_return_1y": "8.4%",
+      "operations.aum": "$1.2bn",
+      "team.key_person_risk": "one senior PM departure pending"
+    }
+  },
+  "harborline-strategy-review-pptx": {
+    "source_path": "tests/fixtures/extraction/harborline_strategy_review.pptx",
+    "description": "Presentation review fixture.",
+    "expected_fields": {
+      "strategy.asset_class": "credit",
+      "terms.management_fee": "1.25%",
+      "performance.net_return_1y": "8.40%",
+      "operations.aum": "$750M",
+      "team.key_person_risk": "founder-dependent"
+    }
+  },
+  "alpha-capital-manager-package-txt": {
+    "source_path": "tests/fixtures/extraction/sample_manager_package.txt",
+    "description": "Plain-text manager package.",
+    "expected_fields": {
+      "manager.name": "Alpha Capital",
+      "strategy.name": "Equity Market Neutral",
+      "benchmark.name": "HFRI Equity Market Neutral Index",
+      "terms.management_fee": "1.50%",
+      "terms.performance_fee": "15%"
+    }
+  },
+  "qa-dense-table-manager-report-txt": {
+    "source_path": "eval/benchmarks/fixtures/docling_samples/qa_dense_table_manager_report.txt",
+    "description": "Dense table-style manager report.",
+    "expected_fields": {
+      "strategy.name": "Global Multi-Asset Income",
+      "benchmark.name": "Bloomberg US Aggregate",
+      "terms.management_fee": "1.50%",
+      "terms.performance_fee": "15%"
+    }
+  }
+}

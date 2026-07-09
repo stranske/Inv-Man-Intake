@@ -1,0 +1,8 @@
+Strategy: Global Multi-Asset Income
+Benchmark: Bloomberg US Aggregate
+Management Fee: 1.50%
+Performance Fee: 15%
+
+Table Snapshot
+Year Return AUM
+2023 8.1 100

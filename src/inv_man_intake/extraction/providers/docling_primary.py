@@ -2,12 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from stranske_pdf_extract.providers.docling_provider import (
-    DoclingProvider,
-    DoclingUnavailableError,
-)
+from typing import Any, cast
 
 from inv_man_intake.extraction.providers.base import (
     ExtractedDocumentResult,
@@ -22,13 +17,28 @@ class MissingDoclingDependencyError(RuntimeError):
     """Raised when the optional Docling extra is not installed."""
 
 
+def _load_docling_provider_class() -> type[Any]:
+    try:
+        from stranske_pdf_extract.providers.docling_provider import DoclingProvider
+    except ModuleNotFoundError as exc:  # pragma: no cover - depends on optional extra
+        if exc.name and not exc.name.startswith(("docling", "stranske_pdf_extract")):
+            raise
+        raise MissingDoclingDependencyError(
+            "Install inv-man-intake[extraction-docling] to use DoclingPrimaryExtractionProvider"
+        ) from exc
+
+    return cast(type[Any], DoclingProvider)
+
+
 class DoclingPrimaryExtractionProvider:
     """Adapt the shared Docling provider into IMI's field-extraction pipeline."""
 
     def __init__(self, *, provider: Any | None = None, do_ocr: bool = False) -> None:
         if provider is not None and do_ocr:
             raise ValueError("do_ocr is only supported when using the default DoclingProvider")
-        self._provider = provider if provider is not None else DoclingProvider(do_ocr=do_ocr)
+        self._provider = (
+            provider if provider is not None else _load_docling_provider_class()(do_ocr=do_ocr)
+        )
         self._field_extractor = PrimaryRegexExtractionProvider()
 
     @property
@@ -70,7 +80,9 @@ class DoclingPrimaryExtractionProvider:
 
         try:
             return self._provider.extract_modalities(source_doc_id=source_doc_id, content=content)
-        except DoclingUnavailableError as exc:  # pragma: no cover - depends on optional extra
+        except Exception as exc:  # pragma: no cover - depends on optional extra
+            if exc.__class__.__name__ != "DoclingUnavailableError":
+                raise
             raise MissingDoclingDependencyError(
                 "Install inv-man-intake[extraction-docling] to use DoclingPrimaryExtractionProvider"
             ) from exc
