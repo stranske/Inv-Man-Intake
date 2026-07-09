@@ -28,35 +28,43 @@ tasks:
       path such as `eval/benchmarks/`, and change it to run against a checked-in real-document
       sample plus expected field outputs, emitting a field-level accuracy metric from
       the harness run.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-07-09T01:23:42Z'
+    finished_at: '2026-07-09T01:23:42Z'
+    commit: 9e61c129a64d7ed184c7509286db80ba9de4affb
+    notes:
+      - Added `eval/benchmarks/docling_field_accuracy.py` with sample rotation
+        and field_accuracy stdout output.
   - id: task-04
     title: Create a structured expected-results JSON or YAML file that maps field
       names to expected values for the evaluation sample document.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-07-09T01:23:42Z'
+    finished_at: '2026-07-09T01:23:42Z'
+    commit: 9e61c129a64d7ed184c7509286db80ba9de4affb
+    notes:
+      - Added `eval/benchmarks/fixtures/docling_samples/expected_results.json`
+        keyed by sample id with flat expected_fields maps.
   - id: task-05
     title: Add the real-document sample file to the repository under the evaluation
       fixtures directory with appropriate naming.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-07-09T01:23:42Z'
+    finished_at: '2026-07-09T01:23:42Z'
+    commit: 9e61c129a64d7ed184c7509286db80ba9de4affb
+    notes:
+      - Selected four rotating samples: checked-in PDF, checked-in PPTX, checked-in
+        manager-package text, and a QA-corpus-derived dense-table text fixture.
   - id: task-06
     title: Document the schema and format of the expected-results file so future samples
       can be added consistently.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-07-09T01:23:42Z'
+    finished_at: '2026-07-09T01:23:42Z'
+    commit: 9e61c129a64d7ed184c7509286db80ba9de4affb
+    notes:
+      - Added `eval/benchmarks/README.md` with schema, rotation, and structured-output
+        decisions.
   - id: task-07
     title: Refactor Docling-specific imports to use lazy loading or conditional imports
       within the docling_primary provider module.
@@ -68,19 +76,23 @@ tasks:
   - id: task-08
     title: Update pyproject.toml to declare extraction-docling as an optional extra
       with all required Docling dependencies.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-07-09T01:23:42Z'
+    finished_at: '2026-07-09T01:23:42Z'
+    commit: 9e61c129a64d7ed184c7509286db80ba9de4affb
+    notes:
+      - Verified `pyproject.toml` already declares `extraction-docling` as an
+        optional extra.
   - id: task-09
     title: Modify the providers __init__.py to conditionally register the Docling
       provider only when dependencies are available.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-07-09T01:23:42Z'
+    finished_at: '2026-07-09T01:23:42Z'
+    commit: 9e61c129a64d7ed184c7509286db80ba9de4affb
+    notes:
+      - Verified `providers/__init__.py` does not import or register Docling at
+        module import time.
   - id: task-10
     title: Add or update tests that exercise importing the core package and non-Docling
       extraction paths in an environment without the `extraction-docling` extra, confirming
@@ -95,27 +107,33 @@ tasks:
     title: Remove the unrelated lineage audit implementation and its associated test
       from this change set, or isolate them from the Docling follow-up work so the
       issue only contains Docling provider and evaluation-harness changes.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-07-09T01:23:42Z'
+    finished_at: '2026-07-09T01:23:42Z'
+    commit: 9e61c129a64d7ed184c7509286db80ba9de4affb
+    notes:
+      - Verified live PR changed-files list does not include lineage implementation
+        or lineage packet tests.
   - id: task-12
     title: Select and validate the real-document sample used for the evaluation harness.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-07-09T01:23:42Z'
+    finished_at: '2026-07-09T01:23:42Z'
+    commit: 9e61c129a64d7ed184c7509286db80ba9de4affb
+    notes:
+      - User approved using available repo/Drive material; selected reproducible
+        checked-in samples and documented the rotation.
   - id: task-13
     title: Decide whether and how the Docling provider must use the schema-valid structured-output
       layer (for example `instructor`/`outlines`) for any LLM-assisted extraction
       path.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-07-09T01:23:42Z'
+    finished_at: '2026-07-09T01:23:42Z'
+    commit: 9e61c129a64d7ed184c7509286db80ba9de4affb
+    notes:
+      - Decided this Docling adapter remains deterministic and does not depend on
+        instructor/outlines; any later LLM-assisted path should be separate.
   - id: task-14
     title: The file `tests/extraction/providers/test_docling_primary.py` contains
       a test named `test_docling_provider_conforms_to_protocol` that, when Docling
@@ -162,41 +180,48 @@ tasks:
       located only under `src/inv_man_intake/extraction/`; the harness reads a checked-in
       real-document sample file and a checked-in expected-results file rather than
       constructing only synthetic or mocked extraction input in code.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-07-09T01:23:42Z'
+    finished_at: '2026-07-09T01:23:42Z'
+    commit: 9e61c129a64d7ed184c7509286db80ba9de4affb
+    notes:
+      - Harness and fixtures now live under `eval/benchmarks/`.
   - id: task-19
     title: 'The harness outputs a metric named "field_accuracy" calculated as (number
       of correctly extracted fields / total number of expected fields), formatted
       as a decimal between 0.0 and 1.0, printed to stdout in the format "field_accuracy:
       0.XX".'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-07-09T01:23:42Z'
+    finished_at: '2026-07-09T01:23:42Z'
+    commit: 9e61c129a64d7ed184c7509286db80ba9de4affb
+    notes:
+      - `format_report()` prints `field_accuracy: 1.00` for a perfect benchmark
+        provider in tests.
   - id: task-20
     title: 'The repository contains the checked-in evaluation fixtures required by
       the harness: at least one real-document sample file and one structured expected-results
       file that maps expected extracted fields for that sample.'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-07-09T01:23:42Z'
+    finished_at: '2026-07-09T01:23:42Z'
+    commit: 9e61c129a64d7ed184c7509286db80ba9de4affb
+    notes:
+      - The manifest references four committed samples and one committed expected-results
+        JSON file.
   - id: task-21
     title: The expected-results file is a valid JSON or YAML document containing a
       flat or nested dictionary where each key corresponds to an extraction field
       name, and each value is the exact expected extracted value (string, number,
       or null). The file includes at least 5 distinct fields covering different extraction
       types (text, date, number, etc.).
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-07-09T01:23:42Z'
+    finished_at: '2026-07-09T01:23:42Z'
+    commit: 9e61c129a64d7ed184c7509286db80ba9de4affb
+    notes:
+      - Expected-results JSON covers manager, strategy, benchmark, fee, return,
+        AUM, and key-person-risk fields across the sample rotation.
   - id: task-22
     title: 'Importing the core package and the non-Docling extraction provider paths
       does not require Docling to be installed: in an environment without the `extraction-docling`
@@ -212,11 +237,13 @@ tasks:
       rather than a required base dependency, and the core install metadata does not
       force installation of Docling for users who do not request the `extraction-docling`
       extra.'
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-07-09T01:23:42Z'
+    finished_at: '2026-07-09T01:23:42Z'
+    commit: 9e61c129a64d7ed184c7509286db80ba9de4affb
+    notes:
+      - Verified the optional extra and no module-level Docling import outside the
+        optional provider path.
   - id: task-24
     title: There is at least one automated test that exercises a non-Docling import
       or extraction path in a no-Docling environment and passes while Docling-specific
@@ -240,8 +267,10 @@ tasks:
       are either absent from the change set for this issue or unchanged relative to
       the base branch, so no lineage-audit implementation changes are included with
       the Docling follow-up work.
-    status: todo
-    started_at: null
-    finished_at: null
-    commit: ''
-    notes: []
+    status: done
+    started_at: '2026-07-09T01:23:42Z'
+    finished_at: '2026-07-09T01:23:42Z'
+    commit: 9e61c129a64d7ed184c7509286db80ba9de4affb
+    notes:
+      - Verified with `gh pr diff 766 --name-only`; lineage files are absent from
+        the PR changed-files list.

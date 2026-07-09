@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "rotation_env": "IMI_DOCLING_EVAL_SAMPLE_INDEX",
+  "samples": [
+    {
+      "sample_id": "summit-arc-investment-update-pdf",
+      "source_path": "tests/fixtures/extraction/summit_arc_investment_update.pdf",
+      "description": "Text-bearing PDF manager update with fee, performance, AUM, and team-risk fields."
+    },
+    {
+      "sample_id": "harborline-strategy-review-pptx",
+      "source_path": "tests/fixtures/extraction/harborline_strategy_review.pptx",
+      "description": "Presentation fixture with slide text runs for the same canonical extraction fields."
+    },
+    {
+      "sample_id": "alpha-capital-manager-package-txt",
+      "source_path": "tests/fixtures/extraction/sample_manager_package.txt",
+      "description": "Simple manager package text covering strategy, benchmark, and fee fields."
+    },
+    {
+      "sample_id": "qa-dense-table-manager-report-txt",
+      "source_path": "eval/benchmarks/fixtures/docling_samples/qa_dense_table_manager_report.txt",
+      "description": "Dense table-style text fixture derived from the checked-in QA corpus."
+    }
+  ]
+}
