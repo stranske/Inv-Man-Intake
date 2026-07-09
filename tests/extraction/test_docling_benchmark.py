@@ -24,9 +24,7 @@ class _ExpectedValueProvider:
     """Provider test double that emits benchmark expectations for each source id."""
 
     def __init__(self, samples: tuple[BenchmarkSample, ...]) -> None:
-        self._fields_by_source = {
-            sample.sample_id: sample.expected_fields for sample in samples
-        }
+        self._fields_by_source = {sample.sample_id: sample.expected_fields for sample in samples}
 
     @property
     def name(self) -> str:
@@ -63,9 +61,7 @@ def test_docling_benchmark_loads_four_rotating_samples() -> None:
     ]
     assert all(sample.source_path.exists() for sample in samples)
 
-    rotated = [
-        select_rotating_sample(samples, sample_index=index).sample_id for index in range(6)
-    ]
+    rotated = [select_rotating_sample(samples, sample_index=index).sample_id for index in range(6)]
 
     assert rotated == [
         "summit-arc-investment-update-pdf",

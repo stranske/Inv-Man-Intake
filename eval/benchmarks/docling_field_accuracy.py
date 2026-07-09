@@ -139,7 +139,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         samples = load_samples()
-        selected = _select_samples(samples=samples, sample_id=args.sample_id, all_samples=args.all, sample_index=args.sample_index)
+        selected = _select_samples(
+            samples=samples,
+            sample_id=args.sample_id,
+            all_samples=args.all,
+            sample_index=args.sample_index,
+        )
         report = run_benchmark(provider=DoclingPrimaryExtractionProvider(), samples=selected)
     except MissingDoclingDependencyError as exc:
         print(str(exc), file=sys.stderr)
