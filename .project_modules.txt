@@ -4,6 +4,9 @@
 # baseline_kit is vendored in src/baseline_kit.
 baseline_kit
 
+# eval/ contains checked-in benchmark harness modules imported by tests.
+eval
+
 # tests/baseline/conftest.py is imported relatively ("from .conftest import ...");
 # the import scanner sees a bare `conftest` top-level name.
 conftest
