@@ -7,10 +7,10 @@ tasks:
     title: Add a local-server browser test in `tests/app/test_static_spa_browser_e2e.py`
       that uploads a real packet fixture to `app/index.html` and queries the live
       accessibility tree for rendered coverage before the graphic interaction.
-    status: doing
+    status: done
     started_at: '2026-07-10T18:37:55Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-07-10T18:38:04Z'
+    commit: 3ebe0901ad7139c4cec27f2bde55969f7cbba6a2
     notes: []
   - id: task-02
     title: 'Create the test file `tests/app/test_static_spa_browser_e2e.py` with a
