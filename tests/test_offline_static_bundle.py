@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scripts.verify_stlite_browser import handle_offline_route, verify_offline_runtime
+from scripts.verify_static_spa_pyodide import handle_offline_route, verify_offline_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,7 +31,7 @@ def test_offline_static_bundle_runtime_is_fully_local() -> None:
     assert result.status == "pass"
     assert result.index_path == "app/index.html"
     assert result.pyodide_vendor.startswith("app/vendor/pyodide@")
-    assert result.stlite_vendor.startswith("app/vendor/stlite@")
+    assert result.app_runtime == "static-spa-pyodide"
     assert "micropip" in result.dependency_closure
 
 

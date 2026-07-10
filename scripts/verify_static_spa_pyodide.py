@@ -1,4 +1,4 @@
-"""Verify the stlite demo in a real headless browser and write evidence artifacts."""
+"""Verify the static operator demo in a real headless browser and write evidence artifacts."""
 
 from __future__ import annotations
 
@@ -21,7 +21,6 @@ DEFAULT_OUTPUT_DIR = Path("app/live-verification-artifacts")
 DEFAULT_SCREENSHOT_NAME = "browser-demo-score.png"
 DEFAULT_LOG_NAME = "browser-demo-score.json"
 PYODIDE_VERSION = "0.26.2"
-STLITE_VERSION = "0.75.0"
 REQUIRED_PYODIDE_FILES = [
     "pyodide.js",
     "pyodide.asm.wasm",
@@ -36,7 +35,6 @@ REQUIRED_PYODIDE_WHEEL_PATTERNS = [
     "pillow-*.whl",
     "protobuf-*.whl",
 ]
-REQUIRED_STLITE_WHEEL_PATTERNS = ["streamlit-*.whl", "stlite_lib-*.whl"]
 
 
 @dataclass(frozen=True)
@@ -61,7 +59,7 @@ class OfflineVerificationResult:
     checked_at: str
     index_path: str
     pyodide_vendor: str
-    stlite_vendor: str
+    app_runtime: str
     dependency_closure: list[str]
 
 
@@ -106,16 +104,16 @@ def assert_index_has_no_external_urls(index_path: Path) -> None:
     if external_runtime_refs or external_imports or external_urls:
         details = external_runtime_refs + external_imports + external_urls
         raise RuntimeError("index.html contains external URL references: " + ", ".join(details))
-    expected_pyodide_pattern = (
-        r"""pyodideUrl:\s*new URL\(["']\./vendor/pyodide@"""
-        + re.escape(PYODIDE_VERSION)
-        + r"""/pyodide\.js["'],\s*window\.location\.href\)\.href"""
-    )
-    if not re.search(expected_pyodide_pattern, source):
+    expected_pyodide_path = f"./vendor/pyodide@{PYODIDE_VERSION}/pyodide.js"
+    if expected_pyodide_path not in source:
         raise RuntimeError(
-            "index.html pyodideUrl must point at the local "
+            "index.html must point at the local "
             f"./vendor/pyodide@{PYODIDE_VERSION}/pyodide.js runtime"
         )
+    if "stlite.mount" in source or "vendor/stlite" in source or "streamlit_app.py" in source:
+        raise RuntimeError("index.html must use the static SPA/Pyodide runtime, not stlite")
+    if 'data-app-runtime="static-spa-pyodide"' not in source:
+        raise RuntimeError("index.html is missing the static-spa-pyodide runtime marker")
 
 
 def pyodide_dependency_closure(pyodide_vendor: Path) -> list[str]:
@@ -166,17 +164,14 @@ def verify_offline_runtime(repo_root: Path) -> OfflineVerificationResult:
     repo_root = repo_root.resolve()
     index_path = repo_root / "app" / "index.html"
     pyodide_vendor = repo_root / "app" / "vendor" / f"pyodide@{PYODIDE_VERSION}"
-    stlite_vendor = repo_root / "app" / "vendor" / f"stlite@{STLITE_VERSION}"
 
     assert_index_has_no_external_urls(index_path)
+    assert_non_empty_file(repo_root / "app" / "static_operator_app.js")
+    assert_non_empty_file(repo_root / "app" / "pyodide_packet_bridge.py")
     for relative_path in REQUIRED_PYODIDE_FILES:
         assert_non_empty_file(pyodide_vendor / relative_path)
     for pattern in REQUIRED_PYODIDE_WHEEL_PATTERNS:
         assert_glob_has_non_empty_files(pyodide_vendor, pattern)
-
-    assert_non_empty_file(stlite_vendor / "stlite.js")
-    for pattern in REQUIRED_STLITE_WHEEL_PATTERNS:
-        assert_glob_has_non_empty_files(stlite_vendor / "pypi", pattern)
 
     dependency_closure = pyodide_dependency_closure(pyodide_vendor)
     return OfflineVerificationResult(
@@ -184,7 +179,7 @@ def verify_offline_runtime(repo_root: Path) -> OfflineVerificationResult:
         checked_at=datetime.now(UTC).isoformat(),
         index_path=str(index_path.relative_to(repo_root)),
         pyodide_vendor=str(pyodide_vendor.relative_to(repo_root)),
-        stlite_vendor=str(stlite_vendor.relative_to(repo_root)),
+        app_runtime="static-spa-pyodide",
         dependency_closure=dependency_closure,
     )
 
@@ -306,7 +301,7 @@ def verify_browser_demo(
                         json.dumps(asdict(result), indent=2) + "\n", encoding="utf-8"
                     )
                     raise RuntimeError(
-                        "Offline stlite verification attempted external requests: "
+                        "Offline static-spa-pyodide verification attempted external requests: "
                         + ", ".join(sorted(set(external_requests)))
                     )
                 result = BrowserVerificationResult(
@@ -342,7 +337,7 @@ def verify_browser_demo(
                 )
                 log_path.write_text(json.dumps(asdict(result), indent=2) + "\n", encoding="utf-8")
                 raise RuntimeError(
-                    f"Timed out waiting for stlite demo to render Final score {expected_score} "
+                    f"Timed out waiting for static-spa-pyodide demo to render Final score {expected_score} "
                     f"at {url}. Wrote failure evidence to {log_path.relative_to(repo_root)} "
                     f"and {screenshot_path.relative_to(repo_root)}."
                 ) from exc
@@ -380,11 +375,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    result: BrowserVerificationResult | OfflineVerificationResult
     if args.offline:
         try:
             result = verify_offline_runtime(args.repo_root)
         except RuntimeError as exc:
-            print(f"Offline stlite verification failed: {exc}", file=sys.stderr)
+            print(f"Offline static-spa-pyodide verification failed: {exc}", file=sys.stderr)
             return 1
         print(json.dumps(asdict(result), indent=2))
         return 0

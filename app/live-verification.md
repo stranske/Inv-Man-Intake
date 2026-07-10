@@ -7,7 +7,7 @@ This gate validates that the stlite browser demo is usable by a non-technical re
 Run this from the repository root:
 
 ```bash
-uv run --extra dev python scripts/verify_stlite_browser.py --browser-channel chrome
+uv run --extra dev python scripts/verify_static_spa_pyodide.py --browser-channel chrome
 ```
 
 The command starts a local static server, opens `app/index.html` in a real headless Chrome/Chromium browser, waits for the stlite app to render, asserts `Final score` is visible as `0.7809`, and writes durable artifacts:
@@ -19,7 +19,7 @@ If the host does not have system Chrome available, install Playwright's bundled 
 
 ```bash
 uv run --extra dev python -m playwright install chromium
-uv run --extra dev python scripts/verify_stlite_browser.py --browser-channel ""
+uv run --extra dev python scripts/verify_static_spa_pyodide.py --browser-channel ""
 ```
 
 ## Manual Open/Serve Step
