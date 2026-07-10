@@ -7,6 +7,10 @@ const state = {
   profile: null,
 };
 
+function testControls() {
+  return globalThis.__STATIC_SPA_TEST_CONTROLS__ || {};
+}
+
 function setStatus(message) {
   document.getElementById("runtime-status").textContent = message;
 }
@@ -27,6 +31,18 @@ function appendRow(tableId, cells) {
     row.append(td);
   }
   document.querySelector(`#${tableId} tbody`).append(row);
+}
+
+function seedConflict(profile) {
+  if (profile.queue.some((row) => row.item === "Seeded deterministic conflict")) {
+    return;
+  }
+  profile.queue.push({
+    item: "Seeded deterministic conflict",
+    reason: "Browser-verification escalation",
+    owner: "Operations review",
+  });
+  renderProfile(profile);
 }
 
 function renderProfile(profile) {
@@ -53,10 +69,12 @@ function renderProfile(profile) {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = "Open graphic";
-    button.addEventListener("click", () => {
-      row.status = "Opened";
-      renderProfile(profile);
-    });
+    if (!testControls().disableGraphicHandler) {
+      button.addEventListener("click", () => {
+        row.status = "Opened";
+        renderProfile(profile);
+      });
+    }
     appendRow("graphics-table", [row.graphic, row.status, button]);
   }
   for (const row of profile.returns) {
@@ -124,6 +142,12 @@ document.getElementById("packet-upload").addEventListener("change", async (event
   const files = await selectedFiles(event.target);
   document.getElementById("upload-count").textContent = `Uploaded file count: ${files.length}`;
   await loadProfile(files);
+});
+
+document.getElementById("seed-conflict").addEventListener("click", () => {
+  if (state.profile && !testControls().disableConflictHandler) {
+    seedConflict(state.profile);
+  }
 });
 
 loadProfile([{ name: "pdf_primary_mixed_bundle.json", text: "Summit Arc Capital seeded packet." }]);

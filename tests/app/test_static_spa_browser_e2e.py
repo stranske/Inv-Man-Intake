@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import re
 import socket
 import subprocess
 import sys
@@ -53,26 +55,77 @@ def local_static_spa() -> Iterator[str]:
         server.wait(timeout=5)
 
 
-def test_static_spa_upload_renders_accessible_coverage() -> None:
-    """A real packet upload produces a browser-visible coverage result."""
+def _verify_static_spa_interactions(page: object) -> None:
+    """Exercise upload, graphic, and escalation paths through accessible browser UI."""
 
-    with local_static_spa() as url, sync_playwright() as playwright:
-        browser = playwright.chromium.launch(channel="chrome", headless=True)
-        try:
-            page = browser.new_page()
-            page.goto(url, wait_until="domcontentloaded", timeout=45_000)
-            page.get_by_role("heading", name="Packet upload").wait_for(timeout=45_000)
+    page.locator("#packet-upload").set_input_files(str(PACKET_FIXTURE))
+    upload_count = page.locator("#upload-count")
+    upload_count.wait_for(timeout=45_000)
+    assert upload_count.text_content() == "Uploaded file count: 1"
 
-            page.locator("#packet-upload").set_input_files(str(PACKET_FIXTURE))
-            upload_count = page.locator("#upload-count")
-            upload_count.wait_for(timeout=45_000)
-            assert upload_count.text_content() == "Uploaded file count: 1"
+    coverage_table = page.get_by_role("table", name="Packet coverage results")
+    coverage_row = coverage_table.get_by_role(
+        "row", name="upload_1 fixture_packet manager, fees, returns, graphics"
+    )
+    coverage_row.wait_for(timeout=45_000)
+    assert coverage_row.is_visible()
 
-            coverage_table = page.get_by_role("table", name="Packet coverage results")
-            coverage_row = coverage_table.get_by_role(
-                "row", name="upload_1 fixture_packet manager, fees, returns, graphics"
-            )
-            coverage_row.wait_for(timeout=45_000)
-            assert coverage_row.is_visible()
-        finally:
-            browser.close()
+    page.get_by_role("button", name="Open graphic").first.click()
+    graphics_table = page.get_by_role("table", name="Packet graphics")
+    assert re.search(r"Opened", graphics_table.inner_text(timeout=45_000))
+
+    page.get_by_role("button", name="Seed deterministic conflict").click()
+    queue_table = page.get_by_role("table", name="Exception queue")
+    seeded_row = queue_table.get_by_role(
+        "row",
+        name="Seeded deterministic conflict Browser-verification escalation Operations review",
+    )
+    assert seeded_row.count() == 1
+
+
+def _with_page(
+    test_controls: dict[str, bool] | None = None,
+) -> tuple[object, object, object, object]:
+    """Open the static SPA with optional test-only handler controls."""
+
+    server_context = local_static_spa()
+    url = server_context.__enter__()
+    playwright_context = sync_playwright()
+    playwright = playwright_context.__enter__()
+    browser = playwright.chromium.launch(channel="chrome", headless=True)
+    page = browser.new_page()
+    if test_controls:
+        page.add_init_script(
+            f"window.__STATIC_SPA_TEST_CONTROLS__ = {json.dumps(test_controls)};"
+        )
+    page.goto(url, wait_until="domcontentloaded", timeout=45_000)
+    page.get_by_role("heading", name="Packet upload").wait_for(timeout=45_000)
+    return server_context, playwright_context, browser, page
+
+
+def _close_page(server_context: object, playwright_context: object, browser: object) -> None:
+    browser.close()
+    playwright_context.__exit__(None, None, None)
+    server_context.__exit__(None, None, None)
+
+
+def test_static_spa_upload_graphic_and_escalation_are_accessible() -> None:
+    """A real upload drives accessible coverage, graphic, and escalation interactions."""
+
+    server_context, playwright_context, browser, page = _with_page()
+    try:
+        _verify_static_spa_interactions(page)
+    finally:
+        _close_page(server_context, playwright_context, browser)
+
+
+@pytest.mark.parametrize("control", ["disableGraphicHandler", "disableConflictHandler"])
+def test_static_spa_deliberate_break_fails_the_interaction_assertion(control: str) -> None:
+    """Disabling either concrete handler makes the same browser path fail."""
+
+    server_context, playwright_context, browser, page = _with_page({control: True})
+    try:
+        with pytest.raises(AssertionError):
+            _verify_static_spa_interactions(page)
+    finally:
+        _close_page(server_context, playwright_context, browser)
