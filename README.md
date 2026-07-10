@@ -49,17 +49,18 @@ mypy
 
 ### Browser Demo
 
-The synthetic intake demo can run in a local browser through `app/index.html`
-as a static SPA with the vendored Pyodide runtime. It uses the committed Summit
-Arc fixture bundles in `tests/fixtures/intake/`, keeps the deterministic path
-browser-local, and sends no proprietary payload to LangSmith, an LLM provider,
-or an application server.
+The synthetic intake demo runs in a local browser as a static SPA with the
+vendored Pyodide runtime. Serve it from the repo root so the browser can fetch
+the local Pyodide and packet bridge modules; direct `file://` opening is not a
+supported verification path. The browser-local bridge routes packet-shaped
+uploads through the deterministic packet pipeline when package sources are
+available and never sends proprietary payload to LangSmith, an LLM provider, or
+an application server.
 
 Live verification gate (no terminal required for reviewer):
 
-1. Open `app/index.html` directly in a browser, or open
-   `http://127.0.0.1:8000/app/index.html` after running
-   `python -m http.server 8000` from the repo root.
+1. Run `python -m http.server 8000` from the repo root and open
+   `http://127.0.0.1:8000/app/index.html`.
 2. Select `pdf_primary_mixed_bundle.json`.
 3. Confirm the UI shows `Final score: 0.7809` and a non-empty Explainability
    table.

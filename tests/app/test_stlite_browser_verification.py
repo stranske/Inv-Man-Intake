@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scripts.verify_stlite_browser import (
+from scripts.verify_static_spa_pyodide import (
     DEFAULT_LOG_NAME,
     DEFAULT_SCREENSHOT_NAME,
     build_artifact_paths,

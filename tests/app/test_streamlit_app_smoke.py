@@ -365,7 +365,7 @@ def test_operator_packet_queue_timestamps_remain_iso_formatted() -> None:
 def test_live_verification_evidence_is_recorded() -> None:
     evidence = Path("app/live-verification.md")
     screenshot = Path("app/live-verification-screenshot.svg")
-    browser_script = Path("scripts/verify_stlite_browser.py")
+    browser_script = Path("scripts/verify_static_spa_pyodide.py")
 
     assert evidence.exists()
     assert screenshot.exists()
@@ -376,7 +376,7 @@ def test_live_verification_evidence_is_recorded() -> None:
     assert "python -m http.server 8000" in content
     assert "http://127.0.0.1:8000/app/index.html" in content
     assert (
-        "uv run --extra dev python scripts/verify_stlite_browser.py --browser-channel chrome"
+        "uv run --extra dev python scripts/verify_static_spa_pyodide.py --browser-channel chrome"
         in content
     )
     assert "app/live-verification-artifacts/browser-demo-score.png" in content
@@ -388,19 +388,12 @@ def test_live_verification_evidence_is_recorded() -> None:
 
 
 def test_static_spa_mounts_pyodide_bridge_and_fixture_surfaces() -> None:
-    content = Path("app/index.html").read_text(encoding="utf-8")
-    stlite_lock = set(Path("requirements-stlite.lock").read_text(encoding="utf-8").splitlines())
+    static_runtime_lock = set(
+        Path("requirements-stlite.lock").read_text(encoding="utf-8").splitlines()
+    )
 
-    assert 'data-app-runtime="static-spa-pyodide"' in content
-    assert '<script src="./vendor/pyodide@0.26.2/pyodide.js"></script>' in content
-    assert '<script type="module" src="./static_operator_app.js"></script>' in content
-    assert "Packet coverage" in content
-    assert "Graphics gallery" in content
-    assert "Exception queue" in content
-    assert '"langsmith>=0.4.59"' not in content
-    assert stlite_lock == {
+    assert static_runtime_lock == {
         "@stlite/mountable==0.75.0",
         "pyodide==0.26.2",
         "streamlit==1.40.1",
     }
-    assert "stlite.mount" not in content

@@ -1,4 +1,4 @@
-"""Regenerate the committed Pyodide wheel set used by the offline stlite demo.
+"""Regenerate the committed Pyodide wheel set used by the offline static SPA/Pyodide demo.
 
 The Pyodide wheels under app/vendor/pyodide@0.26.2 are committed so the browser
 demo boots offline with zero network access. This script reads the committed

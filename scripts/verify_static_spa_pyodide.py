@@ -301,7 +301,7 @@ def verify_browser_demo(
                         json.dumps(asdict(result), indent=2) + "\n", encoding="utf-8"
                     )
                     raise RuntimeError(
-                        "Offline stlite verification attempted external requests: "
+                        "Offline static-spa-pyodide verification attempted external requests: "
                         + ", ".join(sorted(set(external_requests)))
                     )
                 result = BrowserVerificationResult(
@@ -337,7 +337,7 @@ def verify_browser_demo(
                 )
                 log_path.write_text(json.dumps(asdict(result), indent=2) + "\n", encoding="utf-8")
                 raise RuntimeError(
-                    f"Timed out waiting for stlite demo to render Final score {expected_score} "
+                    f"Timed out waiting for static-spa-pyodide demo to render Final score {expected_score} "
                     f"at {url}. Wrote failure evidence to {log_path.relative_to(repo_root)} "
                     f"and {screenshot_path.relative_to(repo_root)}."
                 ) from exc
@@ -375,11 +375,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    result: BrowserVerificationResult | OfflineVerificationResult
     if args.offline:
         try:
             result = verify_offline_runtime(args.repo_root)
         except RuntimeError as exc:
-            print(f"Offline stlite verification failed: {exc}", file=sys.stderr)
+            print(f"Offline static-spa-pyodide verification failed: {exc}", file=sys.stderr)
             return 1
         print(json.dumps(asdict(result), indent=2))
         return 0

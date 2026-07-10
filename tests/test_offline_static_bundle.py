@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scripts.verify_stlite_browser import handle_offline_route, verify_offline_runtime
+from scripts.verify_static_spa_pyodide import handle_offline_route, verify_offline_runtime
 
 ROOT = Path(__file__).resolve().parents[1]
 
