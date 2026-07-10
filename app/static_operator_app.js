@@ -3,6 +3,7 @@ const BRIDGE_MODULE = "./pyodide_packet_bridge.py";
 
 const state = {
   pyodide: null,
+  pyodideInit: null,
   profile: null,
 };
 
@@ -72,15 +73,21 @@ function renderProfile(profile) {
 async function loadProfile(files) {
   try {
     if (!state.pyodide) {
-      setStatus("Starting local Pyodide runtime...");
-      state.pyodide = await loadPyodide({ indexURL: PYODIDE_RUNTIME });
-      const bridgeResponse = await fetch(BRIDGE_MODULE);
-      if (!bridgeResponse.ok) {
-        throw new Error(`Unable to load ${BRIDGE_MODULE}: ${bridgeResponse.status}`);
+      if (!state.pyodideInit) {
+        state.pyodideInit = (async () => {
+          setStatus("Starting local Pyodide runtime...");
+          const pyodide = await loadPyodide({ indexURL: PYODIDE_RUNTIME });
+          const bridgeResponse = await fetch(BRIDGE_MODULE);
+          if (!bridgeResponse.ok) {
+            throw new Error(`Unable to load ${BRIDGE_MODULE}: ${bridgeResponse.status}`);
+          }
+          const bridgeSource = await bridgeResponse.text();
+          pyodide.FS.writeFile("/pyodide_packet_bridge.py", bridgeSource);
+          await pyodide.runPythonAsync("import sys; sys.path.insert(0, '/')");
+          state.pyodide = pyodide;
+        })();
       }
-      const bridgeSource = await bridgeResponse.text();
-      state.pyodide.FS.writeFile("/pyodide_packet_bridge.py", bridgeSource);
-      await state.pyodide.runPythonAsync("import sys; sys.path.insert(0, '/')");
+      await state.pyodideInit;
     }
     const payload = files.map((file, index) => ({
       document_id: `upload_${index + 1}`,
@@ -95,6 +102,7 @@ async function loadProfile(files) {
     );
     renderProfile(JSON.parse(profileJson));
   } catch (error) {
+    state.pyodideInit = null;
     const message = error instanceof Error ? error.message : String(error);
     setStatus(`Static SPA Pyodide runtime failed: ${message}`);
     throw error;

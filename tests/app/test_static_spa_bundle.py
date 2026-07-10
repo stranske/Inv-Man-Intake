@@ -37,6 +37,9 @@ def test_static_spa_exposes_operator_surfaces() -> None:
     assert "loadPyodide" in script
     assert "pyodide_packet_bridge.py" in script
     assert "state.pyodide.toPy(payload)" in script
+    assert "pyodideInit: null" in script
+    assert "await state.pyodideInit" in script
+    assert "state.pyodideInit = null" in script
     assert "bridgeResponse.ok" in script
     assert "Deterministic outbound calls" in script
 
