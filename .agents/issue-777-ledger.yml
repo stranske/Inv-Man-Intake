@@ -1,0 +1,307 @@
+version: 1
+issue: 777
+base: main
+branch: codex/issue-777
+tasks:
+  - id: task-01
+    title: Create a browser-based test that loads the SPA and uploads a real packet
+      fixture using accessibility tree interactions
+    status: done
+    started_at: '2026-07-10T03:34:47Z'
+    finished_at: '2026-07-10T03:34:57Z'
+    commit: 51971068d6880c1d20de3fd95e057d920ba30416
+    notes: []
+  - id: task-02
+    title: Add assertions to verify that coverage output is rendered correctly after
+      packet upload completes
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Implement a test step that opens a graphic item through accessibility tree
+      queries and verifies the graphic detail view appears
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Add a test step that triggers a deterministic seeded conflict using a fixed
+      fixture or explicit seed value
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Implement assertions that verify exactly one expected escalation row appears
+      in the accessibility tree after the seeded conflict
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Add a deliberate-break regression test that temporarily disables one SPA
+      interaction handler, asserts frontend verification fails for the corresponding
+      step, then restores the handler and asserts the verification passes.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Extend the static bundle test suite to run the SPA in simulated offline
+      mode and assert that no outbound network requests occur and no external CDN
+      resources are requested during load or interaction.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Create a functional integration test that processes a real packet fixture
+      and asserts the manager profile surface renders profile-specific and provenance
+      elements
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Add a functional integration test that verifies the graphics gallery surface
+      renders at least one graphic item and responds to user interaction
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Implement a functional integration test that asserts the return-stream
+      viewer surface renders packet-derived content and responds to navigation interactions
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Create a functional integration test that verifies the exception queue
+      surface renders queue rows and updates presentation after seeded conflict interactions
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Add a functional integration test that asserts the assistant panel seam
+      is present and responds to basic interactions without browser errors
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Remove streamlit_app.py from the repository or modify it to explicitly
+      mark it as deprecated and not a production entrypoint
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: Delete tests/test_streamlit_app_smoke.py or rewrite it to validate deprecation
+      status rather than exercising Streamlit as a supported path
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: Update README.md to remove all instructions for launching the application
+      through Streamlit
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: Add a README.md section describing the supported local package source setup
+      for Pyodide browser execution with explicit file paths and configuration examples
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: Document the deterministic offline browser verification path in README.md
+      by naming the automated test entrypoint and stating it runs without external
+      network dependencies
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: "Implement `ux_review.py` with code to compute an overall UX review result\
+      \ from a usability panel, adversarial agent checks, and owner calibration inputs\
+      \ \u2014 **AGENT_LIMITATION**: Add a prerequisite task or separate issue for\
+      \ a human to define the UX scoring thresholds, calibration rules, and severity-4\
+      \ criteria before implementation begins. Alternatively, provide concrete example\
+      \ thresholds in the issue (e.g., 'score >= 7.0 passes, severity-4 blocks') that\
+      \ the agent can implement without subjective judgment."
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: '`tests/test_static_spa_bundle.py` contains an end-to-end browser test
+      that loads the static SPA, uploads a real packet fixture, and asserts that a
+      coverage result is rendered before any graphic interaction step is executed.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: The browser-based verification flow asserts the presence of the opened
+      graphic and the escalation row by querying the live accessibility tree or accessibility-role/name
+      selectors, not by inspecting internal application state or raw HTML strings.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: The end-to-end verification test triggers a deterministic seeded conflict
+      using a fixed fixture or explicit seed value and asserts that exactly one expected
+      escalation row or equivalent conflict indicator is rendered for that seeded
+      condition.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-22
+    title: A regression test exists that temporarily disables one specific SPA interaction
+      handler required by `frontend_verify.py`, and the verification run fails at
+      the corresponding interaction step with an assertion or error message identifying
+      that missing behavior.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-23
+    title: The deliberate-break regression test restores the disabled interaction
+      handler within the same test module or test sequence and demonstrates that the
+      same `frontend_verify` step passes after restoration.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-24
+    title: '`ux_review.py` exports callable logic that accepts usability panel results,
+      adversarial agent results, and owner calibration inputs and returns a structured
+      overall UX review result containing at least an overall numeric score and a
+      blocker/severity outcome.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-25
+    title: '`tests/test_ux_review.py` includes at least one test fixture where the
+      combined UX inputs produce an overall score greater than or equal to 7.0 and
+      no severity-4 blocker, and the expected pass result is asserted.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-26
+    title: '`tests/test_ux_review.py` includes at least one test fixture where either
+      the overall score is below 7.0 or a severity-4 issue is present, and the expected
+      failing/blocking result is asserted.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-27
+    title: The static SPA bundle test suite includes a test that runs the SPA with
+      browser/network offline simulation enabled before initial page load and confirms
+      the application still loads enough to execute the packet-processing interaction
+      path.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-28
+    title: The offline test asserts that zero outbound network requests are issued
+      to non-local origins during SPA load and the exercised interaction flow, excluding
+      only the local test server origin if one is used to serve static files.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-29
+    title: The offline/network-isolation test explicitly fails if any requested resource
+      URL matches a known external scheme or host pattern such as `http://`, `https://`,
+      or a CDN domain outside the local test origin.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-30
+    title: Functional integration tests using a real packet fixture assert that an
+      element with role="heading" and name matching the manager identifier is present,
+      and an element with data-testid="provenance-timestamp" or similar is rendered
+      in the manager profile surface.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-31
+    title: Functional integration tests using a real packet fixture assert that after
+      clicking a graphic item in the graphics gallery, an element with role="dialog"
+      or data-testid="graphic-detail" appears in the accessibility tree and has aria-hidden="false".
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-32
+    title: Functional integration tests using a real packet fixture assert that after
+      clicking expand in the return-stream viewer, the element with data-testid="stream-content"
+      increases its child count by at least one, or an element transitions from aria-expanded="false"
+      to aria-expanded="true".
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-33
+    title: Functional integration tests using a real packet fixture assert that the
+      exception queue surface renders at least one exception or queue row and that
+      seeded conflict or queue interaction updates the queue presentation in the rendered
+      UI.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-34
+    title: _(6 further criteria elided; split this issue)_
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
