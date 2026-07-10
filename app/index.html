@@ -32,7 +32,7 @@
       <section class="operator-grid" aria-label="Operator workspace">
         <article class="operator-panel" aria-labelledby="coverage-heading">
           <h2 id="coverage-heading">Packet coverage</h2>
-          <table id="coverage-table">
+          <table id="coverage-table" aria-label="Packet coverage results">
             <thead>
               <tr>
                 <th>Document</th>
@@ -51,7 +51,7 @@
 
         <article class="operator-panel" aria-labelledby="graphics-heading">
           <h2 id="graphics-heading">Graphics gallery</h2>
-          <table id="graphics-table">
+          <table id="graphics-table" aria-label="Packet graphics">
             <thead>
               <tr>
                 <th>Graphic</th>
@@ -79,7 +79,8 @@
 
         <article class="operator-panel" aria-labelledby="queue-heading">
           <h2 id="queue-heading">Exception queue</h2>
-          <table id="queue-table">
+          <button id="seed-conflict" type="button">Seed deterministic conflict</button>
+          <table id="queue-table" aria-label="Exception queue">
             <thead>
               <tr>
                 <th>Item</th>
