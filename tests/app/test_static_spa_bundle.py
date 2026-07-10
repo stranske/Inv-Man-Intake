@@ -2,14 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_static_spa_replaces_stlite_mount() -> None:
     index = (ROOT / "app" / "index.html").read_text(encoding="utf-8")
 
-    assert "data-app-runtime=\"static-spa-pyodide\"" in index
+    assert 'data-app-runtime="static-spa-pyodide"' in index
     assert "./vendor/pyodide@0.26.2/pyodide.js" in index
     assert "static_operator_app.js" in index
     assert "stlite.mount" not in index
