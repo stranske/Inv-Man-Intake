@@ -50,11 +50,10 @@ mypy
 ### Browser Demo
 
 The synthetic intake demo can run in a local browser through `app/index.html`
-with stlite/Pyodide. It uses the committed Summit Arc fixture bundles in
-`tests/fixtures/intake/`, disables `LANGSMITH_API_KEY`, and executes the same
-deterministic `run_v1_smoke_pipeline` path locally so no proprietary payload is
-sent to LangSmith, an LLM provider, or an application server. The pinned stlite
-runtime version is tracked in `requirements-stlite.lock`.
+as a static SPA with the vendored Pyodide runtime. It uses the committed Summit
+Arc fixture bundles in `tests/fixtures/intake/`, keeps the deterministic path
+browser-local, and sends no proprietary payload to LangSmith, an LLM provider,
+or an application server.
 
 Live verification gate (no terminal required for reviewer):
 
@@ -67,12 +66,8 @@ Live verification gate (no terminal required for reviewer):
 4. Verification evidence and screenshot are recorded in
    `app/live-verification.md`.
 
-For developer iteration, install the optional app dependency and run:
-
-```bash
-python -m pip install -e ".[app]"
-streamlit run app/streamlit_app.py
-```
+The legacy stlite/Streamlit surface is retained only as transition reference
+while the static SPA reaches full Gate 1 and Gate 2 parity.
 
 The repository uses the shared
 [`stranske/Workflows`](https://github.com/stranske/Workflows) CI and agent

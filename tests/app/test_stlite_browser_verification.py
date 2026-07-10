@@ -44,4 +44,4 @@ def test_offline_url_filter_allows_only_local_browser_urls() -> None:
     assert is_local_browser_url("blob:http://127.0.0.1:8000/token")
     assert is_local_browser_url("data:text/plain,ok")
     assert is_local_browser_url("about:blank")
-    assert not is_local_browser_url("https://cdn.jsdelivr.net/npm/@stlite/mountable")
+    assert not is_local_browser_url("https://cdn.jsdelivr.net/npm/pyodide")

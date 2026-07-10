@@ -31,7 +31,7 @@ def test_offline_static_bundle_runtime_is_fully_local() -> None:
     assert result.status == "pass"
     assert result.index_path == "app/index.html"
     assert result.pyodide_vendor.startswith("app/vendor/pyodide@")
-    assert result.stlite_vendor.startswith("app/vendor/stlite@")
+    assert result.app_runtime == "static-spa-pyodide"
     assert "micropip" in result.dependency_closure
 
 

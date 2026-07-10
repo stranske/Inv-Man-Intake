@@ -3,140 +3,99 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Inv-Man-Intake Browser Demo</title>
+    <title>Inv-Man-Intake Operator App</title>
     <link rel="stylesheet" href="../design-system/tokens.css" />
     <link rel="stylesheet" href="../design-system/components.css" />
-    <script src="./vendor/stlite@0.75.0/stlite.js"></script>
-    <style>
-      html,
-      body,
-      #root {
-        height: 100%;
-        margin: 0;
-      }
-    </style>
+    <script src="./vendor/pyodide@0.26.2/pyodide.js"></script>
+    <script type="module" src="./static_operator_app.js"></script>
   </head>
-  <body>
-    <div id="root" class="ds theme-air"></div>
-    <script>
-      const bundledPaths = [
-        "design-system/tokens.css",
-        "design-system/components.css",
-        "src/inv_man_intake/__init__.py",
-        "src/inv_man_intake/audit/__init__.py",
-        "src/inv_man_intake/audit/events.py",
-        "src/inv_man_intake/audit/repository.py",
-        "src/inv_man_intake/contracts/__init__.py",
-        "src/inv_man_intake/contracts/image_feedback_contract.py",
-        "src/inv_man_intake/contracts/intake_contract.py",
-        "src/inv_man_intake/data/__init__.py",
-        "src/inv_man_intake/data/fixtures.py",
-        "src/inv_man_intake/data/migrations/__init__.py",
-        "src/inv_man_intake/data/migrations/core_schema.py",
-        "src/inv_man_intake/data/migrations/provenance_history.py",
-        "src/inv_man_intake/data/migrations/sql/0001_core_firm_fund_document.down.sql",
-        "src/inv_man_intake/data/migrations/sql/0001_core_firm_fund_document.up.sql",
-        "src/inv_man_intake/data/migrations/sql/0002_field_provenance_history.down.sql",
-        "src/inv_man_intake/data/migrations/sql/0002_field_provenance_history.up.sql",
-        "src/inv_man_intake/data/models.py",
-        "src/inv_man_intake/data/provenance.py",
-        "src/inv_man_intake/data/repository.py",
-        "src/inv_man_intake/docproc/__init__.py",
-        "src/inv_man_intake/docproc/ppm.py",
-        "src/inv_man_intake/epic_milestones.py",
-        "src/inv_man_intake/extraction/__init__.py",
-        "src/inv_man_intake/extraction/confidence.py",
-        "src/inv_man_intake/extraction/cross_check.py",
-        "src/inv_man_intake/extraction/doc_type.py",
-        "src/inv_man_intake/extraction/orchestrator.py",
-        "src/inv_man_intake/extraction/providers/__init__.py",
-        "src/inv_man_intake/extraction/providers/base.py",
-        "src/inv_man_intake/extraction/providers/normalize.py",
-        "src/inv_man_intake/extraction/providers/pdf_primary.py",
-        "src/inv_man_intake/extraction/providers/pptx_primary.py",
-        "src/inv_man_intake/extraction/providers/primary.py",
-        "src/inv_man_intake/extraction/quality.py",
-        "src/inv_man_intake/assist/__init__.py",
-        "src/inv_man_intake/assist/egress_guard.py",
-        "src/inv_man_intake/images/__init__.py",
-        "src/inv_man_intake/images/classifier.py",
-        "src/inv_man_intake/images/extractor.py",
-        "src/inv_man_intake/images/feedback_report.py",
-        "src/inv_man_intake/images/feedback_service.py",
-        "src/inv_man_intake/images/models.py",
-        "src/inv_man_intake/images/service.py",
-        "src/inv_man_intake/intake/__init__.py",
-        "src/inv_man_intake/intake/integration.py",
-        "src/inv_man_intake/intake/models.py",
-        "src/inv_man_intake/intake/service.py",
-        "src/inv_man_intake/intake/standard_elements.py",
-        "src/inv_man_intake/intake/versioning.py",
-        "src/inv_man_intake/observability/__init__.py",
-        "src/inv_man_intake/observability/entrypoints.py",
-        "src/inv_man_intake/observability/langsmith_fleet.py",
-        "src/inv_man_intake/observability/langsmith_sink.py",
-        "src/inv_man_intake/observability/logging.py",
-        "src/inv_man_intake/observability/metrics.py",
-        "src/inv_man_intake/observability/setup_validation.py",
-        "src/inv_man_intake/observability/tracing.py",
-        "src/inv_man_intake/performance/__init__.py",
-        "src/inv_man_intake/performance/conflict_resolver.py",
-        "src/inv_man_intake/performance/contracts.py",
-        "src/inv_man_intake/performance/ingest.py",
-        "src/inv_man_intake/performance/metrics.py",
-        "src/inv_man_intake/performance/normalize.py",
-        "src/inv_man_intake/packet.py",
-        "src/inv_man_intake/queue/__init__.py",
-        "src/inv_man_intake/queue/assignment.py",
-        "src/inv_man_intake/queue/sla.py",
-        "src/inv_man_intake/readiness/__init__.py",
-        "src/inv_man_intake/readiness/fixture_batches.py",
-        "src/inv_man_intake/readiness/throughput.py",
-        "src/inv_man_intake/scoring/__init__.py",
-        "src/inv_man_intake/scoring/contracts.py",
-        "src/inv_man_intake/scoring/engine.py",
-        "src/inv_man_intake/scoring/explainability.py",
-        "src/inv_man_intake/scoring/regression.py",
-        "src/inv_man_intake/scoring/weights.py",
-        "src/inv_man_intake/storage/__init__.py",
-        "src/inv_man_intake/storage/document_store.py",
-        "src/inv_man_intake/v1_smoke.py",
-        "src/inv_man_intake/validation_queue_api.py",
-        "src/inv_man_intake/workflow_validation.py",
-        "tests/fixtures/intake/malformed_corrupted_file.json",
-        "tests/fixtures/intake/malformed_missing_metadata.json",
-        "tests/fixtures/intake/malformed_unsupported_type.json",
-        "tests/fixtures/intake/pdf_primary_bundle.json",
-        "tests/fixtures/intake/pdf_primary_mixed_bundle.json",
-        "tests/fixtures/intake/pptx_primary_bundle.json",
-        "tests/fixtures/intake/pptx_primary_mixed_bundle.json",
-        "config/scoring_weights/activist.toml",
-        "config/scoring_weights/credit_long_short.toml",
-        "config/scoring_weights/credit_relative_value.toml",
-        "config/scoring_weights/equity_market_neutral.toml",
-        "config/scoring_weights/macro.toml",
-        "config/scoring_weights/multi_strat.toml",
-        "config/scoring_weights/quant.toml",
-        "config/scoring_weights/trend_following.toml"
-      ];
-      const files = Object.fromEntries(
-        bundledPaths.map((path) => [path, { url: `../${path}` }])
-      );
-      files["app/streamlit_app.py"] = { url: "./streamlit_app.py" };
+  <body class="ds theme-air density-compact">
+    <main class="operator-shell" data-app-runtime="static-spa-pyodide">
+      <header class="operator-header">
+        <p class="eyebrow">Tier A local bundle</p>
+        <h1>Operator intake console</h1>
+        <p id="runtime-status" role="status">Loading local Pyodide runtime...</p>
+      </header>
 
-      stlite.mount(
-        {
-          entrypoint: "app/streamlit_app.py",
-          // Absolute URL resolved against the page: stlite's worker resolves a
-          // bare relative pyodideUrl against its own nested script location
-          // (vendor/stlite@0.75.0/static/js/...), which 404s. Anchoring to
-          // window.location.href keeps the vendored Pyodide same-origin/local.
-          pyodideUrl: new URL("./vendor/pyodide@0.26.2/pyodide.js", window.location.href).href,
-          requirements: [],
-          files
-        },
-        document.getElementById("root")
-      );
-    </script>
+      <section class="operator-panel" aria-labelledby="packet-upload-heading">
+        <div>
+          <h2 id="packet-upload-heading">Packet upload</h2>
+          <p>Static SPA surface backed by the browser-local packet pipeline.</p>
+        </div>
+        <label class="upload-target">
+          <span>Packet upload</span>
+          <input id="packet-upload" type="file" multiple />
+        </label>
+        <div id="upload-count" role="status">Uploaded file count: 0</div>
+      </section>
+
+      <section class="operator-grid" aria-label="Operator workspace">
+        <article class="operator-panel" aria-labelledby="coverage-heading">
+          <h2 id="coverage-heading">Packet coverage</h2>
+          <table id="coverage-table">
+            <thead>
+              <tr>
+                <th>Document</th>
+                <th>Type</th>
+                <th>Coverage</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </article>
+
+        <article class="operator-panel" aria-labelledby="profile-heading">
+          <h2 id="profile-heading">Manager profile</h2>
+          <dl id="profile-list"></dl>
+        </article>
+
+        <article class="operator-panel" aria-labelledby="graphics-heading">
+          <h2 id="graphics-heading">Graphics gallery</h2>
+          <table id="graphics-table">
+            <thead>
+              <tr>
+                <th>Graphic</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </article>
+
+        <article class="operator-panel" aria-labelledby="returns-heading">
+          <h2 id="returns-heading">Return stream</h2>
+          <table id="returns-table">
+            <thead>
+              <tr>
+                <th>Period</th>
+                <th>Return</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </article>
+
+        <article class="operator-panel" aria-labelledby="queue-heading">
+          <h2 id="queue-heading">Exception queue</h2>
+          <table id="queue-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Reason</th>
+                <th>Owner</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </article>
+
+        <article class="operator-panel" aria-labelledby="assistant-heading">
+          <h2 id="assistant-heading">Assistant panel</h2>
+          <p id="assistant-answer">Recommendations stay manual and cite deterministic packet evidence.</p>
+        </article>
+      </section>
+    </main>
   </body>
 </html>

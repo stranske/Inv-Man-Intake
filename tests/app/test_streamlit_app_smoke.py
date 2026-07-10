@@ -387,23 +387,20 @@ def test_live_verification_evidence_is_recorded() -> None:
     assert "static visual reference only" in content
 
 
-def test_stlite_mount_bundles_package_and_fixture_files() -> None:
+def test_static_spa_mounts_pyodide_bridge_and_fixture_surfaces() -> None:
     content = Path("app/index.html").read_text(encoding="utf-8")
     stlite_lock = set(Path("requirements-stlite.lock").read_text(encoding="utf-8").splitlines())
 
-    assert '"src/inv_man_intake/v1_smoke.py"' in content
-    assert '"src/inv_man_intake/docproc/ppm.py"' in content
-    assert '"src/inv_man_intake/assist/egress_guard.py"' in content
-    assert '"src/inv_man_intake/data/migrations/sql/0001_core_firm_fund_document.up.sql"' in content
-    assert '"tests/fixtures/intake/pdf_primary_mixed_bundle.json"' in content
-    assert "Object.fromEntries" in content
+    assert 'data-app-runtime="static-spa-pyodide"' in content
+    assert '<script src="./vendor/pyodide@0.26.2/pyodide.js"></script>' in content
+    assert '<script type="module" src="./static_operator_app.js"></script>' in content
+    assert "Packet coverage" in content
+    assert "Graphics gallery" in content
+    assert "Exception queue" in content
     assert '"langsmith>=0.4.59"' not in content
     assert stlite_lock == {
         "@stlite/mountable==0.75.0",
         "pyodide==0.26.2",
         "streamlit==1.40.1",
     }
-    assert '<script src="./vendor/stlite@0.75.0/stlite.js"></script>' in content
-    assert (
-        'pyodideUrl: new URL("./vendor/pyodide@0.26.2/pyodide.js", ' "window.location.href).href"
-    ) in content
+    assert "stlite.mount" not in content
