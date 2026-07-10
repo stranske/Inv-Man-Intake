@@ -89,7 +89,9 @@ def run_frontend_verifier(
 
 
 def default_upload() -> UploadedFile:
-    return UploadedFile("uploaded-deck.txt", b"Static-SPA browser verification uses its packet fixture.")
+    return UploadedFile(
+        "uploaded-deck.txt", b"Static-SPA browser verification uses its packet fixture."
+    )
 
 
 def main() -> int:

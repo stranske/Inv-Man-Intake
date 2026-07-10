@@ -95,9 +95,7 @@ def _with_page(
     browser = playwright.chromium.launch(channel="chrome", headless=True)
     page = browser.new_page()
     if test_controls:
-        page.add_init_script(
-            f"window.__STATIC_SPA_TEST_CONTROLS__ = {json.dumps(test_controls)};"
-        )
+        page.add_init_script(f"window.__STATIC_SPA_TEST_CONTROLS__ = {json.dumps(test_controls)};")
     page.goto(url, wait_until="domcontentloaded", timeout=45_000)
     page.get_by_role("heading", name="Packet upload").wait_for(timeout=45_000)
     return server_context, playwright_context, browser, page
