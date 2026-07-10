@@ -1,0 +1,362 @@
+version: 1
+issue: 780
+base: main
+branch: codex/issue-780
+tasks:
+  - id: task-01
+    title: Add a local-server browser test in `tests/app/test_static_spa_browser_e2e.py`
+      that uploads a real packet fixture to `app/index.html` and queries the live
+      accessibility tree for rendered coverage before the graphic interaction.
+    status: doing
+    started_at: '2026-07-10T18:37:55Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Create the test file `tests/app/test_static_spa_browser_e2e.py` with a
+      local server fixture that serves `app/index.html` (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Implement a browser automation test that uploads a real packet fixture
+      file through the static SPA upload interface (verify: confirm completion in
+      repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add assertions that query the live accessibility tree for rendered coverage
+      results using role (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: 'name attributes (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Update `app/static_operator_app.js` to expose a deterministic seeded-conflict
+      interaction that updates the exception queue with one identifiable escalation
+      row while preserving the existing upload handler at lines 123-127.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'Add a deterministic seeded-conflict interaction function in `app/static_operator_app.js`
+      that generates one identifiable escalation (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'Update the exception queue handling logic to accept (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: 'display the seeded escalation row with accessible attributes (verify:
+      confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Verify that the existing upload handler at lines 123-127 remains unchanged
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: 'functional after the conflict interaction addition (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Add assertions in `tests/app/test_static_spa_browser_e2e.py` that drive
+      the `Open graphic` handler from `app/static_operator_app.js:52-60`, then verify
+      the live accessibility tree exposes the opened graphic and exactly one seeded
+      escalation row.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: 'Add a test assertion that triggers the Open graphic handler from `app/static_operator_app.js:52-60`
+      using browser automation (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: Verify through accessibility tree queries that the opened graphic is exposed
+      with the correct role
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: Verify through accessibility tree queries that the opened graphic is exposed
+      with accessible name
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: 'Trigger the seeded conflict interaction (verify: confirm completion in
+      repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: 'assert exactly one escalation row appears in the accessibility tree (verify:
+      confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: Replace the Streamlit-recorder-only path in `frontend_verify.py` at lines
+      8-10 and 127-145 with a runner that invokes the static-SPA browser verification
+      evidence for this slice.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: 'Create a new runner function in `frontend_verify.py` that invokes the
+      static-SPA browser verification test suite (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: 'Remove the Streamlit import (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-21
+    title: 'recorder initialization from `frontend_verify.py` lines 8-10 (verify:
+      confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-22
+    title: 'Replace the Streamlit-recorder execution path at lines 127-145 with calls
+      to the new static-SPA runner function (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-23
+    title: Test a deliberate-break flow in `tests/app/test_static_spa_browser_e2e.py`
+      by temporarily disabling the concrete static-SPA graphic or escalation handler,
+      asserting the named browser-verification test fails at that interaction, restoring
+      the handler, and asserting the same test passes.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-24
+    title: 'Create a test helper function that can temporarily disable a specific
+      handler in `app/static_operator_app.js` during test execution (verify: confirm
+      completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-25
+    title: 'Add a test case that disables the graphic handler (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-26
+    title: 'asserts the browser verification test fails at the graphic interaction
+      assertion (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-27
+    title: 'Add a test case that disables the escalation handler (verify: confirm
+      completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-28
+    title: 'asserts the browser verification test fails at the escalation assertion
+      (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-29
+    title: Verify that restoring each handler causes the corresponding test to pass
+      again
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-30
+    title: '`pytest -q tests/app/test_static_spa_browser_e2e.py` serves the static
+      SPA locally, uploads a real packet fixture, and observes a coverage result through
+      an accessibility-role/name query before it opens a graphic.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-31
+    title: The same named test opens a graphic and triggers the deterministic conflict
+      using live browser interactions, then observes one and only one accessible escalation
+      row; no assertion reads internal JavaScript state as a substitute.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-32
+    title: '`python frontend_verify.py` runs the static-SPA evidence path rather than
+      importing `app.streamlit_app`, and exits zero only after the named upload, coverage,
+      graphic, conflict, and escalation assertions succeed.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-33
+    title: Temporarily disabling the named handler in `app/static_operator_app.js`
+      causes `pytest -q tests/app/test_static_spa_browser_e2e.py` to fail at the corresponding
+      interaction assertion, and restoring the handler makes the same command pass.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-34
+    title: In `tests/app/test_static_spa_browser_e2e.py`, add a local-server browser
+      test that uploads a real packet fixture to `app/index.html` and queries the
+      live accessibility tree for rendered coverage before the graphic interaction.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-35
+    title: In `app/static_operator_app.js`, expose a deterministic seeded-conflict
+      interaction that updates the exception queue with one identifiable escalation
+      row while preserving the existing upload handler at lines 123-127.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-36
+    title: In `tests/app/test_static_spa_browser_e2e.py`, drive the `Open graphic`
+      handler from `app/static_operator_app.js:52-60`, then assert the live accessibility
+      tree exposes the opened graphic and the exactly-one seeded escalation row.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-37
+    title: In `frontend_verify.py`, replace the Streamlit-recorder-only path at lines
+      8-10 and 127-145 with a runner that invokes the static-SPA browser verification
+      evidence for this slice.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-38
+    title: In `tests/app/test_static_spa_browser_e2e.py`, temporarily disable the
+      concrete static-SPA graphic or escalation handler, assert the named browser-verification
+      test fails at that interaction, restore the handler, and assert the same test
+      passes.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-39
+    title: '`pytest -q tests/app/test_static_spa_browser_e2e.py` serves the static
+      SPA locally, uploads a real packet fixture, and observes a coverage result through
+      an accessibility-role/name query before it opens a graphic.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-40
+    title: The same named test opens a graphic and triggers the deterministic conflict
+      using live browser interactions, then observes one and only one accessible escalation
+      row; no assertion may read internal JavaScript state as a substitute.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-41
+    title: '`python frontend_verify.py` runs the static-SPA evidence path rather than
+      importing `app.streamlit_app`, and exits zero only after the named upload, coverage,
+      graphic, conflict, and escalation assertions succeed.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-42
+    title: 'Deliberate-break proof: temporarily disable the named handler in `app/static_operator_app.js`,
+      run `pytest -q tests/app/test_static_spa_browser_e2e.py` and observe failure
+      at the corresponding interaction assertion, restore the handler, and rerun it
+      successfully. Capture the command/result in the PR evidence.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
