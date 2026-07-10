@@ -64,7 +64,9 @@ def test_static_spa_upload_renders_accessible_coverage() -> None:
             page.get_by_role("heading", name="Packet upload").wait_for(timeout=45_000)
 
             page.locator("#packet-upload").set_input_files(str(PACKET_FIXTURE))
-            page.get_by_role("status", name="Uploaded file count: 1").wait_for(timeout=45_000)
+            upload_count = page.locator("#upload-count")
+            upload_count.wait_for(timeout=45_000)
+            assert upload_count.text_content() == "Uploaded file count: 1"
 
             coverage_table = page.get_by_role("table", name="Packet coverage results")
             coverage_row = coverage_table.get_by_role(
