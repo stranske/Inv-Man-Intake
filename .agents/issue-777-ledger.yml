@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: Create a browser-based test that loads the SPA and uploads a real packet
       fixture using accessibility tree interactions
-    status: doing
+    status: done
     started_at: '2026-07-10T03:34:47Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-07-10T03:34:57Z'
+    commit: 51971068d6880c1d20de3fd95e057d920ba30416
     notes: []
   - id: task-02
     title: Add assertions to verify that coverage output is rendered correctly after
