@@ -1,0 +1,18 @@
+{
+  "schema_version": "ux-review-policy/v1",
+  "effective_date": "2026-07-10",
+  "review_by": "2026-10-15",
+  "review_after_completed_reviews": 20,
+  "pass_threshold": 7.0,
+  "weights": {
+    "usability": 0.5,
+    "adversarial": 0.3,
+    "owner_calibration": 0.2
+  },
+  "severity_4_categories": [
+    "security_privacy_exposure",
+    "data_loss_or_corruption",
+    "core_workflow_blocked",
+    "core_accessibility_blocker"
+  ]
+}
