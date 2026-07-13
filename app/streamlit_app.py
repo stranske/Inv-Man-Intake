@@ -1,7 +1,7 @@
 """Deprecated Streamlit/stlite fixture renderer for the local smoke path.
 
 The supported browser verification surface is ``app/index.html`` (the static
-Pyodide SPA).  This module remains only for deterministic fixture compatibility
+Pyodide SPA). This module remains only for deterministic fixture compatibility
 and must not be presented as a production or supported launch path.
 """
 
