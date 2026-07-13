@@ -1,4 +1,9 @@
-"""Streamlit/stlite demo for the local intake-to-score smoke path."""
+"""Deprecated Streamlit/stlite fixture renderer for the local smoke path.
+
+The supported browser verification surface is ``app/index.html`` (the static
+Pyodide SPA).  This module remains only for deterministic fixture compatibility
+and must not be presented as a production or supported launch path.
+"""
 
 from __future__ import annotations
 
@@ -42,6 +47,11 @@ from inv_man_intake.validation_queue_api import (  # noqa: E402
     list_validation_queue,
 )
 from inv_man_intake.workflow_validation import ValidationQueueRow  # noqa: E402
+
+DEPRECATION_NOTICE = (
+    "Deprecated fixture renderer: use app/index.html, the static Pyodide SPA, "
+    "for supported browser verification."
+)
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "intake"
 FIXTURE_OPTIONS = tuple(package["intake_bundle_file"] for package in DEFAULT_BATCH_PACKAGES)

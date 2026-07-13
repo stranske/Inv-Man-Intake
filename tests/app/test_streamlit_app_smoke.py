@@ -9,6 +9,7 @@ from typing import cast
 import pytest
 from app.streamlit_app import (
     ASSISTANT_FOLLOWUP_STATE_KEY,
+    DEPRECATION_NOTICE,
     QUEUE_ACTION_STATE_KEY,
     _operator_queue_rows,
     build_operator_assistant_session,
@@ -19,6 +20,11 @@ from app.streamlit_app import (
 
 from inv_man_intake.observability import InMemoryTraceSink
 from inv_man_intake.packet import PacketFile
+
+
+def test_streamlit_renderer_is_explicitly_deprecated() -> None:
+    assert "Deprecated fixture renderer" in DEPRECATION_NOTICE
+    assert "static Pyodide SPA" in DEPRECATION_NOTICE
 
 
 class _StreamlitRecorder:
