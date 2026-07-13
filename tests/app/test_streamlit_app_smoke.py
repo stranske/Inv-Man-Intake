@@ -24,7 +24,9 @@ from inv_man_intake.packet import PacketFile
 
 def test_streamlit_renderer_is_explicitly_deprecated() -> None:
     assert "Deprecated fixture renderer" in DEPRECATION_NOTICE
+    assert "app/index.html" in DEPRECATION_NOTICE
     assert "static Pyodide SPA" in DEPRECATION_NOTICE
+    assert "supported browser verification" in DEPRECATION_NOTICE
 
 
 class _StreamlitRecorder:
