@@ -108,6 +108,7 @@ def _packet_view_from_profile(profile: Any) -> dict[str, Any]:
     ]
     queue_reasons = tuple(profile.escalations) or ("operator_packet_review:coverage_complete",)
     return {
+        "packet_path": "inv-man-intake.ingest_packet",
         "manager_profile": {
             "Manager": profile.identity.get("identity.manager", "Unknown manager"),
             "Final score": f"{profile.scores.get('extraction_confidence', 0.0):.4f}",
@@ -223,6 +224,7 @@ def _fallback_packet_view(files: Sequence[Mapping[str, str]]) -> dict[str, Any]:
         for index, file in enumerate(files)
     ]
     return {
+        "packet_path": "deterministic-browser-bridge",
         "manager_profile": {
             "Manager": "Summit Arc Capital",
             "Final score": "0.7809",

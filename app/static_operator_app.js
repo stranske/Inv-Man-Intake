@@ -47,6 +47,7 @@ function seedConflict(profile) {
 
 function renderProfile(profile) {
   state.profile = profile;
+  document.querySelector("main").dataset.packetPath = profile.packet_path || "unknown";
   clearRows("coverage-table");
   clearRows("graphics-table");
   clearRows("returns-table");
@@ -85,7 +86,10 @@ function renderProfile(profile) {
   }
 
   document.getElementById("assistant-answer").textContent = profile.assistant_answer;
-  setStatus(`Pyodide packet pipeline ready. Deterministic outbound calls: ${profile.outbound_calls}`);
+  setStatus(
+    `Pyodide packet pipeline ready (${profile.packet_path || "unknown"}). `
+      + `Deterministic outbound calls: ${profile.outbound_calls}`
+  );
 }
 
 async function loadProfile(files) {
