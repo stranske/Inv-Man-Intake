@@ -14,6 +14,7 @@ from pathlib import Path
 from urllib.request import urlopen
 
 import pytest
+from scripts.verify_static_spa_pyodide import handle_offline_route
 
 playwright_sync = pytest.importorskip("playwright.sync_api")
 sync_playwright = playwright_sync.sync_playwright
@@ -69,6 +70,12 @@ def _verify_static_spa_interactions(page: object) -> None:
     )
     coverage_row.wait_for(timeout=45_000)
     assert coverage_row.is_visible()
+    runtime_status = page.get_by_role("status").first
+    assert (
+        "Pyodide packet pipeline ready (deterministic-browser-bridge)."
+        in runtime_status.text_content()
+    )
+    assert page.locator("main").get_attribute("data-packet-path") == "deterministic-browser-bridge"
 
     page.get_by_role("button", name="Open graphic").first.click()
     graphics_table = page.get_by_role("table", name="Packet graphics")
@@ -85,7 +92,9 @@ def _verify_static_spa_interactions(page: object) -> None:
 
 def _with_page(
     test_controls: dict[str, bool] | None = None,
-) -> tuple[object, object, object, object]:
+    *,
+    enforce_local_requests: bool = False,
+) -> tuple[object, object, object, object, list[str]]:
     """Open the static SPA with optional test-only handler controls."""
 
     server_context = local_static_spa()
@@ -94,11 +103,16 @@ def _with_page(
     playwright = playwright_context.__enter__()
     browser = playwright.chromium.launch(channel="chrome", headless=True)
     page = browser.new_page()
+    external_requests: list[str] = []
+    if enforce_local_requests:
+        # This is deliberately registered before navigation so initial Pyodide
+        # bootstrap requests cannot bypass the no-egress assertion.
+        page.route("**/*", lambda route: handle_offline_route(route, external_requests))
     if test_controls:
         page.add_init_script(f"window.__STATIC_SPA_TEST_CONTROLS__ = {json.dumps(test_controls)};")
     page.goto(url, wait_until="domcontentloaded", timeout=45_000)
     page.get_by_role("heading", name="Packet upload").wait_for(timeout=45_000)
-    return server_context, playwright_context, browser, page
+    return server_context, playwright_context, browser, page, external_requests
 
 
 def _close_page(server_context: object, playwright_context: object, browser: object) -> None:
@@ -107,12 +121,15 @@ def _close_page(server_context: object, playwright_context: object, browser: obj
     server_context.__exit__(None, None, None)
 
 
-def test_static_spa_upload_graphic_and_escalation_are_accessible() -> None:
-    """A real upload drives accessible coverage, graphic, and escalation interactions."""
+def test_static_spa_offline_upload_runs_local_pyodide_packet_path_without_egress() -> None:
+    """The full initial-load path is local-only and runs the deterministic Pyodide bridge."""
 
-    server_context, playwright_context, browser, page = _with_page()
+    server_context, playwright_context, browser, page, external_requests = _with_page(
+        enforce_local_requests=True
+    )
     try:
         _verify_static_spa_interactions(page)
+        assert external_requests == []
     finally:
         _close_page(server_context, playwright_context, browser)
 
@@ -121,7 +138,7 @@ def test_static_spa_upload_graphic_and_escalation_are_accessible() -> None:
 def test_static_spa_deliberate_break_fails_the_interaction_assertion(control: str) -> None:
     """Disabling either concrete handler makes the same browser path fail."""
 
-    server_context, playwright_context, browser, page = _with_page({control: True})
+    server_context, playwright_context, browser, page, _ = _with_page({control: True})
     try:
         with pytest.raises(AssertionError):
             _verify_static_spa_interactions(page)
