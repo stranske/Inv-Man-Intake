@@ -8,6 +8,8 @@ const PRODUCTION_PACKET_MODULES = [
   "extraction/service.py",
   "extraction/providers/base.py",
   "intake/standard_elements.py",
+  "performance/contracts.py",
+  "performance/conflict_resolver.py",
 ];
 
 const state = {
@@ -111,6 +113,7 @@ async function loadProductionPacketModules(pyodide) {
     "/inv_man_intake/extraction/__init__.py",
     "/inv_man_intake/extraction/providers/__init__.py",
     "/inv_man_intake/intake/__init__.py",
+    "/inv_man_intake/performance/__init__.py",
   ]) {
     pyodide.FS.mkdirTree(packagePath.slice(0, packagePath.lastIndexOf("/")));
     pyodide.FS.writeFile(packagePath, "");
