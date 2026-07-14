@@ -1,0 +1,127 @@
+version: 1
+issue: 787
+base: main
+branch: codex/issue-787
+tasks:
+  - id: task-01
+    title: Add a browser test that enables offline or network interception before
+      initial SPA navigation, loads the local static bundle, and completes the real
+      packet-processing interaction path.
+    status: doing
+    started_at: '2026-07-14T04:36:39Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: 'Configure browser test environment to enable offline mode or network interception
+      before navigation starts (verify: config validated)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: 'Implement test logic to load the local static SPA bundle from the test
+      server (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: 'Add test steps that execute the complete packet-processing interaction
+      path through the UI (verify: tests pass)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Implement browser-level request enforcement so the test fails on every
+      non-local `http://` or `https://` request and permits only the local test-server
+      origin.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: 'Implement request interception that blocks all http (verify: confirm completion
+      in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: 'https requests in the browser test (verify: confirm completion in repo)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: 'Configure the request interceptor to permit only the local test-server
+      origin (verify: config validated)'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Add assertions that verify the test fails when any non-local request is
+      attempted
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Update the exercised browser flow to verify the Pyodide bridge runs the
+      deterministic packet path instead of a demo or reduced offline fallback.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Test that existing static-SPA browser and offline-bundle checks remain
+      green in CI/local test tooling.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: A browser test enables offline or network interception before initial SPA
+      navigation, loads the local static bundle, and completes the real packet-processing
+      interaction path.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: The test fails on every non-local `http://` or `https://` request during
+      load and the exercised deterministic flow; the local test-server origin is the
+      only permitted origin.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: The test demonstrates that the Pyodide bridge runs the deterministic packet
+      path rather than silently selecting a demo or reduced fallback when offline.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: Existing static-SPA browser and offline-bundle checks remain green.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
