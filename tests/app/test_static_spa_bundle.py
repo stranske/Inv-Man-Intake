@@ -44,6 +44,16 @@ def test_static_spa_exposes_operator_surfaces() -> None:
     assert "Deterministic outbound calls" in script
 
 
+def test_static_spa_bundles_cross_check_dependency_closure() -> None:
+    """The production packet bundle includes lazy cross-check imports."""
+
+    script = (ROOT / "app" / "static_operator_app.js").read_text(encoding="utf-8")
+
+    assert '"extraction/cross_check.py"' in script
+    assert '"performance/contracts.py"' in script
+    assert '"performance/conflict_resolver.py"' in script
+
+
 def test_pyodide_bridge_runs_packet_pipeline_for_seed_data() -> None:
     bridge_path = ROOT / "app" / "pyodide_packet_bridge.py"
     bridge = bridge_path.read_text(encoding="utf-8")

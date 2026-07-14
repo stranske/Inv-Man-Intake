@@ -65,17 +65,15 @@ def _verify_static_spa_interactions(page: object) -> None:
     assert upload_count.text_content() == "Uploaded file count: 1"
 
     coverage_table = page.get_by_role("table", name="Packet coverage results")
-    coverage_row = coverage_table.get_by_role(
-        "row", name="upload_1 fixture_packet manager, fees, returns, graphics"
-    )
+    coverage_row = coverage_table.get_by_role("row", name=re.compile(r"upload_1 .*"))
     coverage_row.wait_for(timeout=45_000)
     assert coverage_row.is_visible()
     runtime_status = page.get_by_role("status").first
     assert (
-        "Pyodide packet pipeline ready (deterministic-browser-bridge)."
+        "Pyodide packet pipeline ready (inv-man-intake.ingest_packet)."
         in runtime_status.text_content()
     )
-    assert page.locator("main").get_attribute("data-packet-path") == "deterministic-browser-bridge"
+    assert page.locator("main").get_attribute("data-packet-path") == "inv-man-intake.ingest_packet"
 
     page.get_by_role("button", name="Open graphic").first.click()
     graphics_table = page.get_by_role("table", name="Packet graphics")

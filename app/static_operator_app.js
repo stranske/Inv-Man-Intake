@@ -1,5 +1,16 @@
 const PYODIDE_RUNTIME = "./vendor/pyodide@0.26.2/";
 const BRIDGE_MODULE = "./pyodide_packet_bridge.py";
+const PRODUCTION_PACKET_MODULES = [
+  "packet.py",
+  "workflow_validation.py",
+  "extraction/cross_check.py",
+  "extraction/doc_type.py",
+  "extraction/service.py",
+  "extraction/providers/base.py",
+  "intake/standard_elements.py",
+  "performance/contracts.py",
+  "performance/conflict_resolver.py",
+];
 
 const state = {
   pyodide: null,
@@ -92,6 +103,33 @@ function renderProfile(profile) {
   );
 }
 
+async function loadProductionPacketModules(pyodide) {
+  const sourceRoot = "../src/inv_man_intake/";
+  // The production package initializers expose server-only integrations.  The
+  // browser needs only this deterministic packet slice, so seed narrow package
+  // markers before loading the exact modules it executes.
+  for (const packagePath of [
+    "/inv_man_intake/__init__.py",
+    "/inv_man_intake/extraction/__init__.py",
+    "/inv_man_intake/extraction/providers/__init__.py",
+    "/inv_man_intake/intake/__init__.py",
+    "/inv_man_intake/performance/__init__.py",
+  ]) {
+    pyodide.FS.mkdirTree(packagePath.slice(0, packagePath.lastIndexOf("/")));
+    pyodide.FS.writeFile(packagePath, "");
+  }
+  await Promise.all(PRODUCTION_PACKET_MODULES.map(async (modulePath) => {
+    const response = await fetch(`${sourceRoot}${modulePath}`);
+    if (!response.ok) {
+      throw new Error(`Unable to load production packet module ${modulePath}: ${response.status}`);
+    }
+    const targetPath = `/inv_man_intake/${modulePath}`;
+    const parent = targetPath.slice(0, targetPath.lastIndexOf("/"));
+    pyodide.FS.mkdirTree(parent);
+    pyodide.FS.writeFile(targetPath, await response.text());
+  }));
+}
+
 async function loadProfile(files) {
   try {
     if (!state.pyodide) {
@@ -104,6 +142,7 @@ async function loadProfile(files) {
             throw new Error(`Unable to load ${BRIDGE_MODULE}: ${bridgeResponse.status}`);
           }
           const bridgeSource = await bridgeResponse.text();
+          await loadProductionPacketModules(pyodide);
           pyodide.FS.writeFile("/pyodide_packet_bridge.py", bridgeSource);
           await pyodide.runPythonAsync("import sys; sys.path.insert(0, '/')");
           state.pyodide = pyodide;
