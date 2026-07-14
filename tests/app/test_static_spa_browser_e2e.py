@@ -71,7 +71,10 @@ def _verify_static_spa_interactions(page: object) -> None:
     coverage_row.wait_for(timeout=45_000)
     assert coverage_row.is_visible()
     runtime_status = page.get_by_role("status").first
-    assert "Pyodide packet pipeline ready (deterministic-browser-bridge)." in runtime_status.text_content()
+    assert (
+        "Pyodide packet pipeline ready (deterministic-browser-bridge)."
+        in runtime_status.text_content()
+    )
     assert page.locator("main").get_attribute("data-packet-path") == "deterministic-browser-bridge"
 
     page.get_by_role("button", name="Open graphic").first.click()
