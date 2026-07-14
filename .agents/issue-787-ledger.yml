@@ -7,10 +7,10 @@ tasks:
     title: Add a browser test that enables offline or network interception before
       initial SPA navigation, loads the local static bundle, and completes the real
       packet-processing interaction path.
-    status: doing
+    status: done
     started_at: '2026-07-14T04:36:39Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-07-14T04:36:51Z'
+    commit: 4cefdd6e3de7e435bb99b86b958cc0c01aae0bf6
     notes: []
   - id: task-02
     title: 'Configure browser test environment to enable offline mode or network interception
