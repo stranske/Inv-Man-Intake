@@ -442,7 +442,7 @@ tokenizers==0.22.2
     # via transformers
 toml==0.10.2
     # via streamlit
-tomlkit==0.15.0
+tomlkit==0.15.1
     # via inv-man-intake (pyproject.toml)
 torch==2.13.0
     # via

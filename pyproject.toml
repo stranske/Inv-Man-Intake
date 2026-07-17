@@ -39,7 +39,7 @@ dev = [
     "ruff==0.15.20",
     "mypy>=2.1.0",
     "black>=26.5.1",
-    "tomlkit==0.15.0",
+    "tomlkit==0.15.1",
     "pydantic==2.13.4",
     "pytest-regressions==2.11.0",
     "docling",
