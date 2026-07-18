@@ -65,6 +65,8 @@ function renderProfile(profile) {
   clearRows("queue-table");
 
   const profileList = document.getElementById("profile-list");
+  const manager = profile.manager_profile.Manager || "Uploaded manager";
+  document.getElementById("profile-heading").textContent = `Manager profile: ${manager}`;
   profileList.replaceChildren();
   for (const [label, value] of Object.entries(profile.manager_profile)) {
     const dt = document.createElement("dt");
@@ -190,6 +192,15 @@ document.getElementById("packet-upload").addEventListener("change", async (event
 document.getElementById("seed-conflict").addEventListener("click", () => {
   if (state.profile && !testControls().disableConflictHandler) {
     seedConflict(state.profile);
+  }
+});
+
+document.getElementById("refresh-assistant").addEventListener("click", () => {
+  if (state.profile) {
+    const manager = state.profile.manager_profile.Manager || "the uploaded manager";
+    state.profile.assistant_answer =
+      `Recommendation refreshed for ${manager}. Review packet exceptions before promotion.`;
+    document.getElementById("assistant-answer").textContent = state.profile.assistant_answer;
   }
 });
 

@@ -65,7 +65,7 @@
 
         <article class="operator-panel" aria-labelledby="returns-heading">
           <h2 id="returns-heading">Return stream</h2>
-          <table id="returns-table">
+          <table id="returns-table" aria-label="Packet return stream">
             <thead>
               <tr>
                 <th>Period</th>
@@ -94,7 +94,8 @@
 
         <article class="operator-panel" aria-labelledby="assistant-heading">
           <h2 id="assistant-heading">Assistant panel</h2>
-          <p id="assistant-answer">Recommendations stay manual and cite deterministic packet evidence.</p>
+          <p id="assistant-answer" aria-live="polite">Recommendations stay manual and cite deterministic packet evidence.</p>
+          <button id="refresh-assistant" type="button">Refresh recommendation</button>
         </article>
       </section>
     </main>

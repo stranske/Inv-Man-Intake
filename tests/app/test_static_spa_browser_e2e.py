@@ -57,7 +57,7 @@ def local_static_spa() -> Iterator[str]:
 
 
 def _verify_static_spa_interactions(page: object) -> None:
-    """Exercise upload, graphic, and escalation paths through accessible browser UI."""
+    """Exercise the MVP packet surfaces through accessible browser UI."""
 
     page.locator("#packet-upload").set_input_files(str(PACKET_FIXTURE))
     upload_count = page.locator("#upload-count")
@@ -75,9 +75,21 @@ def _verify_static_spa_interactions(page: object) -> None:
     )
     assert page.locator("main").get_attribute("data-packet-path") == "inv-man-intake.ingest_packet"
 
+    profile_details = page.locator("#profile-list")
+    assert "Manager" in profile_details.inner_text()
+    assert "Summit Arc Capital" in profile_details.inner_text()
+    assert "Provenance" in profile_details.inner_text()
+    profile_heading = page.get_by_role(
+        "heading", name=re.compile(r"Manager profile: Summit Arc Capital")
+    )
+    assert profile_heading.is_visible()
+
     page.get_by_role("button", name="Open graphic").first.click()
     graphics_table = page.get_by_role("table", name="Packet graphics")
     assert re.search(r"Opened", graphics_table.inner_text(timeout=45_000))
+
+    returns_table = page.get_by_role("table", name="Packet return stream")
+    assert returns_table.locator("tbody tr").count() == 1
 
     page.get_by_role("button", name="Seed deterministic conflict").click()
     queue_table = page.get_by_role("table", name="Exception queue")
@@ -86,6 +98,12 @@ def _verify_static_spa_interactions(page: object) -> None:
         name="Seeded deterministic conflict Browser-verification escalation Operations review",
     )
     assert seeded_row.count() == 1
+
+    assistant_answer = page.locator("#assistant-answer")
+    page.get_by_role("button", name="Refresh recommendation").click()
+    assert "Recommendation refreshed for Summit Arc Capital" in assistant_answer.inner_text()
+    page.get_by_role("button", name="Open graphic").first.click()
+    assert "Recommendation refreshed for Summit Arc Capital" in assistant_answer.inner_text()
 
 
 def _with_page(
