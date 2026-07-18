@@ -38,7 +38,7 @@ dev = [
     "pytest-cov==7.1.0",
     "ruff==0.15.22",
     "mypy==2.3.0",
-    "black>=26.5.1",
+    "black==26.5.1",
     "tomlkit==0.15.1",
     "pydantic==2.13.4",
     "pytest-regressions==2.11.0",

@@ -44,7 +44,7 @@ colorama==0.4.6 ; sys_platform == 'win32'
     #   tqdm
 colorlog==6.10.1
     # via rapidocr
-coverage==7.13.5
+coverage==7.15.2
     # via pytest-cov
 cuda-bindings==13.3.1 ; sys_platform == 'linux'
     # via torch
@@ -152,7 +152,7 @@ mpmath==1.3.0
     # via sympy
 multiprocess==0.70.19
     # via mpire
-mypy==2.1.0
+mypy==2.3.0
     # via inv-man-intake (pyproject.toml)
 mypy-extensions==1.1.0
     # via
@@ -351,7 +351,7 @@ rtree==1.4.1
     # via
     #   docling-ibm-models
     #   docling-slim
-ruff==0.15.20
+ruff==0.15.22
     # via inv-man-intake (pyproject.toml)
 safetensors==0.8.0
     # via
