@@ -7,10 +7,10 @@ tasks:
     title: "Update `pyproject.toml` to change both `stranske-pdf-extract` entries,\
       \ including `stranske-pdf-extract[docling]`, from `@a0ee3aa25c08\u2026` to `@pdf-extract-v0.1.0`\
       \ while preserving existing extras and `#subdirectory=packages/stranske_pdf_extract`."
-    status: doing
+    status: done
     started_at: '2026-07-24T21:35:30Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-07-24T21:35:39Z'
+    commit: a3baf1cd06c485aa0f710ae269ef850ac706b09b
     notes: []
   - id: task-02
     title: "Update the base `stranske-pdf-extract` dependency in `pyproject.toml`\
