@@ -22,7 +22,7 @@ classifiers = [
 ]
 dependencies = [
     "langsmith>=0.4.59",
-    "stranske-pdf-extract @ git+https://github.com/stranske/Workflows.git@a0ee3aa25c08d4eeb8e96dc6c8d7791930cd2d9a#subdirectory=packages/stranske_pdf_extract",
+    "stranske-pdf-extract @ git+https://github.com/stranske/Workflows.git@pdf-extract-v0.1.0#subdirectory=packages/stranske_pdf_extract",
 ]
 
 [project.optional-dependencies]
@@ -30,7 +30,7 @@ app = [
     "streamlit==1.60.0",
 ]
 extraction-docling = [
-    "stranske-pdf-extract[docling] @ git+https://github.com/stranske/Workflows.git@a0ee3aa25c08d4eeb8e96dc6c8d7791930cd2d9a#subdirectory=packages/stranske_pdf_extract",
+    "stranske-pdf-extract[docling] @ git+https://github.com/stranske/Workflows.git@pdf-extract-v0.1.0#subdirectory=packages/stranske_pdf_extract",
 ]
 dev = [
     "playwright>=1.56.0",
