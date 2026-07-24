@@ -59,3 +59,26 @@ jobs:
 
       - name: Run observability smoke test target
         run: pytest -q tests/observability/test_setup_validation.py tests/observability/test_tracing_toggle.py --no-cov
+
+  static-spa-browser-e2e:
+    name: Static SPA browser E2E
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install project with dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Install Chromium for Playwright
+        run: playwright install --with-deps chromium
+
+      - name: Run static SPA browser E2E gate
+        env:
+          CI: "true"
+        run: pytest -q tests/app/test_static_spa_browser_e2e.py -p no:cacheprovider -o addopts=""
