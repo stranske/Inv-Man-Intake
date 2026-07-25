@@ -26,6 +26,14 @@ except ImportError:  # pragma: no cover - exercised when playwright is absent
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKET_FIXTURE = ROOT / "tests" / "fixtures" / "intake" / "pdf_primary_mixed_bundle.json"
+E2E_ENV = "STATIC_SPA_E2E"
+
+
+def _require_browser_e2e() -> None:
+    """Keep browser-only checks in the dedicated workflow with Chromium installed."""
+
+    if os.environ.get(E2E_ENV) != "true":
+        pytest.skip("static SPA browser E2E runs in its dedicated Chromium workflow")
 
 
 def _free_port() -> int:
@@ -156,6 +164,7 @@ def _close_page(server_context: object, playwright_context: object, browser: obj
 def test_static_spa_offline_upload_runs_local_pyodide_packet_path_without_egress() -> None:
     """The full initial-load path is local-only and runs the deterministic Pyodide bridge."""
 
+    _require_browser_e2e()
     server_context, playwright_context, browser, page, external_requests = _with_page(
         enforce_local_requests=True
     )
@@ -170,6 +179,7 @@ def test_static_spa_offline_upload_runs_local_pyodide_packet_path_without_egress
 def test_static_spa_deliberate_break_fails_the_interaction_assertion(control: str) -> None:
     """Disabling either concrete handler makes the same browser path fail."""
 
+    _require_browser_e2e()
     server_context, playwright_context, browser, page, _ = _with_page({control: True})
     try:
         with pytest.raises(AssertionError):
@@ -185,8 +195,7 @@ def test_e2e_suite_is_not_skipped() -> None:
     ``CI=true`` this guard must fail instead of silently skipping the suite.
     """
 
-    if os.environ.get("CI") != "true":
-        pytest.skip("non-skip guard is enforced in CI only")
+    _require_browser_e2e()
     from playwright.sync_api import sync_playwright as _sp
 
     with _sp() as playwright:

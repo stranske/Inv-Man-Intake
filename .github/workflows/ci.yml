@@ -81,4 +81,5 @@ jobs:
       - name: Run static SPA browser E2E gate
         env:
           CI: "true"
+          STATIC_SPA_E2E: "true"
         run: pytest -q tests/app/test_static_spa_browser_e2e.py -p no:cacheprovider -o addopts=""
