@@ -278,8 +278,13 @@ def verify_browser_demo(
                 )
                 page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
                 page.get_by_text("Inv-Man-Intake").wait_for(timeout=timeout_ms)
+                # Static SPA markers (Packet upload console). Do not require the
+                # legacy stlite demo score string — the SPA renders its own score.
+                page.get_by_role("heading", name="Packet upload").wait_for(timeout=timeout_ms)
+                page.get_by_text("Pyodide packet pipeline ready", exact=False).wait_for(
+                    timeout=timeout_ms
+                )
                 page.get_by_text("Final score").wait_for(timeout=timeout_ms)
-                page.get_by_text(expected_score).wait_for(timeout=timeout_ms)
                 page.screenshot(path=str(screenshot_path), full_page=True)
                 body_text = page.locator("body").inner_text(timeout=timeout_ms)
                 if external_requests:
@@ -337,7 +342,7 @@ def verify_browser_demo(
                 )
                 log_path.write_text(json.dumps(asdict(result), indent=2) + "\n", encoding="utf-8")
                 raise RuntimeError(
-                    f"Timed out waiting for static-spa-pyodide demo to render Final score {expected_score} "
+                    f"Timed out waiting for static SPA Packet upload / Pyodide ready markers "
                     f"at {url}. Wrote failure evidence to {log_path.relative_to(repo_root)} "
                     f"and {screenshot_path.relative_to(repo_root)}."
                 ) from exc

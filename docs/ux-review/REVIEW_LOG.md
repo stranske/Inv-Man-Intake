@@ -3,6 +3,15 @@
 Diff-anchored record of UX Review (`/ux-review`) passes. Each entry's commit SHA anchors the next
 review's git-diff focus. Detailed artifacts live in `Orchestrator/ux_reviews/`.
 
+## 2026-07-25 — Static SPA evidence re-test for PR #841 — commit `dcdd6f5` — overall 7.75/10 (gate PASS)
+
+- **Diff focus:** the #840 branch removes the rejected `app/streamlit_app.py` surface, makes the static SPA the documented live surface, runs Chromium browser e2e in CI, and adds stale-artifact guards.
+- **Observed local surface:** served `app/index.html` at loopback. The static UI reported `Pyodide packet pipeline ready (inv-man-intake.ingest_packet)` and `Deterministic outbound calls: 0`; Packet coverage, Manager profile, Graphics gallery, Return stream, Exception queue, and Assistant panel were visibly labeled.
+- **Driven interactions:** `Seed deterministic conflict` added an `Operations review` queue row; `Refresh recommendation` showed the Summit Arc Capital confirmation; `Open graphic` changed the graphic state from `Ready` to `Opened`.
+- **Panel:** Claude/Codex/Cursor/Vibe medians — wired 8.5, usability 7.5, help clarity 7.5, workflow productivity 8.5; overall **7.75**. No corroborated findings, no severity-4 blocker, and Gate 1 observations passed.
+- **Gate decision:** PASS. The panel recorded explicit next-focus coverage gaps rather than treating them as defects: native file-picker upload and bad-file recovery, validation/error/empty states, and interactive edit paths for return stream/manager profile were not driven in this pass.
+- **Artifacts:** `Orchestrator/ux_reviews/stranske/Inv-Man-Intake_uxreview_2026-07-25-pr841/` (panel prompts and evaluator outputs). This log entry deliberately does not close any issue.
+
 ## 2026-06-22 — Scoring/intake demo (`app/streamlit_app.py`), full coverage — commit `b91b4a9` — overall 3.0/10 (gate FAIL)
 
 - **Coverage:** main scoring view ✓ (Final score + Explainability + Analyst queue); bundle selector ✓ (default fixture). **NOT driven:** the other fixture bundles; the stlite build (`app/index.html`) not separately served.

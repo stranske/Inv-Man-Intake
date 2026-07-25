@@ -69,10 +69,7 @@ def test_issue_721_throwaway_doc_type_is_fixture_driven_without_app_branching() 
     assert coverage[0].key == "custom.issue_721_metric"
     assert coverage[0].detected is True
 
-    application_sources = (
-        ROOT / "src" / "inv_man_intake" / "packet.py",
-        ROOT / "app" / "streamlit_app.py",
-    )
+    application_sources = (ROOT / "src" / "inv_man_intake" / "packet.py",)
     for source in application_sources:
         text = source.read_text(encoding="utf-8")
         assert THROWAWAY_DOC_TYPE not in text

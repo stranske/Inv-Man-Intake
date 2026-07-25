@@ -48,3 +48,6 @@ reports/readiness/
 
 # Internal automation/workloop tracker (not part of the project)
 workloop-state.md
+
+# Generated keepalive worker ledger (never commit)
+langsmith-fleet-worker-attempt.json
