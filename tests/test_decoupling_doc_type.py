@@ -71,7 +71,6 @@ def test_issue_721_throwaway_doc_type_is_fixture_driven_without_app_branching() 
 
     application_sources = (
         ROOT / "src" / "inv_man_intake" / "packet.py",
-        ROOT / "app" / "streamlit_app.py",
     )
     for source in application_sources:
         text = source.read_text(encoding="utf-8")

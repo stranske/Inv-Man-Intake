@@ -67,12 +67,10 @@ Live verification gate (no terminal required for reviewer):
 4. Verification evidence and screenshot are recorded in
    `app/live-verification.md`.
 
-### Deprecated Streamlit/stlite fixture renderer
+### Static SPA is the sole live surface
 
-`app/streamlit_app.py` is a deprecated compatibility renderer for deterministic
-fixture tests. It is not a production entrypoint and must not be used for
-browser verification or user-facing deployment. Use `app/index.html` and the
-static-Pyodide verification path above instead.
+`app/streamlit_app.py` has been removed. Browser verification and operator use
+must go through `app/index.html` and the static-Pyodide path above.
 
 The repository uses the shared
 [`stranske/Workflows`](https://github.com/stranske/Workflows) CI and agent

@@ -13,11 +13,17 @@ from contextlib import closing, contextmanager
 from pathlib import Path
 from urllib.request import urlopen
 
+import os
+
 import pytest
 from scripts.verify_static_spa_pyodide import handle_offline_route
 
-playwright_sync = pytest.importorskip("playwright.sync_api")
-sync_playwright = playwright_sync.sync_playwright
+try:
+    from playwright.sync_api import sync_playwright
+except ImportError:  # pragma: no cover - exercised when playwright is absent
+    if os.environ.get("CI") == "true":
+        raise
+    pytest.skip("playwright.sync_api is not installed", allow_module_level=True)
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKET_FIXTURE = ROOT / "tests" / "fixtures" / "intake" / "pdf_primary_mixed_bundle.json"
@@ -117,7 +123,18 @@ def _with_page(
     url = server_context.__enter__()
     playwright_context = sync_playwright()
     playwright = playwright_context.__enter__()
-    browser = playwright.chromium.launch(channel="chrome", headless=True)
+    # CI installs bundled Chromium; local prefer Chrome channel when present.
+    launch_kwargs: dict[str, object] = {"headless": True}
+    if os.environ.get("CI") != "true":
+        launch_kwargs["channel"] = "chrome"
+    try:
+        browser = playwright.chromium.launch(**launch_kwargs)
+    except Exception:
+        if "channel" in launch_kwargs:
+            launch_kwargs.pop("channel")
+            browser = playwright.chromium.launch(**launch_kwargs)
+        else:
+            raise
     page = browser.new_page()
     external_requests: list[str] = []
     if enforce_local_requests:
@@ -160,3 +177,24 @@ def test_static_spa_deliberate_break_fails_the_interaction_assertion(control: st
             _verify_static_spa_interactions(page)
     finally:
         _close_page(server_context, playwright_context, browser)
+
+
+def test_e2e_suite_is_not_skipped() -> None:
+    """In CI, Playwright must be importable and able to launch Chromium.
+
+    Local runs may skip when Playwright/browser binaries are missing; under
+    ``CI=true`` this guard must fail instead of silently skipping the suite.
+    """
+
+    if os.environ.get("CI") != "true":
+        pytest.skip("non-skip guard is enforced in CI only")
+    from playwright.sync_api import sync_playwright as _sp
+
+    with _sp() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            page = browser.new_page()
+            page.set_content("<html><body>ok</body></html>")
+            assert "ok" in page.content()
+        finally:
+            browser.close()
