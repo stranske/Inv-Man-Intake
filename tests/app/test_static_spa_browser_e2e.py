@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import socket
 import subprocess
@@ -12,8 +13,6 @@ from collections.abc import Iterator
 from contextlib import closing, contextmanager
 from pathlib import Path
 from urllib.request import urlopen
-
-import os
 
 import pytest
 from scripts.verify_static_spa_pyodide import handle_offline_route
