@@ -34,7 +34,11 @@ except ModuleNotFoundError:  # pragma: no cover
     pass
 
 
-def run_packet(files: list[dict[str, str]]) -> dict[str, Any]:
+def run_packet(
+    files: list[dict[str, str]],
+    vector_artifacts: Sequence[Mapping[str, Any]] = (),
+    vector_failures: Sequence[Mapping[str, Any]] = (),
+) -> dict[str, Any]:
     """Return the packet view consumed by the static SPA."""
 
     uploaded = files or [
@@ -44,9 +48,60 @@ def run_packet(files: list[dict[str, str]]) -> dict[str, Any]:
             "text": "Summit Arc Capital seeded packet.",
         }
     ]
-    if _ingest_packet is not None:
-        return _run_ingest_packet(uploaded)
-    return _fallback_packet_view(uploaded)
+    profile = (
+        _run_ingest_packet(uploaded)
+        if _ingest_packet is not None
+        else _fallback_packet_view(uploaded)
+    )
+    return _attach_vector_exports(profile, vector_artifacts, vector_failures)
+
+
+def _attach_vector_exports(
+    profile: dict[str, Any],
+    vector_artifacts: Sequence[Mapping[str, Any]],
+    vector_failures: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Record browser-rendered PNGs as X1 export artifacts with provenance."""
+
+    from inv_man_intake.export.manifest import ExportArtifact
+
+    exports: list[Any] = []
+    for record in vector_artifacts:
+        provenance = record.get("provenance") or {}
+        page = provenance.get("page")
+        bbox = tuple(provenance.get("bbox") or ())
+        document = str(record.get("document") or str(record.get("name", "")).split(":", 1)[0])
+        exports.append(
+            ExportArtifact(
+                name=str(record.get("name")),
+                media_type=str(record.get("mediaType", "image/png")),
+                content=bytes(record.get("bytes") or ()),
+                provenance_refs=(
+                    f"{document}:page:{page}",
+                    f"{document}:bbox:{','.join(map(str, bbox))}",
+                ),
+            )
+        )
+    profile["vector_exports"] = [
+        {
+            "name": artifact.name,
+            "media_type": artifact.media_type,
+            "byte_length": len(artifact.content),
+            "provenance_refs": list(artifact.provenance_refs),
+        }
+        for artifact in exports
+    ]
+    profile["queue"].extend(
+        {
+            "item": "vector_render_failed",
+            "reason": (
+                f"{failure.get('document')}:page:{failure.get('page')}: {failure.get('reason')}"
+            ),
+            "owner": "analyst",
+        }
+        for failure in vector_failures
+    )
+    return profile
 
 
 class _BrowserTextProvider:
