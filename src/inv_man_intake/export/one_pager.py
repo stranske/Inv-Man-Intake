@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
 from math import isfinite
 from typing import TYPE_CHECKING
@@ -168,7 +168,7 @@ def _validate_scores(scores: Mapping[str, float]) -> None:
 
 
 def _bounded_fields(
-    fields: object, max_fields: int, max_value_characters: int
+    fields: Iterable[OnePagerField], max_fields: int, max_value_characters: int
 ) -> tuple[OnePagerField, ...]:
     return tuple(
         OnePagerField(field.label, _bounded_text(field.value, max_value_characters))
