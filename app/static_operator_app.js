@@ -12,6 +12,11 @@ const PRODUCTION_PACKET_MODULES = [
   "performance/conflict_resolver.py",
   "export/manifest.py",
   "export/one_pager.py",
+  "export/service.py",
+  "export/image_export.py",
+  "images/models.py",
+  "images/png.py",
+  "images/extractor.py",
 ];
 
 const state = {

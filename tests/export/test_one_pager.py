@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from inv_man_intake.export.manifest import ExportArtifact
 from inv_man_intake.export.one_pager import build_one_pager
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
 from inv_man_intake.intake.standard_elements import load_standard_element_library
@@ -112,3 +113,34 @@ def test_summary_bounds_dense_profile_content() -> None:
         for section in (model.identity, model.return_stats)
         for field in section
     )
+
+
+def test_summary_bounds_graphics_labels_and_provenance() -> None:
+    """Graphics honour the same one-page text budget as every other section."""
+
+    artifact = ExportArtifact(
+        name="G" * 200,
+        media_type="image/png",
+        content=b"",
+        provenance_refs=("P" * 200,),
+    )
+    model = build_one_pager(replace(_profile(), graphics_artifacts=(artifact,)))
+    assert all(
+        len(graphic.label) <= 80 and len(graphic.provenance_ref) <= 80 for graphic in model.graphics
+    )
+
+    ref_model = build_one_pager(
+        replace(_profile(), graphics_artifacts=(), graphics_refs=("R" * 200,))
+    )
+    assert all(
+        len(graphic.label) <= 80 and len(graphic.provenance_ref) <= 80
+        for graphic in ref_model.graphics
+    )
+
+
+def test_summary_titles_an_identity_without_a_manager_field() -> None:
+    """Identity fields without a manager entry must not title the page "Manager"."""
+
+    model = build_one_pager(replace(_profile(), identity={"operations.aum": "$100.0M"}))
+
+    assert model.title == "Unknown manager strategy summary"

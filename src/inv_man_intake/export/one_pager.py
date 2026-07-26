@@ -77,7 +77,9 @@ class OnePagerExporter:
         identity = _identity_fields(
             profile.identity, self.max_identity_fields, self.max_value_characters
         )
-        manager = next((field.value for field in identity if field.label == "Manager"), "Manager")
+        manager = next(
+            (field.value for field in identity if field.label == "Manager"), "Unknown manager"
+        )
         return OnePagerModel(
             title=f"{manager} strategy summary",
             identity=identity,
@@ -103,7 +105,11 @@ class OnePagerExporter:
                 self.max_return_stats,
                 self.max_value_characters,
             ),
-            graphics=_graphics(profile, max_graphics=self.max_graphics),
+            graphics=_graphics(
+                profile,
+                max_graphics=self.max_graphics,
+                max_value_characters=self.max_value_characters,
+            ),
         )
 
 
@@ -185,12 +191,15 @@ def _bounded_text(value: str, max_characters: int) -> str:
     )
 
 
-def _graphics(profile: ManagerProfile, *, max_graphics: int) -> tuple[OnePagerGraphic, ...]:
+def _graphics(
+    profile: ManagerProfile, *, max_graphics: int, max_value_characters: int
+) -> tuple[OnePagerGraphic, ...]:
     artifacts = tuple(
         OnePagerGraphic(
-            label=artifact.name,
-            provenance_ref=(
-                artifact.provenance_refs[0] if artifact.provenance_refs else artifact.name
+            label=_bounded_text(artifact.name, max_value_characters),
+            provenance_ref=_bounded_text(
+                artifact.provenance_refs[0] if artifact.provenance_refs else artifact.name,
+                max_value_characters,
             ),
             media_type=artifact.media_type,
         )
@@ -199,7 +208,10 @@ def _graphics(profile: ManagerProfile, *, max_graphics: int) -> tuple[OnePagerGr
     if artifacts:
         return artifacts
     return tuple(
-        OnePagerGraphic(label=ref, provenance_ref=ref)
+        OnePagerGraphic(
+            label=_bounded_text(ref, max_value_characters),
+            provenance_ref=_bounded_text(ref, max_value_characters),
+        )
         for ref in profile.graphics_refs[:max_graphics]
     )
 

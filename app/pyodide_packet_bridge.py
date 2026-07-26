@@ -117,7 +117,7 @@ def _packet_view_from_profile(profile: Any) -> dict[str, Any]:
         "packet_path": "inv-man-intake.ingest_packet",
         "manager_profile": {
             "Manager": profile.identity.get("identity.manager", "Unknown manager"),
-            "Final score": f"{profile.scores.get('extraction_confidence', 0.0):.4f}",
+            "Final score": f"{one_pager['final_score']:.4f}",
             "Explainability": ", ".join(sorted(profile.scores)) or "No score components",
             "Provenance": ", ".join(profile.lineage_refs) or "packet:no-lineage",
         },
