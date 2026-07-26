@@ -281,6 +281,9 @@ def _pdf_colorspace(
         value = resolved
 
     if b"/Indexed" in value:
+        # PNG PLTE requires 3 bytes/entry; only DeviceRGB bases map cleanly.
+        if b"/DeviceRGB" not in value:
+            return None, None, None
         return "Indexed", 1, _indexed_palette(objects, value)
     if b"/DeviceCMYK" in value:
         return "DeviceCMYK", 4, None
@@ -290,8 +293,11 @@ def _pdf_colorspace(
         return "DeviceRGB", 3, None
     if b"/DeviceGray" in value or b"/CalGray" in value:
         return "DeviceGray", 1, None
-    if b"/CalRGB" in value or b"/Lab" in value:
+    if b"/CalRGB" in value:
         return "CalRGB", 3, None
+    if b"/Lab" in value:
+        # Lab samples are not RGB; do not silently mis-map into PNG RGB channels.
+        return None, None, None
     return None, None, None
 
 

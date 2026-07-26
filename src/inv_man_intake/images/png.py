@@ -112,6 +112,10 @@ def rebuild_flate_raster_to_png(stream: bytes, geometry: ImageGeometry) -> bytes
         if len(samples) != expected:
             raise PngEncodeError(f"predicted stream is {len(samples)} bytes, expected {expected}")
         scanlines = samples
+    elif predictor not in (1,):
+        # Predictor 2 (TIFF horizontal differencing) is not reversed here;
+        # treating it as raw samples would silently corrupt pixel data.
+        raise PngEncodeError(f"unsupported predictor: {predictor}")
     else:
         expected = stride * height
         if len(samples) != expected:

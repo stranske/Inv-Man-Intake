@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 from inv_man_intake.export.image_export import export_document_images, merge_manifests
-from inv_man_intake.export.manifest import ExportArtifact, ExportManifest
+from inv_man_intake.export.manifest import ExportArtifact, ExportManifest, ManifestSkip
 from inv_man_intake.extraction.cross_check import (
     CrossCheckReport,
     cross_check_extraction_results,
@@ -238,18 +238,34 @@ def _collect_fields(
 
 
 def _graphics_manifest(files: Sequence[PacketFile]) -> ExportManifest:
-    """Export real image bytes for the packet instead of placeholder ref strings."""
+    """Export real image bytes for the packet instead of placeholder ref strings.
 
-    return merge_manifests(
-        [
-            export_document_images(
-                source_doc_id=packet_file.document_id,
-                file_name=packet_file.filename,
-                content=packet_file.content,
+    Isolate each document so one decode/export failure cannot abort the whole packet.
+    """
+
+    manifests: list[ExportManifest] = []
+    for packet_file in files:
+        try:
+            manifests.append(
+                export_document_images(
+                    source_doc_id=packet_file.document_id,
+                    file_name=packet_file.filename,
+                    content=packet_file.content,
+                )
             )
-            for packet_file in files
-        ]
-    )
+        except Exception:
+            manifests.append(
+                ExportManifest(
+                    artifacts=(),
+                    skipped=(
+                        ManifestSkip(
+                            item_ref=f"{packet_file.document_id}:image:0",
+                            reason_code="unsupported_encoding",
+                        ),
+                    ),
+                )
+            )
+    return merge_manifests(manifests)
 
 
 def _flagged_non_standard_items(

@@ -371,3 +371,81 @@ def test_non_visual_document_yields_empty_manifest() -> None:
 
     assert manifest.artifacts == ()
     assert manifest.skipped == ()
+
+
+def test_indexed_non_rgb_base_is_unsupported() -> None:
+    indexed_gray = (
+        b"5 0 obj\n<< /Subtype /Image /Filter /FlateDecode /Width 2 /Height 2"
+        b" /BitsPerComponent 8 /ColorSpace [/Indexed /DeviceGray 1 <00 FF>]"
+        b" >>\nstream\n" + zlib.compress(bytes([0, 1, 1, 0])) + b"\nendstream\nendobj\n"
+    )
+    artifacts = extract_visual_artifacts(
+        source_doc_id="doc_indexed_gray",
+        file_name="deck.pdf",
+        content=_pdf_with(indexed_gray, page_refs="/Im0 5 0 R"),
+    )
+
+    assert artifacts[0].mime_type == "application/octet-stream"
+    assert artifacts[0].unsupported_reason == "unsupported_encoding"
+
+
+def test_lab_colorspace_is_unsupported_not_mapped_to_rgb() -> None:
+    lab = (
+        b"5 0 obj\n<< /Subtype /Image /Filter /FlateDecode /Width 2 /Height 2"
+        b" /BitsPerComponent 8 /ColorSpace /Lab >>\nstream\n"
+        + zlib.compress(bytes(range(12)))
+        + b"\nendstream\nendobj\n"
+    )
+    artifacts = extract_visual_artifacts(
+        source_doc_id="doc_lab",
+        file_name="deck.pdf",
+        content=_pdf_with(lab, page_refs="/Im0 5 0 R"),
+    )
+
+    assert artifacts[0].mime_type == "application/octet-stream"
+    assert artifacts[0].unsupported_reason == "unsupported_encoding"
+    assert artifacts[0].geometry is not None
+    assert artifacts[0].geometry.color_space is None
+
+
+def test_tiff_predictor_is_rejected_instead_of_silent_misdecode() -> None:
+    predicted = (
+        b"5 0 obj\n<< /Subtype /Image /Filter /FlateDecode /Width 2 /Height 2"
+        b" /BitsPerComponent 8 /ColorSpace /DeviceRGB"
+        b" /DecodeParms << /Predictor 2 /Colors 3 /Columns 2 >> >>\nstream\n"
+        + zlib.compress(bytes(range(12)))
+        + b"\nendstream\nendobj\n"
+    )
+    artifacts = extract_visual_artifacts(
+        source_doc_id="doc_pred2",
+        file_name="deck.pdf",
+        content=_pdf_with(predicted, page_refs="/Im0 5 0 R"),
+    )
+
+    assert artifacts[0].mime_type == "application/octet-stream"
+    assert artifacts[0].unsupported_reason == "unsupported_encoding"
+
+
+def test_packet_isolates_graphics_export_failures_per_document(monkeypatch) -> None:
+    from inv_man_intake import packet as packet_mod
+
+    good = PacketFile(document_id="doc_ok", content=_flate_deck(), filename="ok.pdf")
+    bad = PacketFile(document_id="doc_bad", content=_flate_deck(), filename="bad.pdf")
+    original = packet_mod.export_document_images
+
+    def _flaky_export(*, source_doc_id: str, file_name: str | None, content: bytes):
+        if source_doc_id == "doc_bad":
+            raise RuntimeError("simulated decode failure")
+        return original(source_doc_id=source_doc_id, file_name=file_name, content=content)
+
+    monkeypatch.setattr(packet_mod, "export_document_images", _flaky_export)
+
+    profile = ingest_packet(
+        [good, bad],
+        provider=_StubProvider(),
+        standard_library=_library(),
+    )
+
+    assert profile.graphics_refs == ("doc_ok:image:0",)
+    assert len(profile.graphics_artifacts) == 1
+    assert profile.graphics_skipped == (("doc_bad:image:0", "unsupported_encoding"),)
