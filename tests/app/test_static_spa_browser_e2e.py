@@ -42,6 +42,35 @@ def _free_port() -> int:
         return int(sock.getsockname()[1])
 
 
+def _vector_chart_pdf() -> bytes:
+    """Build a compact PDF with one filled vector rectangle for browser rendering."""
+
+    stream = b"q 0.1 0.4 0.8 rg 120 180 260 190 re f Q\n"
+    objects = (
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
+        b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"endstream",
+    )
+    document = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offsets = [0]
+    for number, value in enumerate(objects, start=1):
+        offsets.append(len(document))
+        document.extend(f"{number} 0 obj\n".encode())
+        document.extend(value)
+        document.extend(b"\nendobj\n")
+    xref_offset = len(document)
+    document.extend(f"xref\n0 {len(objects) + 1}\n".encode())
+    document.extend(b"0000000000 65535 f \n")
+    document.extend(b"".join(f"{offset:010d} 00000 n \n".encode() for offset in offsets[1:]))
+    document.extend(
+        b"trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n"
+        + str(xref_offset).encode()
+        + b"\n%%EOF\n"
+    )
+    return bytes(document)
+
+
 @contextmanager
 def local_static_spa() -> Iterator[str]:
     """Serve the committed SPA bundle from a local-only HTTP endpoint."""
@@ -185,6 +214,36 @@ def test_static_spa_offline_upload_runs_local_pyodide_packet_path_without_egress
     )
     try:
         _verify_static_spa_interactions(page)
+        assert external_requests == []
+    finally:
+        _close_page(server_context, playwright_context, browser)
+
+
+def test_vector_figure_export_renders_a_local_pdf_region_without_egress() -> None:
+    """A PDF drawing operator becomes a cropped local PNG preview, never a network request."""
+
+    _require_browser_e2e()
+    server_context, playwright_context, browser, page, external_requests = _with_page(
+        enforce_local_requests=True
+    )
+    try:
+        page.locator("#packet-upload").set_input_files(
+            {
+                "name": "vector-chart.pdf",
+                "mimeType": "application/pdf",
+                "buffer": _vector_chart_pdf(),
+            }
+        )
+        graphics_table = page.get_by_role("table", name="Packet graphics")
+        vector_row = graphics_table.get_by_role(
+            "row", name=re.compile(r"vector-chart.*Rendered page 1")
+        )
+        vector_row.wait_for(timeout=45_000)
+        assert vector_row.is_visible()
+        vector_row.get_by_role("button", name="Preview graphic").click()
+        preview = page.locator("#graphic-preview img")
+        preview.wait_for(timeout=45_000)
+        assert preview.get_attribute("src").startswith("blob:")
         assert external_requests == []
     finally:
         _close_page(server_context, playwright_context, browser)

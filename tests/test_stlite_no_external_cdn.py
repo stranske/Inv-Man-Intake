@@ -7,6 +7,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 INDEX_HTML = REPO_ROOT / "app" / "index.html"
 DESIGN_SYSTEM = REPO_ROOT / "design-system"
 PYODIDE_VENDOR = REPO_ROOT / "app" / "vendor" / "pyodide@0.26.2"
+PDFJS_VENDOR = REPO_ROOT / "app" / "vendor" / "pdfjs@4.10.38"
 
 
 def _has_design_system_stylesheets(index_html: str) -> bool:
@@ -23,18 +24,18 @@ def test_index_has_no_external_runtime_ref() -> None:
     index_html = INDEX_HTML.read_text(encoding="utf-8")
 
     assert "cdn.jsdelivr.net" not in index_html, "index.html must not reference jsDelivr"
-    assert not re.search(
-        r"""<(?:script|link)\b[^>]+(?:src|href)=["']https?://""", index_html
-    ), "index.html must not load external http(s) scripts or stylesheets"
-    assert not re.search(
-        r"""\bimport(?:\s*\(|\s+[^;]*?\s+from\s+)["']https?://""", index_html
-    ), "index.html must not import external http(s) modules"
-    assert (
-        '<script src="./vendor/pyodide@0.26.2/pyodide.js"></script>' in index_html
-    ), "index.html must load the vendored Pyodide runtime"
-    assert (
-        '<script type="module" src="./static_operator_app.js"></script>' in index_html
-    ), "index.html must load the static SPA module locally"
+    assert not re.search(r"""<(?:script|link)\b[^>]+(?:src|href)=["']https?://""", index_html), (
+        "index.html must not load external http(s) scripts or stylesheets"
+    )
+    assert not re.search(r"""\bimport(?:\s*\(|\s+[^;]*?\s+from\s+)["']https?://""", index_html), (
+        "index.html must not import external http(s) modules"
+    )
+    assert '<script src="./vendor/pyodide@0.26.2/pyodide.js"></script>' in index_html, (
+        "index.html must load the vendored Pyodide runtime"
+    )
+    assert '<script type="module" src="./static_operator_app.js"></script>' in index_html, (
+        "index.html must load the static SPA module locally"
+    )
     assert "vendor/stlite" not in index_html
     assert "stlite.mount" not in index_html
 
@@ -96,9 +97,9 @@ def test_required_pyodide_wheels_are_vendored() -> None:
     ]:
         matches = list(PYODIDE_VENDOR.glob(pattern))
         assert matches, f"Missing vendored Pyodide wheel matching {pattern}"
-        assert all(
-            path.stat().st_size > 0 for path in matches
-        ), f"Vendored Pyodide wheel matching {pattern} must be non-empty"
+        assert all(path.stat().st_size > 0 for path in matches), (
+            f"Vendored Pyodide wheel matching {pattern} must be non-empty"
+        )
 
 
 def test_static_spa_runtime_files_exist() -> None:
@@ -121,6 +122,19 @@ def test_static_spa_module_uses_local_pyodide_runtime() -> None:
     assert "loadPyodide({ indexURL: PYODIDE_RUNTIME })" in app_js
     assert "https://" not in app_js
     assert "http://" not in app_js
+
+
+def test_vector_renderer_uses_vendored_pdfjs_with_its_local_worker() -> None:
+    renderer = (REPO_ROOT / "app" / "vector_figure_renderer.js").read_text(encoding="utf-8")
+
+    assert (PDFJS_VENDOR / "pdf.min.mjs").is_file()
+    assert (PDFJS_VENDOR / "pdf.worker.min.mjs").is_file()
+    assert (PDFJS_VENDOR / "LICENSE").is_file()
+    assert 'import * as pdfjs from "./vendor/pdfjs@4.10.38/pdf.min.mjs";' in renderer
+    assert "pdf.worker.min.mjs" in renderer
+    assert "getOperatorList" in renderer
+    assert "http://" not in renderer
+    assert "https://" not in renderer
 
 
 def test_pyodide_bridge_has_no_network_or_streamlit_dependency() -> None:

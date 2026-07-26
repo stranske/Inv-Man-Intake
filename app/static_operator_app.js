@@ -1,3 +1,5 @@
+import { renderVectorFigures } from "./vector_figure_renderer.js";
+
 const PYODIDE_RUNTIME = "./vendor/pyodide@0.26.2/";
 const BRIDGE_MODULE = "./pyodide_packet_bridge.py";
 const PRODUCTION_PACKET_MODULES = [
@@ -23,6 +25,8 @@ const state = {
   pyodide: null,
   pyodideInit: null,
   profile: null,
+  vectorArtifacts: [],
+  previewUrls: [],
 };
 
 function testControls() {
@@ -86,6 +90,26 @@ function renderOnePager(onePager) {
   );
 }
 
+function clearVectorPreviews() {
+  for (const url of state.previewUrls) {
+    URL.revokeObjectURL(url);
+  }
+  state.previewUrls = [];
+  document.getElementById("graphic-preview").replaceChildren();
+}
+
+function previewVectorArtifact(artifact) {
+  clearVectorPreviews();
+  const url = URL.createObjectURL(new Blob([artifact.bytes], { type: artifact.mediaType }));
+  state.previewUrls.push(url);
+  const image = document.createElement("img");
+  image.src = url;
+  image.alt = `${artifact.name} preview`;
+  image.width = artifact.width;
+  image.height = artifact.height;
+  document.getElementById("graphic-preview").append(image);
+}
+
 function seedConflict(profile) {
   if (profile.queue.some((row) => row.item === "Seeded deterministic conflict")) {
     return;
@@ -122,12 +146,25 @@ function renderProfile(profile) {
   for (const row of profile.coverage) {
     appendRow("coverage-table", [row.document, row.type, row.coverage]);
   }
-  for (const row of profile.graphics) {
+  clearVectorPreviews();
+  const graphics = [
+    ...profile.graphics,
+    ...state.vectorArtifacts.map((artifact) => ({
+      graphic: artifact.name,
+      status: `Rendered page ${artifact.provenance.page}`,
+      vectorArtifact: artifact,
+    })),
+  ];
+  for (const row of graphics) {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = "Open graphic";
+    button.textContent = row.vectorArtifact ? "Preview graphic" : "Open graphic";
     if (!testControls().disableGraphicHandler) {
       button.addEventListener("click", () => {
+        if (row.vectorArtifact) {
+          previewVectorArtifact(row.vectorArtifact);
+          return;
+        }
         row.status = "Opened";
         renderProfile(profile);
       });
@@ -206,7 +243,18 @@ async function loadProfile(files) {
         + "from pyodide_packet_bridge import run_packet\n"
         + "json.dumps(run_packet(packet_payload))"
     );
-    renderProfile(JSON.parse(profileJson));
+    const profile = JSON.parse(profileJson);
+    try {
+      state.vectorArtifacts = await renderVectorFigures(files);
+    } catch (vectorError) {
+      state.vectorArtifacts = [];
+      profile.queue.push({
+        item: "vector_render_failed",
+        reason: vectorError instanceof Error ? vectorError.message : String(vectorError),
+        owner: "analyst",
+      });
+    }
+    renderProfile(profile);
   } catch (error) {
     state.pyodideInit = null;
     const message = error instanceof Error ? error.message : String(error);
@@ -221,9 +269,16 @@ async function selectedFiles(input) {
     return [{
       name: "pdf_primary_mixed_bundle.json",
       text: "Summit Arc Capital mixed-source packet with drawdown chart and return stream.",
+      bytes: new Uint8Array(),
+      mime: "application/json",
     }];
   }
-  return Promise.all(files.map(async (file) => ({ name: file.name, text: await file.text() })));
+  return Promise.all(files.map(async (file) => ({
+    name: file.name,
+    text: await file.text(),
+    bytes: new Uint8Array(await file.arrayBuffer()),
+    mime: file.type,
+  })));
 }
 
 document.getElementById("packet-upload").addEventListener("change", async (event) => {
@@ -249,4 +304,9 @@ document.getElementById("refresh-assistant").addEventListener("click", () => {
 
 document.getElementById("save-as-pdf").addEventListener("click", () => window.print());
 
-loadProfile([{ name: "pdf_primary_mixed_bundle.json", text: "Summit Arc Capital seeded packet." }]);
+loadProfile([{
+  name: "pdf_primary_mixed_bundle.json",
+  text: "Summit Arc Capital seeded packet.",
+  bytes: new Uint8Array(),
+  mime: "application/json",
+}]);
