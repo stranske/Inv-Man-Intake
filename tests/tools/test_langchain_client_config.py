@@ -8,6 +8,19 @@ import pytest
 
 from tools import langchain_client, llm_provider
 
+# These tests assert the *hardened* slot-resolution contract shipped with the
+# synced tools/llm_registry.py.  Two properties changed from the pre-hardening
+# behavior these tests originally encoded:
+#
+# 1. An explicit ``LANGCHAIN_SLOT_CONFIG`` is an execution *allowlist*.  When it
+#    is unreadable, malformed, or contains no usable slot, resolution fails
+#    CLOSED (empty list) instead of silently broadening execution back to the
+#    built-in default slots.
+# 2. A model is only eligible as an explicit slot pin when the registry lists it
+#    as ``lifecycle: "current"`` and unblocked; tier/quality scores no longer
+#    rank models.  A slot may instead name a ``profile`` that resolves to the
+#    single reviewed ``selections`` decision for that provider/profile.
+
 
 class FakeChatOpenAI:
     calls: list[dict[str, object]] = []
@@ -34,21 +47,21 @@ def reset_fake_chat_calls():
     FakeChatAnthropic.calls.clear()
 
 
-def _write_json(path, payload: dict[str, object]) -> str:
+def _write_json(path, payload: object) -> str:
     path.write_text(json.dumps(payload), encoding="utf-8")
     return str(path)
 
 
-def test_slot_config_ignores_non_object_payload(tmp_path, monkeypatch) -> None:
+def test_slot_config_non_object_payload_fails_closed(tmp_path, monkeypatch) -> None:
+    """A configured slot file that is not an object is an unreadable allowlist.
+
+    It must fail closed rather than fall back to the built-in default slots.
+    """
     registry_path = _write_json(
         tmp_path / "model_registry.json",
         {
             "models": [
-                {
-                    "model_id": "gpt-safe",
-                    "provider": "openai",
-                    "quality": {"T3": 0.80},
-                }
+                {"model_id": "gpt-safe", "provider": "openai", "lifecycle": "current"}
             ]
         },
     )
@@ -57,40 +70,26 @@ def test_slot_config_ignores_non_object_payload(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv(langchain_client.ENV_MODEL_REGISTRY_CONFIG, registry_path)
     monkeypatch.setenv(langchain_client.ENV_SLOT_CONFIG, str(slots_path))
 
-    slots = langchain_client._resolve_slots()
-
-    assert [(slot.name, slot.provider, slot.model) for slot in slots] == [
-        ("slot1", langchain_client.PROVIDER_OPENAI, "gpt-5.4"),
-        ("slot2", langchain_client.PROVIDER_ANTHROPIC, "claude-sonnet-4-6"),
-        ("slot3", langchain_client.PROVIDER_GITHUB, langchain_client.DEFAULT_MODEL),
-    ]
+    assert langchain_client._resolve_slots() == []
 
 
-def test_slot_config_ignores_non_list_slots_payload(tmp_path, monkeypatch) -> None:
+def test_slot_config_non_list_slots_payload_fails_closed(tmp_path, monkeypatch) -> None:
+    """A ``slots`` key that is not a list yields no usable allowlist -> fail closed."""
     registry_path = _write_json(tmp_path / "model_registry.json", {"models": []})
     slots_path = _write_json(tmp_path / "llm_slots.json", {"slots": {"bad": "shape"}})
     monkeypatch.setenv(langchain_client.ENV_MODEL_REGISTRY_CONFIG, registry_path)
     monkeypatch.setenv(langchain_client.ENV_SLOT_CONFIG, slots_path)
 
-    slots = langchain_client._resolve_slots()
-
-    assert [(slot.name, slot.provider, slot.model) for slot in slots] == [
-        ("slot1", langchain_client.PROVIDER_OPENAI, "gpt-5.4"),
-        ("slot2", langchain_client.PROVIDER_ANTHROPIC, "claude-sonnet-4-6"),
-        ("slot3", langchain_client.PROVIDER_GITHUB, langchain_client.DEFAULT_MODEL),
-    ]
+    assert langchain_client._resolve_slots() == []
 
 
 def test_slot_config_skips_non_object_slot_entries(tmp_path, monkeypatch) -> None:
+    """Non-object slot entries are ignored while a current pin is retained."""
     registry_path = _write_json(
         tmp_path / "model_registry.json",
         {
             "models": [
-                {
-                    "model_id": "gpt-safe",
-                    "provider": "openai",
-                    "quality": {"T3": 0.80},
-                }
+                {"model_id": "gpt-safe", "provider": "openai", "lifecycle": "current"}
             ]
         },
     )
@@ -113,7 +112,8 @@ def test_slot_config_skips_non_object_slot_entries(tmp_path, monkeypatch) -> Non
     ]
 
 
-def test_model_registry_ignores_non_object_payload(tmp_path, monkeypatch) -> None:
+def test_model_registry_non_object_payload_fails_closed(tmp_path, monkeypatch) -> None:
+    """An unreadable model registry cannot resolve a tier/profile slot -> fail closed."""
     registry_path = tmp_path / "model_registry.json"
     registry_path.write_text(json.dumps(["not", "an", "object"]), encoding="utf-8")
     slots_path = _write_json(
@@ -123,16 +123,11 @@ def test_model_registry_ignores_non_object_payload(tmp_path, monkeypatch) -> Non
     monkeypatch.setenv(langchain_client.ENV_MODEL_REGISTRY_CONFIG, str(registry_path))
     monkeypatch.setenv(langchain_client.ENV_SLOT_CONFIG, slots_path)
 
-    slots = langchain_client._resolve_slots()
-
-    assert [(slot.name, slot.provider, slot.model) for slot in slots] == [
-        ("slot1", langchain_client.PROVIDER_OPENAI, "gpt-5.4"),
-        ("slot2", langchain_client.PROVIDER_ANTHROPIC, "claude-sonnet-4-6"),
-        ("slot3", langchain_client.PROVIDER_GITHUB, langchain_client.DEFAULT_MODEL),
-    ]
+    assert langchain_client._resolve_slots() == []
 
 
 def test_slot_config_skips_model_registry_blocked_models(tmp_path, monkeypatch) -> None:
+    """A blocked pin is dropped; a current, unblocked pin is retained."""
     registry_path = _write_json(
         tmp_path / "model_registry.json",
         {
@@ -140,13 +135,13 @@ def test_slot_config_skips_model_registry_blocked_models(tmp_path, monkeypatch) 
                 {
                     "model_id": "gpt-blocked",
                     "provider": "openai",
+                    "lifecycle": "current",
                     "blocked": True,
-                    "quality": {"T3": 0.99},
                 },
                 {
                     "model_id": "claude-ok",
                     "provider": "anthropic",
-                    "quality": {"T3": 0.80},
+                    "lifecycle": "current",
                 },
             ]
         },
@@ -170,33 +165,38 @@ def test_slot_config_skips_model_registry_blocked_models(tmp_path, monkeypatch) 
     ]
 
 
-def test_slot_config_resolves_quality_tier_from_model_registry(tmp_path, monkeypatch) -> None:
+def test_slot_config_resolves_profile_from_reviewed_selection(tmp_path, monkeypatch) -> None:
+    """A profile slot resolves to the single reviewed selection for that profile.
+
+    This is the hardened successor to quality-tier ranking: the model is chosen
+    by the auditable reviewed decision, never by a manufactured quality score.
+    """
     registry_path = _write_json(
         tmp_path / "model_registry.json",
         {
             "models": [
-                {
-                    "model_id": "gpt-low",
-                    "provider": "openai",
-                    "quality": {"T3": 0.50},
-                },
+                {"model_id": "gpt-reviewed", "provider": "openai", "lifecycle": "current"},
                 {
                     "model_id": "gpt-blocked-high",
                     "provider": "openai",
+                    "lifecycle": "current",
                     "blocked": True,
-                    "quality": {"T3": 0.99},
                 },
+            ],
+            "selections": [
                 {
-                    "model_id": "gpt-safe-high",
+                    "profile": "verifier-balanced",
                     "provider": "openai",
-                    "quality": {"T3": 0.85},
-                },
-            ]
+                    "model_id": "gpt-reviewed",
+                    "status": "provisional",
+                    "evidence_ids": ["catalog-review"],
+                }
+            ],
         },
     )
     slots_path = _write_json(
         tmp_path / "llm_slots.json",
-        {"slots": [{"name": "review", "provider": "openai", "quality_tier": "T3"}]},
+        {"slots": [{"name": "review", "provider": "openai", "profile": "verifier-balanced"}]},
     )
     monkeypatch.setenv(langchain_client.ENV_MODEL_REGISTRY_CONFIG, registry_path)
     monkeypatch.setenv(langchain_client.ENV_SLOT_CONFIG, slots_path)
@@ -204,7 +204,7 @@ def test_slot_config_resolves_quality_tier_from_model_registry(tmp_path, monkeyp
     slots = langchain_client._resolve_slots()
 
     assert [(slot.name, slot.provider, slot.model) for slot in slots] == [
-        ("review", langchain_client.PROVIDER_OPENAI, "gpt-safe-high")
+        ("review", langchain_client.PROVIDER_OPENAI, "gpt-reviewed")
     ]
 
 
@@ -243,7 +243,7 @@ def test_llm_provider_uses_configured_slot_model(tmp_path, monkeypatch) -> None:
                 {
                     "model_id": "gpt-configured",
                     "provider": "openai",
-                    "quality": {"T3": 0.91},
+                    "lifecycle": "current",
                 }
             ]
         },
@@ -272,20 +272,25 @@ def test_llm_provider_skips_blocked_slot_model(tmp_path, monkeypatch) -> None:
                 {
                     "model_id": "gpt-blocked",
                     "provider": "openai",
+                    "lifecycle": "current",
                     "blocked": True,
-                    "quality": {"T3": 0.99},
                 },
                 {
                     "model_id": "gpt-safe",
                     "provider": "openai",
-                    "quality": {"T3": 0.80},
+                    "lifecycle": "current",
                 },
             ]
         },
     )
     slots_path = _write_json(
         tmp_path / "llm_slots.json",
-        {"slots": [{"name": "primary", "provider": "openai", "model": "gpt-blocked"}]},
+        {
+            "slots": [
+                {"name": "primary", "provider": "openai", "model": "gpt-blocked"},
+                {"name": "backup", "provider": "openai", "model": "gpt-safe"},
+            ]
+        },
     )
     fake_openai_module = types.SimpleNamespace(ChatOpenAI=FakeChatOpenAI)
     monkeypatch.setitem(sys.modules, "langchain_openai", fake_openai_module)
@@ -307,7 +312,7 @@ def test_anthropic_completion_reports_configured_model(tmp_path, monkeypatch) ->
                 {
                     "model_id": "claude-configured",
                     "provider": "anthropic",
-                    "quality": {"T3": 0.91},
+                    "lifecycle": "current",
                 }
             ]
         },
