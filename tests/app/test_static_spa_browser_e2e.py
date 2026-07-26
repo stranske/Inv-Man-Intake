@@ -16,6 +16,7 @@ from urllib.request import urlopen
 
 import pytest
 from scripts.verify_static_spa_pyodide import handle_offline_route
+from tests.app.vector_chart_pdf import build_vector_chart_pdf as _vector_chart_pdf
 
 try:
     from playwright.sync_api import sync_playwright
@@ -40,35 +41,6 @@ def _free_port() -> int:
     with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
         sock.bind(("127.0.0.1", 0))
         return int(sock.getsockname()[1])
-
-
-def _vector_chart_pdf() -> bytes:
-    """Build a compact PDF with one filled vector rectangle for browser rendering."""
-
-    stream = b"q 0.1 0.4 0.8 rg 120 180 260 190 re f Q\n"
-    objects = (
-        b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>",
-        b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"endstream",
-    )
-    document = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
-    offsets = [0]
-    for number, value in enumerate(objects, start=1):
-        offsets.append(len(document))
-        document.extend(f"{number} 0 obj\n".encode())
-        document.extend(value)
-        document.extend(b"\nendobj\n")
-    xref_offset = len(document)
-    document.extend(f"xref\n0 {len(objects) + 1}\n".encode())
-    document.extend(b"0000000000 65535 f \n")
-    document.extend(b"".join(f"{offset:010d} 00000 n \n".encode() for offset in offsets[1:]))
-    document.extend(
-        b"trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n"
-        + str(xref_offset).encode()
-        + b"\n%%EOF\n"
-    )
-    return bytes(document)
 
 
 @contextmanager
