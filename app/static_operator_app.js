@@ -10,6 +10,13 @@ const PRODUCTION_PACKET_MODULES = [
   "intake/standard_elements.py",
   "performance/contracts.py",
   "performance/conflict_resolver.py",
+  "export/manifest.py",
+  "export/one_pager.py",
+  "export/service.py",
+  "export/image_export.py",
+  "images/models.py",
+  "images/png.py",
+  "images/extractor.py",
 ];
 
 const state = {
@@ -44,6 +51,41 @@ function appendRow(tableId, cells) {
   document.querySelector(`#${tableId} tbody`).append(row);
 }
 
+function appendSummaryList(containerId, rows, formatter) {
+  const container = document.getElementById(containerId);
+  container.replaceChildren();
+  for (const row of rows) {
+    const item = document.createElement("li");
+    item.textContent = formatter(row);
+    container.append(item);
+  }
+}
+
+function renderOnePager(onePager) {
+  const summary = document.getElementById("one-pager");
+  if (!onePager) {
+    summary.hidden = true;
+    return;
+  }
+  summary.hidden = false;
+  document.getElementById("one-pager-title").textContent = onePager.title;
+  document.getElementById("one-pager-score").textContent = onePager.final_score.toFixed(4);
+  appendSummaryList("one-pager-identity", onePager.identity, (row) => `${row.label}: ${row.value}`);
+  appendSummaryList("one-pager-coverage", onePager.coverage, (row) => `${row.label}: ${row.value}`);
+  appendSummaryList(
+    "one-pager-explainability",
+    onePager.explainability,
+    (row) => `${row.label}: ${row.value}`,
+  );
+  appendSummaryList("one-pager-provenance", onePager.provenance_citations, (citation) => citation);
+  appendSummaryList("one-pager-returns", onePager.return_stats, (row) => `${row.label}: ${row.value}`);
+  appendSummaryList(
+    "one-pager-graphics",
+    onePager.graphics,
+    (graphic) => `${graphic.label} — ${graphic.provenance_ref}`,
+  );
+}
+
 function seedConflict(profile) {
   if (profile.queue.some((row) => row.item === "Seeded deterministic conflict")) {
     return;
@@ -59,6 +101,7 @@ function seedConflict(profile) {
 function renderProfile(profile) {
   state.profile = profile;
   document.querySelector("main").dataset.packetPath = profile.packet_path || "unknown";
+  renderOnePager(profile.one_pager);
   clearRows("coverage-table");
   clearRows("graphics-table");
   clearRows("returns-table");
@@ -203,5 +246,7 @@ document.getElementById("refresh-assistant").addEventListener("click", () => {
     document.getElementById("assistant-answer").textContent = state.profile.assistant_answer;
   }
 });
+
+document.getElementById("save-as-pdf").addEventListener("click", () => window.print());
 
 loadProfile([{ name: "pdf_primary_mixed_bundle.json", text: "Summit Arc Capital seeded packet." }]);
