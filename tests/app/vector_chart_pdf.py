@@ -14,10 +14,7 @@ def build_vector_chart_pdf() -> bytes:
 
     # Blue bar + overlapping red bar (distinct fills; merged region is multi-color).
     stream = (
-        b"q "
-        b"0.1 0.4 0.8 rg 120 180 200 190 re f "
-        b"0.9 0.2 0.1 rg 220 220 180 150 re f "
-        b"Q\n"
+        b"q " b"0.1 0.4 0.8 rg 120 180 200 190 re f " b"0.9 0.2 0.1 rg 220 220 180 150 re f " b"Q\n"
     )
     objects = (
         b"<< /Type /Catalog /Pages 2 0 R >>",
