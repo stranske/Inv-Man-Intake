@@ -109,11 +109,31 @@ def _require_finite(point: PerformancePoint) -> None:
         raise ValueError("return series contains a non-finite value")
 
 
+_FORMULA_LEADING_CHARACTERS = ("=", "+", "-", "@")
+
+
+def _safe_cell(value: object) -> object:
+    """Neutralize text a spreadsheet client would evaluate as a formula.
+
+    Extracted document text reaches these cells unfiltered, so a value such as
+    ``=HYPERLINK(...)`` would execute on open.  Numbers are written as numbers
+    and are never rewritten.
+    """
+
+    if isinstance(value, str) and value.startswith(_FORMULA_LEADING_CHARACTERS):
+        return f"'{value}"
+    return value
+
+
+def _safe_row(row: Sequence[object]) -> tuple[object, ...]:
+    return tuple(_safe_cell(cell) for cell in row)
+
+
 def _build_csv(rows: Sequence[tuple[str, float, str, str]]) -> bytes:
     buffer = StringIO(newline="")
     writer = csv.writer(buffer, lineterminator="\n")
     writer.writerow(("period", "value", "frequency", "provenance"))
-    writer.writerows(rows)
+    writer.writerows(_safe_row(row) for row in rows)
     return buffer.getvalue().encode("utf-8")
 
 
@@ -130,14 +150,14 @@ def _build_workbook(
     returns_sheet.title = "Return Series"
     returns_sheet.append(("period", "value", "frequency", "provenance"))
     for row in rows:
-        returns_sheet.append(row)
+        returns_sheet.append(_safe_row(row))
 
     manifest_sheet = workbook.create_sheet("Manifest")
     manifest_sheet.append(("kind", "reference"))
     for reference in provenance_refs:
-        manifest_sheet.append(("provenance", reference))
+        manifest_sheet.append(("provenance", _safe_cell(reference)))
     for reference in _table_lineage(tables):
-        manifest_sheet.append(("table_cell", reference))
+        manifest_sheet.append(("table_cell", _safe_cell(reference)))
 
     output = BytesIO()
     workbook.save(output)
