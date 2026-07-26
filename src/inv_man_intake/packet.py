@@ -7,6 +7,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 
+from inv_man_intake.export.image_export import export_document_images, merge_manifests
+from inv_man_intake.export.manifest import ExportArtifact, ExportManifest, ManifestSkip
 from inv_man_intake.extraction.cross_check import (
     CrossCheckReport,
     cross_check_extraction_results,
@@ -60,6 +62,8 @@ class ManagerProfile:
     scores: Mapping[str, float]
     lineage_refs: tuple[str, ...]
     reconciliation: CrossCheckReport
+    graphics_artifacts: tuple[ExportArtifact, ...] = ()
+    graphics_skipped: tuple[tuple[str, str], ...] = ()
 
     @property
     def escalations(self) -> tuple[str, ...]:
@@ -118,13 +122,14 @@ def ingest_packet(
         extractions,
         tolerance_percent=tolerance_percent,
     )
+    graphics = _graphics_manifest(files)
     return ManagerProfile(
         packet_id=packet_id,
         documents=tuple(document_profiles),
         identity=MappingProxyType(_collect_fields(extractions, prefix="identity.")),
         terms=MappingProxyType(_collect_fields(extractions, prefix="terms.")),
         returns_metrics=MappingProxyType(_collect_fields(extractions, prefix="performance.")),
-        graphics_refs=_graphics_refs(extractions),
+        graphics_refs=tuple(entry.item_ref for entry in graphics.artifacts),
         per_doc_standard_element_coverage=MappingProxyType(
             {
                 document.document_id: document.standard_element_coverage
@@ -137,6 +142,8 @@ def ingest_packet(
             lineage_ref for document in document_profiles for lineage_ref in document.lineage_refs
         ),
         reconciliation=reconciliation,
+        graphics_artifacts=tuple(entry.artifact for entry in graphics.artifacts),
+        graphics_skipped=tuple((entry.item_ref, entry.reason_code) for entry in graphics.skipped),
     )
 
 
@@ -230,12 +237,35 @@ def _collect_fields(
     return collected
 
 
-def _graphics_refs(results: Sequence[ExtractedDocumentResult]) -> tuple[str, ...]:
-    refs: list[str] = []
-    for result in results:
-        images = getattr(result, "images", ())
-        refs.extend(f"{result.source_doc_id}:image:{index}" for index, _ in enumerate(images))
-    return tuple(refs)
+def _graphics_manifest(files: Sequence[PacketFile]) -> ExportManifest:
+    """Export real image bytes for the packet instead of placeholder ref strings.
+
+    Isolate each document so one decode/export failure cannot abort the whole packet.
+    """
+
+    manifests: list[ExportManifest] = []
+    for packet_file in files:
+        try:
+            manifests.append(
+                export_document_images(
+                    source_doc_id=packet_file.document_id,
+                    file_name=packet_file.filename,
+                    content=packet_file.content,
+                )
+            )
+        except Exception:
+            manifests.append(
+                ExportManifest(
+                    artifacts=(),
+                    skipped=(
+                        ManifestSkip(
+                            item_ref=f"{packet_file.document_id}:image:0",
+                            reason_code="unsupported_encoding",
+                        ),
+                    ),
+                )
+            )
+    return merge_manifests(manifests)
 
 
 def _flagged_non_standard_items(
