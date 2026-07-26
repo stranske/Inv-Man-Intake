@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import math
 from collections import Counter
+from dataclasses import replace
 from pathlib import Path
+
+import pytest
 
 from inv_man_intake.export.one_pager import build_one_pager
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
@@ -54,12 +58,24 @@ def test_summary_contains_required_sections_from_a_real_packet() -> None:
     """The committed packet fixture produces every required, non-placeholder section."""
 
     model = build_one_pager(_profile())
-    assert model.identity and model.coverage and model.explainability
-    assert model.provenance_citations and model.return_stats
+    assert ("Manager", "Summit Arc Advisors") in {
+        (field.label, field.value) for field in model.identity
+    }
+    assert {field.label for field in model.coverage} == {
+        "Documents",
+        "Document types",
+        "Standard elements",
+    }
+    assert {field.label for field in model.return_stats} == {"Performance / Net Return 1Y"}
+    assert model.provenance_citations == (
+        "fixture:identity.manager:p1:fixture",
+        "fixture:performance.net_return_1y:p1:fixture",
+    )
     assert model.final_score == _profile().scores["extraction_confidence"]
     assert "Summit Arc" in model.title
     assert Counter(field.label for field in model.explainability)["Extraction Confidence"] == 1
-    assert "lorem" not in str(model.as_dict()).lower()
+    rendered = str(model.as_dict()).lower()
+    assert not any(marker in rendered for marker in ("lorem", "placeholder", "tbd", "todo"))
 
 
 def test_removing_explainability_breaks_the_required_section() -> None:
@@ -67,3 +83,32 @@ def test_removing_explainability_breaks_the_required_section() -> None:
 
     model = build_one_pager(_profile())
     assert model.explainability
+
+
+@pytest.mark.parametrize("score", [math.nan, math.inf, None])
+def test_summary_rejects_non_finite_or_missing_scores(score: object) -> None:
+    with pytest.raises(ValueError, match="finite"):
+        build_one_pager(replace(_profile(), scores={"final_score": score}))
+
+
+def test_summary_bounds_dense_profile_content() -> None:
+    model = build_one_pager(
+        replace(
+            _profile(),
+            identity={
+                "identity.manager": "M" * 200,
+                **{f"identity.field_{i}": "V" * 200 for i in range(8)},
+            },
+            scores={f"score_{i}": 0.5 for i in range(8)},
+            returns_metrics={f"return_{i}": "R" * 200 for i in range(8)},
+        )
+    )
+    assert (
+        len(model.identity) == 4 and len(model.explainability) == 5 and len(model.return_stats) == 4
+    )
+    assert model.identity[0].label == "Manager"
+    assert all(
+        len(field.value) <= 80
+        for section in (model.identity, model.return_stats)
+        for field in section
+    )

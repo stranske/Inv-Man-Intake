@@ -223,6 +223,8 @@ def test_one_pager_renders_single_page_in_print_layout() -> None:
         page.emulate_media(media="print")
         box = page.locator("#one-pager").bounding_box()
         assert box is not None and box["height"] <= 1056
-        assert not page.locator(".operator-grid").is_visible()
+        operator_grid = page.locator(".operator-grid")
+        assert operator_grid.count() == 1
+        assert not operator_grid.is_visible()
     finally:
         _close_page(server_context, playwright_context, browser)

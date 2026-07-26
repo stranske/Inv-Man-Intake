@@ -57,9 +57,12 @@ function appendSummaryList(containerId, rows, formatter) {
 }
 
 function renderOnePager(onePager) {
+  const summary = document.getElementById("one-pager");
   if (!onePager) {
+    summary.hidden = true;
     return;
   }
+  summary.hidden = false;
   document.getElementById("one-pager-title").textContent = onePager.title;
   document.getElementById("one-pager-score").textContent = onePager.final_score.toFixed(4);
   appendSummaryList("one-pager-identity", onePager.identity, (row) => `${row.label}: ${row.value}`);

@@ -14,7 +14,7 @@
       @page { size: Letter; margin: .25in; }
       @media print {
         .operator-shell > :not(#one-pager) { display: none !important; }
-        #one-pager { box-sizing: border-box; display: block; height: 10.25in; max-height: 10.25in; margin: 0; overflow: hidden; }
+        #one-pager { box-sizing: border-box; display: block; margin: 0; }
         .one-pager-actions { display: none !important; }
       }
     </style>
@@ -29,7 +29,7 @@
         <p id="runtime-status" role="status">Loading local Pyodide runtime...</p>
       </header>
 
-      <section id="one-pager" class="one-pager" aria-labelledby="one-pager-title">
+      <section id="one-pager" class="one-pager" aria-labelledby="one-pager-title" hidden>
         <div class="one-pager-actions"><button id="save-as-pdf" type="button">Save as PDF</button></div>
         <p class="eyebrow">Ink &amp; Air manager brief</p>
         <h2 id="one-pager-title">Manager strategy summary</h2>

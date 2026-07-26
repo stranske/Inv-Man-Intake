@@ -82,4 +82,14 @@ def test_pyodide_bridge_runs_packet_pipeline_for_seed_data() -> None:
     assert profile["manager_profile"]["Manager"] == "Summit Arc Capital"
     assert profile["manager_profile"]["Provenance"].startswith("upload_1:")
     assert profile["coverage"][0]["document"] == "upload_1"
+    assert profile["one_pager"] is not None
     assert profile["outbound_calls"] == 0
+
+
+def test_fallback_never_returns_a_fabricated_one_pager() -> None:
+    bridge_path = ROOT / "app" / "pyodide_packet_bridge.py"
+    spec = importlib.util.spec_from_file_location("pyodide_packet_bridge_fallback", bridge_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module._fallback_packet_view([{"filename": "arbitrary.txt"}])["one_pager"] is None

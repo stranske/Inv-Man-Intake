@@ -258,16 +258,9 @@ def _fallback_packet_view(files: Sequence[Mapping[str, str]]) -> dict[str, Any]:
             "Apply manually: review performance_conflict before promotion; citations "
             "packet:upload_1 and graphic:drawdown-chart."
         ),
-        "one_pager": {
-            "title": "Summit Arc Capital strategy summary",
-            "identity": [{"label": "Manager", "value": "Summit Arc Capital"}],
-            "coverage": [{"label": "Documents", "value": str(len(files))}],
-            "final_score": 0.7809,
-            "explainability": [{"label": "Extraction Confidence", "value": "0.7809"}],
-            "provenance_citations": ["fallback:pyodide_packet_bridge.py"],
-            "return_stats": [{"label": "1Y", "value": "8.4%"}],
-            "graphics": [{"label": "drawdown-chart", "provenance_ref": "drawdown-chart"}],
-        },
+        # A fallback has no validated ManagerProfile, so it must not print a
+        # fabricated report about an arbitrary upload.
+        "one_pager": None,
         "outbound_calls": 0,
     }
 
