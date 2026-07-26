@@ -43,9 +43,21 @@ def _free_port() -> int:
 
 
 def _vector_chart_pdf() -> bytes:
-    """Build a compact PDF with one filled vector rectangle for browser rendering."""
+    """Build a compact PDF with two overlapping filled bars for browser rendering.
 
-    stream = b"q 0.1 0.4 0.8 rg 120 180 260 190 re f Q\n"
+    The bars use distinct RGB fills and intersect so ``pathBounds`` merges them into
+    one region. A solid single-color crop would make ``colors > 1`` fail even when
+    rendering succeeded (post-merge CI failure on #861); multi-color content is the
+    intentional gate against blank/uniform canvases.
+    """
+
+    # Blue bar + overlapping red bar (distinct fills; merged region is multi-color).
+    stream = (
+        b"q "
+        b"0.1 0.4 0.8 rg 120 180 200 190 re f "
+        b"0.9 0.2 0.1 rg 220 220 180 150 re f "
+        b"Q\n"
+    )
     objects = (
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
@@ -217,6 +229,16 @@ def test_static_spa_offline_upload_runs_local_pyodide_packet_path_without_egress
         assert external_requests == []
     finally:
         _close_page(server_context, playwright_context, browser)
+
+
+def test_vector_chart_pdf_fixture_encodes_two_distinct_fills() -> None:
+    """Fixture must stay multi-color so the browser colors>1 gate remains meaningful."""
+
+    pdf = _vector_chart_pdf()
+    assert b"0.1 0.4 0.8 rg" in pdf
+    assert b"0.9 0.2 0.1 rg" in pdf
+    # Deliberate break: reverting to a single solid fill makes this fail.
+    assert pdf.count(b" re f ") >= 2
 
 
 def test_vector_figure_export_renders_a_local_pdf_region_without_egress() -> None:
