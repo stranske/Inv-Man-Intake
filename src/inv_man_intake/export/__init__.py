@@ -16,6 +16,7 @@ from inv_man_intake.export.service import (
     build_default_export_service,
     ensure_export_service,
 )
+from inv_man_intake.export.spreadsheet import export_return_series
 
 __all__ = [
     "DefaultExportService",
@@ -30,4 +31,5 @@ __all__ = [
     "ManifestSkip",
     "build_default_export_service",
     "ensure_export_service",
+    "export_return_series",
 ]
