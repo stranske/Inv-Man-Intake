@@ -59,11 +59,7 @@ def test_slot_config_non_object_payload_fails_closed(tmp_path, monkeypatch) -> N
     """
     registry_path = _write_json(
         tmp_path / "model_registry.json",
-        {
-            "models": [
-                {"model_id": "gpt-safe", "provider": "openai", "lifecycle": "current"}
-            ]
-        },
+        {"models": [{"model_id": "gpt-safe", "provider": "openai", "lifecycle": "current"}]},
     )
     slots_path = tmp_path / "llm_slots.json"
     slots_path.write_text(json.dumps(["not", "an", "object"]), encoding="utf-8")
@@ -87,11 +83,7 @@ def test_slot_config_skips_non_object_slot_entries(tmp_path, monkeypatch) -> Non
     """Non-object slot entries are ignored while a current pin is retained."""
     registry_path = _write_json(
         tmp_path / "model_registry.json",
-        {
-            "models": [
-                {"model_id": "gpt-safe", "provider": "openai", "lifecycle": "current"}
-            ]
-        },
+        {"models": [{"model_id": "gpt-safe", "provider": "openai", "lifecycle": "current"}]},
     )
     slots_path = _write_json(
         tmp_path / "llm_slots.json",
