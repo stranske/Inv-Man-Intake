@@ -6,7 +6,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -17,8 +17,10 @@ from inv_man_intake.assist.egress_guard import (
     send_to_llm,
 )
 from inv_man_intake.data.provenance import CorrectionRecord
-from inv_man_intake.packet import ManagerProfile
 from inv_man_intake.scoring.contracts import ScoreResult
+
+if TYPE_CHECKING:  # `packet` imports this package transitively via `export`.
+    from inv_man_intake.packet import ManagerProfile
 
 _ESCALATION_SEVERITY = 0.95
 _STANDARDNESS_SEVERITY = 0.80
