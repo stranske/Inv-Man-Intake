@@ -245,8 +245,7 @@ def test_vector_figure_export_renders_a_local_pdf_region_without_egress() -> Non
         preview.wait_for(timeout=45_000)
         assert preview.get_attribute("src").startswith("blob:")
         assert "bbox" in vector_row.inner_text()
-        image_details = page.evaluate(
-            """async () => {
+        image_details = page.evaluate("""async () => {
               const image = document.querySelector('#graphic-preview img');
               const bytes = new Uint8Array(await (await fetch(image.src)).arrayBuffer());
               const canvas = document.createElement('canvas');
@@ -256,8 +255,7 @@ def test_vector_figure_export_renders_a_local_pdf_region_without_egress() -> Non
               const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
               return {magic: Array.from(bytes.slice(0, 8)), width: image.naturalWidth,
                 height: image.naturalHeight, colors: new Set(Array.from(pixels)).size};
-            }"""
-        )
+            }""")
         assert image_details["magic"] == [137, 80, 78, 71, 13, 10, 26, 10]
         assert image_details["width"] > 0 and image_details["height"] > 0
         assert image_details["colors"] > 1

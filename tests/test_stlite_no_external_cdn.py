@@ -24,18 +24,18 @@ def test_index_has_no_external_runtime_ref() -> None:
     index_html = INDEX_HTML.read_text(encoding="utf-8")
 
     assert "cdn.jsdelivr.net" not in index_html, "index.html must not reference jsDelivr"
-    assert not re.search(r"""<(?:script|link)\b[^>]+(?:src|href)=["']https?://""", index_html), (
-        "index.html must not load external http(s) scripts or stylesheets"
-    )
-    assert not re.search(r"""\bimport(?:\s*\(|\s+[^;]*?\s+from\s+)["']https?://""", index_html), (
-        "index.html must not import external http(s) modules"
-    )
-    assert '<script src="./vendor/pyodide@0.26.2/pyodide.js"></script>' in index_html, (
-        "index.html must load the vendored Pyodide runtime"
-    )
-    assert '<script type="module" src="./static_operator_app.js"></script>' in index_html, (
-        "index.html must load the static SPA module locally"
-    )
+    assert not re.search(
+        r"""<(?:script|link)\b[^>]+(?:src|href)=["']https?://""", index_html
+    ), "index.html must not load external http(s) scripts or stylesheets"
+    assert not re.search(
+        r"""\bimport(?:\s*\(|\s+[^;]*?\s+from\s+)["']https?://""", index_html
+    ), "index.html must not import external http(s) modules"
+    assert (
+        '<script src="./vendor/pyodide@0.26.2/pyodide.js"></script>' in index_html
+    ), "index.html must load the vendored Pyodide runtime"
+    assert (
+        '<script type="module" src="./static_operator_app.js"></script>' in index_html
+    ), "index.html must load the static SPA module locally"
     assert "vendor/stlite" not in index_html
     assert "stlite.mount" not in index_html
 
@@ -97,9 +97,9 @@ def test_required_pyodide_wheels_are_vendored() -> None:
     ]:
         matches = list(PYODIDE_VENDOR.glob(pattern))
         assert matches, f"Missing vendored Pyodide wheel matching {pattern}"
-        assert all(path.stat().st_size > 0 for path in matches), (
-            f"Vendored Pyodide wheel matching {pattern} must be non-empty"
-        )
+        assert all(
+            path.stat().st_size > 0 for path in matches
+        ), f"Vendored Pyodide wheel matching {pattern} must be non-empty"
 
 
 def test_static_spa_runtime_files_exist() -> None:
