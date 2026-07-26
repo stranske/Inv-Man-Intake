@@ -168,3 +168,32 @@ def test_fallback_never_returns_a_fabricated_one_pager() -> None:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module._fallback_packet_view([{"filename": "arbitrary.txt"}])["one_pager"] is None
+
+
+def test_pyodide_bridge_records_browser_pngs_as_x1_exports() -> None:
+    bridge_path = ROOT / "app" / "pyodide_packet_bridge.py"
+    spec = importlib.util.spec_from_file_location("pyodide_packet_bridge_exports", bridge_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    profile = module.run_packet(
+        [],
+        [
+            {
+                "name": "chart.pdf:vector-1-1.png",
+                "mediaType": "image/png",
+                "bytes": [137, 80, 78, 71],
+                "provenance": {"page": 1, "bbox": [10, 20, 30, 40]},
+            }
+        ],
+    )
+
+    assert profile["vector_exports"] == [
+        {
+            "name": "chart.pdf:vector-1-1.png",
+            "media_type": "image/png",
+            "byte_length": 4,
+            "provenance_refs": ["chart.pdf:page:1", "chart.pdf:bbox:10,20,30,40"],
+        }
+    ]

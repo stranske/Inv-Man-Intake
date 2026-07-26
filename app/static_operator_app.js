@@ -151,7 +151,7 @@ function renderProfile(profile) {
     ...profile.graphics,
     ...state.vectorArtifacts.map((artifact) => ({
       graphic: artifact.name,
-      status: `Rendered page ${artifact.provenance.page}`,
+      status: `Rendered page ${artifact.provenance.page} bbox ${artifact.provenance.bbox.join(", ")}`,
       vectorArtifact: artifact,
     })),
   ];
@@ -196,6 +196,7 @@ async function loadProductionPacketModules(pyodide) {
     "/inv_man_intake/extraction/providers/__init__.py",
     "/inv_man_intake/intake/__init__.py",
     "/inv_man_intake/performance/__init__.py",
+    "/inv_man_intake/export/__init__.py",
   ]) {
     pyodide.FS.mkdirTree(packagePath.slice(0, packagePath.lastIndexOf("/")));
     pyodide.FS.writeFile(packagePath, "");
@@ -237,23 +238,20 @@ async function loadProfile(files) {
       filename: file.name,
       text: file.text,
     }));
+    const rendered = await renderVectorFigures(files);
+    state.vectorArtifacts = rendered.artifacts;
     state.pyodide.globals.set("packet_payload", state.pyodide.toPy(payload));
+    state.pyodide.globals.set("vector_payload", state.pyodide.toPy(rendered.artifacts.map((artifact) => ({
+      ...artifact,
+      bytes: Array.from(artifact.bytes),
+    }))));
+    state.pyodide.globals.set("vector_failures", state.pyodide.toPy(rendered.failures));
     const profileJson = await state.pyodide.runPythonAsync(
       "import json\n"
         + "from pyodide_packet_bridge import run_packet\n"
-        + "json.dumps(run_packet(packet_payload))"
+        + "json.dumps(run_packet(packet_payload, vector_payload, vector_failures))"
     );
     const profile = JSON.parse(profileJson);
-    try {
-      state.vectorArtifacts = await renderVectorFigures(files);
-    } catch (vectorError) {
-      state.vectorArtifacts = [];
-      profile.queue.push({
-        item: "vector_render_failed",
-        reason: vectorError instanceof Error ? vectorError.message : String(vectorError),
-        owner: "analyst",
-      });
-    }
     renderProfile(profile);
   } catch (error) {
     state.pyodideInit = null;

@@ -40,7 +40,7 @@ function mergeBounds(left, right) {
 }
 
 function pathBounds(operatorList, viewport) {
-  const regions = [];
+  const candidates = [];
   for (let index = 0; index < operatorList.fnArray.length; index += 1) {
     if (operatorList.fnArray[index] !== pdfjs.OPS.constructPath) {
       continue;
@@ -52,15 +52,28 @@ function pathBounds(operatorList, viewport) {
     }
     const candidate = normalizedBounds(viewport.convertToViewportRectangle(minMax));
     const fullPage = area(pageBounds(viewport));
-    if (area(candidate) < MINIMUM_REGION_AREA || area(candidate) > fullPage * 0.8) {
+    if (area(candidate) > fullPage * 0.8) {
       continue;
     }
-    const existing = regions.findIndex((region) => intersecting(region, candidate));
-    if (existing >= 0) {
-      regions[existing] = mergeBounds(regions[existing], candidate);
-    } else {
-      regions.push(candidate);
+    candidates.push(candidate);
+  }
+  // A chart is often made of individually-small bars. Merge all connected
+  // path bounds before filtering by area so a valid figure is not discarded.
+  const regions = [];
+  for (const candidate of candidates) {
+    let merged = candidate;
+    let matched = true;
+    while (matched) {
+      matched = false;
+      for (let index = regions.length - 1; index >= 0; index -= 1) {
+        if (intersecting(regions[index], merged)) {
+          merged = mergeBounds(regions[index], merged);
+          regions.splice(index, 1);
+          matched = true;
+        }
+      }
     }
+    regions.push(merged);
   }
   return regions
     .filter((region) => area(region) >= MINIMUM_REGION_AREA)
@@ -119,28 +132,42 @@ function isPdf(file) {
  */
 export async function renderVectorFigures(files) {
   const artifacts = [];
+  const failures = [];
   for (const file of files.filter(isPdf)) {
-    const document = await pdfjs.getDocument({ data: file.bytes.slice(0) }).promise;
+    let document;
     try {
+      document = await pdfjs.getDocument({ data: file.bytes.slice(0) }).promise;
       for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-        const page = await document.getPage(pageNumber);
-        const viewport = page.getViewport({ scale: 1 });
-        const regions = pathBounds(await page.getOperatorList(), viewport);
-        for (const [regionIndex, bounds] of regions.entries()) {
-          const rendered = await renderRegion(page, viewport, bounds);
-          artifacts.push({
-            name: `${file.name}:vector-${pageNumber}-${regionIndex + 1}.png`,
-            bytes: rendered.bytes,
-            mediaType: "image/png",
-            provenance: { page: pageNumber, bbox: [bounds.left, bounds.top, bounds.right, bounds.bottom] },
-            width: rendered.width,
-            height: rendered.height,
-          });
+        try {
+          const page = await document.getPage(pageNumber);
+          const viewport = page.getViewport({ scale: 1 });
+          const regions = pathBounds(await page.getOperatorList(), viewport);
+          for (const [regionIndex, bounds] of regions.entries()) {
+            try {
+              const rendered = await renderRegion(page, viewport, bounds);
+              artifacts.push({
+                name: `${file.name}:vector-${pageNumber}-${regionIndex + 1}.png`,
+                bytes: rendered.bytes,
+                mediaType: "image/png",
+                provenance: { page: pageNumber, bbox: [bounds.left, bounds.top, bounds.right, bounds.bottom] },
+                width: rendered.width,
+                height: rendered.height,
+              });
+            } catch (error) {
+              failures.push({ document: file.name, page: pageNumber, bbox: bounds, reason: String(error) });
+            }
+          }
+        } catch (error) {
+          failures.push({ document: file.name, page: pageNumber, bbox: null, reason: String(error) });
         }
       }
+    } catch (error) {
+      failures.push({ document: file.name, page: null, bbox: null, reason: String(error) });
     } finally {
-      await document.destroy();
+      if (document) {
+        await document.destroy();
+      }
     }
   }
-  return artifacts;
+  return { artifacts, failures };
 }
