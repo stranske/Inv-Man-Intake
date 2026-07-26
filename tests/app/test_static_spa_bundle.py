@@ -197,3 +197,28 @@ def test_pyodide_bridge_records_browser_pngs_as_x1_exports() -> None:
             "provenance_refs": ["chart.pdf:page:1", "chart.pdf:bbox:10,20,30,40"],
         }
     ]
+
+
+def test_pyodide_bridge_queues_vector_failures_with_document_and_page() -> None:
+    """A render failure must stay triageable: which document, which page."""
+
+    bridge_path = ROOT / "app" / "pyodide_packet_bridge.py"
+    spec = importlib.util.spec_from_file_location("pyodide_packet_bridge_failures", bridge_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    profile = module.run_packet(
+        [],
+        [],
+        [{"document": "chart.pdf", "page": 3, "reason": "operator list unavailable"}],
+    )
+
+    failures = [row for row in profile["queue"] if row["item"] == "vector_render_failed"]
+    assert failures == [
+        {
+            "item": "vector_render_failed",
+            "reason": "chart.pdf:page:3: operator list unavailable",
+            "owner": "analyst",
+        }
+    ]

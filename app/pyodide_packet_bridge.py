@@ -94,7 +94,9 @@ def _attach_vector_exports(
     profile["queue"].extend(
         {
             "item": "vector_render_failed",
-            "reason": str(failure.get("reason")),
+            "reason": (
+                f"{failure.get('document')}:page:{failure.get('page')}: {failure.get('reason')}"
+            ),
             "owner": "analyst",
         }
         for failure in vector_failures

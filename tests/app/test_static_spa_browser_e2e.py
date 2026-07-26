@@ -253,8 +253,12 @@ def test_vector_figure_export_renders_a_local_pdf_region_without_egress() -> Non
               canvas.height = image.naturalHeight;
               canvas.getContext('2d').drawImage(image, 0, 0);
               const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+              const distinctPixels = new Set();
+              for (let offset = 0; offset < pixels.length; offset += 4) {
+                distinctPixels.add(pixels.slice(offset, offset + 4).join(','));
+              }
               return {magic: Array.from(bytes.slice(0, 8)), width: image.naturalWidth,
-                height: image.naturalHeight, colors: new Set(Array.from(pixels)).size};
+                height: image.naturalHeight, colors: distinctPixels.size};
             }""")
         assert image_details["magic"] == [137, 80, 78, 71, 13, 10, 26, 10]
         assert image_details["width"] > 0 and image_details["height"] > 0
