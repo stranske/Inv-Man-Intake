@@ -88,6 +88,10 @@ def _verify_static_spa_interactions(page: object) -> None:
     )
     assert page.locator("main").get_attribute("data-packet-path") == "inv-man-intake.ingest_packet"
 
+    one_pager = page.locator("#one-pager")
+    assert "strategy summary" in one_pager.inner_text().lower()
+    assert "Explainability" in one_pager.inner_text()
+
     profile_details = page.locator("#profile-list")
     assert "Manager" in profile_details.inner_text()
     assert "Summit Arc Capital" in profile_details.inner_text()
@@ -127,32 +131,43 @@ def _with_page(
     """Open the static SPA with optional test-only handler controls."""
 
     server_context = local_static_spa()
-    url = server_context.__enter__()
-    playwright_context = sync_playwright()
-    playwright = playwright_context.__enter__()
-    # CI installs bundled Chromium; local prefer Chrome channel when present.
-    launch_kwargs: dict[str, object] = {"headless": True}
-    if os.environ.get("CI") != "true":
-        launch_kwargs["channel"] = "chrome"
+    playwright_context = None
+    browser = None
     try:
-        browser = playwright.chromium.launch(**launch_kwargs)
-    except Exception:
-        if "channel" in launch_kwargs:
+        url = server_context.__enter__()
+        playwright_context = sync_playwright()
+        playwright = playwright_context.__enter__()
+        # CI installs bundled Chromium; local prefer Chrome channel when present.
+        launch_kwargs: dict[str, object] = {"headless": True}
+        if os.environ.get("CI") != "true":
+            launch_kwargs["channel"] = "chrome"
+        try:
+            browser = playwright.chromium.launch(**launch_kwargs)
+        except Exception:
+            if "channel" not in launch_kwargs:
+                raise
             launch_kwargs.pop("channel")
             browser = playwright.chromium.launch(**launch_kwargs)
-        else:
-            raise
-    page = browser.new_page()
-    external_requests: list[str] = []
-    if enforce_local_requests:
-        # This is deliberately registered before navigation so initial Pyodide
-        # bootstrap requests cannot bypass the no-egress assertion.
-        page.route("**/*", lambda route: handle_offline_route(route, external_requests))
-    if test_controls:
-        page.add_init_script(f"window.__STATIC_SPA_TEST_CONTROLS__ = {json.dumps(test_controls)};")
-    page.goto(url, wait_until="domcontentloaded", timeout=45_000)
-    page.get_by_role("heading", name="Packet upload").wait_for(timeout=45_000)
-    return server_context, playwright_context, browser, page, external_requests
+        page = browser.new_page()
+        external_requests: list[str] = []
+        if enforce_local_requests:
+            # This is deliberately registered before navigation so initial Pyodide
+            # bootstrap requests cannot bypass the no-egress assertion.
+            page.route("**/*", lambda route: handle_offline_route(route, external_requests))
+        if test_controls:
+            page.add_init_script(
+                f"window.__STATIC_SPA_TEST_CONTROLS__ = {json.dumps(test_controls)};"
+            )
+        page.goto(url, wait_until="domcontentloaded", timeout=45_000)
+        page.get_by_role("heading", name="Packet upload").wait_for(timeout=45_000)
+        return server_context, playwright_context, browser, page, external_requests
+    except Exception:
+        if browser is not None:
+            browser.close()
+        if playwright_context is not None:
+            playwright_context.__exit__(None, None, None)
+        server_context.__exit__(None, None, None)
+        raise
 
 
 def _close_page(server_context: object, playwright_context: object, browser: object) -> None:
@@ -206,3 +221,21 @@ def test_e2e_suite_is_not_skipped() -> None:
             assert "ok" in page.content()
         finally:
             browser.close()
+
+
+def test_one_pager_renders_single_page_in_print_layout() -> None:
+    """The print-only summary is bounded to one US-Letter page and hides app chrome."""
+
+    _require_browser_e2e()
+    server_context, playwright_context, browser, page, _ = _with_page()
+    try:
+        page.locator("#packet-upload").set_input_files(str(PACKET_FIXTURE))
+        page.locator("#one-pager-identity li").wait_for(timeout=45_000)
+        page.emulate_media(media="print")
+        box = page.locator("#one-pager").bounding_box()
+        assert box is not None and box["height"] <= 1056
+        operator_grid = page.locator(".operator-grid")
+        assert operator_grid.count() == 1
+        assert not operator_grid.is_visible()
+    finally:
+        _close_page(server_context, playwright_context, browser)

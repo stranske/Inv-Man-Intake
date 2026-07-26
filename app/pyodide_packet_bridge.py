@@ -8,10 +8,12 @@ from typing import Any
 _ExtractedDocumentResult: Any = None
 _ExtractedField: Any = None
 _PacketFile: Any = None
+_build_one_pager: Any = None
 _ingest_packet: Any = None
 _load_standard_element_library: Any = None
 
 try:  # pragma: no cover - browser bundle can run before package sources are vendored.
+    from inv_man_intake.export.one_pager import build_one_pager as _imported_build_one_pager
     from inv_man_intake.extraction.providers.base import (
         ExtractedDocumentResult as _ImportedExtractedDocumentResult,
     )
@@ -25,6 +27,7 @@ try:  # pragma: no cover - browser bundle can run before package sources are ven
     _ExtractedDocumentResult = _ImportedExtractedDocumentResult
     _ExtractedField = _ImportedExtractedField
     _PacketFile = _ImportedPacketFile
+    _build_one_pager = _imported_build_one_pager
     _ingest_packet = _imported_ingest_packet
     _load_standard_element_library = _imported_load_standard_element_library
 except ModuleNotFoundError:  # pragma: no cover
@@ -86,6 +89,9 @@ def _run_ingest_packet(files: Sequence[Mapping[str, str]]) -> dict[str, Any]:
 
 
 def _packet_view_from_profile(profile: Any) -> dict[str, Any]:
+    if _build_one_pager is None:  # pragma: no cover
+        raise RuntimeError("inv_man_intake one-pager export is not available")
+    one_pager = _build_one_pager(profile).as_dict()
     coverage = [
         {
             "document": document.document_id,
@@ -111,7 +117,7 @@ def _packet_view_from_profile(profile: Any) -> dict[str, Any]:
         "packet_path": "inv-man-intake.ingest_packet",
         "manager_profile": {
             "Manager": profile.identity.get("identity.manager", "Unknown manager"),
-            "Final score": f"{profile.scores.get('extraction_confidence', 0.0):.4f}",
+            "Final score": f"{one_pager['final_score']:.4f}",
             "Explainability": ", ".join(sorted(profile.scores)) or "No score components",
             "Provenance": ", ".join(profile.lineage_refs) or "packet:no-lineage",
         },
@@ -134,6 +140,7 @@ def _packet_view_from_profile(profile: Any) -> dict[str, Any]:
             "Apply manually: review packet exceptions before promotion; citations "
             f"{', '.join(profile.lineage_refs) or 'packet:operator-browser-packet'}."
         ),
+        "one_pager": one_pager,
         "outbound_calls": 0,
     }
 
@@ -251,6 +258,9 @@ def _fallback_packet_view(files: Sequence[Mapping[str, str]]) -> dict[str, Any]:
             "Apply manually: review performance_conflict before promotion; citations "
             "packet:upload_1 and graphic:drawdown-chart."
         ),
+        # A fallback has no validated ManagerProfile, so it must not print a
+        # fabricated report about an arbitrary upload.
+        "one_pager": None,
         "outbound_calls": 0,
     }
 
