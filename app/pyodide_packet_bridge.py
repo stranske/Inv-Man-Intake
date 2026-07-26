@@ -13,6 +13,7 @@ _ingest_packet: Any = None
 _load_standard_element_library: Any = None
 
 try:  # pragma: no cover - browser bundle can run before package sources are vendored.
+    from inv_man_intake.export.one_pager import build_one_pager as _imported_build_one_pager
     from inv_man_intake.extraction.providers.base import (
         ExtractedDocumentResult as _ImportedExtractedDocumentResult,
     )
@@ -20,7 +21,6 @@ try:  # pragma: no cover - browser bundle can run before package sources are ven
     from inv_man_intake.intake.standard_elements import (
         load_standard_element_library as _imported_load_standard_element_library,
     )
-    from inv_man_intake.export.one_pager import build_one_pager as _imported_build_one_pager
     from inv_man_intake.packet import PacketFile as _ImportedPacketFile
     from inv_man_intake.packet import ingest_packet as _imported_ingest_packet
 

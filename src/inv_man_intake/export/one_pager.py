@@ -119,9 +119,9 @@ def _graphics(profile: ManagerProfile, *, max_graphics: int) -> tuple[OnePagerGr
     artifacts = tuple(
         OnePagerGraphic(
             label=artifact.name,
-            provenance_ref=artifact.provenance_refs[0]
-            if artifact.provenance_refs
-            else artifact.name,
+            provenance_ref=(
+                artifact.provenance_refs[0] if artifact.provenance_refs else artifact.name
+            ),
             media_type=artifact.media_type,
         )
         for artifact in profile.graphics_artifacts[:max_graphics]
