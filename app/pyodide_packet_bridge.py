@@ -8,6 +8,7 @@ from typing import Any
 _ExtractedDocumentResult: Any = None
 _ExtractedField: Any = None
 _PacketFile: Any = None
+_build_one_pager: Any = None
 _ingest_packet: Any = None
 _load_standard_element_library: Any = None
 
@@ -19,12 +20,14 @@ try:  # pragma: no cover - browser bundle can run before package sources are ven
     from inv_man_intake.intake.standard_elements import (
         load_standard_element_library as _imported_load_standard_element_library,
     )
+    from inv_man_intake.export.one_pager import build_one_pager as _imported_build_one_pager
     from inv_man_intake.packet import PacketFile as _ImportedPacketFile
     from inv_man_intake.packet import ingest_packet as _imported_ingest_packet
 
     _ExtractedDocumentResult = _ImportedExtractedDocumentResult
     _ExtractedField = _ImportedExtractedField
     _PacketFile = _ImportedPacketFile
+    _build_one_pager = _imported_build_one_pager
     _ingest_packet = _imported_ingest_packet
     _load_standard_element_library = _imported_load_standard_element_library
 except ModuleNotFoundError:  # pragma: no cover
@@ -86,6 +89,9 @@ def _run_ingest_packet(files: Sequence[Mapping[str, str]]) -> dict[str, Any]:
 
 
 def _packet_view_from_profile(profile: Any) -> dict[str, Any]:
+    if _build_one_pager is None:  # pragma: no cover
+        raise RuntimeError("inv_man_intake one-pager export is not available")
+    one_pager = _build_one_pager(profile).as_dict()
     coverage = [
         {
             "document": document.document_id,
@@ -134,6 +140,7 @@ def _packet_view_from_profile(profile: Any) -> dict[str, Any]:
             "Apply manually: review packet exceptions before promotion; citations "
             f"{', '.join(profile.lineage_refs) or 'packet:operator-browser-packet'}."
         ),
+        "one_pager": one_pager,
         "outbound_calls": 0,
     }
 
@@ -251,6 +258,16 @@ def _fallback_packet_view(files: Sequence[Mapping[str, str]]) -> dict[str, Any]:
             "Apply manually: review performance_conflict before promotion; citations "
             "packet:upload_1 and graphic:drawdown-chart."
         ),
+        "one_pager": {
+            "title": "Summit Arc Capital strategy summary",
+            "identity": [{"label": "Manager", "value": "Summit Arc Capital"}],
+            "coverage": [{"label": "Documents", "value": str(len(files))}],
+            "final_score": 0.7809,
+            "explainability": [{"label": "Extraction Confidence", "value": "0.7809"}],
+            "provenance_citations": ["fallback:pyodide_packet_bridge.py"],
+            "return_stats": [{"label": "1Y", "value": "8.4%"}],
+            "graphics": [{"label": "drawdown-chart", "provenance_ref": "drawdown-chart"}],
+        },
         "outbound_calls": 0,
     }
 

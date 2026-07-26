@@ -6,6 +6,18 @@
     <title>Inv-Man-Intake Operator App</title>
     <link rel="stylesheet" href="../design-system/tokens.css" />
     <link rel="stylesheet" href="../design-system/components.css" />
+    <style>
+      .one-pager { max-width: 8in; margin: 1rem auto; padding: 1rem; background: var(--surface, #fff); color: var(--ink, #17202a); }
+      .one-pager-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem 1rem; }
+      .one-pager h3, .one-pager p { margin: .25rem 0; }
+      .one-pager ul { margin: .15rem 0; padding-left: 1.1rem; }
+      @page { size: Letter; margin: .25in; }
+      @media print {
+        .operator-shell > :not(#one-pager) { display: none !important; }
+        #one-pager { box-sizing: border-box; display: block; height: 10.25in; max-height: 10.25in; margin: 0; overflow: hidden; }
+        .one-pager-actions { display: none !important; }
+      }
+    </style>
     <script src="./vendor/pyodide@0.26.2/pyodide.js"></script>
     <script type="module" src="./static_operator_app.js"></script>
   </head>
@@ -16,6 +28,21 @@
         <h1>Operator intake console</h1>
         <p id="runtime-status" role="status">Loading local Pyodide runtime...</p>
       </header>
+
+      <section id="one-pager" class="one-pager" aria-labelledby="one-pager-title">
+        <div class="one-pager-actions"><button id="save-as-pdf" type="button">Save as PDF</button></div>
+        <p class="eyebrow">Ink &amp; Air manager brief</p>
+        <h2 id="one-pager-title">Manager strategy summary</h2>
+        <p>Final score: <strong id="one-pager-score">0.0000</strong></p>
+        <div class="one-pager-grid">
+          <section><h3>Identity</h3><ul id="one-pager-identity"></ul></section>
+          <section><h3>Coverage</h3><ul id="one-pager-coverage"></ul></section>
+          <section><h3>Explainability</h3><ul id="one-pager-explainability"></ul></section>
+          <section><h3>Return stats</h3><ul id="one-pager-returns"></ul></section>
+          <section><h3>Top provenance citations</h3><ul id="one-pager-provenance"></ul></section>
+          <section><h3>Exported graphics</h3><ul id="one-pager-graphics"></ul></section>
+        </div>
+      </section>
 
       <section class="operator-panel" aria-labelledby="packet-upload-heading">
         <div>

@@ -88,6 +88,10 @@ def _verify_static_spa_interactions(page: object) -> None:
     )
     assert page.locator("main").get_attribute("data-packet-path") == "inv-man-intake.ingest_packet"
 
+    one_pager = page.locator("#one-pager")
+    assert "strategy summary" in one_pager.inner_text().lower()
+    assert "Explainability" in one_pager.inner_text()
+
     profile_details = page.locator("#profile-list")
     assert "Manager" in profile_details.inner_text()
     assert "Summit Arc Capital" in profile_details.inner_text()
@@ -206,3 +210,19 @@ def test_e2e_suite_is_not_skipped() -> None:
             assert "ok" in page.content()
         finally:
             browser.close()
+
+
+def test_one_pager_renders_single_page_in_print_layout() -> None:
+    """The print-only summary is bounded to one US-Letter page and hides app chrome."""
+
+    _require_browser_e2e()
+    server_context, playwright_context, browser, page, _ = _with_page()
+    try:
+        page.locator("#packet-upload").set_input_files(str(PACKET_FIXTURE))
+        page.locator("#one-pager-identity li").wait_for(timeout=45_000)
+        page.emulate_media(media="print")
+        box = page.locator("#one-pager").bounding_box()
+        assert box is not None and box["height"] <= 1056
+        assert not page.locator(".operator-grid").is_visible()
+    finally:
+        _close_page(server_context, playwright_context, browser)
