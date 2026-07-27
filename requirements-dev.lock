@@ -351,7 +351,7 @@ rtree==1.4.1
     # via
     #   docling-ibm-models
     #   docling-slim
-ruff==0.15.22
+ruff==0.16.0
     # via inv-man-intake (pyproject.toml)
 safetensors==0.8.0
     # via
