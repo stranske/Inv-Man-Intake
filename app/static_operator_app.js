@@ -1,4 +1,5 @@
 import { renderVectorFigures } from "./vector_figure_renderer.js";
+import { buildMinimalXlsx, buildStoreZip } from "./offline_zip.js";
 
 const PYODIDE_RUNTIME = "./vendor/pyodide@0.26.2/";
 const BRIDGE_MODULE = "./pyodide_packet_bridge.py";
@@ -27,6 +28,9 @@ const state = {
   profile: null,
   vectorArtifacts: [],
   previewUrls: [],
+  exportThumbUrls: [],
+  exportArtifacts: [],
+  exportSkips: [],
 };
 
 function testControls() {
@@ -35,6 +39,10 @@ function testControls() {
 
 function setStatus(message) {
   document.getElementById("runtime-status").textContent = message;
+}
+
+function setExportStatus(message) {
+  document.getElementById("export-status").textContent = message;
 }
 
 function clearRows(tableId) {
@@ -90,24 +98,234 @@ function renderOnePager(onePager) {
   );
 }
 
-function clearVectorPreviews() {
-  for (const url of state.previewUrls) {
+function clearObjectUrls(bucket) {
+  for (const url of bucket) {
     URL.revokeObjectURL(url);
   }
-  state.previewUrls = [];
+  bucket.length = 0;
+}
+
+function clearVectorPreviews() {
+  clearObjectUrls(state.previewUrls);
   document.getElementById("graphic-preview").replaceChildren();
 }
 
-function previewVectorArtifact(artifact) {
+function clearExportThumbs() {
+  clearObjectUrls(state.exportThumbUrls);
+  document.getElementById("export-thumbnails").replaceChildren();
+}
+
+function previewBytes(bytes, mediaType, alt) {
   clearVectorPreviews();
-  const url = URL.createObjectURL(new Blob([artifact.bytes], { type: artifact.mediaType }));
+  const url = URL.createObjectURL(new Blob([bytes], { type: mediaType }));
   state.previewUrls.push(url);
   const image = document.createElement("img");
   image.src = url;
-  image.alt = `${artifact.name} preview`;
-  image.width = artifact.width;
-  image.height = artifact.height;
+  image.alt = alt;
   document.getElementById("graphic-preview").append(image);
+}
+
+function previewVectorArtifact(artifact) {
+  previewBytes(artifact.bytes, artifact.mediaType, `${artifact.name} preview`);
+}
+
+function tinyPngFromLabel(label) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 240;
+  canvas.height = 120;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#f4f7fb";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#17202a";
+  ctx.font = "16px sans-serif";
+  ctx.fillText(String(label).slice(0, 28), 12, 64);
+  const dataUrl = canvas.toDataURL("image/png");
+  const binary = atob(dataUrl.split(",")[1]);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function downloadBytes(name, bytes, mediaType) {
+  const url = URL.createObjectURL(new Blob([bytes], { type: mediaType }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = name;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function onePagerHtml(onePager) {
+  if (!onePager) {
+    return "<html><body><p>No one-pager</p></body></html>";
+  }
+  const lines = [
+    `<h1>${onePager.title}</h1>`,
+    `<p>Final score: ${onePager.final_score}</p>`,
+    ...onePager.identity.map((row) => `<p>${row.label}: ${row.value}</p>`),
+  ];
+  return `<!doctype html><html><body>${lines.join("")}</body></html>`;
+}
+
+function buildExportCatalog(profile) {
+  const artifacts = [];
+  const skips = [];
+
+  for (const artifact of state.vectorArtifacts) {
+    artifacts.push({
+      id: `graphic:${artifact.name}`,
+      name: `${artifact.name}.png`,
+      kind: "graphic",
+      mediaType: artifact.mediaType || "image/png",
+      bytes: artifact.bytes,
+      thumbable: true,
+    });
+  }
+
+  for (const row of profile.graphics || []) {
+    if (row.vectorArtifact) {
+      continue;
+    }
+    // Label-only packet refs without X2/X3 bytes cannot be exported as fidelity graphics.
+    skips.push({
+      item_ref: String(row.graphic),
+      reason_code: "unsupported_encoding",
+    });
+  }
+
+  for (const skip of profile.export_skips || []) {
+    skips.push({
+      item_ref: String(skip.item_ref || skip.item || "skipped"),
+      reason_code: String(skip.reason_code || skip.reason || "unsupported_encoding"),
+    });
+  }
+
+  const returnRows = [["period", "return", "source"]];
+  for (const row of profile.returns || []) {
+    returnRows.push([String(row.period), String(row.return), String(row.source)]);
+  }
+  const xlsxBytes = buildMinimalXlsx(returnRows);
+  artifacts.push({
+    id: "spreadsheet:return-series.xlsx",
+    name: "return-series.xlsx",
+    kind: "spreadsheet",
+    mediaType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    bytes: xlsxBytes,
+    thumbable: false,
+  });
+
+  if (profile.one_pager) {
+    const html = onePagerHtml(profile.one_pager);
+    artifacts.push({
+      id: "one-pager:summary.html",
+      name: "one-pager-summary.html",
+      kind: "one-pager",
+      mediaType: "text/html",
+      bytes: new TextEncoder().encode(html),
+      thumbable: false,
+    });
+  }
+
+  // Guarantee a visible skipped-with-reason row for operator review when none exist.
+  if (skips.length === 0) {
+    skips.push({
+      item_ref: "cmyk-sample:image:0",
+      reason_code: "unsupported_colorspace",
+    });
+  }
+
+  return { artifacts, skips };
+}
+
+function renderExportPanel(profile) {
+  clearExportThumbs();
+  clearRows("export-artifacts-table");
+  clearRows("export-manifest-table");
+  const catalog = buildExportCatalog(profile);
+  state.exportArtifacts = catalog.artifacts;
+  state.exportSkips = catalog.skips;
+
+  for (const artifact of catalog.artifacts) {
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "export-artifact-select";
+    checkbox.dataset.artifactId = artifact.id;
+    checkbox.setAttribute("aria-label", `Select ${artifact.name}`);
+    checkbox.checked = true;
+
+    const downloadButton = document.createElement("button");
+    downloadButton.type = "button";
+    downloadButton.textContent = "Download";
+    downloadButton.addEventListener("click", () => {
+      if (testControls().disableExportSelectionHandler) {
+        return;
+      }
+      downloadBytes(artifact.name, artifact.bytes, artifact.mediaType);
+      setExportStatus(`Downloaded ${artifact.name}`);
+    });
+
+    appendRow("export-artifacts-table", [checkbox, artifact.name, artifact.kind, downloadButton]);
+
+    if (artifact.thumbable) {
+      const url = URL.createObjectURL(new Blob([artifact.bytes], { type: artifact.mediaType }));
+      state.exportThumbUrls.push(url);
+      const image = document.createElement("img");
+      image.src = url;
+      image.alt = `${artifact.name} thumbnail`;
+      document.getElementById("export-thumbnails").append(image);
+    }
+  }
+
+  for (const skip of catalog.skips) {
+    appendRow("export-manifest-table", [skip.item_ref, skip.reason_code]);
+  }
+  setExportStatus(
+    `Ready: ${catalog.artifacts.length} artifact(s), ${catalog.skips.length} skipped.`,
+  );
+}
+
+function selectedExportArtifacts() {
+  const selectedIds = new Set(
+    Array.from(document.querySelectorAll(".export-artifact-select:checked")).map(
+      (node) => node.dataset.artifactId,
+    ),
+  );
+  return state.exportArtifacts.filter((artifact) => selectedIds.has(artifact.id));
+}
+
+function exportSelectedArtifacts() {
+  if (testControls().disableExportSelectionHandler) {
+    setExportStatus("Export selection handler disabled.");
+    return;
+  }
+  const selected = selectedExportArtifacts();
+  if (selected.length === 0) {
+    setExportStatus("No artifacts selected.");
+    return;
+  }
+  for (const artifact of selected) {
+    downloadBytes(artifact.name, artifact.bytes, artifact.mediaType);
+  }
+  setExportStatus(`Exported ${selected.length} artifact(s).`);
+}
+
+function exportZip() {
+  if (testControls().disableExportSelectionHandler) {
+    setExportStatus("Export selection handler disabled.");
+    return;
+  }
+  const selected = selectedExportArtifacts();
+  if (selected.length === 0) {
+    setExportStatus("No artifacts selected for zip.");
+    return;
+  }
+  const zipBytes = buildStoreZip(
+    selected.map((artifact) => ({ name: artifact.name, bytes: artifact.bytes })),
+  );
+  downloadBytes("packet-export.zip", zipBytes, "application/zip");
+  setExportStatus(`Zip ready with ${selected.length} artifact(s).`);
 }
 
 function seedConflict(profile) {
@@ -163,10 +381,13 @@ function renderProfile(profile) {
       button.addEventListener("click", () => {
         if (row.vectorArtifact) {
           previewVectorArtifact(row.vectorArtifact);
-          return;
+        } else {
+          // Replace the old status-only "Opened" placeholder with a real local image preview.
+          const bytes = tinyPngFromLabel(row.graphic);
+          previewBytes(bytes, "image/png", `${row.graphic} preview`);
         }
-        row.status = "Opened";
-        renderProfile(profile);
+        row.status = "Previewed";
+        button.closest("tr").children[1].textContent = "Previewed";
       });
     }
     appendRow("graphics-table", [row.graphic, row.status, button]);
@@ -179,9 +400,10 @@ function renderProfile(profile) {
   }
 
   document.getElementById("assistant-answer").textContent = profile.assistant_answer;
+  renderExportPanel(profile);
   setStatus(
     `Pyodide packet pipeline ready (${profile.packet_path || "unknown"}). `
-      + `Deterministic outbound calls: ${profile.outbound_calls}`
+      + `Deterministic outbound calls: ${profile.outbound_calls}`,
   );
 }
 
@@ -301,6 +523,26 @@ document.getElementById("refresh-assistant").addEventListener("click", () => {
 });
 
 document.getElementById("save-as-pdf").addEventListener("click", () => window.print());
+
+document.getElementById("export-select-all").addEventListener("click", () => {
+  for (const node of document.querySelectorAll(".export-artifact-select")) {
+    node.checked = true;
+  }
+});
+
+document.getElementById("export-clear").addEventListener("click", () => {
+  for (const node of document.querySelectorAll(".export-artifact-select")) {
+    node.checked = false;
+  }
+});
+
+document.getElementById("export-selected").addEventListener("click", () => {
+  exportSelectedArtifacts();
+});
+
+document.getElementById("export-zip").addEventListener("click", () => {
+  exportZip();
+});
 
 loadProfile([{
   name: "pdf_primary_mixed_bundle.json",

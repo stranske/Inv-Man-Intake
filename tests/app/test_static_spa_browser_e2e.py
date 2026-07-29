@@ -104,7 +104,10 @@ def _verify_static_spa_interactions(page: object) -> None:
 
     page.get_by_role("button", name="Open graphic").first.click()
     graphics_table = page.get_by_role("table", name="Packet graphics")
-    assert re.search(r"Opened", graphics_table.inner_text(timeout=45_000))
+    assert re.search(r"Previewed", graphics_table.inner_text(timeout=45_000))
+    preview = page.locator("#graphic-preview img")
+    preview.wait_for(timeout=45_000)
+    assert preview.get_attribute("src").startswith("blob:")
 
     returns_table = page.get_by_role("table", name="Packet return stream")
     assert returns_table.locator("tbody tr").count() == 1
@@ -240,15 +243,82 @@ def test_vector_figure_export_renders_a_local_pdf_region_without_egress() -> Non
         _close_page(server_context, playwright_context, browser)
 
 
-@pytest.mark.parametrize("control", ["disableGraphicHandler", "disableConflictHandler"])
+@pytest.mark.parametrize("control", ["disableGraphicHandler", "disableConflictHandler", "disableExportSelectionHandler"])
 def test_static_spa_deliberate_break_fails_the_interaction_assertion(control: str) -> None:
-    """Disabling either concrete handler makes the same browser path fail."""
+    """Disabling a concrete handler makes the matching browser path fail."""
 
     _require_browser_e2e()
     server_context, playwright_context, browser, page, _ = _with_page({control: True})
     try:
         with pytest.raises(AssertionError):
-            _verify_static_spa_interactions(page)
+            if control == "disableExportSelectionHandler":
+                _verify_export_panel(page)
+            else:
+                _verify_static_spa_interactions(page)
+    finally:
+        _close_page(server_context, playwright_context, browser)
+
+
+def _verify_export_panel(page: object) -> None:
+    """Drive select → export and assert local artifacts + skipped-with-reason rows."""
+
+    page.locator("#packet-upload").set_input_files(
+        {
+            "name": "vector-chart.pdf",
+            "mimeType": "application/pdf",
+            "buffer": _vector_chart_pdf(),
+        }
+    )
+    export_table = page.get_by_role("table", name="Export artifacts")
+    export_table.wait_for(timeout=45_000)
+    page.get_by_role("button", name="Select all artifacts").click()
+    page.get_by_role("button", name="Export selected").click()
+    status = page.locator("#export-status")
+    assert "Exported" in status.inner_text()
+
+    artifact_text = export_table.inner_text()
+    assert ".png" in artifact_text.lower() or "graphic" in artifact_text.lower()
+    assert "return-series.xlsx" in artifact_text
+
+    thumbs = page.locator("#export-thumbnails img")
+    assert thumbs.count() >= 1
+    assert thumbs.first.get_attribute("src").startswith("blob:")
+
+    skip_table = page.get_by_role("table", name="Export manifest skips")
+    skip_text = skip_table.inner_text()
+    assert re.search(r"unsupported_(encoding|colorspace)|no_series_found", skip_text)
+
+    one_pager = page.locator("#one-pager")
+    assert one_pager.count() == 1
+
+    png_magic = page.evaluate(
+        """async () => {
+          const image = document.querySelector('#export-thumbnails img');
+          const bytes = new Uint8Array(await (await fetch(image.src)).arrayBuffer());
+          return Array.from(bytes.slice(0, 8));
+        }"""
+    )
+    assert png_magic == [137, 80, 78, 71, 13, 10, 26, 10]
+
+    xlsx_probe = page.evaluate(
+        """() => {
+          const rows = Array.from(document.querySelectorAll('#export-artifacts-table tbody tr'));
+          return rows.some((row) => row.innerText.includes('return-series.xlsx'));
+        }"""
+    )
+    assert xlsx_probe is True
+
+
+def test_export_panel_produces_artifacts_and_manifest() -> None:
+    """Export panel yields graphic bytes, xlsx, one-pager surface, and a skip reason row."""
+
+    _require_browser_e2e()
+    server_context, playwright_context, browser, page, external_requests = _with_page(
+        enforce_local_requests=True
+    )
+    try:
+        _verify_export_panel(page)
+        assert external_requests == []
     finally:
         _close_page(server_context, playwright_context, browser)
 

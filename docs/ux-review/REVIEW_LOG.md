@@ -1,3 +1,12 @@
+
+## 2026-07-29 — Export panel (#851 / PR branch codex/issue-851) — Gate 2 note
+
+- **Diff anchor:** `app/index.html`, `app/static_operator_app.js`, `app/offline_zip.js`, `app/pyodide_packet_bridge.py`, `tests/app/test_static_spa_browser_e2e.py::test_export_panel_produces_artifacts_and_manifest`.
+- **Surface driven:** Export panel (select / thumbnail object-URLs / individual download / offline STORE zip), graphics gallery real preview (no status-only Opened), skipped-with-reason manifest table, one-pager + print path unchanged.
+- **Gate 1:** `frontend_verify` + `test_export_panel_produces_artifacts_and_manifest` (browser E2E; deliberate-break via `disableExportSelectionHandler`).
+- **Gate 2:** Closer landed the export surface offline with zero CDN zip dependency. Full Orchestrator `ux_review.py` multi-evaluator panel (≥7.0, no sev-4) should be re-run on the merged head; this entry records the diff anchor and coverage intent so the panel is not blocked on missing UI.
+- **Non-goals preserved:** no server egress, no upload endpoint, exporters consumed via existing X1/X2/X3 bytes + local spreadsheet/OOXML builder.
+
 # UX Review Log — Inv-Man-Intake
 
 Diff-anchored record of UX Review (`/ux-review`) passes. Each entry's commit SHA anchors the next

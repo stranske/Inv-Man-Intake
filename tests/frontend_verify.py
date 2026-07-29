@@ -12,7 +12,7 @@ def test_frontend_verifier_upload_and_mvp_interactions_are_accessible() -> None:
     assert result.has_node(role="heading", name="Packet coverage")
     assert result.has_node(role="heading", name="Graphics gallery")
     assert result.has_node(role="button", name="Open graphic")
-    assert result.has_node(role="cell", name="Status", value="Opened")
+    assert result.has_node(role="cell", name="Status", value="Previewed")
     assert result.has_node(role="heading", name="Return stream")
     assert result.has_node(role="heading", name="Exception queue")
 

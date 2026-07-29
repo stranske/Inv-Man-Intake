@@ -10,4 +10,4 @@ def test_graphics_gallery_deliberate_break_detects_unbound_click_handler() -> No
     )
 
     assert result.has_node(role="button", name="Open graphic")
-    assert not result.has_node(role="cell", name="Status", value="Opened")
+    assert not result.has_node(role="cell", name="Status", value="Previewed")

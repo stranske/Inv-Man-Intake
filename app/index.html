@@ -11,6 +11,9 @@
       .one-pager-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem 1rem; }
       .one-pager h3, .one-pager p { margin: .25rem 0; }
       .one-pager ul { margin: .15rem 0; padding-left: 1.1rem; }
+      .export-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0; }
+      .export-thumbnails { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0; }
+      .export-thumbnails img { max-width: 96px; max-height: 72px; border: 1px solid var(--ink-muted, #9aa5b1); }
       @page { size: Letter; margin: .25in; }
       @media print {
         .operator-shell > :not(#one-pager) { display: none !important; }
@@ -20,6 +23,7 @@
     </style>
     <script src="./vendor/pyodide@0.26.2/pyodide.js"></script>
     <script type="module" src="./static_operator_app.js"></script>
+    <!-- offline_zip.js is imported by static_operator_app.js; no CDN zip library -->
   </head>
   <body class="ds theme-air density-compact">
     <main class="operator-shell" data-app-runtime="static-spa-pyodide">
@@ -89,6 +93,39 @@
             <tbody></tbody>
           </table>
           <div id="graphic-preview" aria-live="polite"></div>
+        </article>
+
+        <article class="operator-panel density-compact" aria-labelledby="export-heading">
+          <h2 id="export-heading">Export panel</h2>
+          <p>Select artifacts, preview graphics from local bytes, and download individually or as one offline zip.</p>
+          <div class="export-controls">
+            <button id="export-select-all" type="button">Select all artifacts</button>
+            <button id="export-clear" type="button">Clear selection</button>
+            <button id="export-selected" type="button">Export selected</button>
+            <button id="export-zip" type="button">Download zip</button>
+          </div>
+          <div id="export-thumbnails" class="export-thumbnails" aria-live="polite"></div>
+          <table id="export-artifacts-table" aria-label="Export artifacts">
+            <thead>
+              <tr>
+                <th>Select</th>
+                <th>Artifact</th>
+                <th>Type</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <table id="export-manifest-table" aria-label="Export manifest skips">
+            <thead>
+              <tr>
+                <th>Skipped item</th>
+                <th>Reason code</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div id="export-status" role="status">Export panel idle.</div>
         </article>
 
         <article class="operator-panel" aria-labelledby="returns-heading">
