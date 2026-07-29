@@ -8,10 +8,10 @@ tasks:
       and `density-compact`, with controls to select artifacts, preview graphics as
       real thumbnails from X2/X3 bytes via object URLs with no network, and trigger
       export.
-    status: doing
+    status: done
     started_at: '2026-07-29T19:33:45Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-07-29T19:33:55Z'
+    commit: 8dd5187aec2ff9fb1dbe9abb1a30200bfd2d00e0
     notes: []
   - id: task-02
     title: 'Create the export panel UI structure in `app/static_operator_app.js` using
