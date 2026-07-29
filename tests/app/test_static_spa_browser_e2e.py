@@ -243,7 +243,9 @@ def test_vector_figure_export_renders_a_local_pdf_region_without_egress() -> Non
         _close_page(server_context, playwright_context, browser)
 
 
-@pytest.mark.parametrize("control", ["disableGraphicHandler", "disableConflictHandler", "disableExportSelectionHandler"])
+@pytest.mark.parametrize(
+    "control", ["disableGraphicHandler", "disableConflictHandler", "disableExportSelectionHandler"]
+)
 def test_static_spa_deliberate_break_fails_the_interaction_assertion(control: str) -> None:
     """Disabling a concrete handler makes the matching browser path fail."""
 
@@ -291,21 +293,17 @@ def _verify_export_panel(page: object) -> None:
     one_pager = page.locator("#one-pager")
     assert one_pager.count() == 1
 
-    png_magic = page.evaluate(
-        """async () => {
+    png_magic = page.evaluate("""async () => {
           const image = document.querySelector('#export-thumbnails img');
           const bytes = new Uint8Array(await (await fetch(image.src)).arrayBuffer());
           return Array.from(bytes.slice(0, 8));
-        }"""
-    )
+        }""")
     assert png_magic == [137, 80, 78, 71, 13, 10, 26, 10]
 
-    xlsx_probe = page.evaluate(
-        """() => {
+    xlsx_probe = page.evaluate("""() => {
           const rows = Array.from(document.querySelectorAll('#export-artifacts-table tbody tr'));
           return rows.some((row) => row.innerText.includes('return-series.xlsx'));
-        }"""
-    )
+        }""")
     assert xlsx_probe is True
 
 
