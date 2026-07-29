@@ -10,7 +10,7 @@ def test_ux_review_normal_path_passes_with_calibrated_score() -> None:
         UXReviewFixture(name="owner-calibrated-normal", usability_score=8.2)
     )
 
-    assert result.frontend.has_node(role="cell", name="Status", value="Opened")
+    assert result.frontend.has_node(role="cell", name="Status", value="Previewed")
 
 
 def test_ux_review_adversarial_path_records_broken_gallery_state() -> None:
@@ -19,7 +19,7 @@ def test_ux_review_adversarial_path_records_broken_gallery_state() -> None:
     )
 
     assert result.passed
-    assert not result.frontend.has_node(role="cell", name="Status", value="Opened")
+    assert not result.frontend.has_node(role="cell", name="Status", value="Previewed")
 
 
 def test_ux_review_fails_below_owner_calibration_threshold() -> None:

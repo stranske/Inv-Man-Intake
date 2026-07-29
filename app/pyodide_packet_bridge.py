@@ -91,6 +91,13 @@ def _attach_vector_exports(
         }
         for artifact in exports
     ]
+    profile["export_skips"] = [
+        {
+            "item_ref": str(failure.get("document") or "vector"),
+            "reason_code": "unsupported_encoding",
+        }
+        for failure in vector_failures
+    ]
     profile["queue"].extend(
         {
             "item": "vector_render_failed",

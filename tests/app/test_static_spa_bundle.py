@@ -90,6 +90,7 @@ def test_static_spa_exposes_operator_surfaces() -> None:
         "Packet coverage",
         "Manager profile",
         "Graphics gallery",
+        "Export panel",
         "Return stream",
         "Exception queue",
         "Assistant panel",
@@ -98,6 +99,11 @@ def test_static_spa_exposes_operator_surfaces() -> None:
 
     assert "loadPyodide" in script
     assert "pyodide_packet_bridge.py" in script
+    assert "offline_zip.js" in script
+    assert "buildStoreZip" in script
+    assert "export-artifacts-table" in index
+    assert "export-manifest-table" in index
+    assert (ROOT / "app" / "offline_zip.js").is_file()
     assert "state.pyodide.toPy(payload)" in script
     assert "pyodideInit: null" in script
     assert "await state.pyodideInit" in script

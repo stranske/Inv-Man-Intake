@@ -80,9 +80,11 @@ def run_frontend_verifier(
             AccessibilityNode("status", "Uploaded file count", "1"),
             AccessibilityNode("table", "Packet coverage"),
             AccessibilityNode("table", "Graphics gallery"),
-            AccessibilityNode("cell", "Status", "Opened"),
+            AccessibilityNode("cell", "Status", "Previewed"),
             AccessibilityNode("table", "Exception queue"),
             AccessibilityNode("row", "Seeded deterministic conflict"),
+            AccessibilityNode("table", "Export artifacts"),
+            AccessibilityNode("table", "Export manifest skips"),
         ),
         outbound_requests=0,
     )
