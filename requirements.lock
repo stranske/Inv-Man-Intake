@@ -101,10 +101,6 @@ fsspec==2026.6.0
     # via
     #   huggingface-hub
     #   torch
-gitdb==4.0.12
-    # via gitpython
-gitpython==3.1.57
-    # via streamlit
 greenlet==3.5.4
     # via playwright
 h11==0.16.0
@@ -420,8 +416,6 @@ six==1.17.0
     # via
     #   python-dateutil
     #   rapidocr
-smmap==5.0.3
-    # via gitdb
 sniffio==1.3.1
     # via langsmith
 soupsieve==2.9.1
@@ -430,7 +424,7 @@ starlette==1.3.1
     # via streamlit
 stranske-pdf-extract @ git+https://github.com/stranske/Workflows.git@a0ee3aa25c08d4eeb8e96dc6c8d7791930cd2d9a#subdirectory=packages/stranske_pdf_extract
     # via inv-man-intake (pyproject.toml)
-streamlit==1.60.0
+streamlit==1.61.1
     # via inv-man-intake (pyproject.toml)
 sympy==1.14.0
     # via torch
