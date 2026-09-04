@@ -83,3 +83,23 @@ def test_pdf_primary_provider_uses_literals_from_stream_blocks_only() -> None:
     result = provider.extract(source_doc_id="doc_pdf_stream_only", content=content)
     fields = {field.key: field for field in result.fields}
     assert fields["terms.management_fee"].value == "2.00%"
+
+
+def test_pdf_primary_provider_decodes_octal_escapes_before_field_matching() -> None:
+    provider = PdfPrimaryExtractionProvider()
+    content = (
+        b"%PDF-1.4\n"
+        b"1 0 obj\n<< /Length 45 >>\nstream\n"
+        b"(Page 3) (Management fee: 1\\05625%) Tj\n"
+        b"endstream\n"
+        b"endobj\n"
+        b"%%EOF"
+    )
+
+    result = provider.extract(source_doc_id="doc_pdf_octal_escape", content=content)
+
+    fields = {field.key: field for field in result.fields}
+    management_fee = fields["terms.management_fee"]
+    assert management_fee.value == "1.25%"
+    assert management_fee.source_page == 3
+    assert management_fee.snippet == "Management fee: 1.25%"
