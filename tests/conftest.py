@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -26,6 +28,28 @@ _V1_SMOKE_EXPECTED_DOCUMENT_IDS: tuple[str, ...] = (
     "pkg_pdf_mixed_001:doc:2",
     "pkg_pdf_mixed_001:doc:3",
 )
+_HEADLESS_REFERENCE_BUNDLE = _V1_SMOKE_FIXTURE_ROOT / "pdf_primary_mixed_bundle.json"
+_HEADLESS_REFERENCE_FILES = (
+    "summit_arc_investment_update.pdf",
+    "summit_arc_track_record.xlsx",
+)
+_EXTRACTION_FIXTURE_ROOT = Path("tests/fixtures/extraction")
+
+
+def stage_headless_reference_bundle(tmp_path: Path) -> Path:
+    """Lay out bundle JSON beside the document bytes headless ingest expects."""
+
+    bundle_root = tmp_path / "bundle-root"
+    bundle_root.mkdir(parents=True, exist_ok=True)
+    payload = json.loads(_HEADLESS_REFERENCE_BUNDLE.read_text(encoding="utf-8"))
+    payload["files"] = [
+        entry for entry in payload["files"] if entry["file_name"] in _HEADLESS_REFERENCE_FILES
+    ]
+    for file_name in _HEADLESS_REFERENCE_FILES:
+        shutil.copyfile(_EXTRACTION_FIXTURE_ROOT / file_name, bundle_root / file_name)
+    bundle_path = bundle_root / "reference_bundle.json"
+    bundle_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return bundle_path
 
 
 @pytest.fixture(scope="session")

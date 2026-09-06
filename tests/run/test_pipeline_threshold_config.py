@@ -11,7 +11,8 @@ import inv_man_intake.run as run_module
 from inv_man_intake.extraction.confidence import load_threshold_config
 from inv_man_intake.run import DEFAULT_THRESHOLD_CONFIG_PATH, run_pipeline
 
-_BUNDLE = Path("tests/fixtures/intake/pdf_primary_mixed_bundle.json")
+from tests.conftest import stage_headless_reference_bundle
+
 _MANDATORY_FIELDS = {
     "terms.management_fee",
     "performance.net_return_1y",
@@ -51,8 +52,9 @@ def test_run_pipeline_uses_default_yaml_mandatory_fields(
     _write_strict_threshold_config(config_path)
     monkeypatch.setattr(run_module, "DEFAULT_THRESHOLD_CONFIG_PATH", config_path)
 
+    bundle_path = stage_headless_reference_bundle(tmp_path)
     output_dir = tmp_path / "out"
-    run_pipeline(_BUNDLE, output_dir=output_dir)
+    run_pipeline(bundle_path, output_dir=output_dir)
 
     summary = json.loads((output_dir / "threshold-summary.json").read_text(encoding="utf-8"))
 
@@ -68,8 +70,9 @@ def test_run_pipeline_uses_yaml_mandatory_fields(tmp_path: Path) -> None:
     config_path = tmp_path / "strict-thresholds.yaml"
     _write_strict_threshold_config(config_path)
 
+    bundle_path = stage_headless_reference_bundle(tmp_path)
     output_dir = tmp_path / "out"
-    run_pipeline(_BUNDLE, output_dir=output_dir, threshold_config_path=config_path)
+    run_pipeline(bundle_path, output_dir=output_dir, threshold_config_path=config_path)
 
     summary = json.loads((output_dir / "threshold-summary.json").read_text(encoding="utf-8"))
 

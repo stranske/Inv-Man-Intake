@@ -249,18 +249,27 @@ def _run_pipeline_core(
         raise ValueError("intake bundle must register at least two documents for extraction")
     secondary_document = core_repository.get_document(record.document_ids[1])
     assert secondary_document is not None, "secondary document must be registered"
-    secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
-        tracer=tracer,
-        trace_context=extraction_context,
-        source_doc_id=record.document_ids[1],
-        content=_pipeline_document_bytes(
+    if smoke_mode:
+        # Smoke bundles may name synthetic secondary files that are not checked in;
+        # the boundary exercise only needs representative xlsx bytes.
+        secondary_content = _fixture_bytes(
+            fixture_root=fixture_root,
+            file_name="summit_arc_track_record.xlsx",
+        )
+    else:
+        secondary_content = _pipeline_document_bytes(
             document_id=record.document_ids[1],
             fund_id=record.fund_id,
             file_name=secondary_document.file_name,
             smoke_mode=smoke_mode,
             fixture_root=fixture_root,
             document_store=document_store,
-        ),
+        )
+    secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
+        tracer=tracer,
+        trace_context=extraction_context,
+        source_doc_id=record.document_ids[1],
+        content=secondary_content,
         correlation_id=correlation_id,
     )
     with tracer.start_span(
