@@ -149,10 +149,8 @@ def test_ingest_entrypoint_runs_valid_bundle_outside_repository_fixture_layout_b
 
     def _broken(**kwargs):  # type: ignore[no-untyped-def]
         if not kwargs["smoke_mode"] and kwargs["file_name"] == "summit_arc_track_record.xlsx":
-            return v1_smoke._fixture_bytes(
-                fixture_root=kwargs["fixture_root"],
-                file_name="summit_arc_track_record.xlsx",
-            )
+            # Deliberately corrupt submitted bytes — must not fall back to fixture lookup.
+            return b"not-the-submitted-workbook"
         return original(**kwargs)
 
     monkeypatch.setattr(v1_smoke, "_pipeline_document_bytes", _broken)
