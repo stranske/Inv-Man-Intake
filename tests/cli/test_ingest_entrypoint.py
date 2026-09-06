@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,7 @@ import pytest
 from inv_man_intake.cli.ingest import main
 
 _BUNDLE = "tests/fixtures/intake/pdf_primary_mixed_bundle.json"
+_FIXTURE_EXTRACTION = Path("tests/fixtures/extraction")
 _ARTIFACT_FILES = (
     "run.json",
     "metadata.json",
@@ -25,18 +27,50 @@ _KEY_FIELDS = (
 )
 
 
+def _minimal_external_bundle_payload() -> dict[str, object]:
+    base = json.loads(Path(_BUNDLE).read_text(encoding="utf-8"))
+    files = [
+        entry
+        for entry in base["files"]
+        if entry["file_name"]
+        in {
+            "summit_arc_investment_update.pdf",
+            "summit_arc_track_record.xlsx",
+        }
+    ]
+    payload = dict(base)
+    payload["files"] = files
+    return payload
+
+
+def _write_external_layout_bundle(tmp_path: Path) -> Path:
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    bundle_payload = _minimal_external_bundle_payload()
+    for entry in bundle_payload["files"]:
+        source = _FIXTURE_EXTRACTION / entry["file_name"]
+        target = tmp_path / entry["file_name"]
+        shutil.copyfile(source, target)
+    bundle_path = tmp_path / "external_intake_bundle.json"
+    bundle_path.write_text(json.dumps(bundle_payload, indent=2) + "\n", encoding="utf-8")
+    return bundle_path
+
+
 def test_ingest_entrypoint_writes_run_and_named_artifacts(tmp_path: Path) -> None:
-    exit_code = main([_BUNDLE, "--out", str(tmp_path)])
+    bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
+    output_dir = tmp_path / "out"
+    exit_code = main([str(bundle_path), "--out", str(output_dir)])
 
     assert exit_code == 0
     for name in _ARTIFACT_FILES:
-        assert (tmp_path / name).is_file(), f"missing artifact on disk: {name}"
+        assert (output_dir / name).is_file(), f"missing artifact on disk: {name}"
 
 
 def test_ingest_run_json_carries_score_escalation_and_evidence(tmp_path: Path) -> None:
-    assert main([_BUNDLE, "--out", str(tmp_path)]) == 0
+    bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
+    output_dir = tmp_path / "out"
+    assert main([str(bundle_path), "--out", str(output_dir)]) == 0
 
-    run_payload = json.loads((tmp_path / "run.json").read_text(encoding="utf-8"))
+    run_payload = json.loads((output_dir / "run.json").read_text(encoding="utf-8"))
 
     assert run_payload["final_score"] == pytest.approx(0.7809)
     assert run_payload["escalation_state"]["reason"] == "low_key_field_coverage"
@@ -88,3 +122,43 @@ def test_ingest_entrypoint_returns_nonzero_for_rejected_bundle(tmp_path: Path) -
     )
 
     assert exit_code == 1
+
+
+def test_ingest_entrypoint_runs_valid_bundle_outside_repository_fixture_layout(
+    tmp_path: Path,
+) -> None:
+    bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
+    output_dir = tmp_path / "output"
+
+    exit_code = main([str(bundle_path), "--out", str(output_dir)])
+
+    assert exit_code == 0
+    for name in _ARTIFACT_FILES:
+        assert (output_dir / name).is_file(), f"missing artifact on disk: {name}"
+
+
+def test_ingest_entrypoint_runs_valid_bundle_outside_repository_fixture_layout_break(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
+    output_dir = tmp_path / "output"
+
+    import inv_man_intake.v1_smoke as v1_smoke
+
+    original = v1_smoke._pipeline_document_bytes
+
+    def _broken(**kwargs):  # type: ignore[no-untyped-def]
+        if (
+            not kwargs["smoke_mode"]
+            and kwargs["file_name"] == "summit_arc_track_record.xlsx"
+        ):
+            return v1_smoke._fixture_bytes(
+                fixture_root=kwargs["fixture_root"],
+                file_name="summit_arc_track_record.xlsx",
+            )
+        return original(**kwargs)
+
+    monkeypatch.setattr(v1_smoke, "_pipeline_document_bytes", _broken)
+    assert main([str(bundle_path), "--out", str(output_dir)]) != 0
+    monkeypatch.undo()
+    assert main([str(bundle_path), "--out", str(output_dir / "restored")]) == 0
