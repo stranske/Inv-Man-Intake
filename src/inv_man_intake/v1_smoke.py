@@ -315,6 +315,11 @@ def _run_pipeline_core(
         xlsx_series, deck_series, benchmark_series = _resolve_performance_series(
             smoke_mode=smoke_mode,
             file_entries=file_entries,
+            record=record,
+            fund_id=record.fund_id,
+            fixture_root=fixture_root,
+            document_store=document_store,
+            core_repository=core_repository,
         )
         conflict_result = resolve_source_conflicts(
             xlsx_series=xlsx_series,
@@ -578,14 +583,90 @@ def _bundle_has_performance_track_record(file_entries: list[dict[str, Any]]) -> 
     )
 
 
+def _performance_track_record_file_name(file_entries: list[dict[str, Any]]) -> str | None:
+    for entry in file_entries:
+        if isinstance(entry, dict) and entry.get("role") == "performance_track_record":
+            file_name = entry.get("file_name")
+            if isinstance(file_name, str) and file_name.strip():
+                return file_name
+    return None
+
+
+def _document_id_for_file_name(
+    *,
+    repository: CoreRepository,
+    document_ids: tuple[str, ...] | list[str],
+    file_name: str,
+) -> str | None:
+    for document_id in document_ids:
+        document = repository.get_document(document_id)
+        if document is not None and document.file_name == file_name:
+            return document_id
+    return None
+
+
+def _require_valid_performance_track_record_bytes(content: bytes, *, file_name: str) -> None:
+    if not content.startswith(b"PK\x03\x04"):
+        raise ValueError(
+            f"performance track record {file_name} is not a valid xlsx container: "
+            f"{_unsupported_secondary_bytes_reason(content)}"
+        )
+    kind = _ooxml_zip_kind(content)
+    if kind != "xlsx":
+        raise ValueError(
+            f"performance track record {file_name} must be xlsx bytes, got {kind}"
+        )
+
+
 def _resolve_performance_series(
     *,
     smoke_mode: bool,
     file_entries: list[dict[str, Any]],
+    record: IngestRecord | None = None,
+    fund_id: str | None = None,
+    fixture_root: Path | None = None,
+    document_store: InMemoryDocumentStore | None = None,
+    core_repository: CoreRepository | None = None,
 ) -> tuple[PerformanceSeries, PerformanceSeries, PerformanceSeries]:
     if smoke_mode:
         return _fixture_performance_series()
     if _bundle_has_performance_track_record(file_entries):
+        track_record_name = _performance_track_record_file_name(file_entries)
+        if track_record_name is None:
+            raise ValueError(
+                "performance data unavailable: bundle declares performance_track_record without file_name"
+            )
+        if (
+            record is None
+            or fund_id is None
+            or fixture_root is None
+            or document_store is None
+            or core_repository is None
+        ):
+            raise ValueError(
+                "performance data unavailable: headless performance resolution requires pipeline context"
+            )
+        document_id = _document_id_for_file_name(
+            repository=core_repository,
+            document_ids=record.document_ids,
+            file_name=track_record_name,
+        )
+        if document_id is None:
+            raise ValueError(
+                f"performance data unavailable: no registered document for {track_record_name}"
+            )
+        track_record_bytes = _pipeline_document_bytes(
+            document_id=document_id,
+            fund_id=fund_id,
+            file_name=track_record_name,
+            smoke_mode=False,
+            fixture_root=fixture_root,
+            document_store=document_store,
+        )
+        _require_valid_performance_track_record_bytes(
+            track_record_bytes,
+            file_name=track_record_name,
+        )
         # Reference normalization until an xlsx timeseries parser is wired.
         return _fixture_performance_series()
     raise ValueError("performance data unavailable: bundle has no performance_track_record file")
