@@ -6,12 +6,11 @@ import json
 from pathlib import Path
 
 import pytest
+from tests.conftest import stage_headless_reference_bundle
 
 from inv_man_intake.intake.versioning import compute_sha256
 from inv_man_intake.run import ARTIFACT_MANIFEST, run_pipeline
 from inv_man_intake.run_manifest import build_manifest
-
-from tests.conftest import stage_headless_reference_bundle
 
 
 def test_manifest_hashes_every_non_manifest_artifact(tmp_path: Path) -> None:

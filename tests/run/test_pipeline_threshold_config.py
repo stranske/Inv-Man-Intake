@@ -6,12 +6,11 @@ import json
 from pathlib import Path
 
 import pytest
+from tests.conftest import stage_headless_reference_bundle
 
 import inv_man_intake.run as run_module
 from inv_man_intake.extraction.confidence import load_threshold_config
 from inv_man_intake.run import DEFAULT_THRESHOLD_CONFIG_PATH, run_pipeline
-
-from tests.conftest import stage_headless_reference_bundle
 
 _MANDATORY_FIELDS = {
     "terms.management_fee",
