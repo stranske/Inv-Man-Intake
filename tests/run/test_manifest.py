@@ -6,30 +6,31 @@ import json
 from pathlib import Path
 
 import pytest
+from tests.conftest import stage_headless_reference_bundle
 
 from inv_man_intake.intake.versioning import compute_sha256
 from inv_man_intake.run import ARTIFACT_MANIFEST, run_pipeline
 from inv_man_intake.run_manifest import build_manifest
 
-_BUNDLE = Path("tests/fixtures/intake/pdf_primary_mixed_bundle.json")
-
 
 def test_manifest_hashes_every_non_manifest_artifact(tmp_path: Path) -> None:
-    run_pipeline(_BUNDLE, output_dir=tmp_path)
+    bundle_path = stage_headless_reference_bundle(tmp_path)
+    output_dir = tmp_path / "out"
+    run_pipeline(bundle_path, output_dir=output_dir)
 
-    manifest_path = tmp_path / ARTIFACT_MANIFEST
+    manifest_path = output_dir / ARTIFACT_MANIFEST
     assert manifest_path.is_file(), "run did not write manifest.json"
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     entries = {entry["name"]: entry for entry in manifest["artifacts"]}
 
-    on_disk = {p.name for p in tmp_path.iterdir() if p.name != ARTIFACT_MANIFEST}
+    on_disk = {p.name for p in output_dir.iterdir() if p.name != ARTIFACT_MANIFEST}
     assert set(entries) == on_disk, "manifest must list exactly the non-manifest files"
     assert manifest["schema_version"] == "artifact-manifest/v1"
     assert manifest["tool"] == "inv-man-ingest"
 
     for name, entry in entries.items():
-        content = (tmp_path / name).read_bytes()
+        content = (output_dir / name).read_bytes()
         assert entry["artifact_id"] == name
         assert entry["sha256"] == compute_sha256(content)
         assert entry["bytes"] == len(content)
@@ -44,9 +45,10 @@ def test_manifest_hashes_every_non_manifest_artifact(tmp_path: Path) -> None:
 
 
 def test_run_json_carries_manifest_pointer(tmp_path: Path) -> None:
-
-    run_pipeline(_BUNDLE, output_dir=tmp_path)
-    run_payload = json.loads((tmp_path / "run.json").read_text(encoding="utf-8"))
+    bundle_path = stage_headless_reference_bundle(tmp_path)
+    output_dir = tmp_path / "out"
+    run_pipeline(bundle_path, output_dir=output_dir)
+    run_payload = json.loads((output_dir / "run.json").read_text(encoding="utf-8"))
 
     assert run_payload["schema_version"] == "run-contract/v1"
     assert run_payload["repo"] == "stranske/Inv-Man-Intake"
