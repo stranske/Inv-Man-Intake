@@ -506,7 +506,15 @@ def _unsupported_secondary_extractor(payload: dict[str, Any]) -> dict[str, objec
 
 
 def _fixture_bytes(*, fixture_root: Path, file_name: str) -> bytes:
-    return (fixture_root.parent / "extraction" / file_name).read_bytes()
+    content_root = (fixture_root.parent / "extraction").resolve()
+    source_path = (content_root / file_name).resolve()
+    try:
+        source_path.relative_to(content_root)
+    except ValueError as exc:
+        raise ValueError(
+            f"intake entry file_name {file_name!r} escapes the content base directory"
+        ) from exc
+    return source_path.read_bytes()
 
 
 def _unsupported_secondary_bytes_reason(content: bytes) -> str:

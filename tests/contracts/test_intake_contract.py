@@ -141,6 +141,17 @@ def test_validate_intake_payload_rejects_missing_role_and_unsupported_extension(
     assert any(issue.code == "unsupported_file_type" for issue in result.errors)
 
 
+def test_validate_intake_payload_rejects_escaping_file_names() -> None:
+    payload = _valid_payload()
+    payload["files"] = [
+        {"file_name": "../outside.pdf", "role": "investment_deck", "source_ref": "email:1"},
+    ]
+
+    result = validate_intake_payload(payload)
+    assert result.is_valid is False
+    assert any(issue.code == "escaping_file_name" for issue in result.errors)
+
+
 def test_validate_intake_payload_rejects_non_string_or_empty_received_at() -> None:
     payload = _valid_payload()
     metadata = payload["metadata"]
