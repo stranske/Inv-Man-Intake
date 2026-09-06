@@ -1,5 +1,7 @@
 """Tests for intake contract validation."""
 
+import pytest
+
 from inv_man_intake.contracts.intake_contract import validate_intake_payload
 
 
@@ -139,6 +141,21 @@ def test_validate_intake_payload_rejects_missing_role_and_unsupported_extension(
     assert result.is_valid is False
     assert any(issue.code == "missing_file_role" for issue in result.errors)
     assert any(issue.code == "unsupported_file_type" for issue in result.errors)
+
+
+@pytest.mark.parametrize(
+    "file_name",
+    ["../outside.pdf", r"\outside.pdf", r"C:\outside.pdf", r"..\outside.pdf", "C:outside.pdf"],
+)
+def test_validate_intake_payload_rejects_escaping_file_names(file_name: str) -> None:
+    payload = _valid_payload()
+    payload["files"] = [
+        {"file_name": file_name, "role": "investment_deck", "source_ref": "email:1"},
+    ]
+
+    result = validate_intake_payload(payload)
+    assert result.is_valid is False
+    assert any(issue.code == "escaping_file_name" for issue in result.errors)
 
 
 def test_validate_intake_payload_rejects_non_string_or_empty_received_at() -> None:

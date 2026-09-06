@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import date, datetime
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any
 
 PRIMARY_EXTENSIONS: frozenset[str] = frozenset({"pdf", "pptx"})
@@ -52,6 +53,28 @@ class IntakeValidationResult:
 
 def _as_str(value: Any) -> str:
     return value.strip() if isinstance(value, str) else ""
+
+
+def _bundle_file_name_escape_issue(
+    *, file_name: str, path_prefix: str
+) -> IntakeValidationIssue | None:
+    """Reject absolute paths and parent-directory segments in bundle file names."""
+
+    posix_path = PurePosixPath(file_name)
+    windows_path = PureWindowsPath(file_name)
+    if posix_path.is_absolute() or windows_path.drive or windows_path.root:
+        return IntakeValidationIssue(
+            code="escaping_file_name",
+            path=f"{path_prefix}.file_name",
+            message="file_name must be relative to the bundle content root",
+        )
+    if ".." in posix_path.parts or ".." in windows_path.parts:
+        return IntakeValidationIssue(
+            code="escaping_file_name",
+            path=f"{path_prefix}.file_name",
+            message="file_name must not contain parent-directory segments",
+        )
+    return None
 
 
 def _validate_received_at(raw_value: Any) -> tuple[bool, str]:
@@ -230,6 +253,14 @@ def validate_intake_payload(payload: dict[str, Any]) -> IntakeValidationResult:
                     message="file_name is required",
                 )
             )
+            continue
+
+        escape_issue = _bundle_file_name_escape_issue(
+            file_name=file_name,
+            path_prefix=path_prefix,
+        )
+        if escape_issue is not None:
+            errors.append(escape_issue)
             continue
 
         if not role:

@@ -88,3 +88,43 @@ def test_ingest_entrypoint_returns_nonzero_for_rejected_bundle(tmp_path: Path) -
     )
 
     assert exit_code == 1
+
+
+def test_ingest_entrypoint_rejects_bundle_file_name_escape(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "escape_bundle.json"
+    bundle_path.write_text(
+        json.dumps(
+            {
+                "package_id": "pkg_escape_001",
+                "metadata": {
+                    "firm_name": "Summit Arc Advisors",
+                    "fund_name": "Summit Arc Special Situations",
+                    "received_at": "2026-03-04T08:20:00Z",
+                    "source_channel": "internal_forward",
+                },
+                "files": [
+                    {
+                        "file_name": "../extraction/summit_arc_investment_update.pdf",
+                        "role": "investment_deck",
+                        "source_ref": "email:fwd-7421",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main([str(bundle_path), "--out", str(tmp_path / "out")])
+
+    assert exit_code != 0
+
+
+def test_fixture_bytes_rejects_escape_before_read(tmp_path: Path) -> None:
+    from inv_man_intake.v1_smoke import _fixture_bytes
+
+    fixture_root = tmp_path / "intake"
+    fixture_root.mkdir()
+    (tmp_path / "extraction").mkdir()
+    (tmp_path / "outside.pdf").write_bytes(b"outside-content")
+    with pytest.raises(ValueError, match="escapes the content base directory"):
+        _fixture_bytes(fixture_root=fixture_root, file_name="../outside.pdf")
