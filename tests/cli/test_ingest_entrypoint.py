@@ -138,22 +138,60 @@ def test_ingest_entrypoint_runs_valid_bundle_outside_repository_fixture_layout(
 
 
 def test_ingest_entrypoint_runs_valid_bundle_outside_repository_fixture_layout_break(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
     bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
     output_dir = tmp_path / "output"
+    track_record = bundle_path.parent / "summit_arc_track_record.xlsx"
+    submitted_bytes = track_record.read_bytes()
 
-    import inv_man_intake.v1_smoke as v1_smoke
-
-    original = v1_smoke._pipeline_document_bytes
-
-    def _broken(**kwargs):  # type: ignore[no-untyped-def]
-        if not kwargs["smoke_mode"] and kwargs["file_name"] == "summit_arc_track_record.xlsx":
-            # Deliberately corrupt submitted bytes — must not fall back to fixture lookup.
-            return b"not-the-submitted-workbook"
-        return original(**kwargs)
-
-    monkeypatch.setattr(v1_smoke, "_pipeline_document_bytes", _broken)
+    # Corrupt the submitted file, leaving the real resolver and repository fixture intact.
+    # A resolver that silently falls back to that fixture would incorrectly succeed.
+    track_record.write_bytes(b"not-the-submitted-workbook")
     assert main([str(bundle_path), "--out", str(output_dir)]) != 0
-    monkeypatch.undo()
-    assert main([str(bundle_path), "--out", str(output_dir / "restored")]) == 0
+
+    track_record.write_bytes(submitted_bytes)
+    restored_output = output_dir / "restored"
+    assert main([str(bundle_path), "--out", str(restored_output)]) == 0
+    for name in _ARTIFACT_FILES:
+        assert (restored_output / name).is_file(), f"missing artifact on disk: {name}"
+
+
+def test_ingest_entrypoint_rejects_bundle_file_name_escape(tmp_path: Path) -> None:
+    bundle_path = tmp_path / "escape_bundle.json"
+    bundle_path.write_text(
+        json.dumps(
+            {
+                "package_id": "pkg_escape_001",
+                "metadata": {
+                    "firm_name": "Summit Arc Advisors",
+                    "fund_name": "Summit Arc Special Situations",
+                    "received_at": "2026-03-04T08:20:00Z",
+                    "source_channel": "internal_forward",
+                },
+                "files": [
+                    {
+                        "file_name": "../extraction/summit_arc_investment_update.pdf",
+                        "role": "investment_deck",
+                        "source_ref": "email:fwd-7421",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main([str(bundle_path), "--out", str(tmp_path / "out")])
+
+    assert exit_code != 0
+
+
+def test_fixture_bytes_rejects_escape_before_read(tmp_path: Path) -> None:
+    from inv_man_intake.v1_smoke import _fixture_bytes
+
+    fixture_root = tmp_path / "intake"
+    fixture_root.mkdir()
+    (tmp_path / "extraction").mkdir()
+    (tmp_path / "outside.pdf").write_bytes(b"outside-content")
+    with pytest.raises(ValueError, match="escapes the content base directory"):
+        _fixture_bytes(fixture_root=fixture_root, file_name="../outside.pdf")
