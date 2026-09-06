@@ -177,11 +177,7 @@ def _run_pipeline_core(
     raw_files = parsed_bundle.get("files")
     file_entries = raw_files if isinstance(raw_files, list) else []
     resolved_content_root = content_root or fixture_root
-    content_resolver = (
-        None
-        if smoke_mode
-        else filesystem_content_resolver(resolved_content_root)
-    )
+    content_resolver = None if smoke_mode else filesystem_content_resolver(resolved_content_root)
 
     sink = InMemoryTraceSink()
     tracer = _entrypoint_tracer(sink=sink)
@@ -583,9 +579,7 @@ def _resolve_performance_series(
     if _bundle_has_performance_track_record(file_entries):
         # Reference normalization until an xlsx timeseries parser is wired.
         return _fixture_performance_series()
-    raise ValueError(
-        "performance data unavailable: bundle has no performance_track_record file"
-    )
+    raise ValueError("performance data unavailable: bundle has no performance_track_record file")
 
 
 def _unsupported_secondary_bytes_reason(content: bytes) -> str:
