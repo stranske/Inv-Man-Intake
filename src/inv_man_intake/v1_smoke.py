@@ -621,9 +621,7 @@ def _require_valid_performance_track_record_bytes(content: bytes, *, file_name: 
         )
     kind = _ooxml_zip_kind(content)
     if kind != "xlsx":
-        raise ValueError(
-            f"performance track record {file_name} must be xlsx bytes, got {kind}"
-        )
+        raise ValueError(f"performance track record {file_name} must be xlsx bytes, got {kind}")
 
 
 def _resolve_performance_series(
