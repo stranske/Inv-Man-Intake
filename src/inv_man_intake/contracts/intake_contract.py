@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import date, datetime
-from pathlib import Path
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any
 
 PRIMARY_EXTENSIONS: frozenset[str] = frozenset({"pdf", "pptx"})
@@ -60,14 +60,15 @@ def _bundle_file_name_escape_issue(
 ) -> IntakeValidationIssue | None:
     """Reject absolute paths and parent-directory segments in bundle file names."""
 
-    candidate = Path(file_name)
-    if candidate.is_absolute():
+    posix_path = PurePosixPath(file_name)
+    windows_path = PureWindowsPath(file_name)
+    if posix_path.is_absolute() or windows_path.drive or windows_path.root:
         return IntakeValidationIssue(
             code="escaping_file_name",
             path=f"{path_prefix}.file_name",
             message="file_name must be relative to the bundle content root",
         )
-    if ".." in candidate.parts:
+    if ".." in posix_path.parts or ".." in windows_path.parts:
         return IntakeValidationIssue(
             code="escaping_file_name",
             path=f"{path_prefix}.file_name",
