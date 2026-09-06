@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from pathlib import Path
 from datetime import date, datetime
+from pathlib import Path
 from typing import Any
 
 PRIMARY_EXTENSIONS: frozenset[str] = frozenset({"pdf", "pptx"})
@@ -55,7 +55,9 @@ def _as_str(value: Any) -> str:
     return value.strip() if isinstance(value, str) else ""
 
 
-def _bundle_file_name_escape_issue(*, file_name: str, path_prefix: str) -> IntakeValidationIssue | None:
+def _bundle_file_name_escape_issue(
+    *, file_name: str, path_prefix: str
+) -> IntakeValidationIssue | None:
     """Reject absolute paths and parent-directory segments in bundle file names."""
 
     candidate = Path(file_name)
