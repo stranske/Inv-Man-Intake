@@ -22,6 +22,9 @@ placeholders:
   * red-flag flag agrees:     red_flag_applied == 1 when a block applies, or
                               when a cap lowers final_score below base_score.
 
+Contribution bounds must use the same TOML registry as ``adapter.run_scenario``;
+hardcoded engine defaults can hide violations after a registry weight decreases.
+
 The result type and assertion helper are shared
 (``baseline_kit.InvariantResult`` / ``assert_invariants``).
 """
@@ -32,8 +35,7 @@ import math
 from typing import Any
 
 from baseline_kit import InvariantResult
-from inv_man_intake.scoring.engine import default_weights_by_asset_class
-from inv_man_intake.scoring.weights import normalize_asset_class
+from inv_man_intake.scoring.weights import normalize_asset_class, weights_by_asset_class_for
 
 from . import adapter
 
@@ -45,7 +47,7 @@ def check_scenario(scenario: dict[str, Any], base: dict[str, Any]) -> list[Invar
     spec = adapter.apply_patch(base, scenario.get("patch"))
     metrics = adapter.run_scenario(scenario, base)
     asset_class = normalize_asset_class(str(spec["asset_class"]))
-    weights = default_weights_by_asset_class().get(asset_class, {})
+    weights = weights_by_asset_class_for(asset_class)[asset_class]
 
     results: list[InvariantResult] = []
 
