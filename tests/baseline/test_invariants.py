@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import shutil
+import tomllib
 
 import pytest
 
@@ -55,10 +57,15 @@ def test_contribution_bounds_track_registry_weights(tmp_path, monkeypatch, asset
     config_dir = tmp_path / "scoring_weights"
     shutil.copytree(scoring_weights.DEFAULT_CONFIG_DIR, config_dir)
     macro_path = config_dir / "macro.toml"
+    payload = tomllib.loads(macro_path.read_text(encoding="utf-8"))
+    weights = payload["weights"]
+    delta = weights["performance_consistency"] - 0.08
+    weights["performance_consistency"] = 0.08
+    weights["risk_adjusted_returns"] += delta
     macro_path.write_text(
-        macro_path.read_text(encoding="utf-8")
-        .replace("performance_consistency = 0.28", "performance_consistency = 0.08")
-        .replace("risk_adjusted_returns = 0.27", "risk_adjusted_returns = 0.47"),
+        f"asset_class = {json.dumps(payload['asset_class'])}\n"
+        f"version = {json.dumps(payload['version'])}\n\n[weights]\n"
+        + "".join(f"{name} = {value!r}\n" for name, value in weights.items()),
         encoding="utf-8",
     )
     monkeypatch.setattr(scoring_weights, "DEFAULT_CONFIG_DIR", config_dir)
