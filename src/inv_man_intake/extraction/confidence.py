@@ -209,15 +209,19 @@ def _document_profile(
 
 
 def _threshold_value(name: str, values: dict[str, str]) -> float:
+    return parse_threshold_float(name, values[name])
+
+
+def parse_threshold_float(name: str, raw: str | float) -> float:
     """Parse a threshold float and fail closed if it is not finite and within [0, 1].
 
     A policy gate must reject malformed config deterministically rather than silently change
     routing (a negative coverage floor auto-passes every document; NaN flips comparisons). See #695.
     """
 
-    value = float(values[name])
+    value = float(raw)
     if not math.isfinite(value) or not (0.0 <= value <= 1.0):
-        raise ValueError(f"threshold {name} must be a finite value in [0, 1]; got {values[name]!r}")
+        raise ValueError(f"threshold {name} must be a finite value in [0, 1]; got {raw!r}")
     return value
 
 

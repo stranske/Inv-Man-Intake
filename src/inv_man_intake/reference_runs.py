@@ -39,6 +39,7 @@ from inv_man_intake.extraction.confidence import (
     ThresholdConfig,
     attach_threshold_summary,
     evaluate_thresholds,
+    parse_threshold_float,
 )
 from inv_man_intake.extraction.providers.base import (
     ExtractedDocumentResult,
@@ -81,10 +82,18 @@ def load_bundle(path: Path) -> dict[str, Any]:
 def _threshold_config(bundle: dict[str, Any]) -> ThresholdConfig:
     raw = bundle["threshold_config"]
     return ThresholdConfig(
-        field_auto_accept_min=float(raw["field_auto_accept_min"]),
-        key_field_confidence_min=float(raw["key_field_confidence_min"]),
-        document_key_field_coverage_min=float(raw["document_key_field_coverage_min"]),
-        mandatory_field_min=float(raw["mandatory_field_min"]),
+        field_auto_accept_min=parse_threshold_float(
+            "field_auto_accept_min", raw["field_auto_accept_min"]
+        ),
+        key_field_confidence_min=parse_threshold_float(
+            "key_field_confidence_min", raw["key_field_confidence_min"]
+        ),
+        document_key_field_coverage_min=parse_threshold_float(
+            "document_key_field_coverage_min", raw["document_key_field_coverage_min"]
+        ),
+        mandatory_field_min=parse_threshold_float(
+            "mandatory_field_min", raw["mandatory_field_min"]
+        ),
         mandatory_fields=tuple(raw["mandatory_fields"]),
     )
 
