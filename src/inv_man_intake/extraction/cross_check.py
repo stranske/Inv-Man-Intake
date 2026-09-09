@@ -116,11 +116,12 @@ def cross_check_observations(
 ) -> CrossCheckReport:
     """Reconcile key field observations and escalate disagreements beyond tolerance."""
 
+    from inv_man_intake.performance.conflict_resolver import validate_percentage_threshold
+
     resolved_tolerance_percent = (
         _shared_default_tolerance_percent() if tolerance_percent is None else tolerance_percent
     )
-    if resolved_tolerance_percent < 0.0 or resolved_tolerance_percent > 100.0:
-        raise ValueError("tolerance_percent must be between 0 and 100 inclusive")
+    validate_percentage_threshold(resolved_tolerance_percent, name="tolerance_percent")
 
     fields_by_key: dict[str, list[FieldObservation]] = {key: [] for key in key_fields}
     for observation in observations:
