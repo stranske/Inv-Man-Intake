@@ -9,6 +9,7 @@ import pytest
 
 import inv_man_intake.packet
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
+from inv_man_intake.extraction.service import DefaultExtractionService, ProviderTransportBackend
 from inv_man_intake.intake.standard_elements import load_standard_element_library
 from inv_man_intake.packet import PacketFile, ingest_packet
 
@@ -328,7 +329,71 @@ def test_packet_flags_missing_mandatory_elements() -> None:
     assert profile.flagged_non_standard_items == ("deck:operations.aum:missing_mandatory",)
 
 
+@pytest.mark.parametrize("confidence", [float("nan"), float("inf"), float("-inf")])
+@pytest.mark.parametrize("invalid_document", ["first", "second"])
+@pytest.mark.parametrize("use_service", [False, True])
+def test_packet_rejects_non_finite_provider_confidence(
+    confidence: float, invalid_document: str, use_service: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    results = {
+        document_id: _result(
+            source_doc_id=document_id,
+            provider_name="swappable-provider",
+            fields=(
+                _field(
+                    "operations.aum",
+                    "$100.0M",
+                    "provider",
+                    confidence if document_id == invalid_document else 0.9,
+                ),
+            ),
+        )
+        for document_id in ("first", "second")
+    }
+    provider = _PacketProvider(results)
+    source = (
+        {"extraction_service": DefaultExtractionService(ProviderTransportBackend(provider))}
+        if use_service
+        else {"provider": provider}
+    )
+    classified: list[str] = []
+    classify = inv_man_intake.packet._classify_packet_document
+
+    def record_classification(**kwargs):
+        classified.append(kwargs["packet_file"].document_id)
+        return classify(**kwargs)
+
+    monkeypatch.setattr(inv_man_intake.packet, "_classify_packet_document", record_classification)
+    with pytest.raises(ValueError, match="confidence"):
+        ingest_packet(
+            tuple(PacketFile(document_id=key, content=b"deck") for key in results),
+            standard_library=_library_for_doc_type("deck"),
+            **source,
+        )
+    assert classified == ([] if invalid_document == "first" else ["first"])
+
+
+@pytest.mark.parametrize("confidence", [0.0, 1.0])
+def test_packet_accepts_provider_confidence_boundaries(confidence: float) -> None:
+    profile = ingest_packet(
+        (PacketFile(document_id="deck", content=b"deck"),),
+        provider=_PacketProvider(
+            {
+                "deck": _result(
+                    source_doc_id="deck",
+                    provider_name="provider",
+                    fields=(_field("operations.aum", "$100.0M", "provider", confidence),),
+                )
+            }
+        ),
+        standard_library=_library_for_doc_type("deck"),
+    )
+    assert profile.scores["extraction_confidence"] == confidence
+
+
 class _PacketProvider:
+    name = "packet-test"
+
     def __init__(self, results: dict[str, ExtractedDocumentResult]) -> None:
         self._results = results
 
@@ -347,7 +412,7 @@ def _result(
     return ExtractedDocumentResult(
         source_doc_id=source_doc_id,
         provider_name=provider_name,
-        fields=fields,
+        fields=tuple(replace(field, source_doc_id=source_doc_id) for field in fields),
     )
 
 
