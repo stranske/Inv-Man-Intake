@@ -250,6 +250,22 @@ def test_load_weight_registry_rejects_missing_component_weights(tmp_path: Path) 
         load_weight_registry(config_dir)
 
 
+@pytest.mark.parametrize("component", COMPONENT_NAMES)
+@pytest.mark.parametrize("value", ["nan", "inf", "-inf"])
+def test_load_weight_registry_rejects_non_finite_weight(
+    tmp_path: Path, component: str, value: str
+) -> None:
+    config_dir = tmp_path / "scoring_weights"
+    for asset_class in LAUNCH_ASSET_CLASSES:
+        weights_block = _valid_weights_block()
+        if asset_class == "macro":
+            weights_block = weights_block.replace(f"{component} = 0.20", f"{component} = {value}")
+        _write_weight_file(config_dir, asset_class=asset_class, weights_block=weights_block)
+
+    with pytest.raises(ValueError, match=f"macro.toml: weight '{component}' must be finite"):
+        load_weight_registry(config_dir)
+
+
 def test_load_weight_registry_rejects_sum_not_equal_to_one(tmp_path: Path) -> None:
     config_dir = tmp_path / "scoring_weights"
     bad_total = "\n".join(
@@ -364,3 +380,22 @@ def test_each_class_uses_its_own_toml_weights() -> None:
     # credit_long_short.toml: 0.25/0.30/0.20/0.15/0.10 → 0.480 (distinct from macro)
     assert base_for("credit_long_short") == pytest.approx(0.480)
     assert base_for("macro") != base_for("credit_long_short")
+
+
+@pytest.mark.parametrize("component", COMPONENT_NAMES)
+@pytest.mark.parametrize("value", [True, False])
+def test_load_weight_registry_rejects_boolean_weight(
+    tmp_path: Path, component: str, value: bool
+) -> None:
+    """TOML booleans must not masquerade as numeric zero/one weights."""
+    config_dir = tmp_path / "scoring_weights"
+    other_weight = 0.0 if value else 0.25
+    weights_block = "\n".join(
+        f"{name} = {str(value).lower() if name == component else other_weight}"
+        for name in COMPONENT_NAMES
+    )
+    for asset_class in LAUNCH_ASSET_CLASSES:
+        _write_weight_file(config_dir, asset_class=asset_class, weights_block=weights_block)
+
+    with pytest.raises(ValueError, match=f"weight '{component}' must be numeric"):
+        load_weight_registry(config_dir)

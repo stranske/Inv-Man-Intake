@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -195,14 +196,18 @@ def _validate_and_normalize_weights(
     normalized: dict[str, float] = {}
     for component in COMPONENT_NAMES:
         value = raw_weights[component]
-        if not isinstance(value, int | float):
+        if isinstance(value, bool) or not isinstance(value, int | float):
             raise ValueError(f"{source_name}: weight '{component}' must be numeric")
         number = float(value)
+        if not math.isfinite(number):
+            raise ValueError(f"{source_name}: weight '{component}' must be finite")
         if number < 0.0 or number > 1.0:
             raise ValueError(f"{source_name}: weight '{component}' must be between 0 and 1")
         normalized[component] = number
 
     total = sum(normalized.values())
+    if not math.isfinite(total):
+        raise ValueError(f"{source_name}: weights must have a finite sum")
     if abs(total - 1.0) > 1e-9:
         raise ValueError(f"{source_name}: weights must sum to 1.0 (got {total!r})")
     return normalized
