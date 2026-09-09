@@ -196,7 +196,7 @@ def _validate_and_normalize_weights(
     normalized: dict[str, float] = {}
     for component in COMPONENT_NAMES:
         value = raw_weights[component]
-        if not isinstance(value, int | float):
+        if isinstance(value, bool) or not isinstance(value, int | float):
             raise ValueError(f"{source_name}: weight '{component}' must be numeric")
         number = float(value)
         if not math.isfinite(number):
