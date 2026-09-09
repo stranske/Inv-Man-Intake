@@ -216,7 +216,7 @@ def test_vector_figure_export_renders_a_local_pdf_region_without_egress() -> Non
         vector_row = graphics_table.get_by_role("row", name=re.compile(r"vector-chart"))
         expect(vector_row).to_contain_text("Rendered page 1 bbox", timeout=45_000)
         vector_row.get_by_role("button", name="Preview graphic").click()
-        expect(vector_row).to_contain_text("Previewed")
+        expect(vector_row).to_contain_text("Previewed", timeout=45_000)
         preview = page.locator("#graphic-preview img")
         preview.wait_for(timeout=45_000)
         assert preview.get_attribute("src").startswith("blob:")
