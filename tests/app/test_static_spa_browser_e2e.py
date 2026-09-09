@@ -19,7 +19,7 @@ from scripts.verify_static_spa_pyodide import handle_offline_route
 from tests.app.vector_chart_pdf import build_vector_chart_pdf as _vector_chart_pdf
 
 try:
-    from playwright.sync_api import sync_playwright
+    from playwright.sync_api import expect, sync_playwright
 except ImportError:  # pragma: no cover - exercised when playwright is absent
     if os.environ.get("CI") == "true":
         raise
@@ -75,8 +75,7 @@ def _verify_static_spa_interactions(page: object) -> None:
 
     page.locator("#packet-upload").set_input_files(str(PACKET_FIXTURE))
     upload_count = page.locator("#upload-count")
-    upload_count.wait_for(timeout=45_000)
-    assert upload_count.text_content() == "Uploaded file count: 1"
+    expect(upload_count).to_have_text("Uploaded file count: 1", timeout=45_000)
 
     coverage_table = page.get_by_role("table", name="Packet coverage results")
     coverage_row = coverage_table.get_by_role("row", name=re.compile(r"upload_1 .*"))
@@ -164,6 +163,10 @@ def _with_page(
             )
         page.goto(url, wait_until="domcontentloaded", timeout=45_000)
         page.get_by_role("heading", name="Packet upload").wait_for(timeout=45_000)
+        # Finish the seeded packet before an upload starts another async render.
+        expect(page.locator("main")).to_have_attribute(
+            "data-packet-path", "inv-man-intake.ingest_packet", timeout=45_000
+        )
         return server_context, playwright_context, browser, page, external_requests
     except Exception:
         if browser is not None:
@@ -210,16 +213,13 @@ def test_vector_figure_export_renders_a_local_pdf_region_without_egress() -> Non
             }
         )
         graphics_table = page.get_by_role("table", name="Packet graphics")
-        vector_row = graphics_table.get_by_role(
-            "row", name=re.compile(r"vector-chart.*Rendered page 1")
-        )
-        vector_row.wait_for(timeout=45_000)
-        assert vector_row.is_visible()
+        vector_row = graphics_table.get_by_role("row", name=re.compile(r"vector-chart"))
+        expect(vector_row).to_contain_text("Rendered page 1 bbox", timeout=45_000)
         vector_row.get_by_role("button", name="Preview graphic").click()
+        expect(vector_row).to_contain_text("Previewed")
         preview = page.locator("#graphic-preview img")
         preview.wait_for(timeout=45_000)
         assert preview.get_attribute("src").startswith("blob:")
-        assert "bbox" in vector_row.inner_text()
         image_details = page.evaluate("""async () => {
               const image = document.querySelector('#graphic-preview img');
               const bytes = new Uint8Array(await (await fetch(image.src)).arrayBuffer());
@@ -272,7 +272,8 @@ def _verify_export_panel(page: object) -> None:
         }
     )
     export_table = page.get_by_role("table", name="Export artifacts")
-    export_table.wait_for(timeout=45_000)
+    # The seeded table is already visible; wait for the uploaded PDF's artifact.
+    expect(export_table).to_contain_text("vector-chart", timeout=45_000)
     page.get_by_role("button", name="Select all artifacts").click()
     page.get_by_role("button", name="Export selected").click()
     status = page.locator("#export-status")
