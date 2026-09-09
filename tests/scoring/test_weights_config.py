@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import shutil
+import tomllib
 from pathlib import Path
 
 import pytest
 
+from inv_man_intake.scoring import weights as weights_module
 from inv_man_intake.scoring.contracts import ScoreComponent, ScoreSubmission
 from inv_man_intake.scoring.engine import compute_score, default_weights_by_asset_class
 from inv_man_intake.scoring.weights import (
@@ -84,6 +87,58 @@ def test_default_weight_fallback_matches_toml_registry() -> None:
     assert default_weights_by_asset_class() == {
         asset_class: dict(weight_set.weights) for asset_class, weight_set in registry.items()
     }
+
+
+@pytest.mark.parametrize("asset_class", ["macro", " Macro "])
+def test_default_compute_score_uses_changed_toml_registry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, asset_class: str
+) -> None:
+    config_dir = tmp_path / "scoring_weights"
+    shutil.copytree(weights_module.DEFAULT_CONFIG_DIR, config_dir)
+    macro_path = config_dir / "macro.toml"
+    payload = tomllib.loads(macro_path.read_text(encoding="utf-8"))
+    weights = payload["weights"]
+    # Shift weight while preserving a valid sum, independently of TOML formatting.
+    shift = weights["team_experience"] / 2
+    weights["team_experience"] -= shift
+    weights["performance_consistency"] += shift
+    _write_weight_file(
+        config_dir,
+        asset_class="macro",
+        weights_block="\n".join(f"{name} = {value!r}" for name, value in weights.items()),
+        version=payload["version"],
+    )
+    monkeypatch.setattr(weights_module, "DEFAULT_CONFIG_DIR", config_dir)
+    submission = ScoreSubmission(
+        manager_id="mgr_registry_defaults",
+        asset_class=asset_class,
+        components=tuple(
+            ScoreComponent(name, 1.0 if name == "team_experience" else 0.0)
+            for name in COMPONENT_NAMES
+        ),
+    )
+
+    result = compute_score(submission)
+
+    assert result.asset_class == "macro"
+    assert result.contributions["team_experience"] == pytest.approx(weights["team_experience"])
+    assert result.base_score == pytest.approx(weights["team_experience"])
+    assert result.final_score == result.base_score
+    assert default_weights_by_asset_class() == weights_for_registry(config_dir=config_dir)
+
+
+def test_explicit_weights_do_not_load_default_registry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    explicit_weights = weights_for_registry()
+    monkeypatch.setattr(weights_module, "DEFAULT_CONFIG_DIR", tmp_path / "missing")
+    submission = ScoreSubmission(
+        manager_id="mgr_explicit_weights",
+        asset_class="macro",
+        components=tuple(ScoreComponent(name, 1.0) for name in COMPONENT_NAMES),
+    )
+
+    assert compute_score(submission, weights_by_asset_class=explicit_weights).final_score == 1.0
 
 
 def test_weight_registry_adapter_changes_compute_score_when_toml_changes(tmp_path: Path) -> None:

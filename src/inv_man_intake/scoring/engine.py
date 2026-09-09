@@ -12,7 +12,11 @@ from inv_man_intake.scoring.contracts import (
     freeze_mapping,
 )
 from inv_man_intake.scoring.peer_group import CohortStore, percentile_rank_from_scores
-from inv_man_intake.scoring.weights import LAUNCH_ASSET_CLASSES, normalize_asset_class
+from inv_man_intake.scoring.weights import (
+    LAUNCH_ASSET_CLASSES,
+    normalize_asset_class,
+    weights_for_registry,
+)
 
 _COMPONENT_ORDER: tuple[str, ...] = (
     "performance_consistency",
@@ -31,66 +35,9 @@ class RedFlagHook(Protocol):
 
 
 def default_weights_by_asset_class() -> dict[str, dict[str, float]]:
-    """Default launch weight sets keyed by asset class."""
+    """Return launch weights from the cached TOML registry as mutable copies."""
 
-    return {
-        "equity_market_neutral": {
-            "performance_consistency": 0.30,
-            "risk_adjusted_returns": 0.25,
-            "operational_quality": 0.15,
-            "transparency": 0.15,
-            "team_experience": 0.15,
-        },
-        "quant": {
-            "performance_consistency": 0.27,
-            "risk_adjusted_returns": 0.30,
-            "operational_quality": 0.12,
-            "transparency": 0.16,
-            "team_experience": 0.15,
-        },
-        "multi_strat": {
-            "performance_consistency": 0.27,
-            "risk_adjusted_returns": 0.23,
-            "operational_quality": 0.20,
-            "transparency": 0.12,
-            "team_experience": 0.18,
-        },
-        "credit_long_short": {
-            "performance_consistency": 0.25,
-            "risk_adjusted_returns": 0.30,
-            "operational_quality": 0.20,
-            "transparency": 0.15,
-            "team_experience": 0.10,
-        },
-        "macro": {
-            "performance_consistency": 0.28,
-            "risk_adjusted_returns": 0.27,
-            "operational_quality": 0.15,
-            "transparency": 0.10,
-            "team_experience": 0.20,
-        },
-        "trend_following": {
-            "performance_consistency": 0.22,
-            "risk_adjusted_returns": 0.33,
-            "operational_quality": 0.15,
-            "transparency": 0.15,
-            "team_experience": 0.15,
-        },
-        "credit_relative_value": {
-            "performance_consistency": 0.24,
-            "risk_adjusted_returns": 0.26,
-            "operational_quality": 0.22,
-            "transparency": 0.14,
-            "team_experience": 0.14,
-        },
-        "activist": {
-            "performance_consistency": 0.24,
-            "risk_adjusted_returns": 0.21,
-            "operational_quality": 0.20,
-            "transparency": 0.20,
-            "team_experience": 0.15,
-        },
-    }
+    return weights_for_registry()
 
 
 def compute_score(
