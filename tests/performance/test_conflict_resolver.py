@@ -6,7 +6,10 @@ from datetime import date
 
 import pytest
 
-from inv_man_intake.performance.conflict_resolver import resolve_source_conflicts
+from inv_man_intake.performance.conflict_resolver import (
+    resolve_source_conflicts,
+    values_exceed_tolerance,
+)
 from inv_man_intake.performance.contracts import PerformancePoint, PerformanceSeries
 
 
@@ -225,3 +228,35 @@ def test_resolve_source_conflicts_rejects_non_finite_value() -> None:
     )
     with pytest.raises(ValueError, match="value must be finite"):
         resolve_source_conflicts(xlsx_series=xlsx, other_series=other)
+
+
+@pytest.mark.parametrize("threshold", (float("nan"), float("inf"), float("-inf")))
+@pytest.mark.parametrize("single_source", (False, True))
+def test_conflict_resolver_rejects_nan_escalation_threshold(
+    threshold: float, single_source: bool
+) -> None:
+    xlsx = PerformanceSeries("monthly", (PerformancePoint(as_of=date(2025, 1, 31), value=0.1),))
+    other = PerformanceSeries("monthly", (PerformancePoint(as_of=date(2025, 1, 31), value=0.2),))
+    with pytest.raises(ValueError, match="escalation_threshold_percent must be finite"):
+        resolve_source_conflicts(
+            xlsx_series=xlsx,
+            other_series=None if single_source else other,
+            escalation_threshold_percent=threshold,
+        )
+
+
+@pytest.mark.parametrize("threshold", (float("nan"), float("inf"), float("-inf")))
+def test_values_exceed_tolerance_rejects_non_finite_threshold(threshold: float) -> None:
+    with pytest.raises(ValueError, match="tolerance_percent must be finite"):
+        values_exceed_tolerance(100.0, 50.0, tolerance_percent=threshold)
+
+
+@pytest.mark.parametrize("threshold,escalate", ((0.0, True), (100.0, False)))
+def test_conflict_threshold_inclusive_endpoints(threshold: float, escalate: bool) -> None:
+    xlsx = PerformanceSeries("monthly", (PerformancePoint(as_of=date(2025, 1, 31), value=0.1),))
+    other = PerformanceSeries("monthly", (PerformancePoint(as_of=date(2025, 1, 31), value=0.2),))
+    result = resolve_source_conflicts(
+        xlsx_series=xlsx, other_series=other, escalation_threshold_percent=threshold
+    )
+    assert result.escalate is escalate
+    assert values_exceed_tolerance(100.0, 50.0, tolerance_percent=threshold) == (escalate, 50.0)

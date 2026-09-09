@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import date
 
@@ -49,8 +50,7 @@ def resolve_source_conflicts(
 
     if xlsx_series is None and other_series is None:
         raise ValueError("At least one source series is required")
-    if escalation_threshold_percent < 0.0 or escalation_threshold_percent > 100.0:
-        raise ValueError("escalation_threshold_percent must be between 0 and 100 inclusive")
+    validate_percentage_threshold(escalation_threshold_percent, name="escalation_threshold_percent")
 
     if xlsx_series is not None:
         validate_series(xlsx_series)
@@ -143,7 +143,15 @@ def values_exceed_tolerance(
 ) -> tuple[bool, float]:
     """Compare two numeric values with the shared performance-conflict tolerance."""
 
-    if tolerance_percent < 0.0 or tolerance_percent > 100.0:
-        raise ValueError("tolerance_percent must be between 0 and 100 inclusive")
+    validate_percentage_threshold(tolerance_percent, name="tolerance_percent")
     percent_difference = relative_difference_percent(value_a, value_b)
     return percent_difference > tolerance_percent, percent_difference
+
+
+def validate_percentage_threshold(value: float, *, name: str) -> None:
+    """Require a finite percentage in the inclusive range from zero to 100."""
+
+    if not math.isfinite(value):
+        raise ValueError(f"{name} must be finite")
+    if value < 0.0 or value > 100.0:
+        raise ValueError(f"{name} must be between 0 and 100 inclusive")

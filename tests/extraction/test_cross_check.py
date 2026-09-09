@@ -187,3 +187,34 @@ def _field(
         source_page=1,
         method=method,
     )
+
+
+@pytest.mark.parametrize("threshold", (float("nan"), float("inf"), float("-inf")))
+@pytest.mark.parametrize("disable", (False, True))
+def test_cross_check_rejects_nan_tolerance(threshold: float, disable: bool) -> None:
+    observations = (
+        FieldObservation(key="operations.aum", value="$100M", source="memo"),
+        FieldObservation(key="operations.aum", value="$50M", source="tear-sheet"),
+    )
+    with pytest.raises(ValueError, match="tolerance_percent must be finite"):
+        cross_check_observations(
+            observations, tolerance_percent=threshold, disable_discrepancy_check=disable
+        )
+
+
+@pytest.mark.parametrize("threshold", (float("nan"), float("inf"), float("-inf")))
+def test_cross_check_rejects_non_finite_tolerance_without_comparisons(threshold: float) -> None:
+    with pytest.raises(ValueError, match="tolerance_percent must be finite"):
+        cross_check_extraction_results((), tolerance_percent=threshold)
+
+
+@pytest.mark.parametrize("threshold,escalate", ((0.0, True), (100.0, False)))
+def test_cross_check_tolerance_inclusive_endpoints(threshold: float, escalate: bool) -> None:
+    report = cross_check_observations(
+        (
+            FieldObservation(key="operations.aum", value="$100M", source="memo"),
+            FieldObservation(key="operations.aum", value="$50M", source="tear-sheet"),
+        ),
+        tolerance_percent=threshold,
+    )
+    assert report.escalate is escalate
