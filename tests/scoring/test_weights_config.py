@@ -250,6 +250,22 @@ def test_load_weight_registry_rejects_missing_component_weights(tmp_path: Path) 
         load_weight_registry(config_dir)
 
 
+@pytest.mark.parametrize("component", COMPONENT_NAMES)
+@pytest.mark.parametrize("value", ["nan", "inf", "-inf"])
+def test_load_weight_registry_rejects_non_finite_weight(
+    tmp_path: Path, component: str, value: str
+) -> None:
+    config_dir = tmp_path / "scoring_weights"
+    for asset_class in LAUNCH_ASSET_CLASSES:
+        weights_block = _valid_weights_block()
+        if asset_class == "macro":
+            weights_block = weights_block.replace(f"{component} = 0.20", f"{component} = {value}")
+        _write_weight_file(config_dir, asset_class=asset_class, weights_block=weights_block)
+
+    with pytest.raises(ValueError, match=f"macro.toml: weight '{component}' must be finite"):
+        load_weight_registry(config_dir)
+
+
 def test_load_weight_registry_rejects_sum_not_equal_to_one(tmp_path: Path) -> None:
     config_dir = tmp_path / "scoring_weights"
     bad_total = "\n".join(
