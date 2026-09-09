@@ -18,7 +18,11 @@ from inv_man_intake.extraction.doc_type import (
     classify_doc_type,
     contains_delimited_term,
 )
-from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractionProvider
+from inv_man_intake.extraction.providers.base import (
+    ExtractedDocumentResult,
+    ExtractionProvider,
+    validate_extracted_document_result,
+)
 from inv_man_intake.extraction.service import ExtractionService, ensure_extraction_service
 from inv_man_intake.intake.standard_elements import (
     ElementCoverage,
@@ -96,6 +100,7 @@ def ingest_packet(
     document_profiles: list[PacketDocumentProfile] = []
     for packet_file in files:
         extraction = service.extract(packet_file.document_id, packet_file.content)
+        validate_extracted_document_result(extraction)
         document_type = _classify_packet_document(
             packet_file=packet_file,
             extraction=extraction,
