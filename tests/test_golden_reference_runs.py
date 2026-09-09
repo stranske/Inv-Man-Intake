@@ -31,6 +31,37 @@ from inv_man_intake.reference_runs import (
 )
 
 _FIXTURE_ROOT = Path("tests/fixtures/intake")
+_THRESHOLD_FIELDS = (
+    "field_auto_accept_min",
+    "key_field_confidence_min",
+    "document_key_field_coverage_min",
+    "mandatory_field_min",
+)
+
+
+@pytest.mark.parametrize("name", _THRESHOLD_FIELDS)
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf"), -1.0, 1.5])
+def test_reference_bundle_rejects_non_finite_threshold_config(
+    tmp_path: Path, name: str, value: float
+) -> None:
+    bundle = load_bundle(_FIXTURE_ROOT / "reference_auto_pass_bundle.json")
+    bundle["threshold_config"][name] = value
+    path = tmp_path / "invalid_threshold_bundle.json"
+    path.write_text(json.dumps(bundle), encoding="utf-8")
+
+    with pytest.raises(ValueError) as error:
+        build_reference_run(load_bundle(path))
+    assert str(error.value) == (f"threshold {name} must be a finite value in [0, 1]; got {value!r}")
+
+
+@pytest.mark.parametrize("name", _THRESHOLD_FIELDS)
+@pytest.mark.parametrize("value", [0.0, 1.0])
+def test_reference_bundle_accepts_threshold_boundaries(name: str, value: float) -> None:
+    bundle = load_bundle(_FIXTURE_ROOT / "reference_auto_pass_bundle.json")
+    bundle["threshold_config"][name] = value
+
+    payload = build_reference_run(bundle)
+    assert payload["schema_version"] == "reference-run/v1"
 
 
 @pytest.mark.parametrize(("bundle_name", "golden_name"), REFERENCE_SCENARIOS)
