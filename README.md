@@ -39,7 +39,7 @@ repo-local server in `src/` is a recorded product decision rather than a missing
 front-end gap.
 
 Production `inv-man-ingest` performance uses the workbook registered in the
-submitted bundle. One worksheet must contain `as_of` and `value` headers;
+submitted bundle. One worksheet must contain `as_of` and `value` headers in its first row;
 `frequency` is optional and defaults to `monthly`. Dates may be ISO dates or
 Excel dates, and values are decimal returns (for example, `0.02` means 2%).
 Unsupported, ambiguous, or invalid rows yield `performance.status = unavailable`

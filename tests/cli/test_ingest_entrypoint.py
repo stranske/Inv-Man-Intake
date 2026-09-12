@@ -138,9 +138,18 @@ def _write_performance_workbook(path: Path, rows: list[tuple[object, ...]]) -> N
     workbook.close()
 
 
+@pytest.mark.parametrize(
+    "workbook_dates",
+    [
+        (datetime(2024, 1, 31), date(2024, 2, 29), "2024-03-31"),
+        (datetime(2024, 1, 15), date(2024, 2, 10), "2024-03-20"),
+    ],
+    ids=["period-end", "mid-month"],
+)
 def test_ingest_entrypoint_runs_valid_bundle_outside_repository_fixture_layout(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    workbook_dates: tuple[datetime, date, str],
 ) -> None:
     from inv_man_intake import v1_smoke
 
@@ -152,7 +161,7 @@ def test_ingest_entrypoint_runs_valid_bundle_outside_repository_fixture_layout(
             (bundle_path.parent / entry["file_name"]).unlink()
             entry["file_name"] = renamed_workbook
     bundle_path.write_text(json.dumps(bundle))
-    rows = [(datetime(2024, 1, 31), 0.12), (date(2024, 2, 29), -0.07), ("2024-03-31", 0.03)]
+    rows = list(zip(workbook_dates, (0.12, -0.07, 0.03), strict=True))
     _write_performance_workbook(bundle_path.parent / renamed_workbook, rows)
 
     def forbidden_fixture(*args, **kwargs):

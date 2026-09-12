@@ -354,9 +354,9 @@ def _run_pipeline_core(
             "monthly": (
                 [
                     {"as_of": point.as_of.isoformat(), "value": point.value}
-                    for point in xlsx_series.points
+                    for point in normalized.monthly.points
                 ]
-                if xlsx_series is not None
+                if normalized is not None
                 else None
             ),
             "metrics": metrics.to_canonical_dict() if metrics is not None else None,
