@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
+from xml.etree.ElementTree import ParseError
 
 from inv_man_intake.data.repository import CoreRepository
 from inv_man_intake.extraction.confidence import (
@@ -57,6 +58,7 @@ from inv_man_intake.performance.contracts import (
     PerformancePoint,
     PerformanceSeries,
 )
+from inv_man_intake.performance.ingest import load_xlsx_timeseries
 from inv_man_intake.performance.metrics import compute_metrics
 from inv_man_intake.performance.normalize import normalize_payload
 from inv_man_intake.queue.assignment import create_analyst_first_assignment
@@ -128,6 +130,7 @@ class V1SmokeArtifacts:
     score: object
     formatted_explainability: dict[str, object]
     langsmith_fleet_records: list[dict[str, Any]]
+    performance: dict[str, Any]
 
 
 def run_v1_smoke_pipeline(
@@ -317,28 +320,49 @@ def _run_pipeline_core(
             file_entries=file_entries,
             record=record,
             fund_id=record.fund_id,
-            fixture_root=fixture_root,
+            content_root=resolved_content_root,
             document_store=document_store,
             core_repository=core_repository,
         )
-        conflict_result = resolve_source_conflicts(
-            xlsx_series=xlsx_series,
-            other_series=deck_series,
-        )
-        normalized = normalize_payload(PerformancePayload(monthly=conflict_result.resolved_series))
-        metrics = compute_metrics(
-            PerformancePayload(monthly=normalized.monthly),
-            benchmark_monthly=benchmark_series,
-        )
-        characterization = characterize_series(
-            normalized.monthly,
-            metrics,
-            source_names=_document_source_names(
-                repository=core_repository,
-                document_ids=record.document_ids,
+        conflict_result = normalized = metrics = characterization = None
+        if xlsx_series is not None:
+            conflict_result = resolve_source_conflicts(
+                xlsx_series=xlsx_series,
+                other_series=deck_series,
+            )
+            normalized = normalize_payload(
+                PerformancePayload(monthly=conflict_result.resolved_series)
+            )
+            metrics = compute_metrics(
+                PerformancePayload(monthly=normalized.monthly),
+                benchmark_monthly=benchmark_series,
+            )
+            characterization = characterize_series(
+                normalized.monthly,
+                metrics,
+                source_names=_document_source_names(
+                    repository=core_repository,
+                    document_ids=record.document_ids,
+                ),
+                standard_library=load_standard_element_library(
+                    DEFAULT_STANDARD_ELEMENT_LIBRARY_PATH
+                ),
+            )
+        performance = {
+            "status": "available" if xlsx_series is not None else "unavailable",
+            "source": "smoke_fixture" if smoke_mode else "submitted_workbook",
+            "monthly": (
+                [
+                    {"as_of": point.as_of.isoformat(), "value": point.value}
+                    for point in normalized.monthly.points
+                ]
+                if normalized is not None
+                else None
             ),
-            standard_library=load_standard_element_library(DEFAULT_STANDARD_ELEMENT_LIBRARY_PATH),
-        )
+            "metrics": metrics.to_canonical_dict() if metrics is not None else None,
+            "comparison_available": deck_series is not None,
+            "benchmark_available": benchmark_series is not None,
+        }
 
     performance_start = _start_event(sink, "v1_acceptance.performance_normalize")
     queue_context = child_trace_context(
@@ -371,30 +395,40 @@ def _run_pipeline_core(
             "correlation_id": correlation_id,
         },
     ):
-        components = _score_components(metrics.benchmark_correlation)
-        submission = gate_scoring_submission(
-            ScoreSubmission(
-                manager_id=record.fund_id,
-                asset_class="credit",
-                components=components,
-            ),
-            characterization=characterization,
-        )
-        score = compute_score(
-            submission,
-            weights_by_asset_class=weights_for_registry(),
-        )
-        explainability = build_explainability_payload(
-            components=_explainability_inputs(score.asset_class, components),
-            overall_score=score.final_score,
-        )
-        formatted_explainability = format_explainability_payload(explainability)
+        # Reference component values and benchmark-based scores are smoke-only.
+        # Production scoring remains unavailable until evidence-backed inputs exist.
+        score = None
+        formatted_explainability: dict[str, object] = {
+            "status": "unavailable",
+            "overall_score": None,
+            "reason": "evidence_backed_score_components_unavailable",
+        }
+        if smoke_mode:
+            assert metrics is not None and characterization is not None
+            components = _score_components(metrics.benchmark_correlation)
+            submission = gate_scoring_submission(
+                ScoreSubmission(
+                    manager_id=record.fund_id,
+                    asset_class="credit",
+                    components=components,
+                ),
+                characterization=characterization,
+            )
+            score = compute_score(
+                submission,
+                weights_by_asset_class=weights_for_registry(),
+            )
+            explainability = build_explainability_payload(
+                components=_explainability_inputs(score.asset_class, components),
+                overall_score=score.final_score,
+            )
+            formatted_explainability = format_explainability_payload(explainability)
     fleet_summary = build_summary_from_pipeline(
         document_ids=record.document_ids,
         extraction=extraction_with_thresholds,
         secondary_extraction=secondary_extraction_result,
         validation_status="escalated" if threshold_decision.escalate else "accepted",
-        score_count=len(score.contributions),
+        score_count=len(score.contributions) if score is not None else 0,
         review_queue_outcome=queue_assignment.owner_role,
         artifact_refs=(
             f"artifact:packages/{record.package_id}/metadata.json",
@@ -452,6 +486,7 @@ def _run_pipeline_core(
         score=score,
         formatted_explainability=formatted_explainability,
         langsmith_fleet_records=langsmith_fleet_records,
+        performance=performance,
     )
 
 
@@ -630,10 +665,10 @@ def _resolve_performance_series(
     file_entries: list[dict[str, Any]],
     record: IngestRecord | None = None,
     fund_id: str | None = None,
-    fixture_root: Path | None = None,
+    content_root: Path | None = None,
     document_store: InMemoryDocumentStore | None = None,
     core_repository: CoreRepository | None = None,
-) -> tuple[PerformanceSeries, PerformanceSeries, PerformanceSeries]:
+) -> tuple[PerformanceSeries | None, PerformanceSeries | None, PerformanceSeries | None]:
     if smoke_mode:
         return _fixture_performance_series()
     if _bundle_has_performance_track_record(file_entries):
@@ -645,7 +680,7 @@ def _resolve_performance_series(
         if (
             record is None
             or fund_id is None
-            or fixture_root is None
+            or content_root is None
             or document_store is None
             or core_repository is None
         ):
@@ -666,16 +701,70 @@ def _resolve_performance_series(
             fund_id=fund_id,
             file_name=track_record_name,
             smoke_mode=False,
-            fixture_root=fixture_root,
+            fixture_root=content_root,
             document_store=document_store,
         )
         _require_valid_performance_track_record_bytes(
             track_record_bytes,
             file_name=track_record_name,
         )
-        # Reference normalization until an xlsx timeseries parser is wired.
-        return _fixture_performance_series()
-    raise ValueError("performance data unavailable: bundle has no performance_track_record file")
+        return _workbook_performance_series(track_record_bytes), None, None
+    return None, None, None
+
+
+def _workbook_performance_series(content: bytes) -> PerformanceSeries | None:
+    """Read canonical XLSX rows without guessing units or selecting ambiguous tables.
+
+    One sheet must have `as_of` and `value` headers, with optional `frequency`
+    (defaults to monthly). Values are decimal returns; dates are ISO text or
+    Excel dates. Unsupported, malformed, or ambiguous workbooks are unavailable.
+    """
+    from openpyxl import load_workbook  # type: ignore[import-untyped]
+    from openpyxl.utils.exceptions import InvalidFileException  # type: ignore[import-untyped]
+
+    try:
+        workbook = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+        try:
+            candidates = []
+            for sheet in workbook:
+                rows = sheet.iter_rows(values_only=True)
+                header = next(rows, ())
+                names = [str(cell).strip().lower() if cell is not None else "" for cell in header]
+                if not {"as_of", "value"}.issubset(names):
+                    continue
+                if any(names.count(key) > 1 for key in ("as_of", "value", "frequency")):
+                    return None
+                parsed = []
+                for values in rows:
+                    if all(value is None for value in values):
+                        continue
+                    row = dict(zip(names, values, strict=True))
+                    as_of = row.get("as_of")
+                    if isinstance(as_of, datetime):
+                        as_of = as_of.date()
+                    if isinstance(as_of, date):
+                        as_of = as_of.isoformat()
+                    parsed.append(
+                        {
+                            "frequency": row.get("frequency", "monthly"),
+                            "as_of": as_of,
+                            "value": row.get("value"),
+                        }
+                    )
+                candidates.append(load_xlsx_timeseries(parsed).monthly)
+            return candidates[0] if len(candidates) == 1 else None
+        finally:
+            workbook.close()
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        zipfile.BadZipFile,
+        InvalidFileException,
+        ParseError,
+    ):
+        return None
 
 
 def _unsupported_secondary_bytes_reason(content: bytes) -> str:

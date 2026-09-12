@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import json
 import platform
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, cast
@@ -63,7 +63,7 @@ class RunResult:
     fields: list[dict[str, Any]]
     confidence_state: dict[str, Any]
     escalation_state: dict[str, Any]
-    final_score: float
+    final_score: float | None
     explainability: dict[str, Any]
     warnings: list[str]
     latency_ms: int | None
@@ -71,6 +71,7 @@ class RunResult:
     trace_refs: list[str]
     artifact_refs: list[str]
     manifest: str
+    performance: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
         """Return the run record as a JSON-serializable dictionary."""
@@ -101,6 +102,7 @@ class RunResult:
                     "field_count": len(self.fields),
                 },
             },
+            "performance": self.performance,
             "fields": self.fields,
             "confidence_state": self.confidence_state,
             "escalation_state": self.escalation_state,
@@ -169,7 +171,7 @@ def run_pipeline(
 
 def _build_run_result(artifacts: V1SmokeArtifacts) -> RunResult:
     record = cast(IngestRecord, artifacts.record)
-    score = cast(ScoreResult, artifacts.score)
+    score = cast(ScoreResult | None, artifacts.score)
     decision = cast(ThresholdDecision, artifacts.threshold_decision)
     trace_context = cast(TraceContext, artifacts.trace_context)
     registration = cast(IntakeRegistrationResult, artifacts.registration)
@@ -223,9 +225,11 @@ def _build_run_result(artifacts: V1SmokeArtifacts) -> RunResult:
             "reason": decision.escalation_reason or "none",
             "auto_pass_document": decision.auto_pass_document,
         },
-        final_score=score.final_score,
+        final_score=score.final_score if score is not None else None,
         explainability=dict(artifacts.formatted_explainability),
-        warnings=_collect_warnings(registration=registration, decision=decision),
+        warnings=_collect_warnings(registration=registration, decision=decision)
+        + (["performance:unavailable"] if artifacts.performance["monthly"] is None else [])
+        + (["scoring:unavailable"] if score is None else []),
         latency_ms=_pipeline_latency_ms(sink=artifacts.sink, root_span_name=_ROOT_SPAN_NAME),
         provenance={
             "tool_version": _tool_version(),
@@ -243,6 +247,7 @@ def _build_run_result(artifacts: V1SmokeArtifacts) -> RunResult:
             ARTIFACT_EXPLAINABILITY,
         ],
         manifest=f"artifact:{ARTIFACT_MANIFEST}",
+        performance=artifacts.performance,
     )
 
 
