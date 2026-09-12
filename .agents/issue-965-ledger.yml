@@ -6,10 +6,10 @@ tasks:
   - id: task-01
     title: Refactor the conditional logic in `_resolve_performance_series` to create
       separate code paths for smoke mode versus production mode
-    status: doing
+    status: done
     started_at: '2026-09-12T17:28:58Z'
-    finished_at: null
-    commit: ''
+    finished_at: '2026-09-12T17:29:08Z'
+    commit: 3e39b286acf6d99e0d1383a10567544355ffca66
     notes: []
   - id: task-02
     title: Implement workbook-derived performance extraction logic that reads performance
