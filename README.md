@@ -38,6 +38,16 @@ planned production human-facing UI for this repo. The absence of a production
 repo-local server in `src/` is a recorded product decision rather than a missing
 front-end gap.
 
+Production `inv-man-ingest` performance uses the workbook registered in the
+submitted bundle. One worksheet must contain `as_of` and `value` headers;
+`frequency` is optional and defaults to `monthly`. Dates may be ISO dates or
+Excel dates, and values are decimal returns (for example, `0.02` means 2%).
+Unsupported, ambiguous, or invalid rows yield `performance.status = unavailable`
+and null monthly data/metrics in `run.json`. Invalid workbook containers remain
+input errors. Production never substitutes smoke fixtures, comparison returns,
+or a benchmark. `final_score` and score explainability remain unavailable/null
+until evidence-backed scoring components exist; the fixture score is smoke-only.
+
 ## Quick Start
 
 ```bash
