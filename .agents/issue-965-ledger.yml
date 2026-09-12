@@ -1,0 +1,178 @@
+version: 1
+issue: 965
+base: main
+branch: codex/issue-965
+tasks:
+  - id: task-01
+    title: Refactor the conditional logic in `_resolve_performance_series` to create
+      separate code paths for smoke mode versus production mode
+    status: doing
+    started_at: '2026-09-12T17:28:58Z'
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-02
+    title: Implement workbook-derived performance extraction logic that reads performance
+      data directly from the submitted workbook in production mode in `src/inv_man_intake/v1_smoke.py`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-03
+    title: Add explicit unavailable or no-data result handling when performance rows
+      cannot be parsed from the workbook in `src/inv_man_intake/v1_smoke.py`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-04
+    title: Remove all calls to `_fixture_performance_series()` from the production
+      code path in `_resolve_performance_series`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-05
+    title: Update the content resolution flow in production mode to use only the `content_root`
+      parameter passed from `run.py`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-06
+    title: Remove any fallback logic that references fixture directories when resolving
+      workbook paths in production mode in `src/inv_man_intake/v1_smoke.py`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-07
+    title: Remove any hardcoded fixture filenames such as `summit_arc_track_record.xlsx`
+      from the production workbook resolution path
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-08
+    title: Eliminate repository-relative path assumptions from the production content
+      resolution logic in `src/inv_man_intake/v1_smoke.py`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-09
+    title: Create a test bundle located outside the repository fixture layout with
+      valid workbook performance data for regression testing in `tests/cli/test_ingest_entrypoint.py`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-10
+    title: Write a regression test in `tests/cli/test_ingest_entrypoint.py` that runs
+      ingestion on the non-fixture production bundle
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-11
+    title: Add assertions to verify that generated artifacts contain workbook-extracted
+      performance values matching the test bundle data in `tests/cli/test_ingest_entrypoint.py`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-12
+    title: Add assertions to verify that artifacts do not contain any hard-coded fixture
+      performance values from `_fixture_performance_series()`
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-13
+    title: Add test coverage for the scenario where performance data is explicitly
+      marked as unavailable when workbook parsing fails in `tests/cli/test_ingest_entrypoint.py`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-14
+    title: Add or update tests in `tests/cli/test_ingest_entrypoint.py` covering smoke-mode
+      ingestion to verify that smoke bundles still use the fixture performance series
+      behavior unchanged after the production-path refactor.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-15
+    title: In non-smoke ingestion, `_resolve_performance_series` in `src/inv_man_intake/v1_smoke.py`
+      does not call `_fixture_performance_series()` on the production path and instead
+      returns performance data derived from the submitted workbook, or returns `None`
+      when workbook performance rows cannot be parsed.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-16
+    title: For a valid non-smoke bundle located outside the repository fixture layout,
+      the generated ingest artifacts do not contain performance values matching [0.021,
+      -0.012, 0.018, 0.006, -0.004, 0.014] which are the known hard-coded fixture
+      values produced by `_fixture_performance_series()`.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-17
+    title: The production content/file resolution flow resolves workbook inputs only
+      from the `content_root` passed by `run.py` and does not reference fixture directories,
+      fixed fixture filenames, or repository-relative fallback paths in non-smoke
+      mode.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-18
+    title: 'A regression test exists in `tests/cli/test_ingest_entrypoint.py` that
+      uses a production (non-smoke) bundle outside the repository fixture layout and
+      asserts one of the following outcomes only: (a) artifact performance fields
+      equal workbook-extracted values expected from that bundle, or (b) artifact performance
+      fields are set to `None`.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-19
+    title: A smoke-mode test verifies that output artifacts contain the expected fixture
+      performance values [0.021, -0.012, 0.018, 0.006, -0.004, 0.014] when run in
+      smoke mode.
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
+  - id: task-20
+    title: 'The manual verification safeguard is enforceable by the test suite: if
+      a developer reintroduces a fixed workbook lookup or fixture-path fallback in
+      the non-smoke production path, `tests/cli/test_ingest_entrypoint.py::test_ingest_entrypoint_runs_valid_bundle_outside_repository_fixture_layout`
+      fails.'
+    status: todo
+    started_at: null
+    finished_at: null
+    commit: ''
+    notes: []
