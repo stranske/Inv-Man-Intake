@@ -9,8 +9,10 @@ Due Diligence Questionnaire (DDQ) fixture and tests to verify that:
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from inv_man_intake.extraction.doc_type import DocumentType
@@ -25,6 +27,9 @@ from inv_man_intake.intake.standard_elements import (
     StandardElement,
 )
 from inv_man_intake.packet import PacketFile, ingest_packet
+
+_FIXTURE_DIR = Path(__file__).resolve().parent.parent / "fixtures" / "ddq_synthetic"
+_COMPLETE_FIXTURE = _FIXTURE_DIR / "complete_ilpa_ddq.json"
 
 # ILPA DDQ Standard Element Definitions
 # These represent the typical fields found in an ILPA DDQ
@@ -50,53 +55,48 @@ _DDQ_ELEMENTS = (
 )
 
 
-# Minimal detector registry for testing
 def _default_detector_registry() -> Mapping[str, Any]:
     """Create a minimal detector registry that returns True for present fields."""
 
     def present_detector(payload: Mapping[str, Any]) -> bool:
-        """Detector that checks if the field key exists in the payload."""
+        """Detector that checks if the field key exists in extracted fields."""
         field_key = payload.get("field_key")
-        return field_key in payload and field_key != "field_key"
+        if not isinstance(field_key, str):
+            return False
+        fields = payload.get("fields", ())
+        return field_key in fields
 
     return {elem.detector_name: present_detector for elem in _DDQ_ELEMENTS}
 
 
 @dataclass(frozen=True)
 class SyntheticIlpaDdqProvider:
-    """Synthetic extraction provider that returns ILPA DDQ-like results.
-
-    This provider simulates the extraction of fields from an ILPA DDQ document,
-    returning a predictable set of fields that can be used for testing.
-    """
+    """Synthetic extraction provider that parses tracked DDQ fixture JSON content."""
 
     name: str = "synthetic-ilpa-ddq"
-
-    def __init__(
-        self,
-        fields: Mapping[str, str] | None = None,
-        confidence: float = 0.95,
-    ) -> None:
-        object.__setattr__(self, "_fields", fields or {})
-        object.__setattr__(self, "_confidence", confidence)
+    confidence: float = 0.95
 
     def extract(self, source_doc_id: str, content: bytes) -> ExtractedDocumentResult:
-        """Extract ILPA DDQ fields from the content."""
-        fields_list: list[ExtractedField] = []
+        """Extract ILPA DDQ fields from synthetic JSON packet content."""
+        payload = json.loads(content.decode("utf-8"))
+        if not isinstance(payload, Mapping):
+            raise ValueError("synthetic DDQ content must be a JSON object")
+        fields_section = payload.get("fields")
+        if not isinstance(fields_section, Mapping):
+            raise ValueError("synthetic DDQ content must include a fields object")
 
-        # Build fields from the synthetic data
-        for key, value in self._fields.items():
-            fields_list.append(
-                ExtractedField(
-                    key=key,
-                    value=str(value),
-                    confidence=self._confidence,
-                    source_doc_id=source_doc_id,
-                    source_page=1,
-                    method="synthetic",
-                    location=SourceLocation(source_doc_id=source_doc_id, source_page=1),
-                )
+        fields_list = [
+            ExtractedField(
+                key=key,
+                value=str(value),
+                confidence=self.confidence,
+                source_doc_id=source_doc_id,
+                source_page=1,
+                method="synthetic",
+                location=SourceLocation(source_doc_id=source_doc_id, source_page=1),
             )
+            for key, value in fields_section.items()
+        ]
 
         return ExtractedDocumentResult(
             source_doc_id=source_doc_id,
@@ -117,24 +117,29 @@ _DDQ_LIBRARY = DataDrivenStandardElementLibrary(
 )
 
 
-def _create_synthetic_ddq_content(fields: Mapping[str, str]) -> bytes:
-    """Create synthetic DDQ content as bytes."""
-    # In a real scenario, this would be actual PDF or document content
-    # For testing, we just need bytes that the provider can process
-    return b"ILPA DDQ Synthetic Content\n" + b"\n".join(
-        f"{key}: {value}".encode() for key, value in fields.items()
-    )
+def _load_fixture_bytes(fixture_path: Path = _COMPLETE_FIXTURE) -> bytes:
+    """Load tracked synthetic DDQ fixture content as packet bytes."""
+    return fixture_path.read_bytes()
 
 
-def _create_ddq_extraction_service(
-    fields: Mapping[str, str],
-    confidence: float = 0.95,
-) -> DefaultExtractionService:
+def _fixture_payload_without_field(field_name: str) -> bytes:
+    """Return fixture JSON bytes with one field removed from the tracked fixture."""
+    payload = json.loads(_COMPLETE_FIXTURE.read_text(encoding="utf-8"))
+    fields = payload["fields"]
+    del fields[field_name]
+    return json.dumps(payload).encode("utf-8")
+
+
+def _create_ddq_extraction_service(confidence: float = 0.95) -> DefaultExtractionService:
     """Create an extraction service with synthetic ILPA DDQ provider."""
-    provider = SyntheticIlpaDdqProvider(fields=fields, confidence=confidence)
+    provider = SyntheticIlpaDdqProvider(confidence=confidence)
     return DefaultExtractionService(
         backend=ProviderTransportBackend(provider, transport_name="synthetic-ilpa-ddq")
     )
+
+
+def _mandatory_coverage_keys(coverage: tuple[Any, ...]) -> set[str]:
+    return {item.key for item in coverage if item.detected and item.mandatory}
 
 
 def test_ddq_fields_extracted() -> None:
@@ -148,168 +153,90 @@ def test_ddq_fields_extracted() -> None:
     The test uses a synthetic ILPA DDQ fixture to simulate document extraction
     under the existing ontology contract.
     """
-    # Define complete ILPA DDQ fields with all mandatory fields present
-    complete_ddq_fields = {
-        "firm_name": "ILPA Test Fund Advisors",
-        "fund_name": "ILPA Test Fund I",
-        "strategy": "Private Equity",
-        "aum": "$500M",
-        "investment_minimum": "$1M",
-        "management_fee": "2.0%",
-        "lockup_period": "3 years",
-        "auditor": "PwC",
-        "admin": "SS&C",
-    }
-
-    # Create extraction service with complete fields
-    extraction_service = _create_ddq_extraction_service(complete_ddq_fields)
-
-    # Create a packet with the synthetic DDQ
-    content = _create_synthetic_ddq_content(complete_ddq_fields)
+    extraction_service = _create_ddq_extraction_service()
+    content = _load_fixture_bytes()
     packet_file = PacketFile(
         document_id="synthetic_ddq_001",
         content=content,
         filename="ilpa_ddq_test.pdf",
     )
 
-    # Test 1: Complete DDQ should extract and pass validation
-    # This should succeed with all mandatory fields present
-    try:
-        profile = ingest_packet(
-            files=[packet_file],
-            extraction_service=extraction_service,
-            standard_library=_DDQ_LIBRARY,
-            packet_id="test-ilpa-ddq-complete",
-        )
+    profile = ingest_packet(
+        files=[packet_file],
+        extraction_service=extraction_service,
+        standard_library=_DDQ_LIBRARY,
+        packet_id="test-ilpa-ddq-complete",
+    )
 
-        # Verify that the profile was created successfully
-        assert len(profile.documents) == 1
-        doc_profile = profile.documents[0]
-        assert doc_profile.document_id == "synthetic_ddq_001"
+    assert len(profile.documents) == 1
+    doc_profile = profile.documents[0]
+    assert doc_profile.document_id == "synthetic_ddq_001"
 
-        # Verify coverage - mandatory fields should be detected
-        coverage = _DDQ_LIBRARY.evaluate_coverage(
-            "ddq", {k: v for k, v in complete_ddq_fields.items()}
-        )
+    mandatory_fields = {elem.key for elem in _DDQ_ELEMENTS if elem.mandatory}
+    detected_mandatory = _mandatory_coverage_keys(doc_profile.standard_element_coverage)
+    assert detected_mandatory == mandatory_fields
 
-        # Check that mandatory fields are detected
-        mandatory_fields = {elem.key for elem in _DDQ_ELEMENTS if elem.mandatory}
-        detected_mandatory = {c.key for c in coverage if c.detected and c.mandatory}
-
-        # All mandatory fields should be present in our synthetic data
-        # Note: We only have the fields we defined in complete_ddq_fields
-        present_mandatory_in_data = mandatory_fields & set(complete_ddq_fields.keys())
-        assert present_mandatory_in_data == detected_mandatory
-
-        print("✓ Complete DDQ extraction and validation passed")
-        complete_validation_passed = True
-
-    except Exception as e:
-        # This should not fail with complete fields
-        complete_validation_passed = False
-        print(f"✗ Complete DDQ validation failed unexpectedly: {e}")
-
-    assert complete_validation_passed, "Complete DDQ with all mandatory fields should pass"
-
-    # Test 2: DDQ with required field deletion should fail validation
-    # Remove a mandatory field (investment_minimum is mandatory)
-    incomplete_ddq_fields = complete_ddq_fields.copy()
-    del incomplete_ddq_fields["investment_minimum"]
-
-    extraction_service_incomplete = _create_ddq_extraction_service(incomplete_ddq_fields)
-    content_incomplete = _create_synthetic_ddq_content(incomplete_ddq_fields)
+    content_incomplete = _fixture_payload_without_field("investment_minimum")
     packet_file_incomplete = PacketFile(
         document_id="synthetic_ddq_002",
         content=content_incomplete,
         filename="ilpa_ddq_incomplete.pdf",
     )
 
-    # This should fail or show missing mandatory field coverage
-    try:
-        profile_incomplete = ingest_packet(
-            files=[packet_file_incomplete],
-            extraction_service=extraction_service_incomplete,
-            standard_library=_DDQ_LIBRARY,
-            packet_id="test-ilpa-ddq-incomplete",
-        )
+    profile_incomplete = ingest_packet(
+        files=[packet_file_incomplete],
+        extraction_service=extraction_service,
+        standard_library=_DDQ_LIBRARY,
+        packet_id="test-ilpa-ddq-incomplete",
+    )
 
-        # Check coverage - investment_minimum should be missing
-        coverage_incomplete = _DDQ_LIBRARY.evaluate_coverage(
-            "ddq", {k: v for k, v in incomplete_ddq_fields.items()}
-        )
+    doc_incomplete = profile_incomplete.documents[0]
+    investment_min_coverage = next(
+        (c for c in doc_incomplete.standard_element_coverage if c.key == "investment_minimum"),
+        None,
+    )
 
-        # Find the investment_minimum coverage
-        investment_min_coverage = next(
-            (c for c in coverage_incomplete if c.key == "investment_minimum"), None
-        )
+    assert investment_min_coverage is not None
+    assert investment_min_coverage.mandatory is True
+    assert investment_min_coverage.detected is False
+    assert (
+        "synthetic_ddq_002:investment_minimum:missing_mandatory"
+        in profile_incomplete.flagged_non_standard_items
+    )
 
-        # Verify that investment_minimum is mandatory but not detected
-        assert investment_min_coverage is not None
-        assert investment_min_coverage.mandatory is True
-        assert investment_min_coverage.detected is False
-
-        print("✓ Required field deletion detected: investment_minimum missing")
-        field_deletion_failed_validation = True
-
-    except Exception as e:
-        # If it raises an exception, that's also a form of failure
-        print(f"✓ Required field deletion caused error as expected: {e}")
-        field_deletion_failed_validation = True
-
-    assert field_deletion_failed_validation, "Required field deletion should fail validation"
-
-    # Test 3: Restore the required field and verify validation passes again
-    restored_ddq_fields = incomplete_ddq_fields.copy()
-    restored_ddq_fields["investment_minimum"] = "$1M"  # Restore the mandatory field
-
-    extraction_service_restored = _create_ddq_extraction_service(restored_ddq_fields)
-    content_restored = _create_synthetic_ddq_content(restored_ddq_fields)
     packet_file_restored = PacketFile(
         document_id="synthetic_ddq_003",
-        content=content_restored,
+        content=_load_fixture_bytes(),
         filename="ilpa_ddq_restored.pdf",
     )
 
-    try:
-        profile_restored = ingest_packet(
-            files=[packet_file_restored],
-            extraction_service=extraction_service_restored,
-            standard_library=_DDQ_LIBRARY,
-            packet_id="test-ilpa-ddq-restored",
-        )
+    profile_restored = ingest_packet(
+        files=[packet_file_restored],
+        extraction_service=extraction_service,
+        standard_library=_DDQ_LIBRARY,
+        packet_id="test-ilpa-ddq-restored",
+    )
 
-        # Verify that the profile was created successfully
-        assert len(profile_restored.documents) == 1
-        doc_profile_restored = profile_restored.documents[0]
-        assert doc_profile_restored.document_id == "synthetic_ddq_003"
+    assert len(profile_restored.documents) == 1
+    doc_profile_restored = profile_restored.documents[0]
+    assert doc_profile_restored.document_id == "synthetic_ddq_003"
 
-        # Verify coverage - investment_minimum should now be detected
-        coverage_restored = _DDQ_LIBRARY.evaluate_coverage(
-            "ddq", {k: v for k, v in restored_ddq_fields.items()}
-        )
+    investment_min_coverage_restored = next(
+        (
+            c
+            for c in doc_profile_restored.standard_element_coverage
+            if c.key == "investment_minimum"
+        ),
+        None,
+    )
 
-        investment_min_coverage_restored = next(
-            (c for c in coverage_restored if c.key == "investment_minimum"), None
-        )
-
-        # Verify that investment_minimum is now detected
-        assert investment_min_coverage_restored is not None
-        assert investment_min_coverage_restored.mandatory is True
-        assert investment_min_coverage_restored.detected is True
-
-        print("✓ Restored DDQ validation passed")
-        restored_validation_passed = True
-
-    except Exception as e:
-        restored_validation_passed = False
-        print(f"✗ Restored DDQ validation failed unexpectedly: {e}")
-
-    assert restored_validation_passed, "Restored DDQ with mandatory field should pass"
+    assert investment_min_coverage_restored is not None
+    assert investment_min_coverage_restored.mandatory is True
+    assert investment_min_coverage_restored.detected is True
 
 
 def test_ddq_required_fields_contract() -> None:
     """Test that DDQ required fields are properly defined in the ontology contract."""
-    # Verify that the ILPA DDQ ontology has the expected mandatory fields
     mandatory_ddq_fields = {elem.key for elem in _DDQ_ELEMENTS if elem.mandatory}
 
     expected_mandatory = {"firm_name", "fund_name", "strategy", "aum", "investment_minimum"}
@@ -318,14 +245,11 @@ def test_ddq_required_fields_contract() -> None:
         mandatory_ddq_fields == expected_mandatory
     ), f"Mandatory DDQ fields mismatch: {mandatory_ddq_fields} != {expected_mandatory}"
 
-    print(f"✓ DDQ ontology contract has {len(mandatory_ddq_fields)} mandatory fields")
-
 
 def test_ddq_document_type_classification() -> None:
     """Test that DDQ document type is properly classified."""
     from inv_man_intake.extraction.doc_type import classify_doc_type
 
-    # Test various DDQ-related strings
     ddq_strings = [
         "ILPA DDQ",
         "Due Diligence Questionnaire",
@@ -338,8 +262,6 @@ def test_ddq_document_type_classification() -> None:
         assert (
             doc_type == DocumentType.DDQ
         ), f"Text '{text}' should be classified as DDQ, got {doc_type}"
-
-    print(f"✓ DDQ document type classification works for {len(ddq_strings)} variants")
 
 
 # Make the library available for other tests

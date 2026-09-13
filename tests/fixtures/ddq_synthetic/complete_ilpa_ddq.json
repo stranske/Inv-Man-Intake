@@ -1,0 +1,14 @@
+{
+  "document_type": "ILPA DDQ",
+  "fields": {
+    "firm_name": "ILPA Test Fund Advisors",
+    "fund_name": "ILPA Test Fund I",
+    "strategy": "Private Equity",
+    "aum": "$500M",
+    "management_fee": "2.0%",
+    "lockup_period": "3 years",
+    "auditor": "PwC",
+    "admin": "SS&C",
+    "investment_minimum": "$1M"
+  }
+}
