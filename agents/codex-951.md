@@ -1,1 +1,1 @@
-<!-- bootstrap for codex on issue #951 run:34780329418-1 -->
+<!-- codex issue #951 recovery: implemented synthetic ILPA DDQ fixture and packet-pipeline test -->
