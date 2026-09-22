@@ -17,7 +17,7 @@ from inv_man_intake.extraction.providers.doc_lineage_adapter import (
 @dataclass(frozen=True)
 class _Span:
     text: str
-    page: int
+    page: int | None
     bbox: tuple[float, float, float, float] | None = None
     source: str = "text_layer"
 
@@ -73,6 +73,20 @@ def test_adapter_emits_page_pointers(monkeypatch: pytest.MonkeyPatch) -> None:
     assert fields["operations.aum"].source_page == 2
     assert fields["operations.aum"].location.source_page == 2
     assert all(field.method == "doc-lineage:text_layer" for field in fields.values())
+
+
+def test_adapter_rejects_missing_page_pointer() -> None:
+    document = _Document(
+        spans=[_Span("AUM: $42M", None)],
+        coverage=_Coverage(1, 0, 0),
+    )
+    provider = DocLineageExtractionProvider(
+        extractor=lambda *_args, **_kwargs: document,
+        cache_factory=lambda: object(),
+    )
+
+    with pytest.raises(ValueError, match="invalid PDF page pointer"):
+        provider.extract("doc-null-page", b"%PDF-test")
 
 
 def test_adapter_uses_upstream_ocr_for_one_scanned_page() -> None:

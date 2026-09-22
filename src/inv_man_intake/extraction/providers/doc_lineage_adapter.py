@@ -79,9 +79,10 @@ class DocLineageExtractionProvider:
 
         fields: list[ExtractedField] = []
         seen_keys: set[str] = set()
+        for span in document.spans:
+            if not isinstance(span.page, int) or isinstance(span.page, bool) or span.page < 1:
+                raise ValueError("Doc-Lineage returned an invalid PDF page pointer")
         for span in sorted(document.spans, key=lambda item: item.page):
-            if span.page < 1:
-                raise ValueError("Doc-Lineage returned a non-positive PDF page pointer")
             location = SourceLocation(
                 source_doc_id=source_doc_id,
                 source_page=span.page,
