@@ -34,7 +34,7 @@ extraction-docling = [
     "stranske-pdf-extract[docling] @ git+https://github.com/stranske/Workflows.git@pdf-extract-v0.1.0#subdirectory=packages/stranske_pdf_extract",
 ]
 extraction-doc-lineage = [
-    "doc-lineage[ocr] @ git+https://github.com/stranske/Doc-Lineage.git@f38b154b94083cdcdaa22d12d0f57b55fcc71cca",
+    "doc-lineage[ocr] @ git+https://github.com/stranske/Doc-Lineage.git@bcfc2ecb1290eda6c119335928cf018c7b78734b",
 ]
 dev = [
     "playwright>=1.56.0",
