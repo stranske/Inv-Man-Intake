@@ -11,8 +11,10 @@ from inv_man_intake.extraction.service import (
     DefaultExtractionService,
     ProviderTransportBackend,
     PyodideLightTransportBackend,
+    build_docling_service,
     build_future_localhost_service,
     build_future_remote_service,
+    build_pyodide_light_service,
     extraction_service_extractor,
 )
 
@@ -58,6 +60,45 @@ def test_future_service_backends_are_documented_stubs() -> None:
         localhost.extract("doc", b"payload")
     with pytest.raises(NotImplementedError, match="remote-service"):
         remote.extract("doc", b"payload")
+
+
+def test_pyodide_light_prefers_doc_lineage_when_installed() -> None:
+    pytest.importorskip("doc_lineage.extract")
+
+    pdf_service = build_pyodide_light_service("manager.pdf")
+    pptx_service = build_pyodide_light_service("manager.pptx")
+
+    assert isinstance(pdf_service.backend, PyodideLightTransportBackend)
+    assert pdf_service.backend.provider.name == "doc-lineage"
+    assert pptx_service.backend.provider.name == "pptx-primary"
+    assert build_docling_service().backend_name == "doc-lineage-local"
+
+
+def test_pyodide_light_uses_legacy_pdf_only_when_doc_lineage_absent(monkeypatch) -> None:
+    from inv_man_intake.extraction.providers import doc_lineage_adapter
+
+    class _Unavailable:
+        def __init__(self) -> None:
+            raise ModuleNotFoundError("No module named 'doc_lineage'", name="doc_lineage")
+
+    monkeypatch.setattr(doc_lineage_adapter, "DocLineageExtractionProvider", _Unavailable)
+
+    service = build_pyodide_light_service("manager.pdf")
+
+    assert service.backend.provider.name == "pdf-primary"
+
+
+def test_pyodide_light_propagates_broken_doc_lineage_install(monkeypatch) -> None:
+    from inv_man_intake.extraction.providers import doc_lineage_adapter
+
+    class _Broken:
+        def __init__(self) -> None:
+            raise ModuleNotFoundError("No module named 'pypdf'", name="pypdf")
+
+    monkeypatch.setattr(doc_lineage_adapter, "DocLineageExtractionProvider", _Broken)
+
+    with pytest.raises(ModuleNotFoundError, match="pypdf"):
+        build_pyodide_light_service("manager.pdf")
 
 
 def test_consumers_do_not_import_concrete_extractors_directly() -> None:

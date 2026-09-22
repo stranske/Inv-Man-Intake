@@ -15,6 +15,10 @@ from inv_man_intake.extraction.providers.base import (
     validate_extracted_document_result,
     validate_provider_output,
 )
+from inv_man_intake.extraction.providers.doc_lineage_adapter import (
+    DocLineageExtractionProvider,
+    IncompleteExtractionError,
+)
 from inv_man_intake.extraction.providers.normalize import normalize_provider_output
 from inv_man_intake.extraction.providers.pdf_primary import (
     PdfPrimaryExtractionProvider,
@@ -25,6 +29,8 @@ from inv_man_intake.extraction.providers.primary import PrimaryRegexExtractionPr
 
 __all__ = [
     "ExtractedImage",
+    "DocLineageExtractionProvider",
+    "IncompleteExtractionError",
     "ExtractedDocumentResult",
     "ExtractedField",
     "ExtractedTable",

@@ -104,26 +104,48 @@ def ensure_extraction_service(candidate: object) -> ExtractionService:
 def build_pyodide_light_service(file_name: str) -> ExtractionService:
     """Create the default no-egress extraction service for current app paths."""
 
-    from inv_man_intake.extraction.providers.pdf_primary import PdfPrimaryExtractionProvider
     from inv_man_intake.extraction.providers.pptx_primary import PptxPrimaryExtractionProvider
 
     provider: ExtractionProvider
     if file_name.lower().endswith(".pptx"):
         provider = PptxPrimaryExtractionProvider()
     else:
-        provider = PdfPrimaryExtractionProvider()
+        from inv_man_intake.extraction.providers.doc_lineage_adapter import (
+            DocLineageExtractionProvider,
+        )
+
+        try:
+            provider = DocLineageExtractionProvider()
+        except ModuleNotFoundError as exc:
+            if exc.name != "doc_lineage":
+                raise
+            # Temporary compatibility path for deployments without the optional extra.
+            from inv_man_intake.extraction.providers.pdf_primary import PdfPrimaryExtractionProvider
+
+            provider = PdfPrimaryExtractionProvider()
     return DefaultExtractionService(backend=PyodideLightTransportBackend(provider))
 
 
-def build_docling_service(*, do_ocr: bool = False) -> ExtractionService:
-    """Create the optional local Docling service behind the same port."""
+def build_legacy_pdf_fixture_service() -> ExtractionService:
+    """Read the nonconforming historical PDF smoke fixture through its original parser."""
 
-    from inv_man_intake.extraction.providers.docling_primary import DoclingPrimaryExtractionProvider
+    from inv_man_intake.extraction.providers.pdf_primary import PdfPrimaryExtractionProvider
 
     return DefaultExtractionService(
+        backend=PyodideLightTransportBackend(PdfPrimaryExtractionProvider())
+    )
+
+
+def build_docling_service(*, do_ocr: bool = False) -> ExtractionService:
+    """Preserve the historical factory while sharing Doc-Lineage PDF/OCR extraction."""
+
+    from inv_man_intake.extraction.providers.doc_lineage_adapter import DocLineageExtractionProvider
+
+    _ = do_ocr  # OCR fallback is mandatory on this shared extraction path.
+    return DefaultExtractionService(
         backend=ProviderTransportBackend(
-            provider=DoclingPrimaryExtractionProvider(do_ocr=do_ocr),
-            transport_name="docling-local",
+            provider=DocLineageExtractionProvider(),
+            transport_name="doc-lineage-local",
         )
     )
 
@@ -169,6 +191,7 @@ __all__ = [
     "build_docling_service",
     "build_future_localhost_service",
     "build_future_remote_service",
+    "build_legacy_pdf_fixture_service",
     "build_pyodide_light_service",
     "ensure_extraction_service",
     "extraction_service_extractor",
