@@ -25,6 +25,7 @@ from inv_man_intake.extraction.doc_type import classify_doc_type
 from inv_man_intake.extraction.orchestrator import ExtractionOrchestrator
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult
 from inv_man_intake.extraction.service import (
+    build_legacy_pdf_fixture_service,
     build_pyodide_light_service,
     extraction_service_extractor,
 )
@@ -526,7 +527,14 @@ def _run_extraction_smoke(
     content: bytes,
     correlation_id: str,
 ) -> ExtractedDocumentResult:
-    service = build_pyodide_light_service(primary_file_name)
+    # This historical smoke corpus contains a deliberately minimal pseudo-PDF
+    # understood by pdf-primary, not a conforming PDF for the shared extractor.
+    # Keep its golden baseline explicit; the default service selects Doc-Lineage.
+    service = (
+        build_legacy_pdf_fixture_service()
+        if primary_file_name.lower().endswith(".pdf")
+        else build_pyodide_light_service(primary_file_name)
+    )
     orchestrator = ExtractionOrchestrator(
         primary_name=service.backend_name,
         fallback_name="fixture-fallback",
