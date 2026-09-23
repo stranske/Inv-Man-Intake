@@ -15,6 +15,7 @@ const PRODUCTION_PACKET_MODULES = [
   "performance/conflict_resolver.py",
   "export/manifest.py",
   "export/one_pager.py",
+  "export/report_spec.py",
   "export/service.py",
   "export/image_export.py",
   "images/models.py",
