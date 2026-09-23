@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 from collections import Counter
 from dataclasses import replace
@@ -9,8 +10,10 @@ from pathlib import Path
 
 import pytest
 
+import inv_man_intake.export.one_pager as one_pager_module
 from inv_man_intake.export.manifest import ExportArtifact
 from inv_man_intake.export.one_pager import build_one_pager
+from inv_man_intake.export.report_spec import validate_report_spec
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
 from inv_man_intake.intake.standard_elements import load_standard_element_library
 from inv_man_intake.packet import PacketFile, ingest_packet
@@ -77,6 +80,27 @@ def test_summary_contains_required_sections_from_a_real_packet() -> None:
     assert Counter(field.label for field in model.explainability)["Extraction Confidence"] == 1
     rendered = str(model.as_dict()).lower()
     assert not any(marker in rendered for marker in ("lorem", "placeholder", "tbd", "todo"))
+
+
+def test_export_one_pager_emits_sibling_report_spec(tmp_path: Path) -> None:
+    """The established one-pager export path always emits its renderer contract."""
+
+    output_dir = tmp_path / "export"
+    one_pager_path, report_spec_path = one_pager_module.export_one_pager(
+        _profile(),
+        output_dir,
+        workspace_bundle_ref="workspace.json",
+        manifest_ref="artifact:manifest.json",
+    )
+
+    assert one_pager_path == output_dir / "one-pager.json"
+    assert report_spec_path == output_dir / "report-spec.json"
+    assert json.loads(one_pager_path.read_text(encoding="utf-8")) == json.loads(
+        json.dumps(build_one_pager(_profile()).as_dict())
+    )
+    report_spec = json.loads(report_spec_path.read_text(encoding="utf-8"))
+    validate_report_spec(report_spec)
+    assert report_spec["renderer_profile"] == "investment_review"
 
 
 def test_removing_explainability_breaks_the_required_section() -> None:

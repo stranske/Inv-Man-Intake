@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import re
 from collections.abc import Mapping
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
-
-from inv_man_intake.export.one_pager import build_one_pager
 
 if TYPE_CHECKING:
     from inv_man_intake.packet import ManagerProfile
@@ -76,22 +73,17 @@ def export_one_pager(
     manifest_ref: str,
     max_graphics: int = 4,
 ) -> tuple[Path, Path]:
-    """Write ``one-pager.json`` and its sibling ``report-spec.json``."""
+    """Compatibility wrapper for the canonical one-pager export entrypoint."""
 
-    model = build_one_pager(profile, max_graphics=max_graphics)
-    report_spec = build_report_spec(
+    from inv_man_intake.export.one_pager import export_one_pager as canonical_export
+
+    return canonical_export(
+        profile,
+        output_dir,
         workspace_bundle_ref=workspace_bundle_ref,
         manifest_ref=manifest_ref,
+        max_graphics=max_graphics,
     )
-    one_pager_json = _serialize_json(model.as_dict())
-    report_spec_json = _serialize_json(report_spec)
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    one_pager_path = output_dir / "one-pager.json"
-    report_spec_path = output_dir / "report-spec.json"
-    one_pager_path.write_text(one_pager_json, encoding="utf-8")
-    report_spec_path.write_text(report_spec_json, encoding="utf-8")
-    return one_pager_path, report_spec_path
 
 
 def _is_safe_relative_posix_path(value: str) -> bool:
@@ -103,10 +95,6 @@ def _is_safe_relative_posix_path(value: str) -> bool:
         return False
     parts = PurePosixPath(value).parts
     return bool(parts) and parts != (".",) and ".." not in parts
-
-
-def _serialize_json(payload: object) -> str:
-    return json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n"
 
 
 __all__ = [

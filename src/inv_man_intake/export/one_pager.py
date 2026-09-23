@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
 from math import isfinite
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from inv_man_intake.export.report_spec import build_report_spec
 
 if TYPE_CHECKING:
     from inv_man_intake.packet import ManagerProfile
@@ -119,6 +123,32 @@ def build_one_pager(profile: ManagerProfile, *, max_graphics: int = 4) -> OnePag
     return OnePagerExporter(max_graphics=max_graphics).build(profile)
 
 
+def export_one_pager(
+    profile: ManagerProfile,
+    output_dir: Path,
+    *,
+    workspace_bundle_ref: str,
+    manifest_ref: str,
+    max_graphics: int = 4,
+) -> tuple[Path, Path]:
+    """Write the canonical one-pager payload and its sibling report specification."""
+
+    model = build_one_pager(profile, max_graphics=max_graphics)
+    report_spec = build_report_spec(
+        workspace_bundle_ref=workspace_bundle_ref,
+        manifest_ref=manifest_ref,
+    )
+    one_pager_json = _serialize_json(model.as_dict())
+    report_spec_json = _serialize_json(report_spec)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    one_pager_path = output_dir / "one-pager.json"
+    report_spec_path = output_dir / "report-spec.json"
+    one_pager_path.write_text(one_pager_json, encoding="utf-8")
+    report_spec_path.write_text(report_spec_json, encoding="utf-8")
+    return one_pager_path, report_spec_path
+
+
 def _identity_fields(
     identity: Mapping[str, str], max_fields: int, max_value_characters: int
 ) -> tuple[OnePagerField, ...]:
@@ -220,3 +250,7 @@ def _display_label(key: str) -> str:
     if key == "identity.manager":
         return "Manager"
     return key.replace("_", " ").replace(".", " / ").title()
+
+
+def _serialize_json(payload: object) -> str:
+    return json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n"
