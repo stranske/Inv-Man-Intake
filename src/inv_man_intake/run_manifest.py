@@ -37,6 +37,8 @@ _KIND_BY_NAME = {
 
 def _artifact_kind(name: str) -> str:
     """Classify an artifact by its file name, defaulting to its suffix."""
+    if name.startswith("evidence-") and name.endswith(".json"):
+        return "evidence"
     if name in _KIND_BY_NAME:
         return _KIND_BY_NAME[name]
     return "other"

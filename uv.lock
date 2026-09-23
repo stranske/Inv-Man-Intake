@@ -940,6 +940,7 @@ app = [
 dev = [
     { name = "black" },
     { name = "docling" },
+    { name = "jsonschema" },
     { name = "mypy" },
     { name = "playwright" },
     { name = "pydantic" },
@@ -962,6 +963,7 @@ requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = "==26.5.1" },
     { name = "doc-lineage", extras = ["ocr"], marker = "extra == 'extraction-doc-lineage'", git = "https://github.com/stranske/Doc-Lineage.git?rev=bcfc2ecb1290eda6c119335928cf018c7b78734b" },
     { name = "docling", marker = "extra == 'dev'" },
+    { name = "jsonschema", marker = "extra == 'dev'" },
     { name = "langsmith", specifier = ">=0.4.59" },
     { name = "mypy", marker = "extra == 'dev'", specifier = "==2.3.1" },
     { name = "openpyxl", specifier = ">=3.1.5" },

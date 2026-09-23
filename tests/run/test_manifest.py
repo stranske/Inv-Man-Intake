@@ -56,12 +56,16 @@ def test_run_json_carries_manifest_pointer(tmp_path: Path) -> None:
     assert run_payload["status"] == "success"
     assert run_payload["inputs"]["validated"] is True
     assert run_payload["outputs"]["manifest_ref"] == f"artifact:{ARTIFACT_MANIFEST}"
-    assert set(run_payload["outputs"]["artifact_ids"]) == {
+    assert {
         "run.json",
         "metadata.json",
         "threshold-summary.json",
         "explainability.json",
-    }
+    } <= set(run_payload["outputs"]["artifact_ids"])
+    assert any(
+        artifact_id.startswith("evidence-")
+        for artifact_id in run_payload["outputs"]["artifact_ids"]
+    )
     assert run_payload["manifest"] == f"artifact:{ARTIFACT_MANIFEST}"
 
 

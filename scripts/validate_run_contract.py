@@ -221,6 +221,7 @@ def validate_envelope(
     registry: dict[str, Any],
     repo: str,
     manifest: dict[str, Any] | None,
+    evidence_objects: list[dict[str, Any]] | None = None,
 ) -> Report:
     report = Report(repo=repo)
 
@@ -288,12 +289,70 @@ def validate_envelope(
             elif not art.get("sha256"):
                 report.fail(f"manifest artifact '{art_id}' missing sha256", "manifest.artifacts")
 
-    # 7. Evidence presence is handled by the required_sections loop above, where
-    #    'evidence_refs' is empty-OK (a clean run may attribute nothing). When
-    #    evidence objects are provided inline/alongside, validate each against
-    #    evidence-object/v1 (the gate resolves & validates referenced objects).
+    # 7. Resolve and validate every evidence reference against the emitted
+    #    standalone evidence-object/v1 files. No reference may dangle and no
+    #    evidence file may be orphaned from the envelope.
+    evidence_refs = envelope.get("evidence_refs", []) or []
+    if evidence_objects is None:
+        return report
+    emitted_evidence = evidence_objects
+    evidence_validator = _validator_for_schema(schema_dir, "evidence-object-v1.schema.json")
+    evidence_by_id: dict[str, dict[str, Any]] = {}
+    for index, evidence in enumerate(emitted_evidence):
+        for err in sorted(
+            evidence_validator.iter_errors(evidence),
+            key=lambda item: list(item.absolute_path),
+        ):
+            path = "/".join(str(part) for part in err.absolute_path)
+            report.fail(f"evidence object: {err.message}", f"evidence[{index}]/{path}")
+        evidence_id = evidence.get("evidence_id")
+        if isinstance(evidence_id, str):
+            if evidence_id in evidence_by_id:
+                report.fail(f"duplicate emitted evidence_id '{evidence_id}'", "evidence_refs")
+            evidence_by_id[evidence_id] = evidence
+
+    for evidence_ref in evidence_refs:
+        if not isinstance(evidence_ref, str):
+            continue
+        if evidence_ref not in evidence_by_id:
+            report.fail(
+                f"evidence_ref '{evidence_ref}' has no emitted evidence-object/v1 file",
+                "evidence_refs",
+            )
+    referenced = {ref for ref in evidence_refs if isinstance(ref, str)}
+    for evidence_id in evidence_by_id:
+        if evidence_id not in referenced:
+            report.fail(
+                f"emitted evidence_id '{evidence_id}' is not referenced by the run envelope",
+                "evidence_refs",
+            )
 
     return report
+
+
+def _load_emitted_evidence(
+    *, run_dir: Path, manifest: dict[str, Any] | None
+) -> list[dict[str, Any]] | None:
+    """Load safe manifest entries dedicated to evidence-object/v1 files."""
+
+    if manifest is None:
+        return None
+    documents: list[dict[str, Any]] = []
+    for entry in manifest.get("artifacts", []):
+        name = entry.get("name")
+        relative = entry.get("path")
+        if not (isinstance(name, str) and name.startswith("evidence-") and name.endswith(".json")):
+            continue
+        if not isinstance(relative, str):
+            raise ValueError(f"evidence artifact {name!r} has no string path")
+        relative_path = Path(relative)
+        if relative_path.is_absolute() or ".." in relative_path.parts:
+            raise ValueError(f"evidence artifact {name!r} has an unsafe path")
+        document = _load_json(run_dir / relative_path)
+        if not isinstance(document, dict):
+            raise ValueError(f"evidence artifact {name!r} is not a JSON object")
+        documents.append(document)
+    return documents
 
 
 def _find_participant(registry: dict[str, Any], repo: str) -> dict[str, Any] | None:
@@ -434,12 +493,21 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, json.JSONDecodeError) as exc:
             print(f"ERROR: cannot load artifact manifest {args.manifest}: {exc}", file=sys.stderr)
             return 2
+        try:
+            evidence_objects = _load_emitted_evidence(
+                run_dir=args.run_json.parent,
+                manifest=manifest,
+            )
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            print(f"ERROR: cannot load emitted evidence objects: {exc}", file=sys.stderr)
+            return 2
         report = validate_envelope(
             envelope=envelope,
             schema_dir=args.schema_dir,
             registry=registry,
             repo=args.repo,
             manifest=manifest,
+            evidence_objects=evidence_objects,
         )
 
     if report.skipped:

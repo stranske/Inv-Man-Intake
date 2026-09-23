@@ -3,9 +3,9 @@
 This module exposes :func:`run_pipeline`, the reusable core that executes the
 deterministic intake -> extraction -> thresholds -> performance -> queue ->
 scoring path for an arbitrary intake bundle and writes a single replayable
-``run.json`` plus the three already-named artifact files
-(``metadata.json``, ``threshold-summary.json``, ``explainability.json``) into
-an operator-supplied output directory.
+``run.json``, standalone ``evidence-object/v1`` files, and the three named
+artifacts (``metadata.json``, ``threshold-summary.json``,
+``explainability.json``) into an operator-supplied output directory.
 
 The orchestration itself lives in :func:`inv_man_intake.v1_smoke._run_pipeline_core`,
 which the acceptance smoke (``run_v1_smoke_pipeline``) also delegates to, so the
@@ -28,6 +28,10 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, cast
 
+from inv_man_intake.emit.evidence_objects import (
+    build_evidence_objects,
+    evidence_object_filename,
+)
 from inv_man_intake.extraction.confidence import ThresholdDecision, load_threshold_config
 from inv_man_intake.extraction.providers.base import SnippetMetadata, SourceLocation
 from inv_man_intake.intake.integration import IntakeRegistrationResult
@@ -71,6 +75,7 @@ class RunResult:
     trace_refs: list[str]
     artifact_refs: list[str]
     manifest: str
+    evidence_objects: tuple[dict[str, Any], ...] = field(default_factory=tuple)
     performance: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
@@ -113,11 +118,7 @@ class RunResult:
                 for warning in self.warnings
             ],
             "evidence_refs": sorted(
-                {
-                    f"document:{field['source_doc_id']}#page={field['source_page']}"
-                    for field in self.fields
-                    if field.get("source_doc_id") and field.get("source_page") is not None
-                }
+                str(evidence["evidence_id"]) for evidence in self.evidence_objects
             ),
             "identity_refs": [
                 f"firm:{self.inputs['firm_id']}",
@@ -140,8 +141,9 @@ def run_pipeline(
 ) -> RunResult:
     """Run the intake pipeline for ``bundle_path`` and write artifacts to ``output_dir``.
 
-    Returns the :class:`RunResult`. Writes ``run.json`` plus the three named
-    artifact files into ``output_dir`` (created if missing).
+    Returns the :class:`RunResult`. Writes ``run.json``, one evidence object per
+    extracted field, and the three named artifact files into ``output_dir``
+    (created if missing).
 
     Raises:
         ValueError: The bundle is malformed, declares no usable ``package_id``,
@@ -203,6 +205,8 @@ def _build_run_result(artifacts: V1SmokeArtifacts) -> RunResult:
         }
         for field in extraction.fields
     }
+    evidence_objects = tuple(build_evidence_objects(fields))
+    evidence_files = [evidence_object_filename(item) for item in evidence_objects]
 
     return RunResult(
         run_id=trace_context.run_id or trace_context.trace_id,
@@ -245,8 +249,10 @@ def _build_run_result(artifacts: V1SmokeArtifacts) -> RunResult:
             ARTIFACT_METADATA,
             ARTIFACT_THRESHOLD,
             ARTIFACT_EXPLAINABILITY,
+            *evidence_files,
         ],
         manifest=f"artifact:{ARTIFACT_MANIFEST}",
+        evidence_objects=evidence_objects,
         performance=artifacts.performance,
     )
 
@@ -352,11 +358,14 @@ def _write_run_artifacts(
         output_dir / ARTIFACT_METADATA,
         output_dir / ARTIFACT_THRESHOLD,
         output_dir / ARTIFACT_EXPLAINABILITY,
+        *(output_dir / evidence_object_filename(evidence) for evidence in result.evidence_objects),
     ]
     _write_json(written[0], result.to_json())
     _write_json(written[1], _build_metadata(artifacts))
     _write_json(written[2], _build_threshold_summary(artifacts))
     _write_json(written[3], dict(artifacts.formatted_explainability))
+    for evidence, path in zip(result.evidence_objects, written[4:], strict=True):
+        _write_json(path, evidence)
 
     # Hash the artifacts as actually written (run.json already carries its
     # ``manifest`` pointer), then record them in a deterministic manifest.json.
