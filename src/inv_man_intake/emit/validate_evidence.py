@@ -13,12 +13,11 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
-from jsonschema import Draft202012Validator
-
 # The synchronized Workflows script is a runtime dependency, not an Inv-Man
 # type-check target. Importing it statically makes mypy inspect fleet-owned code
 # and report unrelated typing errors from the currently deployed template.
 _shared_validator = importlib.import_module("scripts.validate_run_contract")
+Draft202012Validator = importlib.import_module("jsonschema").Draft202012Validator
 Report = _shared_validator.Report
 validate_shared_run_contract = _shared_validator.main
 validate_shared_envelope = _shared_validator.validate_envelope
