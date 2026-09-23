@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator
-from scripts.validate_run_contract import Report, _load_emitted_evidence, validate_envelope
-from scripts.validate_run_contract import main as validate_run_contract
 from tests.conftest import stage_headless_reference_bundle
 
+from inv_man_intake.emit.validate_evidence import Report, _load_emitted_evidence, validate_envelope
+from inv_man_intake.emit.validate_evidence import main as validate_run_contract
 from inv_man_intake.run import run_pipeline
 
 
