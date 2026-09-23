@@ -7,8 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from inv_man_intake.export.one_pager import build_one_pager
-from inv_man_intake.export.report_spec import export_one_pager, validate_report_spec
+from inv_man_intake.export.one_pager import build_one_pager, export_one_pager
+from inv_man_intake.export.report_spec import export_one_pager as compatibility_export_one_pager
+from inv_man_intake.export.report_spec import validate_report_spec
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
 from inv_man_intake.intake.standard_elements import load_standard_element_library
 from inv_man_intake.packet import PacketFile, ingest_packet
@@ -121,6 +122,28 @@ def test_export_one_pager_preserves_the_pure_model_payload(tmp_path: Path) -> No
 
     expected = json.loads(json.dumps(build_one_pager(profile).as_dict()))
     assert json.loads(one_pager_path.read_text(encoding="utf-8")) == expected
+
+
+def test_report_spec_compatibility_export_forwards_to_canonical_path(tmp_path: Path) -> None:
+    compatibility_dir = tmp_path / "compatibility"
+    canonical_dir = tmp_path / "canonical"
+
+    compatibility_paths = compatibility_export_one_pager(
+        _profile(),
+        compatibility_dir,
+        workspace_bundle_ref="workspace.json",
+        manifest_ref="artifact:manifest.json",
+    )
+    canonical_paths = export_one_pager(
+        _profile(),
+        canonical_dir,
+        workspace_bundle_ref="workspace.json",
+        manifest_ref="artifact:manifest.json",
+    )
+
+    assert [path.read_bytes() for path in compatibility_paths] == [
+        path.read_bytes() for path in canonical_paths
+    ]
 
 
 @pytest.mark.parametrize(

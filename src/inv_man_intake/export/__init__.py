@@ -14,6 +14,7 @@ from inv_man_intake.export.one_pager import (
     OnePagerGraphic,
     OnePagerModel,
     build_one_pager,
+    export_one_pager,
 )
 from inv_man_intake.export.service import (
     DefaultExportService,
@@ -43,5 +44,6 @@ __all__ = [
     "build_default_export_service",
     "build_one_pager",
     "ensure_export_service",
+    "export_one_pager",
     "export_return_series",
 ]
