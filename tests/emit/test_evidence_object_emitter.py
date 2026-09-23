@@ -169,6 +169,36 @@ def test_run_contract_validator_rejects_non_object_cli_json(
     assert "must be an object" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("artifacts", [None, {}, [None], ["evidence.json"]])
+def test_run_contract_validator_rejects_malformed_manifest_artifacts(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], artifacts: object
+) -> None:
+    run_path = tmp_path / "run.json"
+    manifest_path = tmp_path / "manifest.json"
+    registry_path = tmp_path / "registry.json"
+    run_path.write_text(json.dumps(_valid_envelope()), encoding="utf-8")
+    manifest_path.write_text(json.dumps({"artifacts": artifacts}), encoding="utf-8")
+    _write_registry(registry_path)
+
+    assert (
+        validate_run_contract(
+            [
+                str(run_path),
+                "--manifest",
+                str(manifest_path),
+                "--registry",
+                str(registry_path),
+                "--schema-dir",
+                "docs/contracts/schemas",
+                "--repo",
+                "stranske/Inv-Man-Intake",
+            ]
+        )
+        == 2
+    )
+    assert "manifest artifact" in capsys.readouterr().err
+
+
 def test_validate_envelope_reports_dangling_evidence_ref() -> None:
     report = _validate(_valid_envelope("evidence:sha256:missing"), [])
 

@@ -30,7 +30,12 @@ def _load_emitted_evidence(
     if manifest is None:
         return None
     documents: list[dict[str, Any]] = []
-    for entry in manifest.get("artifacts", []):
+    artifacts = manifest.get("artifacts", [])
+    if not isinstance(artifacts, list):
+        raise ValueError("manifest artifacts must be a list")
+    for entry in artifacts:
+        if not isinstance(entry, dict):
+            raise ValueError("manifest artifact must be an object")
         name = entry.get("name")
         relative = entry.get("path")
         if not (isinstance(name, str) and name.startswith("evidence-") and name.endswith(".json")):
