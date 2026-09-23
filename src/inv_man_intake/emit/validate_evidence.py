@@ -7,15 +7,21 @@ this producer-specific file-to-reference check outside that sync surface.
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from jsonschema import Draft202012Validator
-from scripts.validate_run_contract import Report
-from scripts.validate_run_contract import main as validate_shared_run_contract
-from scripts.validate_run_contract import validate_envelope as validate_shared_envelope
+
+# The synchronized Workflows script is a runtime dependency, not an Inv-Man
+# type-check target. Importing it statically makes mypy inspect fleet-owned code
+# and report unrelated typing errors from the currently deployed template.
+_shared_validator = importlib.import_module("scripts.validate_run_contract")
+Report = _shared_validator.Report
+validate_shared_run_contract = _shared_validator.main
+validate_shared_envelope = _shared_validator.validate_envelope
 
 
 def _load_emitted_evidence(
@@ -50,7 +56,7 @@ def validate_envelope(
     repo: str,
     manifest: dict[str, Any] | None,
     evidence_objects: list[dict[str, Any]] | None = None,
-) -> Report:
+) -> Any:
     """Apply shared validation, then Inv-Man's emitted evidence closure rule."""
     report = validate_shared_envelope(
         envelope=envelope,
@@ -122,7 +128,7 @@ def main(argv: list[str] | None = None) -> int:
         for violation in report.violations:
             print(f"[{violation.path}] {violation.message}", file=sys.stderr)
         return 1
-    return validate_shared_run_contract(argv)
+    return cast(int, validate_shared_run_contract(argv))
 
 
 if __name__ == "__main__":
