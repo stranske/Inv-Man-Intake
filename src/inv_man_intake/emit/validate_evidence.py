@@ -111,6 +111,12 @@ def main(argv: list[str] | None = None) -> int:
         envelope = json.loads(args.run_json.read_text(encoding="utf-8"))
         manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
         registry = json.loads(args.registry.read_text(encoding="utf-8"))
+        if not isinstance(envelope, dict):
+            raise ValueError("run JSON must be an object")
+        if not isinstance(manifest, dict):
+            raise ValueError("manifest JSON must be an object")
+        if not isinstance(registry, dict):
+            raise ValueError("registry JSON must be an object")
         evidence_objects = _load_emitted_evidence(run_dir=args.run_json.parent, manifest=manifest)
         report = validate_envelope(
             envelope=envelope,

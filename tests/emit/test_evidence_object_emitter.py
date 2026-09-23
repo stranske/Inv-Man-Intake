@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
 from jsonschema import Draft202012Validator
 from tests.conftest import stage_headless_reference_bundle
 
@@ -140,6 +141,32 @@ def test_run_contract_validator_rejects_malformed_emitted_evidence(tmp_path: Pat
     evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
 
     assert validate_run_contract(args) == 1
+
+
+@pytest.mark.parametrize("document", ["run", "manifest", "registry"])
+def test_run_contract_validator_rejects_non_object_cli_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], document: str
+) -> None:
+    paths = {name: tmp_path / f"{name}.json" for name in ("run", "manifest", "registry")}
+    for path in paths.values():
+        path.write_text("[]", encoding="utf-8")
+    args = [
+        str(paths["run"]),
+        "--manifest",
+        str(paths["manifest"]),
+        "--registry",
+        str(paths["registry"]),
+        "--schema-dir",
+        "docs/contracts/schemas",
+        "--repo",
+        "stranske/Inv-Man-Intake",
+    ]
+    for name, path in paths.items():
+        if name != document:
+            path.write_text("{}", encoding="utf-8")
+
+    assert validate_run_contract(args) == 2
+    assert "must be an object" in capsys.readouterr().err
 
 
 def test_validate_envelope_reports_dangling_evidence_ref() -> None:
