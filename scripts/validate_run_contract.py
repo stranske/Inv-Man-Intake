@@ -293,7 +293,9 @@ def validate_envelope(
     #    standalone evidence-object/v1 files. No reference may dangle and no
     #    evidence file may be orphaned from the envelope.
     evidence_refs = envelope.get("evidence_refs", []) or []
-    emitted_evidence = evidence_objects or []
+    if evidence_objects is None:
+        return report
+    emitted_evidence = evidence_objects
     evidence_validator = _validator_for_schema(schema_dir, "evidence-object-v1.schema.json")
     evidence_by_id: dict[str, dict[str, Any]] = {}
     for index, evidence in enumerate(emitted_evidence):
@@ -310,6 +312,8 @@ def validate_envelope(
             evidence_by_id[evidence_id] = evidence
 
     for evidence_ref in evidence_refs:
+        if not isinstance(evidence_ref, str):
+            continue
         if evidence_ref not in evidence_by_id:
             report.fail(
                 f"evidence_ref '{evidence_ref}' has no emitted evidence-object/v1 file",
@@ -328,11 +332,11 @@ def validate_envelope(
 
 def _load_emitted_evidence(
     *, run_dir: Path, manifest: dict[str, Any] | None
-) -> list[dict[str, Any]]:
+) -> list[dict[str, Any]] | None:
     """Load safe manifest entries dedicated to evidence-object/v1 files."""
 
     if manifest is None:
-        return []
+        return None
     documents: list[dict[str, Any]] = []
     for entry in manifest.get("artifacts", []):
         name = entry.get("name")
