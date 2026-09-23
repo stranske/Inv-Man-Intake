@@ -6,11 +6,12 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
 from jsonschema import Draft202012Validator
-from scripts.validate_run_contract import Report, _load_emitted_evidence, validate_envelope
-from scripts.validate_run_contract import main as validate_run_contract
 from tests.conftest import stage_headless_reference_bundle
 
+from inv_man_intake.emit.validate_evidence import Report, _load_emitted_evidence, validate_envelope
+from inv_man_intake.emit.validate_evidence import main as validate_run_contract
 from inv_man_intake.run import run_pipeline
 
 
@@ -140,6 +141,62 @@ def test_run_contract_validator_rejects_malformed_emitted_evidence(tmp_path: Pat
     evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
 
     assert validate_run_contract(args) == 1
+
+
+@pytest.mark.parametrize("document", ["run", "manifest", "registry"])
+def test_run_contract_validator_rejects_non_object_cli_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], document: str
+) -> None:
+    paths = {name: tmp_path / f"{name}.json" for name in ("run", "manifest", "registry")}
+    for path in paths.values():
+        path.write_text("[]", encoding="utf-8")
+    args = [
+        str(paths["run"]),
+        "--manifest",
+        str(paths["manifest"]),
+        "--registry",
+        str(paths["registry"]),
+        "--schema-dir",
+        "docs/contracts/schemas",
+        "--repo",
+        "stranske/Inv-Man-Intake",
+    ]
+    for name, path in paths.items():
+        if name != document:
+            path.write_text("{}", encoding="utf-8")
+
+    assert validate_run_contract(args) == 2
+    assert "must be an object" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("artifacts", [None, {}, [None], ["evidence.json"]])
+def test_run_contract_validator_rejects_malformed_manifest_artifacts(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], artifacts: object
+) -> None:
+    run_path = tmp_path / "run.json"
+    manifest_path = tmp_path / "manifest.json"
+    registry_path = tmp_path / "registry.json"
+    run_path.write_text(json.dumps(_valid_envelope()), encoding="utf-8")
+    manifest_path.write_text(json.dumps({"artifacts": artifacts}), encoding="utf-8")
+    _write_registry(registry_path)
+
+    assert (
+        validate_run_contract(
+            [
+                str(run_path),
+                "--manifest",
+                str(manifest_path),
+                "--registry",
+                str(registry_path),
+                "--schema-dir",
+                "docs/contracts/schemas",
+                "--repo",
+                "stranske/Inv-Man-Intake",
+            ]
+        )
+        == 2
+    )
+    assert "manifest artifact" in capsys.readouterr().err
 
 
 def test_validate_envelope_reports_dangling_evidence_ref() -> None:
