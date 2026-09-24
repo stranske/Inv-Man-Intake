@@ -21,17 +21,20 @@ from the fleet validator.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from dataclasses import dataclass, field
-from pathlib import Path
+from datetime import date
+from pathlib import Path, PurePosixPath
 from typing import Any
 
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
 
 RUN_SCHEMA_VERSION = "run-contract/v1"
 DEFAULT_ARTIFACT_NAME = "run.json"
+EMITTED_EVIDENCE_POLICY = "manifest-evidence-closure/v1"
 
 # Statuses that mean "the contract does not (yet) apply" -> opt-in skip.
 SKIP_STATUSES = (None, "none", "candidate")
@@ -49,6 +52,9 @@ INGEST_SCHEMA_FILES = {
     "evidence-object/v1": "evidence-object-v1.schema.json",
     "tracked-variable/v1": "tracked-variable-v1.schema.json",
     "capability-bundle/v1": "capability-bundle-v1.schema.json",
+    "mosaic-core/v1": "mosaic-core-v1.schema.json",
+    "document-mirror/v1": "document-mirror-v1.schema.json",
+    "output-substrate/v1": "output-substrate-v1.schema.json",
 }
 # Tokens that are convention-only (no JSON Schema to load); accepted as declared
 # ingest surfaces but not schema-validated here.
@@ -110,8 +116,30 @@ def _load_schema(schema_dir: Path, name: str) -> dict[str, Any]:
     return _load_json(schema_dir / name)
 
 
+def _required_format_checker(*formats: str) -> FormatChecker:
+    """Fail closed when optional JSON Schema format implementations are absent."""
+    missing = [name for name in formats if name not in FormatChecker.checkers]
+    if missing:
+        raise RuntimeError(
+            f"JSON Schema format checker(s) unavailable: {', '.join(missing)}; "
+            "install jsonschema rfc3339-validator rfc3986-validator"
+        )
+    return FormatChecker(formats=formats)
+
+
 def _validator_for_schema(schema_dir: Path, name: str) -> Draft202012Validator:
     schema = _load_schema(schema_dir, name)
+    if name == "mosaic-core-v1.schema.json":
+        # Explicitly request the checker so a missing rfc3339-validator dependency
+        # fails instead of silently accepting malformed checked_at timestamps.
+        return Draft202012Validator(schema, format_checker=_required_format_checker("date-time"))
+    if name == "document-mirror-v1.schema.json":
+        # Explicitly request URI/date-time checks so malformed resolver links and
+        # catalog timestamps cannot pass as conformant.
+        return Draft202012Validator(
+            schema,
+            format_checker=_required_format_checker("date-time", "uri"),
+        )
     if name != "tracked-variable-v1.schema.json":
         return Draft202012Validator(schema)
     evidence = _load_schema(schema_dir, "evidence-object-v1.schema.json")
@@ -122,6 +150,52 @@ def _validator_for_schema(schema_dir: Path, name: str) -> Draft202012Validator:
         ]
     )
     return Draft202012Validator(schema, registry=registry)
+
+
+def _check_document_page(document: Any, report: Report, prefix: str = "") -> None:
+    """Check document identity details that JSON Schema cannot compare or parse."""
+    if not isinstance(document, dict):
+        return
+    doc_ref = document.get("document_ref")
+    locator = document.get("locator")
+    if not isinstance(doc_ref, dict):
+        return
+    if (
+        isinstance(locator, dict)
+        and "page" in doc_ref
+        and "page" in locator
+        and doc_ref["page"] != locator["page"]
+    ):
+        report.fail("document_ref.page conflicts with locator.page", f"{prefix}document_ref/page")
+    doc_key = doc_ref.get("doc_key")
+    if isinstance(doc_key, str):
+        as_of = doc_key.rsplit("/", 1)[-1]
+        if as_of != "unknown":
+            try:
+                if date.fromisoformat(as_of).isoformat() != as_of:
+                    raise ValueError("non-canonical date")
+            except ValueError:
+                report.fail(
+                    "document_ref.doc_key as_of must be an ISO calendar date or unknown",
+                    f"{prefix}document_ref/doc_key",
+                )
+
+
+def validate_evidence_objects(*, paths: list[Path], schema_dir: Path) -> Report:
+    """Validate evidence-object/v1 fixtures without participant routing."""
+    report = Report(repo="evidence-object/v1")
+    validator = _validator_for_schema(schema_dir, "evidence-object-v1.schema.json")
+    for path in paths:
+        try:
+            document = _load_json(path)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            report.fail(f"cannot load evidence object {path}: {exc}", str(path))
+            continue
+        for err in sorted(validator.iter_errors(document), key=lambda e: list(e.absolute_path)):
+            pointer = "/".join(str(p) for p in err.absolute_path)
+            report.fail(err.message, f"{path}:/{pointer}")
+        _check_document_page(document, report, f"{path}:/")
+    return report
 
 
 def validate_tracked_variables(*, paths: list[Path], schema_dir: Path) -> Report:
@@ -139,6 +213,27 @@ def validate_tracked_variables(*, paths: list[Path], schema_dir: Path) -> Report
             key=lambda e: list(e.absolute_path),
         ):
             report.fail(err.message, "/".join(str(p) for p in err.absolute_path))
+        if isinstance(document, dict):
+            _check_document_page(document.get("evidence"), report, "evidence/")
+    return report
+
+
+def validate_mirror_manifests(*, paths: list[Path], schema_dir: Path) -> Report:
+    """Validate one or more document-mirror/v1 JSON files against the schema."""
+    report = Report(repo="document-mirror/v1")
+    validator = _validator_for_schema(schema_dir, "document-mirror-v1.schema.json")
+    for path in paths:
+        try:
+            document = _load_json(path)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            report.fail(f"cannot load mirror manifest {path}: {exc}", str(path))
+            continue
+        for err in sorted(
+            validator.iter_errors(document),
+            key=lambda e: list(e.absolute_path),
+        ):
+            pointer = "/".join(str(p) for p in err.absolute_path)
+            report.fail(err.message, f"{path}:/{pointer}")
     return report
 
 
@@ -204,6 +299,10 @@ def _validate_consumer(
         if not errs:
             # Matched an ingested schema -> conformant.
             _scan_unsafe(document, report)
+            if token == "evidence-object/v1":
+                _check_document_page(document, report)
+            elif token == "tracked-variable/v1" and isinstance(document, dict):
+                _check_document_page(document.get("evidence"), report, "evidence/")
             return report
         per_schema_errors[token] = errs
 
@@ -214,6 +313,147 @@ def _validate_consumer(
     return report
 
 
+def _sha256_file(path: Path) -> str:
+    """Return the SHA-256 of file bytes without loading an artifact into memory."""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _safe_evidence_path(
+    run_dir: Path, artifact: dict[str, Any], report: Report, index: int
+) -> Path | None:
+    """Resolve one manifest evidence path without following a symlink or escaping its run."""
+    path_value = artifact.get("path")
+    path_label = f"manifest.artifacts[{index}].path"
+    if not isinstance(path_value, str) or not path_value or "\\" in path_value:
+        report.fail("evidence artifact path must be a non-empty relative POSIX path", path_label)
+        return None
+    relative = PurePosixPath(path_value)
+    if relative.is_absolute() or ".." in relative.parts:
+        report.fail("evidence artifact path must not be absolute or traverse parents", path_label)
+        return None
+
+    candidate = run_dir.joinpath(*relative.parts)
+    try:
+        # Reject every symlink component, including one that happens to point
+        # back inside the run directory: manifests describe regular artifacts.
+        current = run_dir
+        for part in relative.parts:
+            current = current / part
+            if current.is_symlink():
+                report.fail("evidence artifact path must not traverse a symlink", path_label)
+                return None
+        resolved_run_dir = run_dir.resolve(strict=True)
+        resolved_candidate = candidate.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        report.fail(f"cannot resolve evidence artifact: {exc}", path_label)
+        return None
+    if not resolved_candidate.is_relative_to(resolved_run_dir):
+        report.fail("evidence artifact path escapes the run directory", path_label)
+        return None
+    if not candidate.is_file():
+        report.fail("evidence artifact must be an existing regular file", path_label)
+        return None
+    return candidate
+
+
+def _validate_manifest_evidence_closure(
+    *,
+    envelope: dict[str, Any],
+    manifest: dict[str, Any] | None,
+    run_json: Path | None,
+    schema_dir: Path,
+    report: Report,
+) -> None:
+    """Validate opt-in evidence files and their two-way envelope closure."""
+    if not isinstance(manifest, dict):
+        report.fail("emitted_evidence_policy requires an artifact manifest object", "manifest")
+        return
+    if run_json is None:
+        report.fail("emitted_evidence_policy requires run_json artifact context", "run_json")
+        return
+    run_dir = run_json.parent
+    if not run_dir.is_dir():
+        report.fail("run_json parent is not an existing artifact directory", "run_json")
+        return
+
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, list):
+        report.fail("manifest artifacts must be a list for evidence closure", "manifest.artifacts")
+        return
+
+    validator = _validator_for_schema(schema_dir, "evidence-object-v1.schema.json")
+    evidence_ids: list[str] = []
+    for index, artifact in enumerate(artifacts):
+        if not isinstance(artifact, dict):
+            continue  # The manifest schema already reports this malformed entry.
+        name = artifact.get("name")
+        if artifact.get("kind") != "evidence" or not (
+            isinstance(name, str) and name.startswith("evidence-") and name.endswith(".json")
+        ):
+            continue
+        path = _safe_evidence_path(run_dir, artifact, report, index)
+        if path is None:
+            continue
+        expected_hash = artifact.get("sha256")
+        if not isinstance(expected_hash, str):
+            report.fail(
+                "evidence artifact sha256 must be a string", f"manifest.artifacts[{index}].sha256"
+            )
+        else:
+            try:
+                actual_hash = _sha256_file(path)
+            except OSError as exc:
+                report.fail(f"cannot hash evidence artifact: {exc}", str(path))
+                continue
+            if actual_hash != expected_hash:
+                report.fail("evidence artifact SHA-256 does not match manifest bytes", str(path))
+
+        try:
+            evidence = _load_json(path)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            report.fail(f"cannot load evidence artifact: {exc}", str(path))
+            continue
+        for err in sorted(validator.iter_errors(evidence), key=lambda err: list(err.absolute_path)):
+            pointer = "/".join(str(part) for part in err.absolute_path)
+            # jsonschema error messages may echo the invalid instance, including
+            # confidential excerpts. Reports are published to PR comments.
+            report.fail(
+                f"evidence schema validation failed ({err.validator})", f"{path}:/{pointer}"
+            )
+        _check_document_page(evidence, report, f"{path}:/")
+        if isinstance(evidence, dict) and isinstance(evidence.get("evidence_id"), str):
+            evidence_ids.append(evidence["evidence_id"])
+
+    duplicates = sorted({item for item in evidence_ids if evidence_ids.count(item) > 1})
+    for evidence_id in duplicates:
+        report.fail(
+            f"duplicate evidence_id '{evidence_id}' in emitted evidence artifacts",
+            "manifest.artifacts",
+        )
+
+    refs = envelope.get("evidence_refs", [])
+    if not isinstance(refs, list) or not all(isinstance(ref, str) for ref in refs):
+        report.fail("evidence_refs must be a list of strings for evidence closure", "evidence_refs")
+        return
+    duplicate_refs = sorted({item for item in refs if refs.count(item) > 1})
+    for evidence_id in duplicate_refs:
+        report.fail(f"duplicate evidence_ref '{evidence_id}'", "evidence_refs")
+    emitted = set(evidence_ids)
+    referenced = set(refs)
+    for evidence_id in sorted(referenced - emitted):
+        report.fail(
+            f"evidence_ref '{evidence_id}' has no emitted evidence artifact", "evidence_refs"
+        )
+    for evidence_id in sorted(emitted - referenced):
+        report.fail(
+            f"emitted evidence_id '{evidence_id}' is absent from evidence_refs", "evidence_refs"
+        )
+
+
 def validate_envelope(
     *,
     envelope: dict[str, Any],
@@ -221,7 +461,7 @@ def validate_envelope(
     registry: dict[str, Any],
     repo: str,
     manifest: dict[str, Any] | None,
-    evidence_objects: list[dict[str, Any]] | None = None,
+    run_json: Path | None = None,
 ) -> Report:
     report = Report(repo=repo)
 
@@ -281,78 +521,34 @@ def validate_envelope(
         manifest_schema = _load_schema(schema_dir, "artifact-manifest-v1.schema.json")
         for err in Draft202012Validator(manifest_schema).iter_errors(manifest):
             report.fail(f"manifest: {err.message}", "/".join(str(p) for p in err.absolute_path))
-        by_id = {a.get("artifact_id"): a for a in manifest.get("artifacts", [])}
-        for art_id in envelope.get("outputs", {}).get("artifact_ids", []) or []:
+        artifacts = manifest.get("artifacts", []) if isinstance(manifest, dict) else []
+        if not isinstance(artifacts, list):
+            artifacts = []
+        by_id = {a.get("artifact_id"): a for a in artifacts if isinstance(a, dict)}
+        outputs = envelope.get("outputs", {})
+        artifact_ids = outputs.get("artifact_ids", []) if isinstance(outputs, dict) else []
+        for art_id in artifact_ids if isinstance(artifact_ids, list) else []:
             art = by_id.get(art_id)
             if art is None:
                 report.fail(f"artifact_id '{art_id}' not in manifest", "outputs.artifact_ids")
             elif not art.get("sha256"):
                 report.fail(f"manifest artifact '{art_id}' missing sha256", "manifest.artifacts")
 
-    # 7. Resolve and validate every evidence reference against the emitted
-    #    standalone evidence-object/v1 files. No reference may dangle and no
-    #    evidence file may be orphaned from the envelope.
-    evidence_refs = envelope.get("evidence_refs", []) or []
-    if evidence_objects is None:
-        return report
-    emitted_evidence = evidence_objects
-    evidence_validator = _validator_for_schema(schema_dir, "evidence-object-v1.schema.json")
-    evidence_by_id: dict[str, dict[str, Any]] = {}
-    for index, evidence in enumerate(emitted_evidence):
-        for err in sorted(
-            evidence_validator.iter_errors(evidence),
-            key=lambda item: list(item.absolute_path),
-        ):
-            path = "/".join(str(part) for part in err.absolute_path)
-            report.fail(f"evidence object: {err.message}", f"evidence[{index}]/{path}")
-        evidence_id = evidence.get("evidence_id")
-        if isinstance(evidence_id, str):
-            if evidence_id in evidence_by_id:
-                report.fail(f"duplicate emitted evidence_id '{evidence_id}'", "evidence_refs")
-            evidence_by_id[evidence_id] = evidence
-
-    for evidence_ref in evidence_refs:
-        if not isinstance(evidence_ref, str):
-            continue
-        if evidence_ref not in evidence_by_id:
-            report.fail(
-                f"evidence_ref '{evidence_ref}' has no emitted evidence-object/v1 file",
-                "evidence_refs",
-            )
-    referenced = {ref for ref in evidence_refs if isinstance(ref, str)}
-    for evidence_id in evidence_by_id:
-        if evidence_id not in referenced:
-            report.fail(
-                f"emitted evidence_id '{evidence_id}' is not referenced by the run envelope",
-                "evidence_refs",
-            )
+    # 7. Only the explicit policy activates filesystem evidence validation. This
+    # keeps legacy/disabled participants independent of local artifact layout.
+    policy = entry.get("emitted_evidence_policy")
+    if policy is not None and policy != EMITTED_EVIDENCE_POLICY:
+        report.fail("unknown emitted_evidence_policy", "emitted_evidence_policy")
+    elif policy == EMITTED_EVIDENCE_POLICY:
+        _validate_manifest_evidence_closure(
+            envelope=envelope,
+            manifest=manifest,
+            run_json=run_json,
+            schema_dir=schema_dir,
+            report=report,
+        )
 
     return report
-
-
-def _load_emitted_evidence(
-    *, run_dir: Path, manifest: dict[str, Any] | None
-) -> list[dict[str, Any]] | None:
-    """Load safe manifest entries dedicated to evidence-object/v1 files."""
-
-    if manifest is None:
-        return None
-    documents: list[dict[str, Any]] = []
-    for entry in manifest.get("artifacts", []):
-        name = entry.get("name")
-        relative = entry.get("path")
-        if not (isinstance(name, str) and name.startswith("evidence-") and name.endswith(".json")):
-            continue
-        if not isinstance(relative, str):
-            raise ValueError(f"evidence artifact {name!r} has no string path")
-        relative_path = Path(relative)
-        if relative_path.is_absolute() or ".." in relative_path.parts:
-            raise ValueError(f"evidence artifact {name!r} has an unsafe path")
-        document = _load_json(run_dir / relative_path)
-        if not isinstance(document, dict):
-            raise ValueError(f"evidence artifact {name!r} is not a JSON object")
-        documents.append(document)
-    return documents
 
 
 def _find_participant(registry: dict[str, Any], repo: str) -> dict[str, Any] | None:
@@ -404,7 +600,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("run_json", type=Path, nargs="?", default=None)
     parser.add_argument("--manifest", type=Path, default=None)
     parser.add_argument("--registry", type=Path)
-    parser.add_argument("--schema-dir", type=Path, required=True)
+    parser.add_argument(
+        "--schema-dir",
+        type=Path,
+        default=Path(__file__).resolve().parents[1] / "docs" / "contracts" / "schemas",
+    )
     parser.add_argument("--repo")
     parser.add_argument("--warn-only", action="store_true")
     parser.add_argument("--report-json", type=Path, default=None)
@@ -415,17 +615,39 @@ def main(argv: list[str] | None = None) -> int:
         help="Run an offline self-smoke over bundled fixtures and exit.",
     )
     parser.add_argument(
+        "--evidence-objects",
+        type=Path,
+        nargs="+",
+        default=None,
+        help="Validate one or more evidence-object/v1 JSON files against the schema.",
+    )
+    parser.add_argument(
         "--tracked-variables",
         type=Path,
         nargs="+",
         default=None,
         help="Validate one or more tracked-variable/v1 JSON files against the schema.",
     )
+    parser.add_argument(
+        "--mirror-manifest",
+        type=Path,
+        nargs="+",
+        default=None,
+        help="Validate one or more document-mirror/v1 JSON catalog files against the schema.",
+    )
     args = parser.parse_args(argv)
+
+    modes = [args.self_smoke, args.evidence_objects, args.tracked_variables, args.mirror_manifest]
+    if sum(bool(mode) for mode in modes) > 1:
+        parser.error(
+            "--self-smoke, --evidence-objects, --tracked-variables and --mirror-manifest are mutually exclusive"
+        )
+
+    standalone_schema_mode = args.evidence_objects or args.tracked_variables or args.mirror_manifest
 
     # Standalone schema validation does not consult participant routing. Keep
     # that context mandatory for the existing envelope and self-smoke modes.
-    if args.self_smoke or not args.tracked_variables:
+    if args.self_smoke or not standalone_schema_mode:
         missing = [flag for flag in ("--registry", "--repo") if getattr(args, flag[2:]) is None]
         if missing:
             parser.error(f"the following arguments are required: {', '.join(missing)}")
@@ -433,16 +655,36 @@ def main(argv: list[str] | None = None) -> int:
     if args.self_smoke:
         return _self_smoke(args.schema_dir, args.registry)
 
-    if args.tracked_variables:
+    if args.evidence_objects:
+        report = validate_evidence_objects(
+            paths=list(args.evidence_objects),
+            schema_dir=args.schema_dir,
+        )
+        label = "evidence-object/v1"
+    elif args.tracked_variables:
         report = validate_tracked_variables(
             paths=list(args.tracked_variables),
             schema_dir=args.schema_dir,
         )
+        label = "tracked-variable/v1"
+    elif args.mirror_manifest:
+        report = validate_mirror_manifests(
+            paths=list(args.mirror_manifest),
+            schema_dir=args.schema_dir,
+        )
+        label = "document-mirror/v1"
+    else:
+        report = None
+
+    if report is not None:
+        path_count = len(
+            args.evidence_objects or args.tracked_variables or args.mirror_manifest or []
+        )
         if report.conformant:
-            print(f"tracked-variable/v1: {len(args.tracked_variables)} file(s) conform to schema")
+            print(f"{label}: {path_count} file(s) conform to schema")
         else:
             print(
-                f"tracked-variable/v1: {len(report.violations)} conformance violation(s):",
+                f"{label}: {len(report.violations)} conformance violation(s):",
                 file=sys.stderr,
             )
             for v in report.violations:
@@ -471,7 +713,10 @@ def main(argv: list[str] | None = None) -> int:
     registry = _load_json(args.registry)
 
     if args.run_json is None:
-        print("ERROR: run_json path is required unless --tracked-variables is set", file=sys.stderr)
+        print(
+            "ERROR: run_json path is required unless exactly one of --evidence-objects, --tracked-variables or --mirror-manifest is set",
+            file=sys.stderr,
+        )
         return 2
 
     try:
@@ -493,21 +738,13 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, json.JSONDecodeError) as exc:
             print(f"ERROR: cannot load artifact manifest {args.manifest}: {exc}", file=sys.stderr)
             return 2
-        try:
-            evidence_objects = _load_emitted_evidence(
-                run_dir=args.run_json.parent,
-                manifest=manifest,
-            )
-        except (OSError, json.JSONDecodeError, ValueError) as exc:
-            print(f"ERROR: cannot load emitted evidence objects: {exc}", file=sys.stderr)
-            return 2
         report = validate_envelope(
             envelope=envelope,
             schema_dir=args.schema_dir,
             registry=registry,
             repo=args.repo,
             manifest=manifest,
-            evidence_objects=evidence_objects,
+            run_json=args.run_json,
         )
 
     if report.skipped:
@@ -562,6 +799,10 @@ def _self_smoke(schema_dir: Path, registry_path: Path) -> int:
             f"FAIL schema dir {schema_dir}: no *.schema.json files found; "
             "self-smoke cannot validate schemas"
         )
+        return 1
+    missing = sorted(set(INGEST_SCHEMA_FILES.values()) - set(schema_names))
+    if missing:
+        print(f"FAIL schema dir {schema_dir}: missing registered schemas: {', '.join(missing)}")
         return 1
     for name in schema_names:
         schema = _load_schema(schema_dir, name)
