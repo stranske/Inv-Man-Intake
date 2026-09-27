@@ -43,12 +43,17 @@ Gate coverage, including:
 
 - `Gate / gate`, `gate`, and `gate-summary`
 - Python 3.12 and 3.13 matrix (`lint-ruff`, `lint-format`, `typecheck-mypy`)
+- Health 45 Agents Guard
+
+The returned `gh pr checks 981` record does not include the following
+contexts, so their individual statuses are not established by that record:
+
 - `web-smoke` and backplane conformance where applicable
 - entity, extraction-golden, foundation-fixture, NL-SQL, one-PDF pilot,
   PostgreSQL, replay, and SLA checks where in scope for the merged head
-- Health 45 Agents Guard
-- post-merge verifier provider comparison (OpenAI PASS; Anthropic CONCERNS tied
-  to credential availability, not implementation)
+
+- post-merge verifier provider comparison (OpenAI PASS; Anthropic evaluation
+  unavailable because API usage limits prevented the LLM invocation)
 
 The exact-head merge adjudication records zero active non-outdated review threads
 and substitute advisory evidence where CodeRabbit was capacity-limited. No
