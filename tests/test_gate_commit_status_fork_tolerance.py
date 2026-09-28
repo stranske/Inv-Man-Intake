@@ -30,6 +30,7 @@ RUNNER_JS = textwrap.dedent("""
     }
 
     async function runCase({ headRepo, baseRepo, error, state }) {
+      const failures = [];
       const warnings = [];
       const summaryWrites = [];
       const summaryRaw = [];
@@ -48,6 +49,7 @@ RUNNER_JS = textwrap.dedent("""
         },
         console: { log() {} },
         core: {
+          setFailed: (message) => failures.push(String(message)),
           warning: (message) => warnings.push(String(message)),
           summary: summaryStub,
         },
@@ -82,7 +84,7 @@ RUNNER_JS = textwrap.dedent("""
           message: String(error.message),
         };
       }
-      return { warnings, summaryWrites: summaryWrites.length, summaryRaw, threw };
+      return { failures, warnings, summaryWrites: summaryWrites.length, summaryRaw, threw };
     }
 
     const FORK = {
@@ -106,6 +108,16 @@ RUNNER_JS = textwrap.dedent("""
           state: 'failure',
           error: makeError(403, 'Resource not accessible by integration'),
         }),
+        fork_read_only_error: await runCase({
+          ...FORK,
+          state: 'error',
+          error: makeError(403, 'Resource not accessible by integration'),
+        }),
+        fork_read_only_pending: await runCase({
+          ...FORK,
+          state: 'pending',
+          error: makeError(403, 'Resource not accessible by integration'),
+        }),
         deleted_fork_read_only: await runCase({
           headRepo: null,
           baseRepo: 'stranske/Inv-Man-Intake',
@@ -121,6 +133,11 @@ RUNNER_JS = textwrap.dedent("""
           ...FORK,
           state: 'success',
           error: makeError(403, 'API rate limit exceeded'),
+        }),
+        fork_rate_limit_response_message: await runCase({
+          ...FORK,
+          state: 'success',
+          error: makeError(403, 'Forbidden', {}, 'secondary rate limit exceeded'),
         }),
         fork_primary_rate_limit_header: await runCase({
           ...FORK,
@@ -180,6 +197,7 @@ def outcomes(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
 
 def test_fork_read_only_403_does_not_fail_the_gate(outcomes: dict[str, Any]) -> None:
     assert outcomes["fork_read_only"]["threw"] is None
+    assert outcomes["fork_read_only"]["failures"] == []
 
 
 def test_fork_read_only_403_reports_the_real_verdict(outcomes: dict[str, Any]) -> None:
@@ -203,6 +221,18 @@ def test_fork_read_only_403_preserves_failure_verdict(
     assert case["threw"] is None
     assert "'failure'" in warning
     assert "failure" in summary
+    assert len(case["failures"]) == 1
+    assert "'failure'" in case["failures"][0]
+
+
+@pytest.mark.parametrize("state", ["error", "pending"])
+def test_fork_read_only_403_fails_closed_for_other_non_success_verdicts(
+    outcomes: dict[str, Any], state: str
+) -> None:
+    case = outcomes[f"fork_read_only_{state}"]
+    assert case["threw"] is None
+    assert len(case["failures"]) == 1
+    assert f"'{state}'" in case["failures"][0]
 
 
 def test_deleted_fork_read_only_403_reports_the_verdict(
@@ -222,6 +252,7 @@ def test_same_repo_403_still_fails_the_gate(outcomes: dict[str, Any]) -> None:
 def test_rate_limit_403_keeps_its_own_path(outcomes: dict[str, Any]) -> None:
     for key in (
         "fork_rate_limit",
+        "fork_rate_limit_response_message",
         "fork_primary_rate_limit_header",
         "fork_secondary_rate_limit_header",
     ):
@@ -239,5 +270,6 @@ def test_successful_status_write_is_silent(outcomes: dict[str, Any]) -> None:
     case = outcomes["happy_path"]
     assert case["threw"] is None
     assert case["warnings"] == []
+    assert case["failures"] == []
     assert case["summaryWrites"] == 0
     assert case["summaryRaw"] == []

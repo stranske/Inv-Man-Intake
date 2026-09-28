@@ -226,6 +226,11 @@ jobs:
                       `read-only token. Gate verdict: **${state}** — ${description}`,
                   )
                   .write();
+                if (state !== 'success') {
+                  core.setFailed(
+                    `Gate verdict for ${sha} is '${state}': ${description}`,
+                  );
+                }
               } else {
                 throw error;
               }
