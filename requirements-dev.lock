@@ -316,6 +316,7 @@ pywin32==312 ; sys_platform == 'win32'
     #   mpire
 pyyaml==6.0.3
     # via
+    #   inv-man-intake (pyproject.toml)
     #   accelerate
     #   docling-core
     #   huggingface-hub

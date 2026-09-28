@@ -49,6 +49,7 @@ dev = [
     "reportlab>=4.0",
     "docling",
     "jsonschema",
+    "PyYAML",
 ]
 
 [project.urls]
