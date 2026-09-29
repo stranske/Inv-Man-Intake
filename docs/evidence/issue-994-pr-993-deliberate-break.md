@@ -128,9 +128,10 @@ tests/test_gate_commit_status_fork_tolerance.py ..........               [100%]
 Restoration hygiene also passed:
 
 ```text
-$ git diff --exit-code -- .github/workflows/pr-00-gate.yml tests/test_gate_commit_status_fork_tolerance.py
+$ git diff --exit-code origin/main...HEAD -- .github/workflows/pr-00-gate.yml tests/test_gate_commit_status_fork_tolerance.py
+$ git diff --check origin/main...HEAD
 ```
 
-The command emitted no output and exited 0, proving the deliberate-break
-workflow and test changes were fully restored. The only deliverable change is
-this evidence record.
+Both commands emitted no output and exited 0, proving the deliberate-break
+workflow and test changes were fully restored and the PR range is whitespace-clean.
+The only deliverable change is this evidence record.
