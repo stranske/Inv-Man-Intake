@@ -20,6 +20,7 @@ _REQUIRED_FIELDS = (
     "manifest_csv_exports",
 )
 _WINDOWS_DRIVE = re.compile(r"^[A-Za-z]:")
+_URI_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 
 
 def build_report_spec(*, workspace_bundle_ref: str, manifest_ref: str) -> dict[str, object]:
@@ -91,7 +92,9 @@ def _is_safe_relative_posix_path(value: str) -> bool:
         return False
     if value.startswith(("/", "//")) or value.endswith("/"):
         return False
-    if "\\" in value or _WINDOWS_DRIVE.match(value):
+    if "//" in value or "\\" in value:
+        return False
+    if _WINDOWS_DRIVE.match(value) or _URI_SCHEME.match(value):
         return False
     parts = PurePosixPath(value).parts
     return bool(parts) and parts != (".",) and ".." not in parts
