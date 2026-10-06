@@ -129,3 +129,6 @@ node_modules/
 !/.github/scripts/node_modules/**
 
 # END WORKFLOWS STATUS FILES
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
