@@ -23,7 +23,7 @@ attrs==26.1.0
     #   referencing
 beautifulsoup4==4.15.0
     # via docling-slim
-black==26.10.0
+black==26.10.1
     # via inv-man-intake (pyproject.toml)
 certifi==2026.7.22
     # via
@@ -388,7 +388,7 @@ rtree==1.4.1
     # via
     #   docling-ibm-models
     #   docling-slim
-ruff==0.16.10
+ruff==0.17.0
     # via inv-man-intake (pyproject.toml)
 safetensors==0.8.0
     # via
