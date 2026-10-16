@@ -22,7 +22,7 @@ def test_conformance_against_stub() -> None:
     library = load_standard_element_library(STUB_PATH)
 
     assert library.non_authoritative is True
-    assert library.doc_types() == ("stub_pitchbook", "stub_tear_sheet")
+    assert library.doc_types() == ("report.consultant_review", "stub_pitchbook", "stub_tear_sheet")
 
     elements = library.elements_for("stub_pitchbook")
     assert [element.key for element in elements] == [
