@@ -925,7 +925,10 @@ def _team_experience_score(risk_value: str) -> float:
     """
 
     risk_text = risk_value.lower()
-    if re.search(r"\b(?:departure|pending|leaving|resigned)\b", risk_text):
+    # Remove only an explicitly negated departure phrase. Other adverse
+    # mentions in the same text must still outrank reassuring language.
+    adverse_text = re.sub(r"\bno\s+(?:pending\s+)?departures?\b", "", risk_text)
+    if re.search(r"\b(?:departure|pending|leaving|resigned)\b", adverse_text):
         return 0.35
     if re.search(r"\bhigh\b", risk_text):
         return 0.40

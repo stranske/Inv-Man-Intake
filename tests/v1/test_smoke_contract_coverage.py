@@ -216,6 +216,8 @@ def test_evidence_backed_team_experience_branches(risk_value: str, expected: flo
     [
         # Adverse signals outrank reassuring ones in the same text.
         ("stable team; one senior PM departure pending", 0.35),
+        ("stable team; no pending departure", 0.90),
+        ("stable team; no pending departure, but founder resigned", 0.35),
         ("low risk overall, but founder resigned", 0.35),
         ("stable team with high key person risk", 0.40),
         # Word boundaries: substrings must not misfire.
