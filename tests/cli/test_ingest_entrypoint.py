@@ -174,8 +174,8 @@ _CLASSIFICATION_SUMMARY = {
         {"B02", "B03", "B04", "B05", "B06", "B09", "B14", "B19"}
     ),
     "prevention assertions (tests must hold)": frozenset({"B01", "B07", "B13"}),
-    "production path ok / shared policy": frozenset({"B08", "B17"}),
-    "confirmed gaps → human decision (no auto-file)": frozenset({"B10", "B11"}),
+    "production path ok / shared policy": frozenset({"B08", "B10", "B17"}),
+    "confirmed gaps → product review (no auto-file)": frozenset({"B11"}),
     "superseded review claim": frozenset({"B16"}),
     "architectural / mixed / unknown": frozenset({"B12", "B15", "B18", "B20"}),
 }
@@ -185,7 +185,8 @@ _EVIDENCE_CLASS_TO_SUMMARY = {
     "intentional smoke control (boundary)": "intentional smoke controls (retain)",
     "intentional production path (post-#1019 seam)": "production path ok / shared policy",
     "intentional shared policy": "production path ok / shared policy",
-    "confirmed production gap": "confirmed gaps → human decision (no auto-file)",
+    "confirmed production gap": "confirmed gaps → product review (no auto-file)",
+    "production path repaired by #1018 / #1034": "production path ok / shared policy",
     "architectural seam": "architectural / mixed / unknown",
     "intentional / prevention": "prevention assertions (tests must hold)",
     "mixed / historical corpus seam": "architectural / mixed / unknown",
@@ -383,12 +384,8 @@ def test_production_performance_source_deliberate_smoke_fixture_fails(
     assert restored["performance"]["source"] == "submitted_workbook"
 
 
-def test_production_queue_assignment_uses_placeholder_analyst(tmp_path: Path) -> None:
-    """Documents confirmed gap B10: production still uses fixed analyst_001 / clock.
-
-    This audit PR does not repair queue assignment; the assertion locks the
-    current placeholder so a real operator-driven assignment must update tests.
-    """
+def test_production_queue_assignment_is_unowned_and_uses_live_clock(tmp_path: Path) -> None:
+    """Retain the production queue handoff delivered by #1018 / #1034."""
     from inv_man_intake import v1_smoke
     from inv_man_intake.run import run_pipeline
 
@@ -401,10 +398,15 @@ def test_production_queue_assignment_uses_placeholder_analyst(tmp_path: Path) ->
         content_root=bundle_path.parent,
         allow_remote_tracing=False,
     )
-    assert artifacts.queue_assignment.owner_id == "analyst_001"
-    assert artifacts.queue_assignment.owner_role == "analyst"
-    assert artifacts.queue_assignment.sla.created_at == datetime(2026, 3, 4, 10, 0, tzinfo=UTC)
-    # Keep run_pipeline exercised so the gap remains visible on the headless path.
+    assert artifacts.queue_assignment is not None
+    assert artifacts.queue_assignment.owner_id is None
+    assert artifacts.queue_assignment.state == "pending_triage"
+    assert artifacts.queue_assignment.package_id == package_id
+    assert (
+        datetime.fromisoformat(artifacts.queue_assignment.created_at).date()
+        == datetime.now(UTC).date()
+    )
+    # Keep the same behavior exercised on the headless path.
     run_pipeline(bundle_path, output_dir=tmp_path / "out")
 
 

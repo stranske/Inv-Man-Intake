@@ -44,7 +44,7 @@ Columns:
 | B07 | `v1_smoke.py` `performance["source"]` | `smoke_mode` | `"submitted_workbook"` | `"smoke_fixture"` | prevention assertion | `test_production_performance_source_deliberate_smoke_fixture_fails`; `test_ingest_entrypoint_runs_valid_bundle_outside_repository_fixture_layout` | keep prevention |
 | B08 | `v1_smoke.py` scoring `if not smoke_mode` | production | `_evidence_backed_score_components` + `gate_scoring_submission` + `compute_score` when evidence meets mins; else unavailable explainability | N/A (other branch) | intentional production path (post-#1019 seam) | `tests/cli/test_ingest_entrypoint.py` (`test_ingest_score_numeric_for_two_supported_asset_classes`, `test_ingest_score_insufficient_evidence_is_unavailable`); `tests/scoring/test_engine.py` (`test_compute_score_is_deterministic_for_identical_inputs`, `test_asset_class_weight_sets_produce_materially_different_scores`) | keep; not a smoke stub |
 | B09 | `v1_smoke.py` scoring `if smoke_mode` | smoke | N/A | Hardcoded `_score_components` (0.80/0.78/0.69/0.74 + correlation) + asset_class `"credit"` | intentional smoke control | `test_ingest_performance_smoke_retains_fixture_returns`; `test_ingest_score_deliberate_break_constants_would_fail`; engine rejects unknown classes via `tests/scoring/test_engine.py` `test_compute_score_rejects_unmapped_asset_class` | keep smoke-only; production must not use |
-| B10 | `v1_smoke.py` queue assignment | always | Operator-driven analyst + clock (desired) | Same fixed values today | **confirmed production gap** | Observed via `test_production_queue_assignment_uses_placeholder_analyst` | return for human / queue owner; **no auto-filed issue** |
+| B10 | `v1_smoke.py` queue assignment | `smoke_mode` | Unowned pending-triage items from real extraction outcomes; UTC clock; replayable local handoff | Fixed analyst and date in smoke only | **production path repaired by #1018 / #1034** | `test_production_queue_assignment_is_unowned_and_uses_live_clock`; queue artifact replay tests | retain local handoff contract; source #1018 verifier disposition |
 | B11 | `v1_smoke.py` `_workbook_performance_series` return | production track-record path | `(xlsx, None, None)` — no deck/benchmark | Fixture supplies deck+benchmark | **confirmed production gap** | `test_ingest_entrypoint_runs_valid_bundle_outside_repository_fixture_layout` asserts `comparison_available is False` / `benchmark_available is False` | return for human / performance owner; **no auto-filed issue** |
 | B12 | `v1_smoke.py` / `run.py` stores | always | Ephemeral `:memory:` SQLite + `InMemoryDocumentStore` for CLI run | same | architectural seam | Documented in `docs/runbooks/headless_ingest.md`; #382 readiness | out of scope for this audit; not smoke-gated |
 | B13 | `run.py` `allow_remote_tracing=False` | always from `run_pipeline` | Local spans only | Smoke API may opt in | intentional / prevention | `test_ingest_ignores_langsmith_key_when_tracing_disabled`; `test_run_pipeline_disables_remote_tracing` | keep; production OK |
@@ -62,8 +62,8 @@ Columns:
 | --- | --- |
 | Intentional smoke controls (retain) | B02, B03, B04, B05, B06, B09, B14, B19 |
 | Prevention assertions (tests must hold) | B01, B07, B13 |
-| Production path OK / shared policy | B08, B17 |
-| Confirmed gaps → human decision (no auto-file) | B10, B11 |
+| Production path OK / shared policy | B08, B10, B17 |
+| Confirmed gaps → product review (no auto-file) | B11 |
 | Superseded review claim | B16 |
 | Architectural / mixed / unknown | B12, B15, B18, B20 |
 
@@ -71,7 +71,7 @@ Columns:
 
 | Gap | Owner area | Existing reference | Notes |
 | --- | --- | --- | --- |
-| Fixed analyst queue assignment (`analyst_001`, fixed `datetime(2026, 3, 4, …)`) | queue / validation assignment | `docs/contracts/queue_assignment_sla.md`; historical queue readiness under #382 / #381 | Replace placeholder analyst and clock with operator-driven assignment |
+| Historical fixed analyst queue assignment | queue / validation assignment | #1018 / merged #1034; `docs/contracts/queue_states.md` | Repaired: local replayable unowned pending-triage items with actual UTC timestamps; smoke fixture retains its fixed analyst/date |
 | Cross-source performance comparison unavailable | performance / ingest | `docs/contracts/performance_normalization.md`; production returns deck/benchmark `None` | Confirm whether deck/benchmark ingest is near-term scope |
 | Ephemeral stores in headless CLI | persistence / ops | `docs/runbooks/headless_ingest.md`; #382 | Documented seam; not introduced by this audit |
 | Primary PDF legacy fixture service on shared path | extraction | `docs/contracts/extraction_service.md`; #380 / #9 family | Confirm Doc-Lineage-only requirement for arbitrary packages |
@@ -83,7 +83,7 @@ Scoring evidence-backed production path (B08) is already exercised by CLI score-
 
 No automatic follow-up issues are created from this audit.
 
-1. **Queue placeholder (B10)** — production runs still emit `analyst_001` with a fixed timestamp; confirm target service/API before implementing.
+1. **Queue placeholder (B10), resolved by #1034** — production uses the local versioned queue handoff from #1018. No service/API selection is needed for that delivered contract; original source acceptance remains verifier-owned.
 2. **Deck/benchmark comparison (B11)** — production workbook path does not populate deck/benchmark series; confirm near-term scope outside smoke fixtures.
 3. **Primary PDF service selection (B15)** — shared path still selects `build_legacy_pdf_fixture_service` for `.pdf`; confirm whether arbitrary production PDFs must use Doc-Lineage exclusively.
 4. **OCR/fallback route (B18)** — named `fixture-fallback` / secondary unsupported route remain; confirm whether a dedicated production OCR adapter is in scope.
