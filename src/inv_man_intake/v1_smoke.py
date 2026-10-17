@@ -68,6 +68,7 @@ from inv_man_intake.queue.assignment import create_analyst_first_assignment
 from inv_man_intake.scoring.contracts import ScoreComponent, ScoreSubmission
 from inv_man_intake.scoring.engine import compute_score
 from inv_man_intake.scoring.explainability import (
+    ComponentProvenance,
     ScoreComponentInput,
     build_explainability_payload,
     format_explainability_payload,
@@ -444,6 +445,7 @@ def _run_pipeline_core(
                             score.asset_class,
                             derived.components,
                             rationales=derived.rationales,
+                            provenances=derived.provenances,
                         ),
                         overall_score=score.final_score,
                     )
@@ -905,6 +907,7 @@ class _DerivedScoring:
     asset_class: str
     components: tuple[ScoreComponent, ...]
     rationales: dict[str, str]
+    provenances: dict[str, tuple[ComponentProvenance, ...]]
 
 
 def _clamp01(value: float) -> float:
@@ -913,6 +916,26 @@ def _clamp01(value: float) -> float:
 
 def _field_provenance(field: Any) -> str:
     return f"{field.key}@{field.source_doc_id}:page {field.source_page} (confidence {field.confidence:.2f})"
+
+
+def _field_component_provenance(field: Any) -> ComponentProvenance:
+    return ComponentProvenance(
+        source_kind="document",
+        reference=str(field.key),
+        source_doc_id=str(field.source_doc_id) or None,
+        source_page=int(field.source_page) if field.source_page is not None else None,
+    )
+
+
+def _workbook_component_provenance(workbook_ref: str) -> ComponentProvenance:
+    file_name, separator, document_id = workbook_ref.rpartition("@")
+    if not separator:
+        return ComponentProvenance(source_kind="workbook", reference=workbook_ref)
+    return ComponentProvenance(
+        source_kind="workbook",
+        reference=file_name,
+        source_doc_id=document_id or None,
+    )
 
 
 def _parse_percent(value: str) -> float | None:
@@ -1043,7 +1066,29 @@ def _evidence_backed_score_components(
             f"Key-person risk reading; evidence {_field_provenance(by_key['team.key_person_risk'])}"
         ),
     }
-    return _DerivedScoring(asset_class=asset_class, components=components, rationales=rationales)
+    workbook_provenance = _workbook_component_provenance(workbook_ref)
+    provenances = {
+        "performance_consistency": (
+            workbook_provenance,
+            _field_component_provenance(by_key["performance.net_return_1y"]),
+        ),
+        "risk_adjusted_returns": (
+            workbook_provenance,
+            _field_component_provenance(by_key["performance.net_return_1y"]),
+        ),
+        "operational_quality": (
+            _field_component_provenance(by_key["operations.aum"]),
+            _field_component_provenance(by_key["terms.management_fee"]),
+        ),
+        "transparency": tuple(_field_component_provenance(field) for field in key_fields),
+        "team_experience": (_field_component_provenance(by_key["team.key_person_risk"]),),
+    }
+    return _DerivedScoring(
+        asset_class=asset_class,
+        components=components,
+        rationales=rationales,
+        provenances=provenances,
+    )
 
 
 def _workbook_provenance_ref(
@@ -1077,6 +1122,7 @@ def _explainability_inputs(
     asset_class: str,
     components: tuple[ScoreComponent, ...],
     rationales: dict[str, str] | None = None,
+    provenances: dict[str, tuple[ComponentProvenance, ...]] | None = None,
 ) -> tuple[ScoreComponentInput, ...]:
     weights = get_weight_set(asset_class).weights
     rationale_by_component = rationales or {
@@ -1086,12 +1132,16 @@ def _explainability_inputs(
         "transparency": "Provenance pointers tie extracted fields to source pages.",
         "team_experience": "Key-person note is routed for analyst review.",
     }
+    # Smoke/demo components have no submitted-evidence derivation; attribute
+    # them to the analyst queue assignee instead of a document page.
+    analyst_provenance = (ComponentProvenance(source_kind="analyst", reference="analyst_001"),)
     return tuple(
         ScoreComponentInput(
             component=component.name,
             weight=weights[component.name],
             score=component.value,
             rationale=rationale_by_component[component.name],
+            provenance=(provenances or {}).get(component.name, analyst_provenance),
         )
         for component in components
     )

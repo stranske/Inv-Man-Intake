@@ -19,6 +19,15 @@ Each component object includes:
 - `weight` (`float`): component weight used in scoring.
 - `contribution` (`float`): `weight * score` rounded to 6 decimals.
 - `rationale` (`string`): concise explanation for the component effect.
+- `provenance` (`array`): resolvable source pointers for the component. Each
+  entry has `source_kind` (`document`, `workbook`, or `analyst`), `reference`
+  (extracted field key, workbook file name, or analyst id), `source_doc_id`
+  (document id in the run's `inputs.document_ids`, or `null`), and
+  `source_page` (1-based page for `document` entries, otherwise `null`).
+  `document` entries resolve against `run.json` `provenance.evidence` by
+  `reference`: `source_doc_id` and `source_page` must match that field's
+  evidence. Production components carry document/workbook provenance;
+  smoke-only components carry analyst provenance.
 
 ## Determinism Rules
 

@@ -13,6 +13,23 @@ _COMPONENT_ORDER_INDEX = {component: index for index, component in enumerate(_CO
 
 
 @dataclass(frozen=True)
+class ComponentProvenance:
+    """Resolvable provenance pointer for one score component.
+
+    ``source_kind`` is ``document`` (extracted field on a document page),
+    ``workbook`` (submitted workbook metrics), or ``analyst`` (analyst /
+    fixture-supplied judgement). ``reference`` names the field key, workbook
+    file, or analyst id so callers can resolve the pointer against the run's
+    per-field evidence.
+    """
+
+    source_kind: str
+    reference: str
+    source_doc_id: str | None = None
+    source_page: int | None = None
+
+
+@dataclass(frozen=True)
 class ScoreComponentInput:
     """Input component used to compute contribution values."""
 
@@ -20,6 +37,7 @@ class ScoreComponentInput:
     weight: float
     score: float
     rationale: str
+    provenance: tuple[ComponentProvenance, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -30,6 +48,7 @@ class ScoreComponentOutput:
     weight: float
     contribution: float
     rationale: str
+    provenance: tuple[ComponentProvenance, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -86,6 +105,15 @@ def format_explainability_payload(payload: ExplainabilityPayload) -> dict[str, o
                 "weight": component.weight,
                 "contribution": component.contribution,
                 "rationale": component.rationale,
+                "provenance": [
+                    {
+                        "source_kind": provenance.source_kind,
+                        "reference": provenance.reference,
+                        "source_doc_id": provenance.source_doc_id,
+                        "source_page": provenance.source_page,
+                    }
+                    for provenance in component.provenance
+                ],
             }
             for component in payload.components
         ],
@@ -113,6 +141,29 @@ def _normalize_component(component: ScoreComponentInput) -> ScoreComponentOutput
         weight=_round(component.weight),
         contribution=_round(component.weight * component.score),
         rationale=rationale,
+        provenance=tuple(
+            _normalize_provenance(component_id, provenance) for provenance in component.provenance
+        ),
+    )
+
+
+def _normalize_provenance(
+    component_id: str, provenance: ComponentProvenance
+) -> ComponentProvenance:
+    source_kind = provenance.source_kind.strip()
+    if not source_kind:
+        raise ValueError(f"{component_id}.provenance.source_kind must be non-empty")
+    reference = provenance.reference.strip()
+    if not reference:
+        raise ValueError(f"{component_id}.provenance.reference must be non-empty")
+    source_doc_id = provenance.source_doc_id.strip() if provenance.source_doc_id else None
+    if provenance.source_page is not None and provenance.source_page < 1:
+        raise ValueError(f"{component_id}.provenance.source_page must be >= 1")
+    return ComponentProvenance(
+        source_kind=source_kind,
+        reference=reference,
+        source_doc_id=source_doc_id,
+        source_page=provenance.source_page,
     )
 
 

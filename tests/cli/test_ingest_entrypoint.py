@@ -270,6 +270,50 @@ def test_ingest_score_numeric_for_two_supported_asset_classes(tmp_path: Path) ->
     assert credit_weights != quant_weights
 
 
+def test_ingest_score_explainability_provenance_is_resolvable(tmp_path: Path) -> None:
+    run = _run_score(_write_score_bundle(tmp_path, name="bundle-prov"), tmp_path / "out-prov")
+    # Also verify the standalone artifact carries the same provenance.
+    explainability_artifact = json.loads(
+        (tmp_path / "out-prov" / "explainability.json").read_text(encoding="utf-8")
+    )
+    assert explainability_artifact == run["explainability"]
+
+    document_ids = set(run["inputs"]["document_ids"])
+    evidence = run["provenance"]["evidence"]
+    components = {item["component"]: item for item in run["explainability"]["components"]}
+    assert set(components) == {
+        "performance_consistency",
+        "risk_adjusted_returns",
+        "operational_quality",
+        "transparency",
+        "team_experience",
+    }
+    for item in components.values():
+        assert item["provenance"], item
+        for provenance in item["provenance"]:
+            assert provenance["source_doc_id"] in document_ids, provenance
+            if provenance["source_kind"] == "document":
+                field_evidence = evidence[provenance["reference"]]
+                assert provenance["source_doc_id"] == field_evidence["source_doc_id"]
+                assert provenance["source_page"] == field_evidence["source_page"]
+                assert provenance["source_page"] is not None
+            elif provenance["source_kind"] == "workbook":
+                assert provenance["reference"].endswith(".xlsx"), provenance
+            else:  # pragma: no cover - production components are doc/workbook only
+                raise AssertionError(f"unexpected provenance {provenance}")
+    # Component-specific pointers: workbook drives performance, AUM drives operations.
+    assert any(
+        p["source_kind"] == "workbook" for p in components["performance_consistency"]["provenance"]
+    )
+    assert any(
+        p["reference"] == "operations.aum" for p in components["operational_quality"]["provenance"]
+    )
+    assert any(
+        p["reference"] == "team.key_person_risk"
+        for p in components["team_experience"]["provenance"]
+    )
+
+
 def test_ingest_score_within_class_aum_change_changes_operational_component(
     tmp_path: Path,
 ) -> None:
