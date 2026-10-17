@@ -145,6 +145,67 @@ def test_ingest_entrypoint_returns_nonzero_for_missing_bundle(tmp_path: Path) ->
     assert exit_code != 0
 
 
+@pytest.mark.parametrize(
+    "primary", ["summit_arc_investment_update.pdf", "harborline_strategy_review.pptx"]
+)
+def test_ingest_primary_only_pdf_and_pptx(tmp_path, monkeypatch, primary):
+    from inv_man_intake import v1_smoke
+
+    bundle = _write_external_layout_bundle(tmp_path / "bundle")
+    payload = json.loads(bundle.read_text())
+    entry = payload["files"][0]
+    entry["file_name"] = primary
+    shutil.copyfile(_FIXTURE_EXTRACTION / primary, bundle.parent / primary)
+    payload["files"] = [entry]
+    bundle.write_text(json.dumps(payload))
+
+    def no_fixture_performance():
+        pytest.fail("primary-only production ingest must not invent fixture returns")
+
+    monkeypatch.setattr(v1_smoke, "_fixture_performance_series", no_fixture_performance)
+    output = tmp_path / "out"
+    assert main([str(bundle), "--out", str(output)]) == 0
+    result = json.loads((output / "run.json").read_text())
+    assert result["performance"]["monthly"] is None
+    assert result["performance"]["status"] == "unavailable"
+    assert "performance:unavailable" in {warning["code"] for warning in result["warnings"]}
+    assert result["final_score"] is None
+
+
+def test_ingest_file_order_permutations_equivalent(tmp_path):
+    bundle = _write_external_layout_bundle(tmp_path / "bundle")
+    payload = json.loads(bundle.read_text())
+    workbook = bundle.parent / "summit_arc_track_record.xlsx"
+    _write_performance_workbook(workbook, [("2024-01-31", 0.12), ("2024-02-29", -0.07)])
+    results = []
+    for index, files in enumerate([payload["files"], list(reversed(payload["files"]))]):
+        bundle.write_text(json.dumps({**payload, "files": files}))
+        output = tmp_path / f"out-{index}"
+        assert main([str(bundle), "--out", str(output)]) == 0
+        result = json.loads((output / "run.json").read_text())
+        results.append(result)
+        primary_index = next(
+            i for i, entry in enumerate(files) if entry["file_name"].endswith(".pdf")
+        )
+        expected_id = f"{payload['package_id']}:doc:{primary_index}"
+        assert result["fields"]
+        for pointer in result["provenance"]["evidence"].values():
+            assert pointer["source_doc_id"] == expected_id
+    values = [{row["key"]: row["value"] for row in result["fields"]} for result in results]
+    assert values[0] == values[1]
+    assert results[0]["performance"]["monthly"] == results[1]["performance"]["monthly"]
+    assert results[0]["performance"]["monthly"] == [
+        {"as_of": "2024-01-31", "value": 0.12},
+        {"as_of": "2024-02-29", "value": -0.07},
+    ]
+
+
+def test_ingest_malformed_primary_is_controlled_failure(tmp_path):
+    bundle = _write_external_layout_bundle(tmp_path / "bundle")
+    (bundle.parent / "summit_arc_investment_update.pdf").write_bytes(b"not a PDF")
+    assert main([str(bundle), "--out", str(tmp_path / "out")]) == 1
+
+
 def test_ingest_entrypoint_returns_nonzero_for_rejected_bundle(tmp_path: Path) -> None:
     exit_code = main(
         ["tests/fixtures/intake/malformed_missing_metadata.json", "--out", str(tmp_path)]

@@ -1,0 +1,33 @@
+{
+  "command": [
+    "/opt/anaconda3/bin/python3",
+    "-m",
+    "pytest",
+    "tests/cli/test_ingest_entrypoint.py::test_ingest_file_order_permutations_equivalent",
+    "-q",
+    "-o",
+    "addopts=",
+    "-p",
+    "no:langsmith_plugin",
+    "-p",
+    "no:pytest_langsmith_plugin"
+  ],
+  "mutation": "Select submitted document_ids[0] instead of registered primary metadata",
+  "red_exit": 1,
+  "green_exit": 0,
+  "source_sha256_before": "789811d4781e70d9ad44dc69d330c546bb9853ca734c69dfed2c857c88e0e3dc",
+  "source_sha256_after": "789811d4781e70d9ad44dc69d330c546bb9853ca734c69dfed2c857c88e0e3dc",
+  "unchanged_tests": {
+    "tests/cli/test_ingest_entrypoint.py": "b20144e5c5006648050ec8c20e9413abbe0612254d62496fb576daf87bae79a2",
+    "tests/contracts/test_intake_contract.py": "3668e77392aef187ffdaf9069a3793f578a705c2728e2c1817c9afae792b7f17"
+  },
+  "suite": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "58",
+    "time": "1.894",
+    "timestamp": "2026-10-17T10:16:55.368004-05:00"
+  }
+}

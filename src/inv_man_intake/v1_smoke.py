@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Any
 from xml.etree.ElementTree import ParseError
 
+from inv_man_intake.contracts.intake_contract import PRIMARY_EXTENSIONS
+from inv_man_intake.data.models import Document
 from inv_man_intake.data.repository import CoreRepository
 from inv_man_intake.extraction.confidence import (
     ThresholdConfig,
@@ -239,11 +241,12 @@ def _run_pipeline_core(
         tags={"stage": "extract"},
     )
 
-    primary_document = core_repository.get_document(record.document_ids[0])
-    assert primary_document is not None, "primary document must be registered"
+    primary_document, secondary_document = _select_extraction_documents(
+        repository=core_repository, document_ids=record.document_ids, file_entries=file_entries
+    )
     primary_file_name = primary_document.file_name
     primary_content = _pipeline_document_bytes(
-        document_id=record.document_ids[0],
+        document_id=primary_document.document_id,
         fund_id=record.fund_id,
         file_name=primary_file_name,
         smoke_mode=smoke_mode,
@@ -253,38 +256,36 @@ def _run_pipeline_core(
     extraction_result = _run_extraction_smoke(
         tracer=tracer,
         trace_context=extraction_context,
-        source_doc_id=record.document_ids[0],
+        source_doc_id=primary_document.document_id,
         primary_file_name=primary_file_name,
         content=primary_content,
         correlation_id=correlation_id,
     )
-    if len(record.document_ids) < 2:
-        raise ValueError("intake bundle must register at least two documents for extraction")
-    secondary_document = core_repository.get_document(record.document_ids[1])
-    assert secondary_document is not None, "secondary document must be registered"
-    if smoke_mode:
-        # Smoke bundles may name synthetic secondary files that are not checked in;
-        # the boundary exercise only needs representative xlsx bytes.
-        secondary_content = _fixture_bytes(
-            fixture_root=fixture_root,
-            file_name="summit_arc_track_record.xlsx",
+    secondary_extraction_result = None
+    if secondary_document is not None:
+        if smoke_mode:
+            # Smoke bundles may name synthetic secondary files that are not checked in;
+            # the boundary exercise only needs representative xlsx bytes.
+            secondary_content = _fixture_bytes(
+                fixture_root=fixture_root,
+                file_name="summit_arc_track_record.xlsx",
+            )
+        else:
+            secondary_content = _pipeline_document_bytes(
+                document_id=secondary_document.document_id,
+                fund_id=record.fund_id,
+                file_name=secondary_document.file_name,
+                smoke_mode=smoke_mode,
+                fixture_root=fixture_root,
+                document_store=document_store,
+            )
+        secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
+            tracer=tracer,
+            trace_context=extraction_context,
+            source_doc_id=secondary_document.document_id,
+            content=secondary_content,
+            correlation_id=correlation_id,
         )
-    else:
-        secondary_content = _pipeline_document_bytes(
-            document_id=record.document_ids[1],
-            fund_id=record.fund_id,
-            file_name=secondary_document.file_name,
-            smoke_mode=smoke_mode,
-            fixture_root=fixture_root,
-            document_store=document_store,
-        )
-    secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
-        tracer=tracer,
-        trace_context=extraction_context,
-        source_doc_id=record.document_ids[1],
-        content=secondary_content,
-        correlation_id=correlation_id,
-    )
     with tracer.start_span(
         name="v1_acceptance.threshold_handling",
         context=extraction_context,
@@ -530,6 +531,41 @@ def _langsmith_context_tags() -> dict[str, str]:
     }
 
 
+def _select_extraction_documents(
+    *, repository: CoreRepository, document_ids: tuple[str, ...], file_entries: list[dict[str, Any]]
+) -> tuple[Document, Document | None]:
+    """Select registered document metadata, independently of submission order."""
+    documents = []
+    for document_id in document_ids:
+        document = repository.get_document(document_id)
+        if document is None:
+            raise ValueError(f"submitted document {document_id!r} is not registered")
+        documents.append(document)
+    documents.sort(key=lambda document: (document.file_name.casefold(), document.document_id))
+    primaries = [
+        document
+        for document in documents
+        if Path(document.file_name).suffix.lower().lstrip(".") in PRIMARY_EXTENSIONS
+    ]
+    if not primaries:
+        raise ValueError("intake bundle has no registered primary PDF or PPTX")
+    secondary = [document for document in documents if document not in primaries]
+    workbook_name = _performance_track_record_file_name(file_entries)
+    preferred = next(
+        (document for document in secondary if document.file_name == workbook_name), None
+    )
+    if preferred is None:
+        preferred = next(
+            (
+                document
+                for document in secondary
+                if Path(document.file_name).suffix.lower() == ".xlsx"
+            ),
+            secondary[0] if secondary else None,
+        )
+    return primaries[0], preferred
+
+
 def _run_extraction_smoke(
     *,
     tracer: Tracer,
@@ -563,11 +599,13 @@ def _run_extraction_smoke(
         },
         trace_context=trace_context,
     )
-    assert result.resolved is True
-    assert result.provider_used == service.backend_name
-    assert result.data is not None
-    extracted = result.data["result"]
-    assert isinstance(extracted, ExtractedDocumentResult)
+    if not result.resolved or result.provider_used != service.backend_name or result.data is None:
+        raise ValueError(f"primary document extraction unavailable for {primary_file_name!r}")
+    extracted = result.data.get("result")
+    if not isinstance(extracted, ExtractedDocumentResult):
+        raise ValueError(
+            f"primary document extraction returned no result for {primary_file_name!r}"
+        )
     return extracted
 
 
