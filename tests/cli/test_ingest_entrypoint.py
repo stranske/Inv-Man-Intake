@@ -66,6 +66,33 @@ def test_ingest_entrypoint_writes_run_and_named_artifacts(tmp_path: Path) -> Non
         assert (output_dir / name).is_file(), f"missing artifact on disk: {name}"
 
 
+@pytest.mark.parametrize("toggle", ["false", "true", None])
+def test_ingest_ignores_langsmith_key_when_tracing_disabled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, toggle: str | None
+) -> None:
+    """Production stays offline even with credentials and ambient opt-in toggles."""
+    from inv_man_intake.observability import langsmith_sink
+
+    monkeypatch.setenv("LANGSMITH_API_KEY", "fake-offline-regression-key")
+    for key in ("INV_MAN_TRACING_ENABLED", "LANGSMITH_TRACING_ENABLED", "LANGCHAIN_TRACING_V2"):
+        if toggle is None:
+            monkeypatch.delenv(key, raising=False)
+        else:
+            monkeypatch.setenv(key, toggle)
+    calls = []
+
+    def forbidden_client():
+        calls.append("client")
+        raise AssertionError("production ingest must never construct a remote trace client")
+
+    monkeypatch.setattr(langsmith_sink, "_default_client_factory", forbidden_client)
+    bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
+    output_dir = tmp_path / "out"
+    assert main([str(bundle_path), "--out", str(output_dir)]) == 0
+    assert json.loads((output_dir / "run.json").read_text())["run_id"]
+    assert calls == []
+
+
 def test_ingest_run_json_carries_score_escalation_and_evidence(tmp_path: Path) -> None:
     bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
     output_dir = tmp_path / "out"
@@ -116,6 +143,103 @@ def test_ingest_entrypoint_returns_nonzero_for_missing_bundle(tmp_path: Path) ->
     exit_code = main([str(tmp_path / "missing.json"), "--out", str(tmp_path / "out")])
 
     assert exit_code != 0
+
+
+@pytest.mark.parametrize(
+    "primary", ["summit_arc_investment_update.pdf", "harborline_strategy_review.pptx"]
+)
+def test_ingest_primary_only_pdf_and_pptx(tmp_path, monkeypatch, primary):
+    from inv_man_intake import v1_smoke
+
+    bundle = _write_external_layout_bundle(tmp_path / "bundle")
+    payload = json.loads(bundle.read_text())
+    entry = payload["files"][0]
+    entry["file_name"] = primary
+    shutil.copyfile(_FIXTURE_EXTRACTION / primary, bundle.parent / primary)
+    payload["files"] = [entry]
+    bundle.write_text(json.dumps(payload))
+
+    def no_fixture_performance():
+        pytest.fail("primary-only production ingest must not invent fixture returns")
+
+    monkeypatch.setattr(v1_smoke, "_fixture_performance_series", no_fixture_performance)
+    output = tmp_path / "out"
+    assert main([str(bundle), "--out", str(output)]) == 0
+    result = json.loads((output / "run.json").read_text())
+    assert result["performance"]["monthly"] is None
+    assert result["performance"]["status"] == "unavailable"
+    assert "performance:unavailable" in {warning["code"] for warning in result["warnings"]}
+    assert result["final_score"] is None
+
+
+@pytest.mark.parametrize("extension", ["docx", "eml", "txt", "md"])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_ingest_primary_with_non_workbook_secondary(tmp_path, monkeypatch, extension, reverse):
+    """Supported attachments must not enter the XLSX-only secondary boundary."""
+    from inv_man_intake import v1_smoke
+
+    bundle = _write_external_layout_bundle(tmp_path / "bundle")
+    payload = json.loads(bundle.read_text())
+    attachment_name = f"supporting_material.{extension}"
+    payload["files"][1] = {
+        "file_name": attachment_name,
+        "role": "supporting_material",
+        "source_ref": "email:test-optional-attachment",
+    }
+    (bundle.parent / attachment_name).write_bytes(b"supported attachment; not a workbook")
+    if reverse:
+        payload["files"].reverse()
+    bundle.write_text(json.dumps(payload))
+
+    def forbidden_secondary(**kwargs):
+        pytest.fail("a non-workbook attachment entered the workbook boundary")
+
+    monkeypatch.setattr(v1_smoke, "_run_secondary_extraction_boundary_smoke", forbidden_secondary)
+    output = tmp_path / "out"
+    assert main([str(bundle), "--out", str(output)]) == 0
+    result = json.loads((output / "run.json").read_text())
+    assert result["performance"]["monthly"] is None
+    assert result["performance"]["status"] == "unavailable"
+    assert result["fields"]
+    primary_index = 1 if reverse else 0
+    expected_id = f"{payload['package_id']}:doc:{primary_index}"
+    assert {pointer["source_doc_id"] for pointer in result["provenance"]["evidence"].values()} == {
+        expected_id
+    }
+
+
+def test_ingest_file_order_permutations_equivalent(tmp_path):
+    bundle = _write_external_layout_bundle(tmp_path / "bundle")
+    payload = json.loads(bundle.read_text())
+    workbook = bundle.parent / "summit_arc_track_record.xlsx"
+    _write_performance_workbook(workbook, [("2024-01-31", 0.12), ("2024-02-29", -0.07)])
+    results = []
+    for index, files in enumerate([payload["files"], list(reversed(payload["files"]))]):
+        bundle.write_text(json.dumps({**payload, "files": files}))
+        output = tmp_path / f"out-{index}"
+        assert main([str(bundle), "--out", str(output)]) == 0
+        result = json.loads((output / "run.json").read_text())
+        results.append(result)
+        primary_index = next(
+            i for i, entry in enumerate(files) if entry["file_name"].endswith(".pdf")
+        )
+        expected_id = f"{payload['package_id']}:doc:{primary_index}"
+        assert result["fields"]
+        for pointer in result["provenance"]["evidence"].values():
+            assert pointer["source_doc_id"] == expected_id
+    values = [{row["key"]: row["value"] for row in result["fields"]} for result in results]
+    assert values[0] == values[1]
+    assert results[0]["performance"]["monthly"] == results[1]["performance"]["monthly"]
+    assert results[0]["performance"]["monthly"] == [
+        {"as_of": "2024-01-31", "value": 0.12},
+        {"as_of": "2024-02-29", "value": -0.07},
+    ]
+
+
+def test_ingest_malformed_primary_is_controlled_failure(tmp_path):
+    bundle = _write_external_layout_bundle(tmp_path / "bundle")
+    (bundle.parent / "summit_arc_investment_update.pdf").write_bytes(b"not a PDF")
+    assert main([str(bundle), "--out", str(tmp_path / "out")]) == 1
 
 
 def test_ingest_entrypoint_returns_nonzero_for_rejected_bundle(tmp_path: Path) -> None:

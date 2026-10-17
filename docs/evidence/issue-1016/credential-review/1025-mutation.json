@@ -1,0 +1,8 @@
+{
+  "production_sha256": "f1f456bfd7733c3040d4c24bb1ee796dfd927a24486ead2e2eb5ba85ac17487a",
+  "replace_literal": "    if not tracing_enabled_from_env() or not os.getenv(\"LANGSMITH_API_KEY\", \"\").strip():\n",
+  "with": "    if not tracing_enabled_from_env():\n",
+  "mutant_exit": 1,
+  "restored_exit": 0,
+  "source_byte_identical": true
+}

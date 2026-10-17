@@ -1,0 +1,412 @@
+FFFFFFFF                                                                 [100%]
+=================================== FAILURES ===================================
+_________ test_ingest_primary_with_non_workbook_secondary[False-docx] __________
+
+tmp_path = PosixPath('/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5160/test_ingest_primary_with_non_w0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x108cb07d0>
+extension = 'docx', reverse = False
+
+    @pytest.mark.parametrize("extension", ["docx", "eml", "txt", "md"])
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_ingest_primary_with_non_workbook_secondary(tmp_path, monkeypatch, extension, reverse):
+        """Supported attachments must not enter the XLSX-only secondary boundary."""
+        from inv_man_intake import v1_smoke
+    
+        bundle = _write_external_layout_bundle(tmp_path / "bundle")
+        payload = json.loads(bundle.read_text())
+        attachment_name = f"supporting_material.{extension}"
+        payload["files"][1] = {
+            "file_name": attachment_name,
+            "role": "supporting_material",
+            "source_ref": "email:test-optional-attachment",
+        }
+        (bundle.parent / attachment_name).write_bytes(b"supported attachment; not a workbook")
+        if reverse:
+            payload["files"].reverse()
+        bundle.write_text(json.dumps(payload))
+    
+        def forbidden_secondary(**kwargs):
+            pytest.fail("a non-workbook attachment entered the workbook boundary")
+    
+        monkeypatch.setattr(v1_smoke, "_run_secondary_extraction_boundary_smoke", forbidden_secondary)
+        output = tmp_path / "out"
+>       assert main([str(bundle), "--out", str(output)]) == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/cli/test_ingest_entrypoint.py:199: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/inv_man_intake/cli/ingest.py:61: in main
+    result = run_pipeline(
+src/inv_man_intake/run.py:162: in run_pipeline
+    artifacts = _run_pipeline_core(
+src/inv_man_intake/v1_smoke.py:282: in _run_pipeline_core
+    secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+kwargs = {'tracer': <inv_man_intake.observability.tracing.Tracer object at 0x108cb3ad0>, 'trace_context': TraceContext(trace_id...age': 'extract'}), 'source_doc_id': 'pkg_pdf_mixed_001:doc:1', 'content': b'supported attachment; not a workbook', ...}
+
+    def forbidden_secondary(**kwargs):
+>       pytest.fail("a non-workbook attachment entered the workbook boundary")
+E       Failed: a non-workbook attachment entered the workbook boundary
+
+tests/cli/test_ingest_entrypoint.py:195: Failed
+__________ test_ingest_primary_with_non_workbook_secondary[False-eml] __________
+
+tmp_path = PosixPath('/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5160/test_ingest_primary_with_non_w1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x108cb31d0>
+extension = 'eml', reverse = False
+
+    @pytest.mark.parametrize("extension", ["docx", "eml", "txt", "md"])
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_ingest_primary_with_non_workbook_secondary(tmp_path, monkeypatch, extension, reverse):
+        """Supported attachments must not enter the XLSX-only secondary boundary."""
+        from inv_man_intake import v1_smoke
+    
+        bundle = _write_external_layout_bundle(tmp_path / "bundle")
+        payload = json.loads(bundle.read_text())
+        attachment_name = f"supporting_material.{extension}"
+        payload["files"][1] = {
+            "file_name": attachment_name,
+            "role": "supporting_material",
+            "source_ref": "email:test-optional-attachment",
+        }
+        (bundle.parent / attachment_name).write_bytes(b"supported attachment; not a workbook")
+        if reverse:
+            payload["files"].reverse()
+        bundle.write_text(json.dumps(payload))
+    
+        def forbidden_secondary(**kwargs):
+            pytest.fail("a non-workbook attachment entered the workbook boundary")
+    
+        monkeypatch.setattr(v1_smoke, "_run_secondary_extraction_boundary_smoke", forbidden_secondary)
+        output = tmp_path / "out"
+>       assert main([str(bundle), "--out", str(output)]) == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/cli/test_ingest_entrypoint.py:199: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/inv_man_intake/cli/ingest.py:61: in main
+    result = run_pipeline(
+src/inv_man_intake/run.py:162: in run_pipeline
+    artifacts = _run_pipeline_core(
+src/inv_man_intake/v1_smoke.py:282: in _run_pipeline_core
+    secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+kwargs = {'tracer': <inv_man_intake.observability.tracing.Tracer object at 0x108cd1790>, 'trace_context': TraceContext(trace_id...age': 'extract'}), 'source_doc_id': 'pkg_pdf_mixed_001:doc:1', 'content': b'supported attachment; not a workbook', ...}
+
+    def forbidden_secondary(**kwargs):
+>       pytest.fail("a non-workbook attachment entered the workbook boundary")
+E       Failed: a non-workbook attachment entered the workbook boundary
+
+tests/cli/test_ingest_entrypoint.py:195: Failed
+__________ test_ingest_primary_with_non_workbook_secondary[False-txt] __________
+
+tmp_path = PosixPath('/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5160/test_ingest_primary_with_non_w2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x108cb3d40>
+extension = 'txt', reverse = False
+
+    @pytest.mark.parametrize("extension", ["docx", "eml", "txt", "md"])
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_ingest_primary_with_non_workbook_secondary(tmp_path, monkeypatch, extension, reverse):
+        """Supported attachments must not enter the XLSX-only secondary boundary."""
+        from inv_man_intake import v1_smoke
+    
+        bundle = _write_external_layout_bundle(tmp_path / "bundle")
+        payload = json.loads(bundle.read_text())
+        attachment_name = f"supporting_material.{extension}"
+        payload["files"][1] = {
+            "file_name": attachment_name,
+            "role": "supporting_material",
+            "source_ref": "email:test-optional-attachment",
+        }
+        (bundle.parent / attachment_name).write_bytes(b"supported attachment; not a workbook")
+        if reverse:
+            payload["files"].reverse()
+        bundle.write_text(json.dumps(payload))
+    
+        def forbidden_secondary(**kwargs):
+            pytest.fail("a non-workbook attachment entered the workbook boundary")
+    
+        monkeypatch.setattr(v1_smoke, "_run_secondary_extraction_boundary_smoke", forbidden_secondary)
+        output = tmp_path / "out"
+>       assert main([str(bundle), "--out", str(output)]) == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/cli/test_ingest_entrypoint.py:199: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/inv_man_intake/cli/ingest.py:61: in main
+    result = run_pipeline(
+src/inv_man_intake/run.py:162: in run_pipeline
+    artifacts = _run_pipeline_core(
+src/inv_man_intake/v1_smoke.py:282: in _run_pipeline_core
+    secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+kwargs = {'tracer': <inv_man_intake.observability.tracing.Tracer object at 0x108cd27b0>, 'trace_context': TraceContext(trace_id...age': 'extract'}), 'source_doc_id': 'pkg_pdf_mixed_001:doc:1', 'content': b'supported attachment; not a workbook', ...}
+
+    def forbidden_secondary(**kwargs):
+>       pytest.fail("a non-workbook attachment entered the workbook boundary")
+E       Failed: a non-workbook attachment entered the workbook boundary
+
+tests/cli/test_ingest_entrypoint.py:195: Failed
+__________ test_ingest_primary_with_non_workbook_secondary[False-md] ___________
+
+tmp_path = PosixPath('/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5160/test_ingest_primary_with_non_w3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x108cb3d70>
+extension = 'md', reverse = False
+
+    @pytest.mark.parametrize("extension", ["docx", "eml", "txt", "md"])
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_ingest_primary_with_non_workbook_secondary(tmp_path, monkeypatch, extension, reverse):
+        """Supported attachments must not enter the XLSX-only secondary boundary."""
+        from inv_man_intake import v1_smoke
+    
+        bundle = _write_external_layout_bundle(tmp_path / "bundle")
+        payload = json.loads(bundle.read_text())
+        attachment_name = f"supporting_material.{extension}"
+        payload["files"][1] = {
+            "file_name": attachment_name,
+            "role": "supporting_material",
+            "source_ref": "email:test-optional-attachment",
+        }
+        (bundle.parent / attachment_name).write_bytes(b"supported attachment; not a workbook")
+        if reverse:
+            payload["files"].reverse()
+        bundle.write_text(json.dumps(payload))
+    
+        def forbidden_secondary(**kwargs):
+            pytest.fail("a non-workbook attachment entered the workbook boundary")
+    
+        monkeypatch.setattr(v1_smoke, "_run_secondary_extraction_boundary_smoke", forbidden_secondary)
+        output = tmp_path / "out"
+>       assert main([str(bundle), "--out", str(output)]) == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/cli/test_ingest_entrypoint.py:199: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/inv_man_intake/cli/ingest.py:61: in main
+    result = run_pipeline(
+src/inv_man_intake/run.py:162: in run_pipeline
+    artifacts = _run_pipeline_core(
+src/inv_man_intake/v1_smoke.py:282: in _run_pipeline_core
+    secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+kwargs = {'tracer': <inv_man_intake.observability.tracing.Tracer object at 0x108cd3cb0>, 'trace_context': TraceContext(trace_id...age': 'extract'}), 'source_doc_id': 'pkg_pdf_mixed_001:doc:1', 'content': b'supported attachment; not a workbook', ...}
+
+    def forbidden_secondary(**kwargs):
+>       pytest.fail("a non-workbook attachment entered the workbook boundary")
+E       Failed: a non-workbook attachment entered the workbook boundary
+
+tests/cli/test_ingest_entrypoint.py:195: Failed
+__________ test_ingest_primary_with_non_workbook_secondary[True-docx] __________
+
+tmp_path = PosixPath('/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5160/test_ingest_primary_with_non_w4')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x108cb02f0>
+extension = 'docx', reverse = True
+
+    @pytest.mark.parametrize("extension", ["docx", "eml", "txt", "md"])
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_ingest_primary_with_non_workbook_secondary(tmp_path, monkeypatch, extension, reverse):
+        """Supported attachments must not enter the XLSX-only secondary boundary."""
+        from inv_man_intake import v1_smoke
+    
+        bundle = _write_external_layout_bundle(tmp_path / "bundle")
+        payload = json.loads(bundle.read_text())
+        attachment_name = f"supporting_material.{extension}"
+        payload["files"][1] = {
+            "file_name": attachment_name,
+            "role": "supporting_material",
+            "source_ref": "email:test-optional-attachment",
+        }
+        (bundle.parent / attachment_name).write_bytes(b"supported attachment; not a workbook")
+        if reverse:
+            payload["files"].reverse()
+        bundle.write_text(json.dumps(payload))
+    
+        def forbidden_secondary(**kwargs):
+            pytest.fail("a non-workbook attachment entered the workbook boundary")
+    
+        monkeypatch.setattr(v1_smoke, "_run_secondary_extraction_boundary_smoke", forbidden_secondary)
+        output = tmp_path / "out"
+>       assert main([str(bundle), "--out", str(output)]) == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/cli/test_ingest_entrypoint.py:199: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/inv_man_intake/cli/ingest.py:61: in main
+    result = run_pipeline(
+src/inv_man_intake/run.py:162: in run_pipeline
+    artifacts = _run_pipeline_core(
+src/inv_man_intake/v1_smoke.py:282: in _run_pipeline_core
+    secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+kwargs = {'tracer': <inv_man_intake.observability.tracing.Tracer object at 0x108d1a9f0>, 'trace_context': TraceContext(trace_id...age': 'extract'}), 'source_doc_id': 'pkg_pdf_mixed_001:doc:0', 'content': b'supported attachment; not a workbook', ...}
+
+    def forbidden_secondary(**kwargs):
+>       pytest.fail("a non-workbook attachment entered the workbook boundary")
+E       Failed: a non-workbook attachment entered the workbook boundary
+
+tests/cli/test_ingest_entrypoint.py:195: Failed
+__________ test_ingest_primary_with_non_workbook_secondary[True-eml] ___________
+
+tmp_path = PosixPath('/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5160/test_ingest_primary_with_non_w5')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x108d1bd10>
+extension = 'eml', reverse = True
+
+    @pytest.mark.parametrize("extension", ["docx", "eml", "txt", "md"])
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_ingest_primary_with_non_workbook_secondary(tmp_path, monkeypatch, extension, reverse):
+        """Supported attachments must not enter the XLSX-only secondary boundary."""
+        from inv_man_intake import v1_smoke
+    
+        bundle = _write_external_layout_bundle(tmp_path / "bundle")
+        payload = json.loads(bundle.read_text())
+        attachment_name = f"supporting_material.{extension}"
+        payload["files"][1] = {
+            "file_name": attachment_name,
+            "role": "supporting_material",
+            "source_ref": "email:test-optional-attachment",
+        }
+        (bundle.parent / attachment_name).write_bytes(b"supported attachment; not a workbook")
+        if reverse:
+            payload["files"].reverse()
+        bundle.write_text(json.dumps(payload))
+    
+        def forbidden_secondary(**kwargs):
+            pytest.fail("a non-workbook attachment entered the workbook boundary")
+    
+        monkeypatch.setattr(v1_smoke, "_run_secondary_extraction_boundary_smoke", forbidden_secondary)
+        output = tmp_path / "out"
+>       assert main([str(bundle), "--out", str(output)]) == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/cli/test_ingest_entrypoint.py:199: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/inv_man_intake/cli/ingest.py:61: in main
+    result = run_pipeline(
+src/inv_man_intake/run.py:162: in run_pipeline
+    artifacts = _run_pipeline_core(
+src/inv_man_intake/v1_smoke.py:282: in _run_pipeline_core
+    secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+kwargs = {'tracer': <inv_man_intake.observability.tracing.Tracer object at 0x108d1b410>, 'trace_context': TraceContext(trace_id...age': 'extract'}), 'source_doc_id': 'pkg_pdf_mixed_001:doc:0', 'content': b'supported attachment; not a workbook', ...}
+
+    def forbidden_secondary(**kwargs):
+>       pytest.fail("a non-workbook attachment entered the workbook boundary")
+E       Failed: a non-workbook attachment entered the workbook boundary
+
+tests/cli/test_ingest_entrypoint.py:195: Failed
+__________ test_ingest_primary_with_non_workbook_secondary[True-txt] ___________
+
+tmp_path = PosixPath('/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5160/test_ingest_primary_with_non_w6')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x108d1a8a0>
+extension = 'txt', reverse = True
+
+    @pytest.mark.parametrize("extension", ["docx", "eml", "txt", "md"])
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_ingest_primary_with_non_workbook_secondary(tmp_path, monkeypatch, extension, reverse):
+        """Supported attachments must not enter the XLSX-only secondary boundary."""
+        from inv_man_intake import v1_smoke
+    
+        bundle = _write_external_layout_bundle(tmp_path / "bundle")
+        payload = json.loads(bundle.read_text())
+        attachment_name = f"supporting_material.{extension}"
+        payload["files"][1] = {
+            "file_name": attachment_name,
+            "role": "supporting_material",
+            "source_ref": "email:test-optional-attachment",
+        }
+        (bundle.parent / attachment_name).write_bytes(b"supported attachment; not a workbook")
+        if reverse:
+            payload["files"].reverse()
+        bundle.write_text(json.dumps(payload))
+    
+        def forbidden_secondary(**kwargs):
+            pytest.fail("a non-workbook attachment entered the workbook boundary")
+    
+        monkeypatch.setattr(v1_smoke, "_run_secondary_extraction_boundary_smoke", forbidden_secondary)
+        output = tmp_path / "out"
+>       assert main([str(bundle), "--out", str(output)]) == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/cli/test_ingest_entrypoint.py:199: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/inv_man_intake/cli/ingest.py:61: in main
+    result = run_pipeline(
+src/inv_man_intake/run.py:162: in run_pipeline
+    artifacts = _run_pipeline_core(
+src/inv_man_intake/v1_smoke.py:282: in _run_pipeline_core
+    secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+kwargs = {'tracer': <inv_man_intake.observability.tracing.Tracer object at 0x108d19820>, 'trace_context': TraceContext(trace_id...age': 'extract'}), 'source_doc_id': 'pkg_pdf_mixed_001:doc:0', 'content': b'supported attachment; not a workbook', ...}
+
+    def forbidden_secondary(**kwargs):
+>       pytest.fail("a non-workbook attachment entered the workbook boundary")
+E       Failed: a non-workbook attachment entered the workbook boundary
+
+tests/cli/test_ingest_entrypoint.py:195: Failed
+___________ test_ingest_primary_with_non_workbook_secondary[True-md] ___________
+
+tmp_path = PosixPath('/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5160/test_ingest_primary_with_non_w7')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x108d19d00>
+extension = 'md', reverse = True
+
+    @pytest.mark.parametrize("extension", ["docx", "eml", "txt", "md"])
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_ingest_primary_with_non_workbook_secondary(tmp_path, monkeypatch, extension, reverse):
+        """Supported attachments must not enter the XLSX-only secondary boundary."""
+        from inv_man_intake import v1_smoke
+    
+        bundle = _write_external_layout_bundle(tmp_path / "bundle")
+        payload = json.loads(bundle.read_text())
+        attachment_name = f"supporting_material.{extension}"
+        payload["files"][1] = {
+            "file_name": attachment_name,
+            "role": "supporting_material",
+            "source_ref": "email:test-optional-attachment",
+        }
+        (bundle.parent / attachment_name).write_bytes(b"supported attachment; not a workbook")
+        if reverse:
+            payload["files"].reverse()
+        bundle.write_text(json.dumps(payload))
+    
+        def forbidden_secondary(**kwargs):
+            pytest.fail("a non-workbook attachment entered the workbook boundary")
+    
+        monkeypatch.setattr(v1_smoke, "_run_secondary_extraction_boundary_smoke", forbidden_secondary)
+        output = tmp_path / "out"
+>       assert main([str(bundle), "--out", str(output)]) == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/cli/test_ingest_entrypoint.py:199: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/inv_man_intake/cli/ingest.py:61: in main
+    result = run_pipeline(
+src/inv_man_intake/run.py:162: in run_pipeline
+    artifacts = _run_pipeline_core(
+src/inv_man_intake/v1_smoke.py:282: in _run_pipeline_core
+    secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+kwargs = {'tracer': <inv_man_intake.observability.tracing.Tracer object at 0x108d1bbc0>, 'trace_context': TraceContext(trace_id...age': 'extract'}), 'source_doc_id': 'pkg_pdf_mixed_001:doc:0', 'content': b'supported attachment; not a workbook', ...}
+
+    def forbidden_secondary(**kwargs):
+>       pytest.fail("a non-workbook attachment entered the workbook boundary")
+E       Failed: a non-workbook attachment entered the workbook boundary
+
+tests/cli/test_ingest_entrypoint.py:195: Failed
+=========================== short test summary info ============================
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_primary_with_non_workbook_secondary[False-docx]
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_primary_with_non_workbook_secondary[False-eml]
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_primary_with_non_workbook_secondary[False-txt]
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_primary_with_non_workbook_secondary[False-md]
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_primary_with_non_workbook_secondary[True-docx]
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_primary_with_non_workbook_secondary[True-eml]
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_primary_with_non_workbook_secondary[True-txt]
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_primary_with_non_workbook_secondary[True-md]
+8 failed, 25 deselected in 3.10s
