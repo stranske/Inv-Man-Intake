@@ -66,6 +66,33 @@ def test_ingest_entrypoint_writes_run_and_named_artifacts(tmp_path: Path) -> Non
         assert (output_dir / name).is_file(), f"missing artifact on disk: {name}"
 
 
+@pytest.mark.parametrize("toggle", ["false", "true", None])
+def test_ingest_ignores_langsmith_key_when_tracing_disabled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, toggle: str | None
+) -> None:
+    """Production stays offline even with credentials and ambient opt-in toggles."""
+    from inv_man_intake.observability import langsmith_sink
+
+    monkeypatch.setenv("LANGSMITH_API_KEY", "fake-offline-regression-key")
+    for key in ("INV_MAN_TRACING_ENABLED", "LANGSMITH_TRACING_ENABLED", "LANGCHAIN_TRACING_V2"):
+        if toggle is None:
+            monkeypatch.delenv(key, raising=False)
+        else:
+            monkeypatch.setenv(key, toggle)
+    calls = []
+
+    def forbidden_client():
+        calls.append("client")
+        raise AssertionError("production ingest must never construct a remote trace client")
+
+    monkeypatch.setattr(langsmith_sink, "_default_client_factory", forbidden_client)
+    bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
+    output_dir = tmp_path / "out"
+    assert main([str(bundle_path), "--out", str(output_dir)]) == 0
+    assert json.loads((output_dir / "run.json").read_text())["run_id"]
+    assert calls == []
+
+
 def test_ingest_run_json_carries_score_escalation_and_evidence(tmp_path: Path) -> None:
     bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
     output_dir = tmp_path / "out"

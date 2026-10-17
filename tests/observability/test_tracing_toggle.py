@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from inv_man_intake.observability.tracing import (
     LANGCHAIN_TRACE_ENABLED_ENV_KEY,
     LANGSMITH_TRACE_ENABLED_ENV_KEY,
@@ -28,6 +30,47 @@ def test_tracer_disabled_mode_emits_no_events() -> None:
         pass
 
     assert sink.events == []
+
+
+@pytest.mark.parametrize(
+    ("allow_remote", "toggle", "remote_expected"),
+    [(False, "true", False), (True, "false", False), (True, None, False), (True, "true", True)],
+)
+def test_entrypoint_tracer_requires_explicit_remote_opt_in(
+    monkeypatch: pytest.MonkeyPatch, allow_remote: bool, toggle: str | None, remote_expected: bool
+) -> None:
+    from inv_man_intake.observability import langsmith_sink
+    from inv_man_intake.v1_smoke import _entrypoint_tracer
+
+    monkeypatch.setenv("LANGSMITH_API_KEY", "fake-offline-regression-key")
+    monkeypatch.setenv("LANGSMITH_TRACING_ENABLED", "true" if toggle == "false" else "false")
+    monkeypatch.setenv("LANGCHAIN_TRACING_V2", "false")
+    if toggle is None:
+        monkeypatch.delenv("INV_MAN_TRACING_ENABLED", raising=False)
+    else:
+        monkeypatch.setenv("INV_MAN_TRACING_ENABLED", toggle)
+    remote_events = []
+    client_constructions = []
+
+    class FakeClient:
+        def create_run(self, **kwargs):
+            remote_events.append("start")
+
+        def update_run(self, *args, **kwargs):
+            remote_events.append("end")
+
+    def fake_client():
+        client_constructions.append("client")
+        return FakeClient()
+
+    monkeypatch.setattr(langsmith_sink, "_default_client_factory", fake_client)
+    sink = InMemoryTraceSink()
+    tracer = _entrypoint_tracer(sink=sink, allow_remote_tracing=allow_remote)
+    with tracer.start_span(name="local_stage", context=new_trace_context()):
+        pass
+    assert len(sink.events) == 2, "local timing and propagation stay enabled"
+    assert remote_events == (["start", "end"] if remote_expected else [])
+    assert client_constructions == (["client"] if remote_expected else [])
 
 
 def test_tracer_enabled_mode_emits_start_and_end_events() -> None:
