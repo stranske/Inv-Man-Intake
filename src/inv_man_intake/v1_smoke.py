@@ -549,20 +549,14 @@ def _select_extraction_documents(
     ]
     if not primaries:
         raise ValueError("intake bundle has no registered primary PDF or PPTX")
-    secondary = [document for document in documents if document not in primaries]
+    workbooks = [
+        document for document in documents if Path(document.file_name).suffix.lower() == ".xlsx"
+    ]
     workbook_name = _performance_track_record_file_name(file_entries)
     preferred = next(
-        (document for document in secondary if document.file_name == workbook_name), None
+        (document for document in workbooks if document.file_name == workbook_name),
+        workbooks[0] if workbooks else None,
     )
-    if preferred is None:
-        preferred = next(
-            (
-                document
-                for document in secondary
-                if Path(document.file_name).suffix.lower() == ".xlsx"
-            ),
-            secondary[0] if secondary else None,
-        )
     return primaries[0], preferred
 
 
