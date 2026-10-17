@@ -211,6 +211,36 @@ def test_evidence_backed_team_experience_branches(risk_value: str, expected: flo
         assert varied[name] == pytest.approx(baseline[name]), name
 
 
+@pytest.mark.parametrize(
+    "risk_value,expected",
+    [
+        # Adverse signals outrank reassuring ones in the same text.
+        ("stable team; one senior PM departure pending", 0.35),
+        ("low risk overall, but founder resigned", 0.35),
+        ("stable team with high key person risk", 0.40),
+        # Word boundaries: substrings must not misfire.
+        ("nonexistent succession plan; high key person risk", 0.40),
+        ("highly experienced team", 0.65),
+    ],
+)
+def test_evidence_backed_team_experience_adverse_and_boundary_matching(
+    risk_value: str, expected: float
+) -> None:
+    baseline = _derived_scores()
+    varied = _derived_scores(
+        extraction=_derived_extraction(**{"team.key_person_risk": {"value": risk_value}})
+    )
+    assert baseline is not None and varied is not None
+    assert varied["team_experience"] == pytest.approx(expected)
+    for name in (
+        "performance_consistency",
+        "risk_adjusted_returns",
+        "operational_quality",
+        "transparency",
+    ):
+        assert varied[name] == pytest.approx(baseline[name]), name
+
+
 def test_evidence_backed_performance_consistency_tracks_volatility_only() -> None:
     baseline = _derived_scores()
     calmer = _derived_scores(metrics=_derived_metrics(annualized_volatility=0.05))

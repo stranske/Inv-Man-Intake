@@ -915,6 +915,32 @@ def _clamp01(value: float) -> float:
     return max(0.0, min(1.0, value))
 
 
+def _team_experience_score(risk_value: str) -> float:
+    """Score key-person risk text; adverse signals outrank reassuring ones.
+
+    Matching is word-boundary based so substrings do not misfire (``high``
+    in ``highly``, ``none`` in ``nonexistent``). A text that mentions both
+    stability and a pending departure scores on the departure, not the
+    reassurance.
+    """
+
+    risk_text = risk_value.lower()
+    if re.search(r"\b(?:departure|pending|leaving|resigned)\b", risk_text):
+        return 0.35
+    if re.search(r"\bhigh\b", risk_text):
+        return 0.40
+    if re.search(r"\b(?:moderate|medium)\b", risk_text):
+        return 0.60
+    if (
+        "no key person" in risk_text
+        or "low risk" in risk_text
+        or "stable team" in risk_text
+        or re.search(r"\bnone\b", risk_text)
+    ):
+        return 0.90
+    return 0.65
+
+
 def _field_provenance(field: Any) -> str:
     return f"{field.key}@{field.source_doc_id}:page {field.source_page} (confidence {field.confidence:.2f})"
 
@@ -1050,17 +1076,7 @@ def _evidence_backed_score_components(
     transparency = round(
         _clamp01(sum(field.confidence for field in key_fields) / len(key_fields)), 6
     )
-    risk_text = fields["team.key_person_risk"].value.lower()
-    if any(token in risk_text for token in ("no key person", "none", "low risk", "stable team")):
-        team_experience = 0.90
-    elif any(token in risk_text for token in ("departure", "pending", "leaving", "resigned")):
-        team_experience = 0.35
-    elif "high" in risk_text:
-        team_experience = 0.40
-    elif any(token in risk_text for token in ("moderate", "medium")):
-        team_experience = 0.60
-    else:
-        team_experience = 0.65
+    team_experience = _team_experience_score(fields["team.key_person_risk"].value)
 
     components = (
         ScoreComponent("performance_consistency", performance_consistency),
