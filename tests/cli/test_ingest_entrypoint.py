@@ -630,6 +630,47 @@ def test_ingest_secondary_boundary_uses_submitted_workbook_bytes_and_id(
     assert observed == [(expected_id, submitted_bytes)]
 
 
+@pytest.mark.parametrize("change", ["replace", "remove"])
+@pytest.mark.parametrize("extension", [".pdf", ".xlsx"], ids=["primary", "workbook"])
+def test_ingest_uses_registered_bytes_after_source_files_change(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, change: str, extension: str
+) -> None:
+    """B04/B06: extraction and performance consume the registered document snapshot."""
+    from inv_man_intake import v1_smoke
+
+    bundle_path = _write_score_bundle(tmp_path, name="bundle")
+    payload = json.loads(bundle_path.read_text(encoding="utf-8"))
+    submitted_path = next(
+        bundle_path.parent / entry["file_name"]
+        for entry in payload["files"]
+        if Path(entry["file_name"]).suffix == extension
+    )
+    original_registration = v1_smoke.register_intake_bundle_file
+
+    def register_then_change_sources(*args, **kwargs):
+        registration = original_registration(*args, **kwargs)
+        assert registration.accepted
+        if change == "remove":
+            submitted_path.unlink()
+        elif extension == ".xlsx":
+            _write_performance_workbook(
+                submitted_path, [(as_of, value / 10) for as_of, value in _SCORE_ROWS]
+            )
+        else:
+            submitted_path.write_bytes(submitted_path.read_bytes().replace(b"credit", b"quant"))
+        return registration
+
+    monkeypatch.setattr(v1_smoke, "register_intake_bundle_file", register_then_change_sources)
+    run = _run_score(bundle_path, tmp_path / "out")
+
+    fields = {field["key"]: field["value"] for field in run["fields"]}
+    assert fields["strategy.asset_class"] == "credit"
+    assert run["performance"]["monthly"] == [
+        {"as_of": as_of, "value": value} for as_of, value in _SCORE_ROWS
+    ]
+    assert isinstance(run["final_score"], float)
+
+
 @pytest.mark.parametrize("order", list(permutations(range(3))))
 def test_ingest_multiple_workbooks_selects_track_record_by_role(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, order: tuple[int, ...]
