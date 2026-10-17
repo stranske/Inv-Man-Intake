@@ -473,6 +473,43 @@ def test_ingest_primary_with_non_workbook_secondary(tmp_path, monkeypatch, exten
     }
 
 
+@pytest.mark.parametrize("reverse", [False, True], ids=["primary-first", "workbook-first"])
+def test_ingest_secondary_boundary_uses_submitted_workbook_bytes_and_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reverse: bool
+) -> None:
+    """B05: production secondary extraction receives submitted content and identity."""
+    from inv_man_intake import v1_smoke
+
+    bundle_path = _write_external_layout_bundle(tmp_path / "bundle")
+    payload = json.loads(bundle_path.read_text(encoding="utf-8"))
+    payload["package_id"] = "pkg_submitted_secondary"
+    workbook_name = "submitted-track-record.xlsx"
+    for entry in payload["files"]:
+        if entry["role"] == "performance_track_record":
+            (bundle_path.parent / entry["file_name"]).unlink()
+            entry["file_name"] = workbook_name
+    workbook_path = bundle_path.parent / workbook_name
+    _write_performance_workbook(workbook_path, [("2024-01-31", 0.12), ("2024-02-29", -0.07)])
+    submitted_bytes = workbook_path.read_bytes()
+    if reverse:
+        payload["files"].reverse()
+    bundle_path.write_text(json.dumps(payload), encoding="utf-8")
+    workbook_index = next(
+        index for index, entry in enumerate(payload["files"]) if entry["file_name"] == workbook_name
+    )
+    expected_id = f"{payload['package_id']}:doc:{workbook_index}"
+    observed: list[tuple[str, bytes]] = []
+    original = v1_smoke._run_secondary_extraction_boundary_smoke
+
+    def recording_secondary(**kwargs):
+        observed.append((kwargs["source_doc_id"], kwargs["content"]))
+        return original(**kwargs)
+
+    monkeypatch.setattr(v1_smoke, "_run_secondary_extraction_boundary_smoke", recording_secondary)
+    assert main([str(bundle_path), "--out", str(tmp_path / "out")]) == 0
+    assert observed == [(expected_id, submitted_bytes)]
+
+
 def test_ingest_file_order_permutations_equivalent(tmp_path):
     bundle = _write_external_layout_bundle(tmp_path / "bundle")
     payload = json.loads(bundle.read_text())
