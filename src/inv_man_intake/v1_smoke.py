@@ -408,11 +408,9 @@ def _run_pipeline_core(
         # ``_evidence_backed_score_components``) and stays unavailable when that
         # evidence is below the documented minimum thresholds.
         score = None
-        formatted_explainability: dict[str, object] = {
-            "status": "unavailable",
-            "overall_score": None,
-            "reason": "evidence_backed_score_components_unavailable",
-        }
+        formatted_explainability = _unavailable_explainability(
+            "evidence_backed_score_components_unavailable"
+        )
         if not smoke_mode:
             derived = _evidence_backed_score_components(
                 extraction=extraction_with_thresholds,
@@ -435,6 +433,9 @@ def _run_pipeline_core(
                     )
                 except PermissionError:
                     production_submission = None
+                    formatted_explainability = _unavailable_explainability(
+                        "operator_confirmation_required"
+                    )
                 if production_submission is not None:
                     score = compute_score(
                         production_submission,
@@ -943,20 +944,43 @@ def _parse_percent(value: str) -> float | None:
     return float(match.group(1)) / 100.0 if match else None
 
 
+_AUM_AMOUNT = r"(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?"
+_AUM_WITH_UNIT = re.compile(
+    rf"\$?\s*(?P<amount>{_AUM_AMOUNT})\s*" r"(?P<unit>billion|million|thousand|bn|mm|[kmb])\b",
+    re.IGNORECASE,
+)
+_AUM_UNITLESS = re.compile(rf"\s*\$?\s*(?P<amount>{_AUM_AMOUNT})\s*\Z")
+
+
 def _parse_aum(value: str) -> float | None:
-    match = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*([kmb]n?|million|billion|thousand)?", value.lower())
-    if not match:
+    """Parse one unambiguous AUM amount without guessing from unrelated numbers."""
+
+    candidates = list(_AUM_WITH_UNIT.finditer(value))
+    if len(candidates) == 1:
+        match = candidates[0]
+        amount = float(match.group("amount").replace(",", ""))
+        unit = match.group("unit").lower()
+        multiplier = {
+            "b": 1_000_000_000.0,
+            "bn": 1_000_000_000.0,
+            "billion": 1_000_000_000.0,
+            "m": 1_000_000.0,
+            "mm": 1_000_000.0,
+            "million": 1_000_000.0,
+            "k": 1_000.0,
+            "thousand": 1_000.0,
+        }[unit]
+        return amount * multiplier
+    if candidates:
         return None
-    amount = float(match.group(1))
-    unit = match.group(2) or ""
-    multiplier = 1.0
-    if unit.startswith("b"):
-        multiplier = 1e9
-    elif unit.startswith("m"):
-        multiplier = 1e6
-    elif unit.startswith("k") or unit.startswith("t"):
-        multiplier = 1e3
-    return amount * multiplier
+    unitless = _AUM_UNITLESS.fullmatch(value)
+    if unitless is None:
+        return None
+    return float(unitless.group("amount").replace(",", ""))
+
+
+def _unavailable_explainability(reason: str) -> dict[str, object]:
+    return {"status": "unavailable", "overall_score": None, "reason": reason}
 
 
 def _evidence_backed_score_components(

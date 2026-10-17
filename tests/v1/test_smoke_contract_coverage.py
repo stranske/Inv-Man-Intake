@@ -9,7 +9,7 @@ import pytest
 
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
 from inv_man_intake.performance.metrics import PerformanceMetrics
-from inv_man_intake.v1_smoke import _evidence_backed_score_components, _score_components
+from inv_man_intake.v1_smoke import _evidence_backed_score_components, _parse_aum, _score_components
 
 SMOKE_PATH = Path("src/inv_man_intake/v1_smoke.py")
 AUDIT_REPORT_PATH = Path("docs/reports/v1_smoke_contract_audit.md")
@@ -225,6 +225,22 @@ def test_evidence_backed_components_missing_metrics_is_unavailable() -> None:
         extraction=_derived_extraction(), metrics=None, workbook_ref="track.xlsx@doc-1"
     )
     assert derived is None
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("2025: $1.2bn", 1_200_000_000),
+        ("$1,200 million", 1_200_000_000),
+        ("450", 450),
+        ("450 managed", None),
+        ("$450M and $1.2bn", None),
+    ],
+)
+def test_parse_aum_requires_one_recognized_amount_and_unit(
+    value: str, expected: float | None
+) -> None:
+    assert _parse_aum(value) == expected
 
 
 def test_v1_smoke_contract_guard_accepts_current_smoke_path() -> None:

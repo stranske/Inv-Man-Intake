@@ -20,6 +20,7 @@ from inv_man_intake.v1_smoke import (
     _assert_registered_package_state,
     _document_source_names,
     _score_components,
+    _unavailable_explainability,
     run_v1_smoke_pipeline,
 )
 
@@ -353,6 +354,14 @@ def test_v1_smoke_pipeline_without_langsmith_key_uses_local_trace_context(monkey
 
     assert "langsmith_enabled" not in artifacts.trace_context.tags
     assert "langsmith_project" not in artifacts.trace_context.tags
+
+
+def test_unavailable_explainability_names_operator_confirmation_action() -> None:
+    assert _unavailable_explainability("operator_confirmation_required") == {
+        "status": "unavailable",
+        "overall_score": None,
+        "reason": "operator_confirmation_required",
+    }
 
 
 def _write_weight_file(directory: Path, *, asset_class: str, weights_block: str) -> None:
