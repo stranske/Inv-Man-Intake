@@ -342,6 +342,94 @@ def test_ingest_score_within_class_aum_change_changes_operational_component(
     assert changed["final_score"] != pytest.approx(baseline["final_score"])
 
 
+def test_ingest_score_fee_change_changes_only_operational_component(tmp_path: Path) -> None:
+    baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
+    changed = _run_score(
+        _write_score_bundle(
+            tmp_path,
+            name="bundle-fee",
+            pdf_replacements=((b"Management Fee: 1.25%", b"Management Fee: 2.50%"),),
+        ),
+        tmp_path / "out-fee",
+    )
+    base_scores = _component_scores(baseline)
+    changed_scores = _component_scores(changed)
+    # A higher management fee lowers operational quality and nothing else.
+    assert changed_scores["operational_quality"] < base_scores["operational_quality"]
+    for component in (
+        "performance_consistency",
+        "risk_adjusted_returns",
+        "transparency",
+        "team_experience",
+    ):
+        assert changed_scores[component] == pytest.approx(base_scores[component]), component
+    assert changed["final_score"] < baseline["final_score"]
+
+
+def test_ingest_score_net_return_change_changes_only_risk_adjusted_component(
+    tmp_path: Path,
+) -> None:
+    baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
+    changed = _run_score(
+        _write_score_bundle(
+            tmp_path,
+            name="bundle-return",
+            pdf_replacements=((b"Net Return 1Y: 8.4%", b"Net Return 1Y: 0.4%"),),
+        ),
+        tmp_path / "out-return",
+    )
+    base_scores = _component_scores(baseline)
+    changed_scores = _component_scores(changed)
+    # A lower extracted 1Y net return lowers risk-adjusted returns only.
+    assert changed_scores["risk_adjusted_returns"] < base_scores["risk_adjusted_returns"]
+    for component in (
+        "performance_consistency",
+        "operational_quality",
+        "transparency",
+        "team_experience",
+    ):
+        assert changed_scores[component] == pytest.approx(base_scores[component]), component
+    assert changed["final_score"] < baseline["final_score"]
+
+
+def test_ingest_score_key_person_change_changes_only_team_component(tmp_path: Path) -> None:
+    baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
+    changed = _run_score(
+        _write_score_bundle(
+            tmp_path,
+            name="bundle-team",
+            pdf_replacements=((b"one senior PM departure pending", b"low risk, stable team"),),
+        ),
+        tmp_path / "out-team",
+    )
+    base_scores = _component_scores(baseline)
+    changed_scores = _component_scores(changed)
+    # Baseline text carries a pending departure (0.35); low-risk text scores higher.
+    assert base_scores["team_experience"] == pytest.approx(0.35)
+    assert changed_scores["team_experience"] == pytest.approx(0.90)
+    for component in (
+        "performance_consistency",
+        "risk_adjusted_returns",
+        "operational_quality",
+        "transparency",
+    ):
+        assert changed_scores[component] == pytest.approx(base_scores[component]), component
+    assert changed["final_score"] > baseline["final_score"]
+
+
+def test_ingest_score_unsupported_asset_class_is_unavailable(tmp_path: Path) -> None:
+    bundle = _write_score_bundle(
+        tmp_path,
+        name="bundle-unknown-class",
+        pdf_replacements=((b"credit", b"banana"),),
+    )
+    run = _run_score(bundle, tmp_path / "out-unknown-class")
+    assert run["final_score"] is None
+    assert run["explainability"]["status"] == "unavailable"
+    assert run["explainability"]["reason"] == "evidence_backed_score_components_unavailable"
+    assert any(w["code"] == "scoring:unavailable" for w in run["warnings"])
+
+
 def test_ingest_score_workbook_change_changes_performance_component(tmp_path: Path) -> None:
     baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
     changed = _run_score(
