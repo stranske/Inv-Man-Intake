@@ -433,11 +433,22 @@ def test_production_performance_source_deliberate_smoke_fixture_fails(
     _assert_production_performance_source(restored)
 
 
-def test_production_queue_assignment_is_unowned_and_uses_live_clock(tmp_path: Path) -> None:
+def test_production_queue_assignment_is_unowned_and_uses_live_clock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Retain the production queue handoff delivered by #1018 / #1034."""
-    from inv_man_intake import v1_smoke
+    from inv_man_intake import v1_smoke, workflow_validation
     from inv_man_intake.run import run_pipeline
 
+    current_time = datetime(2031, 7, 9, 14, 23, 11, tzinfo=UTC)
+
+    class ControlledDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            assert tz is UTC, "queue creation must request a UTC timestamp"
+            return current_time
+
+    monkeypatch.setattr(workflow_validation, "datetime", ControlledDateTime)
     bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
     package_id = json.loads(bundle_path.read_text(encoding="utf-8"))["package_id"]
     artifacts = v1_smoke._run_pipeline_core(
@@ -449,14 +460,23 @@ def test_production_queue_assignment_is_unowned_and_uses_live_clock(tmp_path: Pa
     )
     assert artifacts.queue_assignment is not None
     assert artifacts.queue_assignment.owner_id is None
+    assert artifacts.queue_assignment.owner_role is None
     assert artifacts.queue_assignment.state == "pending_triage"
     assert artifacts.queue_assignment.package_id == package_id
-    assert (
-        datetime.fromisoformat(artifacts.queue_assignment.created_at).date()
-        == datetime.now(UTC).date()
-    )
-    # Keep the same behavior exercised on the headless path.
-    run_pipeline(bundle_path, output_dir=tmp_path / "out")
+    assert datetime.fromisoformat(artifacts.queue_assignment.created_at) == current_time
+    assert artifacts.queue_assignment.updated_at == artifacts.queue_assignment.created_at
+
+    # Advance within the same day: checking only the date would miss a fixed clock.
+    current_time = datetime(2031, 7, 9, 14, 23, 37, tzinfo=UTC)
+    output_dir = tmp_path / "out"
+    run_pipeline(bundle_path, output_dir=output_dir)
+    (saved_item,) = workflow_validation.load_validation_queue(output_dir / "validation-queue.json")
+    assert saved_item.owner_id is saved_item.owner_role is None
+    assert saved_item.state == "pending_triage"
+    assert saved_item.item_id == artifacts.queue_assignment.item_id
+    assert datetime.fromisoformat(saved_item.created_at) == current_time
+    assert saved_item.updated_at == saved_item.created_at
+    assert saved_item.created_at != artifacts.queue_assignment.created_at
 
 
 @pytest.mark.parametrize(

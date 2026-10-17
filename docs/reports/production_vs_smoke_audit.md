@@ -93,6 +93,7 @@ No automatic follow-up issues are created from this audit.
 - `tests/cli/test_ingest_entrypoint.py`
   - `test_run_pipeline_invokes_core_without_smoke_document_ids` — production never passes `expected_document_ids`.
   - `test_run_pipeline_disables_remote_tracing` — production always passes `allow_remote_tracing=False`.
+  - `test_production_queue_assignment_is_unowned_and_uses_live_clock` — a controlled UTC clock advances within one day between core and headless runs; queue timestamps must follow it exactly, including the saved artifact, while ownership stays unset. This catches fixed timestamps that a date-only assertion would miss.
   - `test_ingest_score_never_calls_smoke_components` — production never invokes fixed smoke score components, with either sufficient or insufficient scoring evidence.
   - `test_ingest_primary_uses_submitted_bytes_filename_and_id` — renamed PDF and PowerPoint submissions reach extraction with their submitted bytes and registered IDs in both document orders; emitted fields and evidence retain those IDs.
   - `test_ingest_secondary_boundary_uses_submitted_workbook_bytes_and_id` — secondary extraction receives the renamed submitted workbook's bytes and registered document ID in both document orders, with a non-fixture package ID.
