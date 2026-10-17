@@ -455,6 +455,28 @@ def test_ingest_score_insufficient_evidence_is_unavailable(tmp_path: Path) -> No
     assert any(w["code"] == "scoring:unavailable" for w in run["warnings"])
 
 
+def test_ingest_score_nonstandard_series_requires_operator_confirmation(
+    tmp_path: Path,
+) -> None:
+    # A missing month makes the series non-standard (backfilled), so the
+    # scoring gate blocks scoring until an operator confirms it: the run
+    # stays unavailable with the operator-action reason, not a score and
+    # not the minimum-evidence reason (evidence is otherwise sufficient).
+    rows = [
+        ("2024-01-31", 0.12),
+        ("2024-03-31", 0.03),
+        ("2024-04-30", -0.02),
+        ("2024-05-31", 0.04),
+    ]
+    bundle = _write_score_bundle(tmp_path, name="bundle-gap", rows=rows)
+    run = _run_score(bundle, tmp_path / "out-gap")
+    assert run["performance"]["status"] == "available"
+    assert run["final_score"] is None
+    assert run["explainability"]["status"] == "unavailable"
+    assert run["explainability"]["reason"] == "operator_confirmation_required"
+    assert any(w["code"] == "scoring:unavailable" for w in run["warnings"])
+
+
 def test_ingest_score_deliberate_break_constants_would_fail(tmp_path: Path) -> None:
     """Constants (smoke ``_score_components``) cannot satisfy these assertions.
 
