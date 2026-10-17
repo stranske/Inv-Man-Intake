@@ -473,6 +473,49 @@ def test_ingest_primary_with_non_workbook_secondary(tmp_path, monkeypatch, exten
     }
 
 
+@pytest.mark.parametrize(
+    "primary", ["summit_arc_investment_update.pdf", "harborline_strategy_review.pptx"]
+)
+@pytest.mark.parametrize("reverse", [False, True], ids=["primary-first", "workbook-first"])
+def test_ingest_primary_uses_submitted_bytes_filename_and_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, primary: str, reverse: bool
+) -> None:
+    """B04/B16: renamed primary submissions retain their content and registered identity."""
+    from inv_man_intake import v1_smoke
+
+    bundle_path = _write_external_layout_bundle(tmp_path / "bundle")
+    payload = json.loads(bundle_path.read_text(encoding="utf-8"))
+    payload["package_id"] = "pkg_submitted_primary"
+    primary_entry = next(entry for entry in payload["files"] if entry["file_name"].endswith(".pdf"))
+    (bundle_path.parent / primary_entry["file_name"]).unlink()
+    submitted_name = f"submitted-manager-update{Path(primary).suffix}"
+    submitted_bytes = (_FIXTURE_EXTRACTION / primary).read_bytes() + b"\nsubmitted-primary-marker\n"
+    primary_entry["file_name"] = submitted_name
+    (bundle_path.parent / submitted_name).write_bytes(submitted_bytes)
+    if reverse:
+        payload["files"].reverse()
+    bundle_path.write_text(json.dumps(payload), encoding="utf-8")
+    primary_index = payload["files"].index(primary_entry)
+    expected_id = f"{payload['package_id']}:doc:{primary_index}"
+    observed: list[tuple[str, str, bytes]] = []
+    original = v1_smoke._run_extraction_smoke
+
+    def recording_primary(**kwargs):
+        observed.append((kwargs["source_doc_id"], kwargs["primary_file_name"], kwargs["content"]))
+        return original(**kwargs)
+
+    monkeypatch.setattr(v1_smoke, "_run_extraction_smoke", recording_primary)
+    output_dir = tmp_path / "out"
+    assert main([str(bundle_path), "--out", str(output_dir)]) == 0
+    assert observed == [(expected_id, submitted_name, submitted_bytes)]
+    run = json.loads((output_dir / "run.json").read_text(encoding="utf-8"))
+    assert run["fields"]
+    assert {field["source_doc_id"] for field in run["fields"]} == {expected_id}
+    assert {pointer["source_doc_id"] for pointer in run["provenance"]["evidence"].values()} == {
+        expected_id
+    }
+
+
 @pytest.mark.parametrize("reverse", [False, True], ids=["primary-first", "workbook-first"])
 def test_ingest_secondary_boundary_uses_submitted_workbook_bytes_and_id(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reverse: bool
