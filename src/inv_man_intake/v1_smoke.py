@@ -1039,7 +1039,7 @@ def _parse_percent(value: str) -> float | None:
     """Parse a percentage written as ``%``, ``percent``/``pct``, or basis points.
 
     Submitted documents spell the same quantity several ways (``1.25%``,
-    ``1.25 percent``, ``1.25 per cent``, ``125 bps``/``125 bp``); all
+    ``1.25 percent``, ``1.25 per cent``/``per-cent``, ``125 bps``/``125 bp``); all
     normalize to a decimal fraction. Thousands separators are part of the
     number (``1,250 bps`` is 12.5%, not the trailing ``250 bps``). A bare
     number with no unit stays unparseable rather than guessed.
@@ -1049,7 +1049,7 @@ def _parse_percent(value: str) -> float | None:
     if bps:
         return float(bps.group(1).replace(",", "")) / 10_000.0
     match = re.search(
-        rf"({_PERCENT_NUMBER})\s*(?:%|per\s+cent\b|percent(?:age)?\b|pct\b)",
+        rf"({_PERCENT_NUMBER})\s*(?:%|per[-\s]+cent\b|percent(?:age)?\b|pct\b)",
         value,
         re.IGNORECASE,
     )

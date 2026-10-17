@@ -664,6 +664,38 @@ def test_ingest_score_word_order_class_and_negated_departure_score_end_to_end(
     assert changed_scores["team_experience"] == pytest.approx(0.90)
 
 
+def test_ingest_score_hyphenated_per_cent_scores_end_to_end(tmp_path: Path) -> None:
+    """Hyphenated ``per-cent`` units are submitted evidence too.
+
+    Deliberate-break: reverting the ``per[-\\s]+cent`` branch in extraction
+    or ``_parse_percent`` makes the fee/return unparseable (score
+    unavailable) instead of equal to the ``%`` baseline.
+    """
+    baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
+    changed = _run_score(
+        _write_score_bundle(
+            tmp_path,
+            name="bundle-per-cent-hyphen",
+            pdf_replacements=(
+                (b"Management Fee: 1.25%", b"Management Fee: 1.25 per-cent"),
+                (b"Net Return 1Y: 8.4%", b"Net Return 1Y: 8.4 per-cent"),
+            ),
+        ),
+        tmp_path / "out-per-cent-hyphen",
+    )
+    assert isinstance(changed["final_score"], float)
+    base_scores = _component_scores(baseline)
+    changed_scores = _component_scores(changed)
+    # 1.25 per-cent == 1.25% and 8.4 per-cent == 8.4%: components unchanged.
+    assert changed_scores["operational_quality"] == pytest.approx(
+        base_scores["operational_quality"]
+    )
+    assert changed_scores["risk_adjusted_returns"] == pytest.approx(
+        base_scores["risk_adjusted_returns"]
+    )
+    assert changed["final_score"] == pytest.approx(baseline["final_score"])
+
+
 def test_ingest_score_unsupported_asset_class_is_unavailable(tmp_path: Path) -> None:
     bundle = _write_score_bundle(
         tmp_path,

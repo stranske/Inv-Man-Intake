@@ -368,6 +368,7 @@ def test_evidence_backed_team_experience_natural_spellings(
         ("1.25%", 0.0125),
         ("1.25 percent", 0.0125),
         ("1.25 per cent", 0.0125),
+        ("1.25 per-cent", 0.0125),
         ("8.4 per cent", 0.084),
         ("1.25 pct", 0.0125),
         ("125 bps", 0.0125),
