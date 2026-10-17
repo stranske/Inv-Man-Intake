@@ -147,23 +147,33 @@ def _normalize_component(component: ScoreComponentInput) -> ScoreComponentOutput
     )
 
 
+_PROVENANCE_SOURCE_KINDS = frozenset({"document", "workbook", "analyst"})
+
+
 def _normalize_provenance(
     component_id: str, provenance: ComponentProvenance
 ) -> ComponentProvenance:
     source_kind = provenance.source_kind.strip()
-    if not source_kind:
-        raise ValueError(f"{component_id}.provenance.source_kind must be non-empty")
+    if source_kind not in _PROVENANCE_SOURCE_KINDS:
+        raise ValueError(
+            f"{component_id}.provenance.source_kind must be one of " "document, workbook, analyst"
+        )
     reference = provenance.reference.strip()
     if not reference:
         raise ValueError(f"{component_id}.provenance.reference must be non-empty")
     source_doc_id = provenance.source_doc_id.strip() if provenance.source_doc_id else None
-    if provenance.source_page is not None and provenance.source_page < 1:
-        raise ValueError(f"{component_id}.provenance.source_page must be >= 1")
+    if source_kind == "document":
+        if not source_doc_id:
+            raise ValueError(f"{component_id}.provenance.source_doc_id is required for document")
+        if provenance.source_page is None or provenance.source_page < 1:
+            raise ValueError(f"{component_id}.provenance.source_page must be >= 1")
+    elif provenance.source_page is not None:
+        raise ValueError(f"{component_id}.provenance.source_page must be null for {source_kind}")
     return ComponentProvenance(
         source_kind=source_kind,
         reference=reference,
         source_doc_id=source_doc_id,
-        source_page=provenance.source_page,
+        source_page=provenance.source_page if source_kind == "document" else None,
     )
 
 

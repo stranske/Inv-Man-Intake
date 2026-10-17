@@ -114,6 +114,16 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path(v1_smoke_artifacts
     assert score.final_score == pytest.approx(0.7809)
     assert formatted_explainability["overall_score"] == pytest.approx(score.final_score)
     assert formatted_explainability["components"]
+    # Smoke-only components carry analyst provenance, never document pages.
+    for component in formatted_explainability["components"]:
+        assert component["provenance"] == [
+            {
+                "source_kind": "analyst",
+                "reference": "analyst_001",
+                "source_doc_id": None,
+                "source_page": None,
+            }
+        ]
     assert score.contributions["risk_adjusted_returns"] > 0
 
     assert {event.trace_id for event in sink.events} == {trace_context.trace_id}

@@ -27,7 +27,9 @@ Each component object includes:
   `document` entries resolve against `run.json` `provenance.evidence` by
   `reference`: `source_doc_id` and `source_page` must match that field's
   evidence. Production components carry document/workbook provenance;
-  smoke-only components carry analyst provenance.
+  smoke-only components carry analyst provenance. The builder rejects
+  unknown `source_kind` values, `document` entries without a document id or
+  1-based page, and `workbook`/`analyst` entries carrying a page.
 
 ## Determinism Rules
 

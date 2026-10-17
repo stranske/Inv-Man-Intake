@@ -1134,6 +1134,8 @@ def _explainability_inputs(
     }
     # Smoke/demo components have no submitted-evidence derivation; attribute
     # them to the analyst queue assignee instead of a document page.
+    # Production callers pass ``provenances`` explicitly: a missing entry is a
+    # derivation bug, not analyst evidence, so fail instead of misattributing.
     analyst_provenance = (ComponentProvenance(source_kind="analyst", reference="analyst_001"),)
     return tuple(
         ScoreComponentInput(
@@ -1141,7 +1143,9 @@ def _explainability_inputs(
             weight=weights[component.name],
             score=component.value,
             rationale=rationale_by_component[component.name],
-            provenance=(provenances or {}).get(component.name, analyst_provenance),
+            provenance=(
+                provenances[component.name] if provenances is not None else analyst_provenance
+            ),
         )
         for component in components
     )

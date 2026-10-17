@@ -99,6 +99,48 @@ def test_payload_carries_structured_provenance_per_component() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    ("provenance", "message"),
+    [
+        (
+            ComponentProvenance(source_kind="web", reference="x", source_doc_id="d", source_page=1),
+            "source_kind must be one of",
+        ),
+        (
+            ComponentProvenance(source_kind="document", reference="x"),
+            "source_doc_id is required for document",
+        ),
+        (
+            ComponentProvenance(source_kind="document", reference="x", source_doc_id="d"),
+            "source_page must be >= 1",
+        ),
+        (
+            ComponentProvenance(
+                source_kind="workbook", reference="x.xlsx", source_doc_id="d", source_page=2
+            ),
+            "source_page must be null for workbook",
+        ),
+        (
+            ComponentProvenance(source_kind="analyst", reference="a1", source_page=1),
+            "source_page must be null for analyst",
+        ),
+    ],
+)
+def test_payload_rejects_unresolvable_provenance(provenance, message) -> None:
+    with pytest.raises(ValueError, match=message):
+        build_explainability_payload(
+            components=(
+                ScoreComponentInput(
+                    component="alpha_quality",
+                    weight=1.0,
+                    score=0.5,
+                    rationale="valid",
+                    provenance=(provenance,),
+                ),
+            )
+        )
+
+
 def test_build_payload_rejects_non_reconciling_overall_score() -> None:
     with pytest.raises(ValueError, match="overall_score does not reconcile"):
         build_explainability_payload(
