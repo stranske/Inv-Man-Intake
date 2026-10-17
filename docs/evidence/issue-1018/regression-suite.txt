@@ -1,0 +1,4 @@
+$ pytest tests/cli/test_ingest_entrypoint.py tests/queue tests/test_validation_queue_api.py tests/test_workflow_validation.py tests/test_v1_acceptance_smoke.py tests/run/test_manifest.py -m 'not slow' -o addopts= -q
+........................................................................ [ 51%]
+...................................................................      [100%]
+139 passed in 1.06s

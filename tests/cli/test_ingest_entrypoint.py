@@ -18,6 +18,7 @@ _ARTIFACT_FILES = (
     "metadata.json",
     "threshold-summary.json",
     "explainability.json",
+    "validation-queue.json",
 )
 _KEY_FIELDS = (
     "strategy.asset_class",
@@ -1032,3 +1033,133 @@ def test_ingest_performance_unavailable_without_unique_supported_table(
     assert run["performance"]["monthly"] is None
     assert run["performance"]["metrics"] is None
     assert run["final_score"] is None
+
+
+@pytest.mark.parametrize("accepted", [False, True], ids=["escalating", "accepted-policy"])
+def test_ingest_queue_artifact_reloads_real_outcomes_and_manifest(
+    tmp_path: Path, accepted: bool
+) -> None:
+    import hashlib
+
+    from inv_man_intake.validation_queue_api import ValidationQueueQuery, list_validation_queue
+    from inv_man_intake.workflow_validation import (
+        claim_for_analyst_triage,
+        load_validation_queue,
+        load_validation_queue_rows,
+        queue_replay_key,
+        transition_state,
+        write_validation_queue,
+    )
+
+    bundle = _write_external_layout_bundle(tmp_path / "bundle")
+    output = tmp_path / "output"
+    args = [str(bundle), "--out", str(output)]
+    if accepted:
+        # A real caller-supplied policy accepts AUM(.72) while leaving the fixture defaults alone.
+        policy = tmp_path / "thresholds.yaml"
+        policy.write_text(
+            Path("config/extraction_thresholds.yaml")
+            .read_text()
+            .replace("key_field_confidence_min: 0.75", "key_field_confidence_min: 0.70")
+        )
+        args += ["--threshold-config", str(policy)]
+    started = datetime.now(UTC).replace(microsecond=0)
+    assert main(args) == 0
+    run = json.loads((output / "run.json").read_text())
+    queue_file = output / "validation-queue.json"
+    records = load_validation_queue(queue_file)
+    page = list_validation_queue(
+        load_validation_queue_rows(queue_file),
+        query=ValidationQueueQuery(package_id=run["inputs"]["package_id"]),
+    )
+    assert bool(run["escalation_state"]["escalate"]) is (not accepted)
+    assert page.total == len(records) == (0 if accepted else 1)
+    assert (
+        list_validation_queue(
+            load_validation_queue_rows(queue_file),
+            query=ValidationQueueQuery(package_id="other-package"),
+        ).total
+        == 0
+    )
+    assert "validation-queue.json" in run["artifact_refs"]
+    entry = next(
+        row
+        for row in json.loads((output / "manifest.json").read_text())["artifacts"]
+        if row["name"] == "validation-queue.json"
+    )
+    assert entry["sha256"] == hashlib.sha256(queue_file.read_bytes()).hexdigest()
+    assert entry["bytes"] == queue_file.stat().st_size
+    for item in records:
+        assert item.owner_id is item.owner_role is None
+        assert item.state == "pending_triage" and item.events == ()
+        assert item.escalation_reason == run["escalation_state"]["reason"]
+        assert item.item_id == queue_replay_key(item.package_id, item.escalation_reason)
+        assert datetime.fromisoformat(item.created_at).tzinfo is not None
+        assert started <= datetime.fromisoformat(item.created_at) <= datetime.now(UTC)
+    assert main(args) == 0
+    assert [item.item_id for item in load_validation_queue(queue_file)] == [
+        item.item_id for item in records
+    ]
+    replayed_run = json.loads((output / "run.json").read_text())
+    assert replayed_run["run_id"] != run["run_id"]
+    if records:
+        claimed = claim_for_analyst_triage(
+            load_validation_queue(queue_file)[0], analyst_id="explicit-owner", note="Review started"
+        )
+        handoff = tmp_path / "reviewed-queue.json"
+        write_validation_queue(handoff, [claimed])
+        reloaded_claim = load_validation_queue(handoff)[0]
+        assert reloaded_claim == claimed
+        completed = transition_state(
+            reloaded_claim,
+            actor_id="explicit-owner",
+            actor_role="analyst",
+            to_state="completed",
+            note="Evidence verified",
+        )
+        write_validation_queue(handoff, [completed])
+        assert load_validation_queue(handoff) == (completed,)
+        assert [event.action for event in completed.events] == ["claim", "state_transition"]
+        assert [event.note for event in completed.events] == ["Review started", "Evidence verified"]
+        completed_page = list_validation_queue(
+            load_validation_queue_rows(handoff),
+            query=ValidationQueueQuery(package_id=completed.package_id, states=("completed",)),
+        )
+        assert completed_page.total == 1
+        assert completed_page.items[0].owner_id == "explicit-owner"
+
+
+@pytest.mark.parametrize("completed", [False, True], ids=["claimed", "completed"])
+def test_ingest_queue_replay_preserves_saved_review_by_requiring_new_output(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], completed: bool
+) -> None:
+    from inv_man_intake.workflow_validation import (
+        claim_for_analyst_triage,
+        load_validation_queue,
+        transition_state,
+        write_validation_queue,
+    )
+
+    bundle = _write_external_layout_bundle(tmp_path / "bundle")
+    output = tmp_path / "output"
+    args = [str(bundle), "--out", str(output)]
+    assert main(args) == 0
+    queue_file = output / "validation-queue.json"
+    reviewed = claim_for_analyst_triage(
+        load_validation_queue(queue_file)[0], analyst_id="explicit-owner", note="Review started"
+    )
+    if completed:
+        reviewed = transition_state(
+            reviewed, actor_id="explicit-owner", actor_role="analyst", to_state="completed"
+        )
+    write_validation_queue(queue_file, [reviewed])
+    saved_files = {path.name: path.read_bytes() for path in output.iterdir()}
+
+    assert main(args) == 1
+    assert "queue review progress" in capsys.readouterr().err
+    assert load_validation_queue(queue_file) == (reviewed,)
+    assert {path.name: path.read_bytes() for path in output.iterdir()} == saved_files
+
+    # A new run directory remains usable without discarding the previous review.
+    assert main([str(bundle), "--out", str(tmp_path / "new-output")]) == 0
+    assert load_validation_queue(queue_file) == (reviewed,)

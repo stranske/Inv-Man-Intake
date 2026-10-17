@@ -1,0 +1,18 @@
+$ mypy --follow-imports=silent src/inv_man_intake/run.py src/inv_man_intake/v1_smoke.py src/inv_man_intake/workflow_validation.py src/inv_man_intake/run_manifest.py
+pyproject.toml: note: unused section(s): module = ['doc_lineage', 'stranske_pdf_extract']
+Success: no issues found in 4 source files
+
+$ ruff check .
+All checks passed!
+exit=0
+
+$ git diff --check
+exit=0
+
+$ git diff --exit-code HEAD -- tests/queue/test_v1_smoke_state_transition.py
+exit=0
+
+$ BLACK_CACHE_DIR=/tmp/issue-1018-black-cache BLACK_NUM_WORKERS=1 black --check --line-length 100 --exclude '(\.workflows-lib|node_modules)' .
+All done! ✨ 🍰 ✨
+331 files would be left unchanged.
+exit=0

@@ -67,7 +67,7 @@ from inv_man_intake.performance.contracts import (
 from inv_man_intake.performance.ingest import load_xlsx_timeseries
 from inv_man_intake.performance.metrics import compute_metrics
 from inv_man_intake.performance.normalize import normalize_payload
-from inv_man_intake.queue.assignment import create_analyst_first_assignment
+from inv_man_intake.queue.assignment import QueueAssignmentRecord, create_analyst_first_assignment
 from inv_man_intake.scoring.contracts import ScoreComponent, ScoreSubmission
 from inv_man_intake.scoring.engine import compute_score
 from inv_man_intake.scoring.explainability import (
@@ -82,6 +82,11 @@ from inv_man_intake.scoring.weights import (
     weights_for_registry,
 )
 from inv_man_intake.storage.document_store import InMemoryDocumentStore
+from inv_man_intake.workflow_validation import (
+    ValidationQueueItem,
+    create_queue_item,
+    queue_replay_key,
+)
 
 # Single source of truth for the default extraction threshold policy. The production CLI
 # (run.py) loads this same file; the smoke/demo fallback must not drift from it (see #694).
@@ -142,6 +147,7 @@ class V1SmokeArtifacts:
     formatted_explainability: dict[str, object]
     langsmith_fleet_records: list[dict[str, Any]]
     performance: dict[str, Any]
+    queue_items: tuple[ValidationQueueItem, ...] = ()
 
 
 def run_v1_smoke_pipeline(
@@ -393,11 +399,27 @@ def _run_pipeline_core(
         context=queue_context,
         metadata={"package_id": record.package_id},
     ):
-        queue_assignment = create_analyst_first_assignment(
-            item_id=f"{record.package_id}:validation:performance_conflict:{correlation_id}",
-            analyst_id="analyst_001",
-            created_at=datetime(2026, 3, 4, 10, 0, tzinfo=UTC),
-        )
+        queue_items: tuple[ValidationQueueItem, ...] = ()
+        queue_assignment: QueueAssignmentRecord | ValidationQueueItem | None
+        if smoke_mode:
+            queue_assignment = create_analyst_first_assignment(
+                item_id=f"{record.package_id}:validation:performance_conflict:{correlation_id}",
+                analyst_id="analyst_001",
+                created_at=datetime(2026, 3, 4, 10, 0, tzinfo=UTC),
+            )
+        else:
+            reasons = []
+            if threshold_decision.escalate:
+                reasons.append(threshold_decision.escalation_reason or "extraction_escalation")
+            queue_items = tuple(
+                create_queue_item(
+                    item_id=queue_replay_key(record.package_id, reason),
+                    package_id=record.package_id,
+                    escalation_reason=reason,
+                )
+                for reason in sorted(set(reasons))
+            )
+            queue_assignment = queue_items[0] if queue_items else None
 
     scoring_context = child_trace_context(
         performance_context,
@@ -409,7 +431,7 @@ def _run_pipeline_core(
         context=scoring_context,
         metadata={
             "manager_id": record.fund_id,
-            "queue_item_id": queue_assignment.item_id,
+            "queue_item_id": queue_assignment.item_id if queue_assignment is not None else None,
             "correlation_id": correlation_id,
         },
     ):
@@ -489,7 +511,11 @@ def _run_pipeline_core(
         secondary_extraction=secondary_extraction_result,
         validation_status="escalated" if threshold_decision.escalate else "accepted",
         score_count=len(score.contributions) if score is not None else 0,
-        review_queue_outcome=queue_assignment.owner_role,
+        review_queue_outcome=(
+            getattr(queue_assignment, "owner_role", "none")
+            if smoke_mode
+            else "pending_triage" if queue_items else "none"
+        ),
         artifact_refs=(
             f"artifact:packages/{record.package_id}/metadata.json",
             "artifact:extraction/threshold-summary.json",
@@ -547,6 +573,7 @@ def _run_pipeline_core(
         formatted_explainability=formatted_explainability,
         langsmith_fleet_records=langsmith_fleet_records,
         performance=performance,
+        queue_items=queue_items,
     )
 
 
