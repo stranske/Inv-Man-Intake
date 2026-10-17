@@ -27,8 +27,16 @@ class PdfPrimaryExtractionProvider:
 
     _PATTERNS: tuple[tuple[str, str, float], ...] = (
         ("strategy.asset_class", r"strategy asset class\s*[:\-]\s*([^;\n]+)", 0.93),
-        ("terms.management_fee", r"management fee\s*[:\-]\s*([0-9]+(?:\.[0-9]+)?%)", 0.91),
-        ("performance.net_return_1y", r"net return 1y\s*[:\-]\s*([0-9.-]+%)", 0.88),
+        (
+            "terms.management_fee",
+            r"management fee\s*[:\-]\s*((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?\s*(?:%|per[-\s]+cent|percent(?:age)?|pct|bps|bp|basis\s+points?))",
+            0.91,
+        ),
+        (
+            "performance.net_return_1y",
+            r"net return 1y\s*[:\-]\s*(-?(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?\s*(?:%|per[-\s]+cent|percent(?:age)?|pct|bps|bp|basis\s+points?))",
+            0.88,
+        ),
         ("operations.aum", r"aum\s*[:\-]\s*([^\r\n]+)", 0.72),
         ("team.key_person_risk", r"key person risk\s*[:\-]\s*([^;\n]+)", 0.50),
     )

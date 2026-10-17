@@ -33,8 +33,16 @@ class PptxPrimaryExtractionProvider:
 
     _PATTERNS: tuple[tuple[str, str, float], ...] = (
         ("strategy.asset_class", r"strategy asset class\s*[:\-]\s*([^;\n]+)", 0.95),
-        ("terms.management_fee", r"management fee\s*[:\-]\s*([0-9]+(?:\.[0-9]+)?%)", 0.93),
-        ("performance.net_return_1y", r"net return 1y\s*[:\-]\s*([0-9.-]+%)", 0.90),
+        (
+            "terms.management_fee",
+            r"management fee\s*[:\-]\s*((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?\s*(?:%|per[-\s]+cent|percent(?:age)?|pct|bps|bp|basis\s+points?))",
+            0.93,
+        ),
+        (
+            "performance.net_return_1y",
+            r"net return 1y\s*[:\-]\s*(-?(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?\s*(?:%|per[-\s]+cent|percent(?:age)?|pct|bps|bp|basis\s+points?))",
+            0.90,
+        ),
         ("operations.aum", r"aum\s*[:\-]\s*([^\r\n]+)", 0.82),
         ("team.key_person_risk", r"key person risk\s*[:\-]\s*([^;\n]+)", 0.80),
     )

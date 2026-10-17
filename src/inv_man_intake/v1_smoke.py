@@ -968,11 +968,23 @@ def _team_experience_score(risk_value: str) -> float:
     reassurance.
     """
 
-    risk_text = risk_value.lower()
+    # Hyphenated/slashed spellings ("key-person", "low-risk") read the same
+    # as their spaced forms, so normalize separators before matching.
+    risk_text = re.sub(r"\s+", " ", re.sub(r"[-/]", " ", risk_value.lower())).strip()
     # Remove only an explicitly negated departure phrase. Other adverse
     # mentions in the same text must still outrank reassuring language.
     adverse_text = re.sub(r"\bno\s+(?:pending\s+)?departures?\b", "", risk_text)
-    if re.search(r"\b(?:departure|pending|leaving|resigned)\b", adverse_text):
+    adverse_text = re.sub(
+        r"\b(?:no one|nobody|no team members?|no members?)\s+"
+        r"(?:has\s+|have\s+)?(?:left|departed|resigned|retired|stepped down)\b",
+        "",
+        adverse_text,
+    )
+    if re.search(
+        r"\b(?:depart\w*|resign\w*|retir\w*|pending|leaving|left)\b"
+        r"|\b(?:stepped|steps|stepping)\s+down\b",
+        adverse_text,
+    ):
         return 0.35
     if re.search(r"\bhigh\b", risk_text):
         return 0.40
@@ -980,8 +992,16 @@ def _team_experience_score(risk_value: str) -> float:
         return 0.60
     if (
         "no key person" in risk_text
+        or "no departure" in risk_text
+        or "no turnover" in risk_text
         or "low risk" in risk_text
-        or "stable team" in risk_text
+        or re.search(
+            r"\b(?:nobody|no one|no team members?|no members?)\s+"
+            r"(?:has\s+|have\s+)?(?:left|departed|resigned|retired|stepped down)\b",
+            risk_text,
+        )
+        or re.search(r"\bstable\b", risk_text)
+        or re.search(r"\b(?:low|minimal|negligible)\b", risk_text)
         or re.search(r"\bnone\b", risk_text)
     ):
         return 0.90
@@ -1012,15 +1032,34 @@ def _workbook_component_provenance(workbook_ref: str) -> ComponentProvenance:
     )
 
 
+_PERCENT_NUMBER = r"-?(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?"
+
+
 def _parse_percent(value: str) -> float | None:
-    match = re.search(r"(-?[0-9]+(?:\.[0-9]+)?)\s*%", value)
-    return float(match.group(1)) / 100.0 if match else None
+    """Parse a percentage written as ``%``, ``percent``/``pct``, or basis points.
+
+    Submitted documents spell the same quantity several ways (``1.25%``,
+    ``1.25 percent``, ``1.25 per cent``/``per-cent``, ``125 bps``/``125 bp``); all
+    normalize to a decimal fraction. Thousands separators are part of the
+    number (``1,250 bps`` is 12.5%, not the trailing ``250 bps``). A bare
+    number with no unit stays unparseable rather than guessed.
+    """
+
+    bps = re.search(rf"({_PERCENT_NUMBER})\s*(?:bps|bp|basis\s+points?)\b", value, re.IGNORECASE)
+    if bps:
+        return float(bps.group(1).replace(",", "")) / 10_000.0
+    match = re.search(
+        rf"({_PERCENT_NUMBER})\s*(?:%|per[-\s]+cent\b|percent(?:age)?\b|pct\b)",
+        value,
+        re.IGNORECASE,
+    )
+    return float(match.group(1).replace(",", "")) / 100.0 if match else None
 
 
 _AUM_AMOUNT = r"(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?"
 _AUM_WITH_UNIT = re.compile(
     rf"\$?\s*(?<![0-9.,])(?P<amount>{_AUM_AMOUNT})\s*"
-    r"(?P<unit>billion|million|thousand|bn|mm|[kmb])\b",
+    r"(?P<unit>billion|million|thousand|bn|mm|mn|[kmb])\b",
     re.IGNORECASE,
 )
 _AUM_UNITLESS = re.compile(rf"\s*\$?\s*(?P<amount>{_AUM_AMOUNT})\s*\Z")
@@ -1040,6 +1079,7 @@ def _parse_aum(value: str) -> float | None:
             "billion": 1_000_000_000.0,
             "m": 1_000_000.0,
             "mm": 1_000_000.0,
+            "mn": 1_000_000.0,
             "million": 1_000_000.0,
             "k": 1_000.0,
             "thousand": 1_000.0,

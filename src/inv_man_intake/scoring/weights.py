@@ -30,13 +30,17 @@ LAUNCH_ASSET_CLASSES: tuple[str, ...] = (
 ASSET_CLASS_ALIASES: Mapping[str, str] = MappingProxyType(
     {
         "equity": "equity_market_neutral",
+        "market_neutral": "equity_market_neutral",
+        "market_neutral_equity": "equity_market_neutral",
         "equity_l_s": "equity_market_neutral",
         "long_short_equity": "equity_market_neutral",
         "equity_long_short": "equity_market_neutral",
         "quantitative": "quant",
         "multi_strategy": "multi_strat",
         "multi_asset": "multi_strat",
+        "global_macro": "macro",
         "credit": "credit_long_short",
+        "long_short_credit": "credit_long_short",
         "credit_ls": "credit_long_short",
         "credit_l_s": "credit_long_short",
         "cta": "trend_following",
@@ -136,7 +140,10 @@ def weights_for_registry(config_dir: Path | None = None) -> dict[str, dict[str, 
 def normalize_asset_class(asset_class: str) -> str:
     """Return the canonical v1 launch asset-class key for a label or alias."""
 
-    label = str(asset_class or "").strip().lower().replace("-", "_").replace(" ", "_")
+    label = (
+        str(asset_class or "").strip().lower().replace("-", "_").replace(" ", "_").replace("/", "_")
+    )
+    label = "_".join(part for part in label.split("_") if part)
     if not label:
         raise ValueError("asset_class must be non-empty")
     canonical = ASSET_CLASS_ALIASES.get(label, label)

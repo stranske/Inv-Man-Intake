@@ -14,6 +14,7 @@ from inv_man_intake.v1_smoke import (
     _evidence_backed_score_components,
     _field_component_provenance,
     _parse_aum,
+    _parse_percent,
     _score_components,
     _workbook_component_provenance,
 )
@@ -312,6 +313,9 @@ def test_evidence_backed_aum_single_letter_units_scale_equivalently(aum_value: s
         ("none", 0.90),
         ("senior PM leaving", 0.35),
         ("founder resigned", 0.35),
+        ("two senior departures last year", 0.35),
+        ("key person departed", 0.35),
+        ("founder resigning next quarter", 0.35),
     ],
 )
 def test_evidence_backed_team_experience_remaining_tokens(risk_value: str, expected: float) -> None:
@@ -320,6 +324,103 @@ def test_evidence_backed_team_experience_remaining_tokens(risk_value: str, expec
     )
     assert varied is not None
     assert varied["team_experience"] == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "risk_value,expected",
+    [
+        ("No key-person risk", 0.90),
+        ("no departures", 0.90),
+        ("no one has left", 0.90),
+        ("key person has left", 0.35),
+        ("senior PM left the firm", 0.35),
+        ("founder retired", 0.35),
+        ("low risk, but senior PM left", 0.35),
+        ("low key person risk", 0.90),
+        ("Low-risk team", 0.90),
+        ("minimal key person risk", 0.90),
+        ("negligible key-person risk", 0.90),
+        ("nobody has left", 0.90),
+        ("no team members have left", 0.90),
+        ("team is stable", 0.90),
+        ("stable", 0.90),
+        ("no turnover", 0.90),
+        ("PM stepped down", 0.35),
+        # Adverse signals still outrank the new reassuring spellings.
+        ("nobody has left, but founder resigned", 0.35),
+        ("low key person risk, but founder resigned", 0.35),
+        ("minimal risk; one senior PM departure pending", 0.35),
+    ],
+)
+def test_evidence_backed_team_experience_natural_spellings(
+    risk_value: str, expected: float
+) -> None:
+    varied = _derived_scores(
+        extraction=_derived_extraction(**{"team.key_person_risk": {"value": risk_value}})
+    )
+    assert varied is not None
+    assert varied["team_experience"] == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("1.25%", 0.0125),
+        ("1.25 percent", 0.0125),
+        ("1.25 per cent", 0.0125),
+        ("1.25 per-cent", 0.0125),
+        ("8.4 per cent", 0.084),
+        ("1.25 pct", 0.0125),
+        ("125 bps", 0.0125),
+        ("125 bp", 0.0125),
+        ("1,250 bps", 0.125),
+        ("125 basis points", 0.0125),
+        ("8.4%", 0.084),
+        ("840 bps", 0.084),
+        ("-4.0 percent", -0.04),
+        ("1.25", None),
+        ("n/a", None),
+    ],
+)
+def test_parse_percent_accepts_spelled_and_bps_units(value: str, expected: float | None) -> None:
+    assert _parse_percent(value) == (pytest.approx(expected) if expected is not None else None)
+
+
+def test_evidence_backed_spelled_percentages_score_like_symbols() -> None:
+    baseline = _derived_scores()
+    spelled = _derived_scores(
+        extraction=_derived_extraction(
+            **{
+                "terms.management_fee": {"value": "125 bps"},
+                "performance.net_return_1y": {"value": "8.4 percent"},
+            }
+        )
+    )
+    assert baseline is not None and spelled is not None
+    assert spelled == baseline
+
+
+@pytest.mark.parametrize(
+    "asset_class",
+    [
+        "credit long/short",
+        "Credit Long-Short",
+        "credit_long_short",
+        "long/short equity",
+        "Global Macro",
+        "Market Neutral",
+        "Market Neutral Equity",
+        "Long Short Credit",
+    ],
+)
+def test_evidence_backed_asset_class_separator_spellings(asset_class: str) -> None:
+    derived = _evidence_backed_score_components(
+        extraction=_derived_extraction(**{"strategy.asset_class": {"value": asset_class}}),
+        metrics=_derived_metrics(),
+        workbook_ref="track.xlsx@doc-1",
+    )
+    assert derived is not None
+    assert derived.asset_class in {"credit_long_short", "equity_market_neutral", "macro"}
 
 
 def test_workbook_component_provenance_uses_last_at_separator() -> None:
@@ -417,6 +518,8 @@ def test_evidence_backed_components_missing_metrics_is_unavailable() -> None:
     ("value", "expected"),
     [
         ("2025: $1.2bn", 1_200_000_000),
+        ("$1,200mn", 1_200_000_000),
+        ("500mn", 500_000_000),
         ("$1,200 million", 1_200_000_000),
         ("450", 450),
         ("450 managed", None),
