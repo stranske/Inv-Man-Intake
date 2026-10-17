@@ -1,0 +1,17 @@
+{
+  "base_revision": "d4aadfe1a16e191b13f83a75fa704fcb02a09053",
+  "command": [
+    "/opt/anaconda3/bin/python3",
+    "-m",
+    "pytest",
+    "--no-cov",
+    "-q",
+    "tests/cli/test_ingest_entrypoint.py::test_ingest_score_deliberate_break_constants_would_fail",
+    "tests/cli/test_ingest_entrypoint.py::test_ingest_score_within_class_aum_change_changes_operational_component"
+  ],
+  "mutation": "Replace only returned derived component tuple with smoke constants _score_components(0.74) in _evidence_backed_score_components",
+  "red_exit": 1,
+  "green_exit": 0,
+  "original_sha256": "33aebe579ef166bfcb9c57afb7915dc5a42fd19dcff64f2016d63e5ca0176ced",
+  "restored_sha256": "33aebe579ef166bfcb9c57afb7915dc5a42fd19dcff64f2016d63e5ca0176ced"
+}

@@ -1,0 +1,127 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/teacher/.codex/automations/imi-merge-verify-closer/worktrees/imi1019-acceptance-20261017T1921
+configfile: pyproject.toml
+plugins: cov-7.1.0, xdist-3.8.0, rerunfailures-16.3, datadir-1.8.0, typeguard-4.5.1, asyncio-1.3.0, pytest_httpserver-1.1.3, hypothesis-6.155.7, regressions-2.11.0, Faker-40.39.0, anyio-4.13.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 2 items
+
+tests/cli/test_ingest_entrypoint.py FF                                   [100%]
+
+=================================== FAILURES ===================================
+___________ test_ingest_score_deliberate_break_constants_would_fail ____________
+
+tmp_path = PosixPath('/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_deliberate_b0')
+
+    def test_ingest_score_deliberate_break_constants_would_fail(tmp_path: Path) -> None:
+        """Constants (smoke ``_score_components``) cannot satisfy these assertions.
+    
+        Replacing the derived components with fixed values makes the AUM-driven
+        operational change and the workbook-driven performance change disappear.
+        """
+        baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
+        scores = _component_scores(baseline)
+>       assert scores["operational_quality"] != pytest.approx(0.69)
+E       assert 0.6900000000000001 != 0.69 ± 6.9e-07
+E        +  where 0.69 ± 6.9e-07 = <function approx at 0x108b805e0>(0.69)
+E        +    where <function approx at 0x108b805e0> = pytest.approx
+
+tests/cli/test_ingest_entrypoint.py:630: AssertionError
+----------------------------- Captured stdout call -----------------------------
+run_id: run_5b85c15bf02b4a8aae4fd722d01ed8ee
+final_score: 0.757
+escalation: low_key_field_coverage
+output_dir: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_deliberate_b0/out-base
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_deliberate_b0/out-base/run.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_deliberate_b0/out-base/metadata.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_deliberate_b0/out-base/threshold-summary.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_deliberate_b0/out-base/explainability.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_deliberate_b0/out-base/evidence-3b0e5f9bf561b591a3940d5c11daaacc5cbc1eccea1e7b335893c92c4f28e7f0.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_deliberate_b0/out-base/evidence-42c9d40c757d536628fcab68e43419e7856f79b8c18aa7403f52f6c84b62ff61.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_deliberate_b0/out-base/evidence-5febe0dcdd2f4f5ce86d5cd778ad81fae687f38f8a4155583dd3433ac10c89a9.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_deliberate_b0/out-base/evidence-cfc8dd2e9180a2d8cdb0798bb2c8f77271c56dfeeb38d46b19e4128e73f29f26.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_deliberate_b0/out-base/evidence-d0f5e3e7e6eb445d1f4d6f1cb95b3d9aa629ba0ce6a099ef2f5c0fad6bef56e8.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_deliberate_b0/out-base/evidence-d764c3632d20a61234071b3099ee7176f3f2efee2a871044c6b5c45fdacdd305.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_deliberate_b0/out-base/evidence-fa02ae91968d7495451fecb561975a50ed8260231bda59e4968d4c04a6d09318.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_deliberate_b0/out-base/evidence-fcfe2a8ca41f4a3542221c9c61e198410909e3210348f36a6fd379754643fbf9.json
+------------------------------ Captured log call -------------------------------
+WARNING  pypdf._reader:_utils.py:457 invalid pdf header: b'PK\x03\x04\x14'
+WARNING  pypdf._reader:_utils.py:457 EOF marker not found
+___ test_ingest_score_within_class_aum_change_changes_operational_component ____
+
+tmp_path = PosixPath('/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0')
+
+    def test_ingest_score_within_class_aum_change_changes_operational_component(
+        tmp_path: Path,
+    ) -> None:
+        baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
+        changed = _run_score(
+            _write_score_bundle(
+                tmp_path,
+                name="bundle-aum",
+                pdf_replacements=((b"$1.2bn", b"$120m"),),
+            ),
+            tmp_path / "out-aum",
+        )
+        base_scores = _component_scores(baseline)
+        changed_scores = _component_scores(changed)
+>       assert changed_scores["operational_quality"] != pytest.approx(
+            base_scores["operational_quality"]
+        )
+E       assert 0.6900000000000001 != 0.6900000000000001 ± 6.9e-07
+E        +  where 0.6900000000000001 ± 6.9e-07 = <function approx at 0x108b805e0>(0.6900000000000001)
+E        +    where <function approx at 0x108b805e0> = pytest.approx
+
+tests/cli/test_ingest_entrypoint.py:455: AssertionError
+----------------------------- Captured stdout call -----------------------------
+run_id: run_e910bfeede054fde8b51761e7bd8c95f
+final_score: 0.757
+escalation: low_key_field_coverage
+output_dir: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-base
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-base/run.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-base/metadata.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-base/threshold-summary.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-base/explainability.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-base/evidence-3b0e5f9bf561b591a3940d5c11daaacc5cbc1eccea1e7b335893c92c4f28e7f0.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-base/evidence-42c9d40c757d536628fcab68e43419e7856f79b8c18aa7403f52f6c84b62ff61.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-base/evidence-5febe0dcdd2f4f5ce86d5cd778ad81fae687f38f8a4155583dd3433ac10c89a9.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-base/evidence-cfc8dd2e9180a2d8cdb0798bb2c8f77271c56dfeeb38d46b19e4128e73f29f26.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-base/evidence-d0f5e3e7e6eb445d1f4d6f1cb95b3d9aa629ba0ce6a099ef2f5c0fad6bef56e8.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-base/evidence-d764c3632d20a61234071b3099ee7176f3f2efee2a871044c6b5c45fdacdd305.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-base/evidence-fa02ae91968d7495451fecb561975a50ed8260231bda59e4968d4c04a6d09318.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-base/evidence-fcfe2a8ca41f4a3542221c9c61e198410909e3210348f36a6fd379754643fbf9.json
+run_id: run_eebb111548584797a22031f1cd6aed43
+final_score: 0.757
+escalation: low_key_field_coverage
+output_dir: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-aum
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-aum/run.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-aum/metadata.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-aum/threshold-summary.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-aum/explainability.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-aum/evidence-3b0e5f9bf561b591a3940d5c11daaacc5cbc1eccea1e7b335893c92c4f28e7f0.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-aum/evidence-42c9d40c757d536628fcab68e43419e7856f79b8c18aa7403f52f6c84b62ff61.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-aum/evidence-5febe0dcdd2f4f5ce86d5cd778ad81fae687f38f8a4155583dd3433ac10c89a9.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-aum/evidence-76c4ac97e2eec07090bc17d16fda2bbaffe48b8cc9b80de8217fc4024c881500.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-aum/evidence-cfc8dd2e9180a2d8cdb0798bb2c8f77271c56dfeeb38d46b19e4128e73f29f26.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-aum/evidence-d0f5e3e7e6eb445d1f4d6f1cb95b3d9aa629ba0ce6a099ef2f5c0fad6bef56e8.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-aum/evidence-d764c3632d20a61234071b3099ee7176f3f2efee2a871044c6b5c45fdacdd305.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5345/test_ingest_score_within_class0/out-aum/evidence-fcfe2a8ca41f4a3542221c9c61e198410909e3210348f36a6fd379754643fbf9.json
+------------------------------ Captured log call -------------------------------
+WARNING  pypdf._reader:_utils.py:457 invalid pdf header: b'PK\x03\x04\x14'
+WARNING  pypdf._reader:_utils.py:457 EOF marker not found
+WARNING  pypdf._reader:_utils.py:457 invalid pdf header: b'PK\x03\x04\x14'
+WARNING  pypdf._reader:_utils.py:457 EOF marker not found
+=============================== warnings summary ===============================
+tests/cli/test_ingest_entrypoint.py::test_ingest_score_deliberate_break_constants_would_fail
+  /opt/anaconda3/lib/python3.12/site-packages/pandas/core/computation/expressions.py:23: UserWarning: Pandas requires version '2.10.2' or newer of 'numexpr' (version '2.8.7' currently installed).
+    from pandas.core.computation.check import NUMEXPR_INSTALLED
+
+tests/cli/test_ingest_entrypoint.py::test_ingest_score_deliberate_break_constants_would_fail
+  /opt/anaconda3/lib/python3.12/site-packages/pandas/core/arrays/masked.py:56: UserWarning: Pandas requires version '1.4.2' or newer of 'bottleneck' (version '1.3.7' currently installed).
+    from pandas.core import (
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_score_deliberate_break_constants_would_fail
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_score_within_class_aum_change_changes_operational_component
+======================== 2 failed, 2 warnings in 2.58s =========================
