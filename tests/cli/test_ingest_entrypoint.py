@@ -773,6 +773,35 @@ def test_ingest_entrypoint_returns_nonzero_for_rejected_bundle(tmp_path: Path) -
     assert exit_code == 1
 
 
+def test_ingest_rejected_registration_stops_before_extraction(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """B03: rejected production intake reports validation errors without smoke assertions."""
+    from inv_man_intake import v1_smoke
+    from inv_man_intake.run import run_pipeline
+
+    bundle_path = _write_external_layout_bundle(tmp_path / "bundle")
+    payload = json.loads(bundle_path.read_text(encoding="utf-8"))
+    del payload["metadata"]["fund_name"]
+    bundle_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    def forbidden_continuation(**kwargs):
+        pytest.fail("rejected production registration must stop before smoke checks or extraction")
+
+    monkeypatch.setattr(v1_smoke, "_assert_registered_package_state", forbidden_continuation)
+    monkeypatch.setattr(v1_smoke, "_select_extraction_documents", forbidden_continuation)
+    output_dir = tmp_path / "out"
+    error = "intake bundle registration rejected: missing_required_metadata"
+    with pytest.raises(ValueError, match=f"^{error}$"):
+        run_pipeline(bundle_path, output_dir=output_dir)
+
+    assert main([str(bundle_path), "--out", str(output_dir)]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == f"error: intake run failed: {error}\n"
+    assert not output_dir.exists(), "rejected intake must not emit successful run artifacts"
+
+
 def _write_performance_workbook(path: Path, rows: list[tuple[object, ...]]) -> None:
     from openpyxl import Workbook
 
