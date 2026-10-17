@@ -20,6 +20,98 @@
         "detector_name": "numeric_field_present",
         "mandatory": true
       }
+    ],
+    "report.consultant_review": [
+      {
+        "key": "consultant.executive_summary",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.manager_overview",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.investment_strategy",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.performance",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.attribution",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.benchmark_analysis",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.risk",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.portfolio",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.holdings_analysis",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.fees",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.organization",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.team_and_personnel",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.esg",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.operations",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.compliance",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.due_diligence",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.outlook",
+        "detector_name": "field_present",
+        "mandatory": false
+      },
+      {
+        "key": "consultant.recommendation",
+        "detector_name": "field_present",
+        "mandatory": false
+      }
     ]
   }
 }
