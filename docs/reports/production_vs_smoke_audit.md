@@ -93,6 +93,7 @@ No automatic follow-up issues are created from this audit.
 - `tests/cli/test_ingest_entrypoint.py`
   - `test_run_pipeline_invokes_core_without_smoke_document_ids` — production never passes `expected_document_ids`.
   - `test_run_pipeline_disables_remote_tracing` — production always passes `allow_remote_tracing=False`.
+  - `test_ingest_score_never_calls_smoke_components` — production never invokes fixed smoke score components, with either sufficient or insufficient scoring evidence.
   - `test_ingest_secondary_boundary_uses_submitted_workbook_bytes_and_id` — secondary extraction receives the renamed submitted workbook's bytes and registered document ID in both document orders, with a non-fixture package ID.
   - `test_production_performance_source_deliberate_smoke_fixture_fails` — mutation of performance `source` to `smoke_fixture` fails the prevention assertion; restoring `submitted_workbook` passes.
   - Existing layout / non-workbook / score deliberate-break tests continue to forbid fixture helpers and smoke constants on the headless path.

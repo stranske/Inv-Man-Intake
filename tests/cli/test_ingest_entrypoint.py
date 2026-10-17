@@ -662,6 +662,32 @@ def _component_scores(run: dict) -> dict[str, float]:
     }
 
 
+@pytest.mark.parametrize("sufficient_evidence", [False, True], ids=["unavailable", "scored"])
+def test_ingest_score_never_calls_smoke_components(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, sufficient_evidence: bool
+) -> None:
+    """B09: neither production scoring outcome may use fixed smoke components."""
+    from inv_man_intake import v1_smoke
+
+    def forbidden_smoke_components(benchmark_correlation):
+        pytest.fail("production scoring must never call smoke score components")
+
+    monkeypatch.setattr(v1_smoke, "_score_components", forbidden_smoke_components)
+    bundle = (
+        _write_score_bundle(tmp_path, name="bundle")
+        if sufficient_evidence
+        else _write_external_layout_bundle(tmp_path / "bundle")
+    )
+    run = _run_score(bundle, tmp_path / "out")
+
+    if sufficient_evidence:
+        assert isinstance(run["final_score"], float)
+        assert run["explainability"]["overall_score"] == pytest.approx(run["final_score"])
+    else:
+        assert run["final_score"] is None
+        assert run["explainability"]["status"] == "unavailable"
+
+
 def test_ingest_score_numeric_for_two_supported_asset_classes(tmp_path: Path) -> None:
     runs = {}
     for label, asset_text in (("credit", b"credit"), ("quant", b"quant")):
