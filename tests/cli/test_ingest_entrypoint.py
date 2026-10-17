@@ -7,6 +7,7 @@ import json
 import re
 import shutil
 from datetime import UTC, date, datetime
+from itertools import permutations
 from pathlib import Path
 
 import pytest
@@ -599,6 +600,66 @@ def test_ingest_secondary_boundary_uses_submitted_workbook_bytes_and_id(
     monkeypatch.setattr(v1_smoke, "_run_secondary_extraction_boundary_smoke", recording_secondary)
     assert main([str(bundle_path), "--out", str(tmp_path / "out")]) == 0
     assert observed == [(expected_id, submitted_bytes)]
+
+
+@pytest.mark.parametrize("order", list(permutations(range(3))))
+def test_ingest_multiple_workbooks_selects_track_record_by_role(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, order: tuple[int, ...]
+) -> None:
+    """B05/B16: three-document bundles select the declared workbook in every order."""
+    from inv_man_intake import v1_smoke
+
+    bundle_path = _write_score_bundle(tmp_path, name="bundle")
+    payload = json.loads(bundle_path.read_text(encoding="utf-8"))
+    payload["package_id"] = "pkg_multiple_workbooks"
+    # Sort before the declared track record, with different but valid returns.
+    decoy_name = "aaa-supporting-returns.xlsx"
+    _write_performance_workbook(
+        bundle_path.parent / decoy_name,
+        [(as_of, value / 10) for as_of, value in _SCORE_ROWS],
+    )
+    payload["files"].append(
+        {
+            "file_name": decoy_name,
+            "role": "supporting_material",
+            "source_ref": "email:supporting-returns",
+        }
+    )
+    payload["files"] = [payload["files"][index] for index in order]
+    bundle_path.write_text(json.dumps(payload), encoding="utf-8")
+    workbook_index = next(
+        index
+        for index, entry in enumerate(payload["files"])
+        if entry["role"] == "performance_track_record"
+    )
+    workbook_name = payload["files"][workbook_index]["file_name"]
+    workbook_id = f"{payload['package_id']}:doc:{workbook_index}"
+    observed: list[tuple[str, bytes]] = []
+    original = v1_smoke._run_secondary_extraction_boundary_smoke
+
+    def recording_secondary(**kwargs):
+        observed.append((kwargs["source_doc_id"], kwargs["content"]))
+        return original(**kwargs)
+
+    monkeypatch.setattr(v1_smoke, "_run_secondary_extraction_boundary_smoke", recording_secondary)
+    run = _run_score(bundle_path, tmp_path / "out")
+
+    assert run["inputs"]["file_count"] == 3
+    assert observed == [(workbook_id, (bundle_path.parent / workbook_name).read_bytes())]
+    assert run["performance"]["monthly"] == [
+        {"as_of": as_of, "value": value} for as_of, value in _SCORE_ROWS
+    ]
+    assert isinstance(run["final_score"], float)
+    workbook_pointers = [
+        pointer
+        for component in run["explainability"]["components"]
+        for pointer in component["provenance"]
+        if pointer["source_kind"] == "workbook"
+    ]
+    assert workbook_pointers
+    assert {(pointer["source_doc_id"], pointer["reference"]) for pointer in workbook_pointers} == {
+        (workbook_id, workbook_name)
+    }
 
 
 def test_ingest_file_order_permutations_equivalent(tmp_path):
