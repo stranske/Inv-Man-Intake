@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import io
 import json
+import math
 import os
+import re
 import sqlite3
 import zipfile
 from dataclasses import dataclass
@@ -70,7 +72,11 @@ from inv_man_intake.scoring.explainability import (
     build_explainability_payload,
     format_explainability_payload,
 )
-from inv_man_intake.scoring.weights import get_weight_set, weights_for_registry
+from inv_man_intake.scoring.weights import (
+    get_weight_set,
+    normalize_asset_class,
+    weights_for_registry,
+)
 from inv_man_intake.storage.document_store import InMemoryDocumentStore
 
 # Single source of truth for the default extraction threshold policy. The production CLI
@@ -396,14 +402,54 @@ def _run_pipeline_core(
             "correlation_id": correlation_id,
         },
     ):
-        # Reference component values and benchmark-based scores are smoke-only.
-        # Production scoring remains unavailable until evidence-backed inputs exist.
+        # Reference component values are smoke-only. Production scoring derives
+        # components from submitted evidence (see
+        # ``_evidence_backed_score_components``) and stays unavailable when that
+        # evidence is below the documented minimum thresholds.
         score = None
         formatted_explainability: dict[str, object] = {
             "status": "unavailable",
             "overall_score": None,
             "reason": "evidence_backed_score_components_unavailable",
         }
+        if not smoke_mode:
+            derived = _evidence_backed_score_components(
+                extraction=extraction_with_thresholds,
+                metrics=metrics,
+                workbook_ref=_workbook_provenance_ref(
+                    repository=core_repository,
+                    record=record,
+                    file_entries=file_entries,
+                ),
+            )
+            if derived is not None and characterization is not None:
+                try:
+                    production_submission = gate_scoring_submission(
+                        ScoreSubmission(
+                            manager_id=record.fund_id,
+                            asset_class=derived.asset_class,
+                            components=derived.components,
+                        ),
+                        characterization=characterization,
+                    )
+                except PermissionError:
+                    production_submission = None
+                if production_submission is not None:
+                    score = compute_score(
+                        production_submission,
+                        weights_by_asset_class=weights_for_registry(),
+                    )
+                    production_explainability = build_explainability_payload(
+                        components=_explainability_inputs(
+                            score.asset_class,
+                            derived.components,
+                            rationales=derived.rationales,
+                        ),
+                        overall_score=score.final_score,
+                    )
+                    formatted_explainability = format_explainability_payload(
+                        production_explainability
+                    )
         if smoke_mode:
             assert metrics is not None and characterization is not None
             components = _score_components(metrics.benchmark_correlation)
@@ -837,6 +883,184 @@ def _fixture_performance_series() -> tuple[PerformanceSeries, PerformanceSeries,
     return xlsx, deck, benchmark
 
 
+#: Minimum-evidence thresholds for production (evidence-backed) scoring.
+#: All five key fields must be present with provenance and confidence at or
+#: above ``_MIN_FIELD_CONFIDENCE``; the workbook must yield at least
+#: ``_MIN_WORKBOOK_OBSERVATIONS`` monthly observations with volatility,
+#: drawdown and Sharpe available. Below any threshold, scoring stays
+#: unavailable (``evidence_backed_score_components_unavailable``).
+_MIN_FIELD_CONFIDENCE = 0.50
+_MIN_WORKBOOK_OBSERVATIONS = 3
+_KEY_FIELD_KEYS = (
+    "strategy.asset_class",
+    "terms.management_fee",
+    "performance.net_return_1y",
+    "operations.aum",
+    "team.key_person_risk",
+)
+
+
+@dataclass(frozen=True)
+class _DerivedScoring:
+    asset_class: str
+    components: tuple[ScoreComponent, ...]
+    rationales: dict[str, str]
+
+
+def _clamp01(value: float) -> float:
+    return max(0.0, min(1.0, value))
+
+
+def _field_provenance(field: Any) -> str:
+    return f"{field.key}@{field.source_doc_id}:page {field.source_page} (confidence {field.confidence:.2f})"
+
+
+def _parse_percent(value: str) -> float | None:
+    match = re.search(r"(-?[0-9]+(?:\.[0-9]+)?)\s*%", value)
+    return float(match.group(1)) / 100.0 if match else None
+
+
+def _parse_aum(value: str) -> float | None:
+    match = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*([kmb]n?|million|billion|thousand)?", value.lower())
+    if not match:
+        return None
+    amount = float(match.group(1))
+    unit = match.group(2) or ""
+    multiplier = 1.0
+    if unit.startswith("b"):
+        multiplier = 1e9
+    elif unit.startswith("m"):
+        multiplier = 1e6
+    elif unit.startswith("k") or unit.startswith("t"):
+        multiplier = 1e3
+    return amount * multiplier
+
+
+def _evidence_backed_score_components(
+    *,
+    extraction: ExtractedDocumentResult,
+    metrics: Any,
+    workbook_ref: str,
+) -> _DerivedScoring | None:
+    """Map extracted fields and workbook metrics to the five score components.
+
+    Returns ``None`` when evidence is below the minimum thresholds documented
+    at ``_MIN_FIELD_CONFIDENCE`` / ``_MIN_WORKBOOK_OBSERVATIONS``.
+
+    Component mapping (each in [0, 1], deterministic):
+    - ``performance_consistency``: workbook volatility and max drawdown.
+    - ``risk_adjusted_returns``: workbook Sharpe/Sortino mapped around 0.5,
+      blended with the extracted 1Y net return.
+    - ``operational_quality``: extracted AUM (log scale) and management fee.
+    - ``transparency``: mean confidence of the five provenance-backed fields.
+    - ``team_experience``: rule-based reading of the key-person-risk field.
+    """
+
+    fields = {field.key: field for field in extraction.fields}
+    key_fields = []
+    for key in _KEY_FIELD_KEYS:
+        field = fields.get(key)
+        if field is None or field.confidence < _MIN_FIELD_CONFIDENCE:
+            return None
+        if not field.source_doc_id or field.source_page is None or not field.value.strip():
+            return None
+        key_fields.append(field)
+    if metrics is None or metrics.observation_count < _MIN_WORKBOOK_OBSERVATIONS:
+        return None
+    if (
+        metrics.annualized_volatility is None
+        or metrics.max_drawdown is None
+        or metrics.sharpe_ratio is None
+    ):
+        return None
+    try:
+        asset_class = normalize_asset_class(fields["strategy.asset_class"].value)
+    except ValueError:
+        return None
+    net_return = _parse_percent(fields["performance.net_return_1y"].value)
+    fee = _parse_percent(fields["terms.management_fee"].value)
+    aum = _parse_aum(fields["operations.aum"].value)
+    if net_return is None or fee is None or aum is None or aum <= 0:
+        return None
+
+    by_key = {field.key: field for field in key_fields}
+    performance_consistency = round(
+        _clamp01(
+            0.6 * (1.0 - metrics.annualized_volatility)
+            + 0.4 * (1.0 - min(metrics.max_drawdown * 4.0, 1.0))
+        ),
+        6,
+    )
+    sharpe_like = metrics.sharpe_ratio
+    if metrics.sortino_ratio is not None:
+        sharpe_like = (metrics.sharpe_ratio + metrics.sortino_ratio) / 2.0
+    risk_adjusted = round(
+        _clamp01(0.8 * _clamp01(0.5 + sharpe_like / 4.0) + 0.2 * _clamp01(0.5 + net_return / 0.20)),
+        6,
+    )
+    aum_score = _clamp01((math.log10(aum) - 6.0) / 4.0)
+    operational_quality = round(_clamp01(0.6 * aum_score + 0.4 * _clamp01(1.0 - fee / 0.03)), 6)
+    transparency = round(
+        _clamp01(sum(field.confidence for field in key_fields) / len(key_fields)), 6
+    )
+    risk_text = fields["team.key_person_risk"].value.lower()
+    if any(token in risk_text for token in ("no key person", "none", "low risk", "stable team")):
+        team_experience = 0.90
+    elif any(token in risk_text for token in ("departure", "pending", "leaving", "resigned")):
+        team_experience = 0.35
+    elif "high" in risk_text:
+        team_experience = 0.40
+    elif any(token in risk_text for token in ("moderate", "medium")):
+        team_experience = 0.60
+    else:
+        team_experience = 0.65
+
+    components = (
+        ScoreComponent("performance_consistency", performance_consistency),
+        ScoreComponent("risk_adjusted_returns", risk_adjusted),
+        ScoreComponent("operational_quality", operational_quality),
+        ScoreComponent("transparency", transparency),
+        ScoreComponent("team_experience", team_experience),
+    )
+    rationales = {
+        "performance_consistency": (
+            f"Workbook volatility/drawdown from {workbook_ref} "
+            f"(n={metrics.observation_count}); evidence {_field_provenance(by_key['performance.net_return_1y'])}"
+        ),
+        "risk_adjusted_returns": (
+            f"Sharpe/Sortino from {workbook_ref} blended with extracted net return; "
+            f"evidence {_field_provenance(by_key['performance.net_return_1y'])}"
+        ),
+        "operational_quality": (
+            f"AUM and fee scale; evidence {_field_provenance(by_key['operations.aum'])}; "
+            f"{_field_provenance(by_key['terms.management_fee'])}"
+        ),
+        "transparency": (
+            "Mean confidence of provenance-backed key fields; evidence "
+            + "; ".join(_field_provenance(field) for field in key_fields)
+        ),
+        "team_experience": (
+            f"Key-person risk reading; evidence {_field_provenance(by_key['team.key_person_risk'])}"
+        ),
+    }
+    return _DerivedScoring(asset_class=asset_class, components=components, rationales=rationales)
+
+
+def _workbook_provenance_ref(
+    *,
+    repository: CoreRepository,
+    record: Any,
+    file_entries: list[dict[str, Any]],
+) -> str:
+    file_name = _performance_track_record_file_name(file_entries) or "submitted_workbook"
+    document_id = _document_id_for_file_name(
+        repository=repository, document_ids=record.document_ids, file_name=file_name
+    )
+    if document_id is not None:
+        return f"{file_name}@{document_id}"
+    return file_name
+
+
 def _score_components(benchmark_correlation: float | None) -> tuple[ScoreComponent, ...]:
     assert benchmark_correlation is not None
     correlation_component = max(0.0, min(1.0, benchmark_correlation))
@@ -852,9 +1076,10 @@ def _score_components(benchmark_correlation: float | None) -> tuple[ScoreCompone
 def _explainability_inputs(
     asset_class: str,
     components: tuple[ScoreComponent, ...],
+    rationales: dict[str, str] | None = None,
 ) -> tuple[ScoreComponentInput, ...]:
     weights = get_weight_set(asset_class).weights
-    rationale_by_component = {
+    rationale_by_component = rationales or {
         "performance_consistency": "Normalized monthly track record is complete.",
         "risk_adjusted_returns": "Prioritized metrics include Sharpe and correlation evidence.",
         "operational_quality": "AUM field is present but below auto-accept confidence.",

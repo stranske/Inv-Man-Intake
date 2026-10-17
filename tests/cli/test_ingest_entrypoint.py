@@ -186,7 +186,7 @@ def test_ingest_entrypoint_runs_valid_bundle_outside_repository_fixture_layout(
     assert performance["comparison_available"] is False
     assert performance["benchmark_available"] is False
     assert performance["metrics"]["benchmark_correlation"] is None
-    assert run["final_score"] is None
+    assert isinstance(run["final_score"], float)
 
     # A changed submission must change the artifact, not reuse any fixed series.
     rows[0] = ("2024-01-31", 0.24)
@@ -195,6 +195,156 @@ def test_ingest_entrypoint_runs_valid_bundle_outside_repository_fixture_layout(
     changed = json.loads((tmp_path / "changed" / "run.json").read_text())
     assert changed["performance"]["monthly"][0]["value"] == 0.24
     assert changed["performance"]["metrics"] != performance["metrics"]
+    assert changed["final_score"] != run["final_score"]
+
+
+_SCORE_ROWS = [("2024-01-31", 0.12), ("2024-02-29", -0.07), ("2024-03-31", 0.03)]
+
+
+def _write_score_bundle(
+    tmp_path: Path,
+    *,
+    name: str,
+    rows: list | None = None,
+    pdf_replacements: tuple[tuple[bytes, bytes], ...] = (),
+) -> Path:
+    bundle_path = _write_external_layout_bundle(tmp_path / name)
+    _write_performance_workbook(
+        bundle_path.parent / "summit_arc_track_record.xlsx",
+        _SCORE_ROWS if rows is None else rows,
+    )
+    if pdf_replacements:
+        pdf_path = bundle_path.parent / "summit_arc_investment_update.pdf"
+        data = pdf_path.read_bytes()
+        for old, new in pdf_replacements:
+            assert old in data
+            data = data.replace(old, new)
+        pdf_path.write_bytes(data)
+    return bundle_path
+
+
+def _run_score(bundle_path: Path, output_dir: Path) -> dict:
+    assert main([str(bundle_path), "--out", str(output_dir)]) == 0
+    return json.loads((output_dir / "run.json").read_text(encoding="utf-8"))
+
+
+def _component_scores(run: dict) -> dict[str, float]:
+    return {
+        item["component"]: item["contribution"] / item["weight"]
+        for item in run["explainability"]["components"]
+        if item["weight"]
+    }
+
+
+def test_ingest_score_numeric_for_two_supported_asset_classes(tmp_path: Path) -> None:
+    runs = {}
+    for label, asset_text in (("credit", b"credit"), ("quant", b"quant")):
+        bundle = _write_score_bundle(
+            tmp_path,
+            name=f"bundle-{label}",
+            pdf_replacements=((b"credit", asset_text),),
+        )
+        runs[label] = _run_score(bundle, tmp_path / f"out-{label}")
+
+    for run in runs.values():
+        assert isinstance(run["final_score"], float)
+        explainability = run["explainability"]
+        assert explainability["overall_score"] == pytest.approx(run["final_score"])
+        assert explainability["total_contribution"] == pytest.approx(run["final_score"])
+        assert explainability["total_contribution"] == pytest.approx(
+            sum(item["contribution"] for item in explainability["components"])
+        )
+        assert not any(w["code"] == "scoring:unavailable" for w in run["warnings"])
+        document_ids = run["inputs"]["document_ids"]
+        for item in explainability["components"]:
+            assert any(doc_id in item["rationale"] for doc_id in document_ids), item
+            assert "page" in item["rationale"], item
+    # Same evidence under different asset-class weights yields different totals.
+    assert runs["credit"]["final_score"] != runs["quant"]["final_score"]
+    credit_weights = {
+        i["component"]: i["weight"] for i in runs["credit"]["explainability"]["components"]
+    }
+    quant_weights = {
+        i["component"]: i["weight"] for i in runs["quant"]["explainability"]["components"]
+    }
+    assert credit_weights != quant_weights
+
+
+def test_ingest_score_within_class_aum_change_changes_operational_component(
+    tmp_path: Path,
+) -> None:
+    baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
+    changed = _run_score(
+        _write_score_bundle(
+            tmp_path,
+            name="bundle-aum",
+            pdf_replacements=((b"$1.2bn", b"$120m"),),
+        ),
+        tmp_path / "out-aum",
+    )
+    base_scores = _component_scores(baseline)
+    changed_scores = _component_scores(changed)
+    assert changed_scores["operational_quality"] != pytest.approx(
+        base_scores["operational_quality"]
+    )
+    assert changed_scores["operational_quality"] < base_scores["operational_quality"]
+    for component in (
+        "performance_consistency",
+        "risk_adjusted_returns",
+        "transparency",
+        "team_experience",
+    ):
+        assert changed_scores[component] == pytest.approx(base_scores[component]), component
+    assert changed["final_score"] != pytest.approx(baseline["final_score"])
+
+
+def test_ingest_score_workbook_change_changes_performance_component(tmp_path: Path) -> None:
+    baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
+    changed = _run_score(
+        _write_score_bundle(
+            tmp_path,
+            name="bundle-returns",
+            rows=[("2024-01-31", 0.02), ("2024-02-29", 0.03), ("2024-03-31", 0.04)],
+        ),
+        tmp_path / "out-returns",
+    )
+    assert _component_scores(changed)["performance_consistency"] != pytest.approx(
+        _component_scores(baseline)["performance_consistency"]
+    )
+    assert changed["final_score"] != pytest.approx(baseline["final_score"])
+
+
+def test_ingest_score_insufficient_evidence_is_unavailable(tmp_path: Path) -> None:
+    bundle = _write_score_bundle(tmp_path, name="bundle-thin", rows=[("2024-01-31", 0.05)])
+    run = _run_score(bundle, tmp_path / "out-thin")
+    assert run["final_score"] is None
+    assert run["explainability"]["status"] == "unavailable"
+    assert run["explainability"]["reason"] == "evidence_backed_score_components_unavailable"
+    assert any(w["code"] == "scoring:unavailable" for w in run["warnings"])
+
+
+def test_ingest_score_deliberate_break_constants_would_fail(tmp_path: Path) -> None:
+    """Constants (smoke ``_score_components``) cannot satisfy these assertions.
+
+    Replacing the derived components with fixed values makes the AUM-driven
+    operational change and the workbook-driven performance change disappear.
+    """
+    baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
+    scores = _component_scores(baseline)
+    assert scores["operational_quality"] != pytest.approx(0.69)
+    assert scores["transparency"] == pytest.approx(0.788)
+    assert scores["team_experience"] == pytest.approx(0.35)
+    changed = _run_score(
+        _write_score_bundle(
+            tmp_path,
+            name="bundle-aum",
+            pdf_replacements=((b"$1.2bn", b"$120m"),),
+        ),
+        tmp_path / "out-aum",
+    )
+    assert _component_scores(changed)["operational_quality"] != pytest.approx(
+        scores["operational_quality"]
+    )
 
 
 @pytest.mark.parametrize(
