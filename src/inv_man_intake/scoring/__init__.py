@@ -12,6 +12,7 @@ from inv_man_intake.scoring.engine import (
     default_weights_by_asset_class,
 )
 from inv_man_intake.scoring.explainability import (
+    ComponentProvenance,
     ExplainabilityPayload,
     ScoreComponentInput,
     ScoreComponentOutput,
@@ -54,6 +55,7 @@ __all__ = [
     "COMPONENT_NAMES",
     "CalibrationStats",
     "CohortScore",
+    "ComponentProvenance",
     "CohortStore",
     "DriftAlert",
     "DriftReport",

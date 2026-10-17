@@ -20,6 +20,7 @@ from inv_man_intake.v1_smoke import (
     _assert_registered_package_state,
     _document_source_names,
     _score_components,
+    _unavailable_explainability,
     run_v1_smoke_pipeline,
 )
 
@@ -114,6 +115,16 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path(v1_smoke_artifacts
     assert score.final_score == pytest.approx(0.7809)
     assert formatted_explainability["overall_score"] == pytest.approx(score.final_score)
     assert formatted_explainability["components"]
+    # Smoke-only components carry analyst provenance, never document pages.
+    for component in formatted_explainability["components"]:
+        assert component["provenance"] == [
+            {
+                "source_kind": "analyst",
+                "reference": "analyst_001",
+                "source_doc_id": None,
+                "source_page": None,
+            }
+        ]
     assert score.contributions["risk_adjusted_returns"] > 0
 
     assert {event.trace_id for event in sink.events} == {trace_context.trace_id}
@@ -354,6 +365,14 @@ def test_v1_smoke_pipeline_without_langsmith_key_uses_local_trace_context(monkey
 
     assert "langsmith_enabled" not in artifacts.trace_context.tags
     assert "langsmith_project" not in artifacts.trace_context.tags
+
+
+def test_unavailable_explainability_names_operator_confirmation_action() -> None:
+    assert _unavailable_explainability("operator_confirmation_required") == {
+        "status": "unavailable",
+        "overall_score": None,
+        "reason": "operator_confirmation_required",
+    }
 
 
 def _write_weight_file(directory: Path, *, asset_class: str, weights_block: str) -> None:
