@@ -5,9 +5,147 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import pytest
+
+from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
+from inv_man_intake.performance.metrics import PerformanceMetrics
+from inv_man_intake.v1_smoke import _evidence_backed_score_components, _score_components
+
 SMOKE_PATH = Path("src/inv_man_intake/v1_smoke.py")
 AUDIT_REPORT_PATH = Path("docs/reports/v1_smoke_contract_audit.md")
 PR_DESCRIPTION_PATH = Path("docs/reports/pr-403-description.md")
+
+
+def _derived_extraction(**field_overrides: object) -> ExtractedDocumentResult:
+    values = {
+        "strategy.asset_class": "credit",
+        "terms.management_fee": "1.25%",
+        "performance.net_return_1y": "8.4%",
+        "operations.aum": "$1.2bn",
+        "team.key_person_risk": "one senior PM departure pending",
+    }
+    fields = []
+    for key, value in values.items():
+        override = field_overrides.get(key, {})
+        assert isinstance(override, dict)
+        fields.append(
+            ExtractedField(
+                key=key,
+                value=override.get("value", value),  # type: ignore[arg-type]
+                confidence=override.get("confidence", 0.80),  # type: ignore[arg-type]
+                source_doc_id=override.get("source_doc_id", "doc-1"),  # type: ignore[arg-type]
+                source_page=override.get("source_page", 2),  # type: ignore[arg-type]
+                method="test",
+            )
+        )
+    if field_overrides.get("__drop__"):
+        fields = [f for f in fields if f.key != field_overrides["__drop__"]]
+    return ExtractedDocumentResult(
+        source_doc_id="doc-1", provider_name="test", fields=tuple(fields)
+    )
+
+
+def _derived_metrics(**overrides: object) -> PerformanceMetrics:
+    payload: dict[str, object] = {
+        "annualized_volatility": 0.10,
+        "max_drawdown": 0.05,
+        "sharpe_ratio": 1.0,
+        "sortino_ratio": 1.4,
+        "information_ratio": None,
+        "benchmark_correlation": None,
+        "observation_count": 12,
+        "benchmark_observation_count": 0,
+        "insufficient_data": (),
+    }
+    payload.update(overrides)
+    return PerformanceMetrics(**payload)  # type: ignore[arg-type]
+
+
+def _derived_scores(extraction=None, metrics=None) -> dict[str, float] | None:
+    derived = _evidence_backed_score_components(
+        extraction=extraction or _derived_extraction(),
+        metrics=_derived_metrics() if metrics is None else metrics,
+        workbook_ref="track.xlsx@doc-1",
+    )
+    if derived is None:
+        return None
+    return {component.name: component.value for component in derived.components}
+
+
+def test_evidence_backed_components_are_derived_not_smoke_constants() -> None:
+    scores = _derived_scores()
+    assert scores is not None
+    smoke = {c.name: c.value for c in _score_components(0.65)}
+    # Only coincidental equality is allowed; the derived mapping must differ.
+    assert scores != smoke
+    assert scores["performance_consistency"] == pytest.approx(0.86)
+    assert scores["risk_adjusted_returns"] == pytest.approx(0.824)
+    assert scores["transparency"] == pytest.approx(0.80)
+    assert scores["team_experience"] == pytest.approx(0.35)
+
+
+def test_evidence_backed_transparency_tracks_mean_confidence_only() -> None:
+    baseline = _derived_scores()
+    lowered = _derived_scores(
+        extraction=_derived_extraction(**{"operations.aum": {"confidence": 0.50}})
+    )
+    assert baseline is not None and lowered is not None
+    assert lowered["transparency"] == pytest.approx((0.80 * 4 + 0.50) / 5)
+    assert lowered["transparency"] < baseline["transparency"]
+    for name in (
+        "performance_consistency",
+        "risk_adjusted_returns",
+        "operational_quality",
+        "team_experience",
+    ):
+        assert lowered[name] == pytest.approx(baseline[name]), name
+
+
+@pytest.mark.parametrize(
+    "extraction,metrics",
+    [
+        (_derived_extraction(__drop__="operations.aum"), _derived_metrics()),
+        (_derived_extraction(**{"terms.management_fee": {"confidence": 0.49}}), _derived_metrics()),
+        (_derived_extraction(**{"operations.aum": {"source_page": None}}), _derived_metrics()),
+        (_derived_extraction(**{"operations.aum": {"source_doc_id": ""}}), _derived_metrics()),
+        (_derived_extraction(**{"operations.aum": {"value": "  "}}), _derived_metrics()),
+        (_derived_extraction(**{"strategy.asset_class": {"value": "banana"}}), _derived_metrics()),
+        (_derived_extraction(**{"terms.management_fee": {"value": "n/a"}}), _derived_metrics()),
+        (
+            _derived_extraction(**{"performance.net_return_1y": {"value": "n/a"}}),
+            _derived_metrics(),
+        ),
+        (_derived_extraction(**{"operations.aum": {"value": "unknown"}}), _derived_metrics()),
+        (_derived_extraction(), _derived_metrics(observation_count=2)),
+        (_derived_extraction(), _derived_metrics(annualized_volatility=None)),
+        (_derived_extraction(), _derived_metrics(max_drawdown=None)),
+        (_derived_extraction(), _derived_metrics(sharpe_ratio=None)),
+    ],
+    ids=[
+        "missing-field",
+        "low-confidence",
+        "missing-page",
+        "missing-doc",
+        "empty-value",
+        "unsupported-asset-class",
+        "unparseable-fee",
+        "unparseable-return",
+        "unparseable-aum",
+        "too-few-observations",
+        "missing-volatility",
+        "missing-drawdown",
+        "missing-sharpe",
+    ],
+)
+def test_evidence_backed_components_below_minimum_evidence(extraction, metrics) -> None:
+    assert _derived_scores(extraction=extraction, metrics=metrics) is None
+
+
+def test_evidence_backed_components_missing_metrics_is_unavailable() -> None:
+    derived = _evidence_backed_score_components(
+        extraction=_derived_extraction(), metrics=None, workbook_ref="track.xlsx@doc-1"
+    )
+    assert derived is None
 
 
 def test_v1_smoke_contract_guard_accepts_current_smoke_path() -> None:
