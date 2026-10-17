@@ -147,6 +147,8 @@ def test_ingest_entrypoint_returns_nonzero_for_missing_bundle(tmp_path: Path) ->
 
 _PRODUCTION_SMOKE_AUDIT = Path("docs/reports/production_vs_smoke_audit.md")
 _V1_SMOKE_SOURCE = Path("src/inv_man_intake/v1_smoke.py")
+_SCORING_ENGINE_TESTS = Path("tests/scoring/test_engine.py")
+_INGEST_ENTRYPOINT_TESTS = Path("tests/cli/test_ingest_entrypoint.py")
 # Reachable smoke_mode / fixed-stand-in inventory IDs from the production audit.
 _AUDIT_BOUNDARY_IDS = tuple(f"B{index:02d}" for index in range(1, 21))
 _SMOKE_MODE_MARKERS = (
@@ -159,7 +161,64 @@ _SMOKE_MODE_MARKERS = (
     "created_at=datetime(2026, 3, 4, 10, 0, tzinfo=UTC)",
     "return _fixture_performance_series()",
     "return _workbook_performance_series(track_record_bytes), None, None",
+    'sqlite3.connect(":memory:")',
+    "InMemoryDocumentStore()",
+    'fallback_name="fixture-fallback"',
+    "build_legacy_pdf_fixture_service()",
+    'model="deterministic-pdf-parser"',
 )
+# Classification buckets from docs/reports/production_vs_smoke_audit.md.
+_CLASSIFICATION_SUMMARY = {
+    "intentional smoke controls (retain)": frozenset(
+        {"B02", "B03", "B04", "B05", "B06", "B09", "B14", "B19"}
+    ),
+    "prevention assertions (tests must hold)": frozenset({"B01", "B07", "B13"}),
+    "production path ok / shared policy": frozenset({"B08", "B17"}),
+    "confirmed gaps → human decision (no auto-file)": frozenset({"B10", "B11"}),
+    "superseded review claim": frozenset({"B16"}),
+    "architectural / mixed / unknown": frozenset({"B12", "B15", "B18", "B20"}),
+}
+_EVIDENCE_CLASS_TO_SUMMARY = {
+    "prevention assertion": "prevention assertions (tests must hold)",
+    "intentional smoke control": "intentional smoke controls (retain)",
+    "intentional smoke control (boundary)": "intentional smoke controls (retain)",
+    "intentional production path (post-#1019 seam)": "production path ok / shared policy",
+    "intentional shared policy": "production path ok / shared policy",
+    "confirmed production gap": "confirmed gaps → human decision (no auto-file)",
+    "architectural seam": "architectural / mixed / unknown",
+    "intentional / prevention": "prevention assertions (tests must hold)",
+    "mixed / historical corpus seam": "architectural / mixed / unknown",
+    "superseded review claim": "superseded review claim",
+    "intentional / ocr-fallback partial": "architectural / mixed / unknown",
+}
+
+
+def _parse_audit_boundary_rows(audit: str) -> dict[str, dict[str, str]]:
+    """Parse reachable-branch table rows keyed by boundary ID."""
+    section = audit.split("## Reachable branches and fixed assumptions", maxsplit=1)[1].split(
+        "## Classification summary",
+        maxsplit=1,
+    )[0]
+    rows: dict[str, dict[str, str]] = {}
+    for line in section.splitlines():
+        if not line.startswith("| B"):
+            continue
+        columns = [column.strip() for column in line.split("|")]
+        # split("|") yields leading/trailing empties around markdown cells.
+        cells = columns[1:-1] if columns and columns[0] == "" else columns
+        if len(cells) < 8:
+            continue
+        boundary_id = cells[0]
+        rows[boundary_id] = {
+            "source": cells[1],
+            "condition": cells[2],
+            "production_contract": cells[3],
+            "smoke_behavior": cells[4],
+            "evidence_class": cells[5].replace("**", "").strip(),
+            "classification_evidence": cells[6],
+            "disposition": cells[7],
+        }
+    return rows
 
 
 def test_production_smoke_audit_inventories_reachable_smoke_mode_branches() -> None:
@@ -177,6 +236,73 @@ def test_production_smoke_audit_inventories_reachable_smoke_mode_branches() -> N
     assert "document_ids[1]" not in source
     assert "_select_extraction_documents" in source
     assert "PRIMARY_EXTENSIONS" in source
+
+
+def test_production_smoke_audit_classifies_boundaries_with_existing_tests() -> None:
+    """Classify each inventory boundary using CLI + scoring engine evidence.
+
+    Separates intentional smoke controls from confirmed gaps and unknowns without
+    filing follow-up issues. Cited ``test_*`` names must exist in the declared
+    owner test modules from the issue scope.
+    """
+    audit = _PRODUCTION_SMOKE_AUDIT.read_text(encoding="utf-8")
+    entrypoint_tests = _INGEST_ENTRYPOINT_TESTS.read_text(encoding="utf-8")
+    engine_tests = _SCORING_ENGINE_TESTS.read_text(encoding="utf-8")
+    rows = _parse_audit_boundary_rows(audit)
+
+    assert set(rows) == set(_AUDIT_BOUNDARY_IDS)
+
+    classified: dict[str, set[str]] = {label: set() for label in _CLASSIFICATION_SUMMARY}
+    for boundary_id, row in rows.items():
+        evidence_class = row["evidence_class"].lower()
+        assert (
+            evidence_class in _EVIDENCE_CLASS_TO_SUMMARY
+        ), f"{boundary_id} has unknown evidence class {row['evidence_class']!r}"
+        summary_label = _EVIDENCE_CLASS_TO_SUMMARY[evidence_class]
+        classified[summary_label].add(boundary_id)
+
+        evidence = row["classification_evidence"]
+        disposition = row["disposition"].lower()
+        assert evidence.strip(), f"{boundary_id} missing classification evidence"
+        assert row["production_contract"].strip(), f"{boundary_id} missing production contract"
+        assert disposition.strip(), f"{boundary_id} missing disposition"
+
+        if evidence_class == "confirmed production gap":
+            assert "no auto-filed" in disposition or "return for human" in disposition
+
+        # Scope requires classification via these two test modules for smoke/score seams.
+        if boundary_id in {
+            "B01",
+            "B02",
+            "B04",
+            "B05",
+            "B06",
+            "B07",
+            "B10",
+            "B11",
+            "B13",
+            "B14",
+            "B16",
+        }:
+            assert "test_" in evidence, f"{boundary_id} must cite an existing CLI test"
+        if boundary_id in {"B08", "B09"}:
+            assert "tests/scoring/test_engine.py" in evidence or "test_engine.py" in evidence
+            assert "test_ingest_" in evidence or "test_ingest_entrypoint.py" in evidence
+
+        for token in evidence.replace("`", " ").replace(",", " ").replace("(", " ").split():
+            if not token.startswith("test_"):
+                continue
+            name = token.rstrip(").,;")
+            present = name in entrypoint_tests or name in engine_tests
+            assert present, f"{boundary_id} cites missing test {name}"
+
+    for label, expected_ids in _CLASSIFICATION_SUMMARY.items():
+        assert classified[label] == expected_ids, f"summary drift for {label}"
+
+    human_section = audit.split("## Uncovered items returned for human review", maxsplit=1)[1]
+    assert "No automatic follow-up issues are created" in human_section
+    for gap_id in ("B10", "B11", "B15", "B18"):
+        assert gap_id in human_section, f"human-review section missing {gap_id}"
 
 
 def test_run_pipeline_invokes_core_without_smoke_document_ids(
