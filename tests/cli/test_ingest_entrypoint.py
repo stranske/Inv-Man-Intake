@@ -604,6 +604,36 @@ def test_ingest_score_per_cent_and_departures_score_end_to_end(tmp_path: Path) -
     assert changed_scores["team_experience"] == pytest.approx(0.35)
 
 
+def test_ingest_score_singular_bp_mn_aum_and_left_score_end_to_end(tmp_path: Path) -> None:
+    """Singular ``bp``, ``mn`` AUM, and ``has left`` text are submitted evidence.
+
+    Deliberate-break: reverting the ``bp`` unit or ``mn`` multiplier makes
+    scoring unavailable; reverting the ``left`` stem makes
+    ``team_experience`` neutral (0.65) instead of adverse (0.35).
+    """
+    baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
+    changed = _run_score(
+        _write_score_bundle(
+            tmp_path,
+            name="bundle-bp-mn",
+            pdf_replacements=(
+                (b"Management Fee: 1.25%", b"Management Fee: 125 bp"),
+                (b"$1.2bn", b"$1,200mn"),
+                (b"one senior PM departure pending", b"key person has left"),
+            ),
+        ),
+        tmp_path / "out-bp-mn",
+    )
+    assert isinstance(changed["final_score"], float)
+    base_scores = _component_scores(baseline)
+    changed_scores = _component_scores(changed)
+    # 125 bp == 1.25% and $1,200mn == $1.2bn: operational quality is unchanged.
+    assert changed_scores["operational_quality"] == pytest.approx(
+        base_scores["operational_quality"]
+    )
+    assert changed_scores["team_experience"] == pytest.approx(0.35)
+
+
 def test_ingest_score_unsupported_asset_class_is_unavailable(tmp_path: Path) -> None:
     bundle = _write_score_bundle(
         tmp_path,

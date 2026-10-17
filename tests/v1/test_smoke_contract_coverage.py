@@ -330,6 +330,12 @@ def test_evidence_backed_team_experience_remaining_tokens(risk_value: str, expec
     "risk_value,expected",
     [
         ("No key-person risk", 0.90),
+        ("no departures", 0.90),
+        ("no one has left", 0.90),
+        ("key person has left", 0.35),
+        ("senior PM left the firm", 0.35),
+        ("founder retired", 0.35),
+        ("low risk, but senior PM left", 0.35),
         ("low key person risk", 0.90),
         ("Low-risk team", 0.90),
         ("minimal key person risk", 0.90),
@@ -358,6 +364,8 @@ def test_evidence_backed_team_experience_natural_spellings(
         ("8.4 per cent", 0.084),
         ("1.25 pct", 0.0125),
         ("125 bps", 0.0125),
+        ("125 bp", 0.0125),
+        ("1,250 bps", 0.125),
         ("125 basis points", 0.0125),
         ("8.4%", 0.084),
         ("840 bps", 0.084),
@@ -392,6 +400,7 @@ def test_evidence_backed_spelled_percentages_score_like_symbols() -> None:
         "credit_long_short",
         "long/short equity",
         "Global Macro",
+        "Market Neutral",
     ],
 )
 def test_evidence_backed_asset_class_separator_spellings(asset_class: str) -> None:
@@ -499,6 +508,8 @@ def test_evidence_backed_components_missing_metrics_is_unavailable() -> None:
     ("value", "expected"),
     [
         ("2025: $1.2bn", 1_200_000_000),
+        ("$1,200mn", 1_200_000_000),
+        ("500mn", 500_000_000),
         ("$1,200 million", 1_200_000_000),
         ("450", 450),
         ("450 managed", None),

@@ -30,6 +30,7 @@ LAUNCH_ASSET_CLASSES: tuple[str, ...] = (
 ASSET_CLASS_ALIASES: Mapping[str, str] = MappingProxyType(
     {
         "equity": "equity_market_neutral",
+        "market_neutral": "equity_market_neutral",
         "equity_l_s": "equity_market_neutral",
         "long_short_equity": "equity_market_neutral",
         "equity_long_short": "equity_market_neutral",

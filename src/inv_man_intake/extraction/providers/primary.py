@@ -20,15 +20,15 @@ class PrimaryRegexExtractionProvider:
         ("strategy.asset_class", r"strategy asset class\s*[:\-]?\s*([^;\n]+)"),
         (
             "terms.management_fee",
-            r"management fee\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?\s*(?:%|per\s+cent|percent(?:age)?|pct|bps|basis\s+points?))",
+            r"management fee\s*[:\-]?\s*((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?\s*(?:%|per\s+cent|percent(?:age)?|pct|bps|bp|basis\s+points?))",
         ),
         (
             "terms.performance_fee",
-            r"performance fee\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?\s*(?:%|per\s+cent|percent(?:age)?|pct|bps|basis\s+points?))",
+            r"performance fee\s*[:\-]?\s*((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?\s*(?:%|per\s+cent|percent(?:age)?|pct|bps|bp|basis\s+points?))",
         ),
         (
             "performance.net_return_1y",
-            r"net return 1y\s*[:\-]?\s*(-?[0-9]+(?:\.[0-9]+)?\s*(?:%|per\s+cent|percent(?:age)?|pct|bps|basis\s+points?))",
+            r"net return 1y\s*[:\-]?\s*(-?(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?\s*(?:%|per\s+cent|percent(?:age)?|pct|bps|bp|basis\s+points?))",
         ),
         ("operations.aum", r"aum\s*[:\-]\s*([^\r\n]+)"),
         ("team.key_person_risk", r"key person risk\s*[:\-]?\s*([^;\n]+)"),
