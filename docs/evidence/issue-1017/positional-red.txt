@@ -1,0 +1,57 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________________ test_ingest_file_order_permutations_equivalent ________________
+
+tmp_path = PosixPath('/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permuta0')
+
+    def test_ingest_file_order_permutations_equivalent(tmp_path):
+        bundle = _write_external_layout_bundle(tmp_path / "bundle")
+        payload = json.loads(bundle.read_text())
+        workbook = bundle.parent / "summit_arc_track_record.xlsx"
+        _write_performance_workbook(workbook, [("2024-01-31", 0.12), ("2024-02-29", -0.07)])
+        results = []
+        for index, files in enumerate([payload["files"], list(reversed(payload["files"]))]):
+            bundle.write_text(json.dumps({**payload, "files": files}))
+            output = tmp_path / f"out-{index}"
+>           assert main([str(bundle), "--out", str(output)]) == 0
+E           AssertionError: assert 1 == 0
+E            +  where 1 = main(['/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permut...e/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permuta0/out-1'])
+
+tests/cli/test_ingest_entrypoint.py:157: AssertionError
+----------------------------- Captured stdout call -----------------------------
+run_id: run_6605bed00cbc4d1e9e95fa23d3e966b6
+final_score: None
+escalation: low_key_field_coverage
+output_dir: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permuta0/out-0
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permuta0/out-0/run.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permuta0/out-0/metadata.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permuta0/out-0/threshold-summary.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permuta0/out-0/explainability.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permuta0/out-0/evidence-3b0e5f9bf561b591a3940d5c11daaacc5cbc1eccea1e7b335893c92c4f28e7f0.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permuta0/out-0/evidence-42c9d40c757d536628fcab68e43419e7856f79b8c18aa7403f52f6c84b62ff61.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permuta0/out-0/evidence-5febe0dcdd2f4f5ce86d5cd778ad81fae687f38f8a4155583dd3433ac10c89a9.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permuta0/out-0/evidence-cfc8dd2e9180a2d8cdb0798bb2c8f77271c56dfeeb38d46b19e4128e73f29f26.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permuta0/out-0/evidence-d0f5e3e7e6eb445d1f4d6f1cb95b3d9aa629ba0ce6a099ef2f5c0fad6bef56e8.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permuta0/out-0/evidence-d764c3632d20a61234071b3099ee7176f3f2efee2a871044c6b5c45fdacdd305.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permuta0/out-0/evidence-fa02ae91968d7495451fecb561975a50ed8260231bda59e4968d4c04a6d09318.json
+artifact: /private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-4986/test_ingest_file_order_permuta0/out-0/evidence-fcfe2a8ca41f4a3542221c9c61e198410909e3210348f36a6fd379754643fbf9.json
+----------------------------- Captured stderr call -----------------------------
+error: intake run failed: primary document extraction unavailable for 'summit_arc_track_record.xlsx'
+------------------------------ Captured log call -------------------------------
+WARNING  pypdf._reader:_utils.py:457 invalid pdf header: b'PK\x03\x04\x14'
+WARNING  pypdf._reader:_utils.py:457 EOF marker not found
+WARNING  pypdf._reader:_utils.py:457 invalid pdf header: b'PK\x03\x04\x14'
+WARNING  pypdf._reader:_utils.py:457 EOF marker not found
+=============================== warnings summary ===============================
+tests/cli/test_ingest_entrypoint.py::test_ingest_file_order_permutations_equivalent
+  /opt/anaconda3/lib/python3.12/site-packages/pandas/core/computation/expressions.py:23: UserWarning: Pandas requires version '2.10.2' or newer of 'numexpr' (version '2.8.7' currently installed).
+    from pandas.core.computation.check import NUMEXPR_INSTALLED
+
+tests/cli/test_ingest_entrypoint.py::test_ingest_file_order_permutations_equivalent
+  /opt/anaconda3/lib/python3.12/site-packages/pandas/core/arrays/masked.py:56: UserWarning: Pandas requires version '1.4.2' or newer of 'bottleneck' (version '1.3.7' currently installed).
+    from pandas.core import (
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_file_order_permutations_equivalent
+1 failed, 2 warnings in 1.21s
