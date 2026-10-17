@@ -430,6 +430,24 @@ def test_ingest_score_unsupported_asset_class_is_unavailable(tmp_path: Path) -> 
     assert any(w["code"] == "scoring:unavailable" for w in run["warnings"])
 
 
+def test_ingest_score_ambiguous_aum_is_unavailable(tmp_path: Path) -> None:
+    # Two AUM amounts in the submitted document cannot be resolved to one
+    # operational input, so production scoring must not guess: it stays
+    # unavailable with the minimum-evidence reason even though the workbook
+    # evidence is otherwise sufficient.
+    bundle = _write_score_bundle(
+        tmp_path,
+        name="bundle-ambiguous-aum",
+        pdf_replacements=((b"$1.2bn", b"$1.2bn and $450m"),),
+    )
+    run = _run_score(bundle, tmp_path / "out-ambiguous-aum")
+    assert run["performance"]["status"] == "available"
+    assert run["final_score"] is None
+    assert run["explainability"]["status"] == "unavailable"
+    assert run["explainability"]["reason"] == "evidence_backed_score_components_unavailable"
+    assert any(w["code"] == "scoring:unavailable" for w in run["warnings"])
+
+
 def test_ingest_score_workbook_change_changes_performance_component(tmp_path: Path) -> None:
     baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
     changed = _run_score(
