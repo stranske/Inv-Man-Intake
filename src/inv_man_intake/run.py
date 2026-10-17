@@ -3,9 +3,9 @@
 This module exposes :func:`run_pipeline`, the reusable core that executes the
 deterministic intake -> extraction -> thresholds -> performance -> queue ->
 scoring path for an arbitrary intake bundle and writes a single replayable
-``run.json``, standalone ``evidence-object/v1`` files, and the three named
+``run.json``, standalone ``evidence-object/v1`` files, and the four named
 artifacts (``metadata.json``, ``threshold-summary.json``,
-``explainability.json``) into an operator-supplied output directory.
+``explainability.json``, ``validation-queue.json``) into an operator-supplied output directory.
 
 The orchestration itself lives in :func:`inv_man_intake.v1_smoke._run_pipeline_core`,
 which the acceptance smoke (``run_v1_smoke_pipeline``) also delegates to, so the
@@ -40,6 +40,7 @@ from inv_man_intake.observability.tracing import TraceContext
 from inv_man_intake.run_manifest import MANIFEST_NAME, build_manifest
 from inv_man_intake.scoring.contracts import ScoreResult
 from inv_man_intake.v1_smoke import V1SmokeArtifacts, _pipeline_latency_ms, _run_pipeline_core
+from inv_man_intake.workflow_validation import write_validation_queue
 
 _ROOT_SPAN_NAME = "v1_acceptance.intake_register"
 
@@ -47,6 +48,7 @@ ARTIFACT_RUN = "run.json"
 ARTIFACT_METADATA = "metadata.json"
 ARTIFACT_THRESHOLD = "threshold-summary.json"
 ARTIFACT_EXPLAINABILITY = "explainability.json"
+ARTIFACT_QUEUE = "validation-queue.json"
 ARTIFACT_MANIFEST = MANIFEST_NAME
 DEFAULT_THRESHOLD_CONFIG_PATH = (
     Path(__file__).resolve().parents[2] / "config" / "extraction_thresholds.yaml"
@@ -142,7 +144,7 @@ def run_pipeline(
     """Run the intake pipeline for ``bundle_path`` and write artifacts to ``output_dir``.
 
     Returns the :class:`RunResult`. Writes ``run.json``, one evidence object per
-    extracted field, and the three named artifact files into ``output_dir``
+    extracted field, and the four named artifact files into ``output_dir``
     (created if missing).
 
     Raises:
@@ -250,6 +252,7 @@ def _build_run_result(artifacts: V1SmokeArtifacts) -> RunResult:
             ARTIFACT_METADATA,
             ARTIFACT_THRESHOLD,
             ARTIFACT_EXPLAINABILITY,
+            ARTIFACT_QUEUE,
             *evidence_files,
         ],
         manifest=f"artifact:{ARTIFACT_MANIFEST}",
@@ -367,6 +370,10 @@ def _write_run_artifacts(
     _write_json(written[3], dict(artifacts.formatted_explainability))
     for evidence, path in zip(result.evidence_objects, written[4:], strict=True):
         _write_json(path, evidence)
+
+    queue_path = output_dir / ARTIFACT_QUEUE
+    write_validation_queue(queue_path, artifacts.queue_items)
+    written.append(queue_path)
 
     # Hash the artifacts as actually written (run.json already carries its
     # ``manifest`` pointer), then record them in a deterministic manifest.json.

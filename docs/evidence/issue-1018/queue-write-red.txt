@@ -1,0 +1,98 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+__ test_ingest_queue_artifact_reloads_real_outcomes_and_manifest[escalating] ___
+
+tmp_path = PosixPath('/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5606/test_ingest_queue_artifact_rel0')
+accepted = False
+
+    @pytest.mark.parametrize("accepted", [False, True], ids=["escalating", "accepted-policy"])
+    def test_ingest_queue_artifact_reloads_real_outcomes_and_manifest(
+        tmp_path: Path, accepted: bool
+    ) -> None:
+        import hashlib
+
+        from inv_man_intake.validation_queue_api import ValidationQueueQuery, list_validation_queue
+        from inv_man_intake.workflow_validation import (
+            load_validation_queue,
+            load_validation_queue_rows,
+            queue_replay_key,
+        )
+
+        bundle = _write_external_layout_bundle(tmp_path / "bundle")
+        output = tmp_path / "output"
+        args = [str(bundle), "--out", str(output)]
+        if accepted:
+            # A real caller-supplied policy accepts AUM(.72) while leaving the fixture defaults alone.
+            policy = tmp_path / "thresholds.yaml"
+            policy.write_text(
+                Path("config/extraction_thresholds.yaml")
+                .read_text()
+                .replace("key_field_confidence_min: 0.75", "key_field_confidence_min: 0.70")
+            )
+            args += ["--threshold-config", str(policy)]
+        started = datetime.now(UTC).replace(microsecond=0)
+>       assert main(args) == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = main(['/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5606/test_ingest_queue_artifact_re.../var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5606/test_ingest_queue_artifact_rel0/output'])
+
+tests/cli/test_ingest_entrypoint.py:802: AssertionError
+----------------------------- Captured stderr call -----------------------------
+error: intake run failed: [Errno 2] No such file or directory: '/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5606/test_ingest_queue_artifact_rel0/output/validation-queue.json'
+------------------------------ Captured log call -------------------------------
+WARNING  pypdf._reader:_utils.py:457 invalid pdf header: b'PK\x03\x04\x14'
+WARNING  pypdf._reader:_utils.py:457 EOF marker not found
+_ test_ingest_queue_artifact_reloads_real_outcomes_and_manifest[accepted-policy] _
+
+tmp_path = PosixPath('/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5606/test_ingest_queue_artifact_rel1')
+accepted = True
+
+    @pytest.mark.parametrize("accepted", [False, True], ids=["escalating", "accepted-policy"])
+    def test_ingest_queue_artifact_reloads_real_outcomes_and_manifest(
+        tmp_path: Path, accepted: bool
+    ) -> None:
+        import hashlib
+
+        from inv_man_intake.validation_queue_api import ValidationQueueQuery, list_validation_queue
+        from inv_man_intake.workflow_validation import (
+            load_validation_queue,
+            load_validation_queue_rows,
+            queue_replay_key,
+        )
+
+        bundle = _write_external_layout_bundle(tmp_path / "bundle")
+        output = tmp_path / "output"
+        args = [str(bundle), "--out", str(output)]
+        if accepted:
+            # A real caller-supplied policy accepts AUM(.72) while leaving the fixture defaults alone.
+            policy = tmp_path / "thresholds.yaml"
+            policy.write_text(
+                Path("config/extraction_thresholds.yaml")
+                .read_text()
+                .replace("key_field_confidence_min: 0.75", "key_field_confidence_min: 0.70")
+            )
+            args += ["--threshold-config", str(policy)]
+        started = datetime.now(UTC).replace(microsecond=0)
+>       assert main(args) == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = main(['/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5606/test_ingest_queue_artifact_re...ers/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5606/test_ingest_queue_artifact_rel1/thresholds.yaml'])
+
+tests/cli/test_ingest_entrypoint.py:802: AssertionError
+----------------------------- Captured stderr call -----------------------------
+error: intake run failed: [Errno 2] No such file or directory: '/private/var/folders/qm/w0dtc0j132gd6ymf1hxtd2p00000gp/T/pytest-of-teacher/pytest-5606/test_ingest_queue_artifact_rel1/output/validation-queue.json'
+------------------------------ Captured log call -------------------------------
+WARNING  pypdf._reader:_utils.py:457 invalid pdf header: b'PK\x03\x04\x14'
+WARNING  pypdf._reader:_utils.py:457 EOF marker not found
+=============================== warnings summary ===============================
+tests/cli/test_ingest_entrypoint.py::test_ingest_queue_artifact_reloads_real_outcomes_and_manifest[escalating]
+  /opt/anaconda3/lib/python3.12/site-packages/pandas/core/computation/expressions.py:23: UserWarning: Pandas requires version '2.10.2' or newer of 'numexpr' (version '2.8.7' currently installed).
+    from pandas.core.computation.check import NUMEXPR_INSTALLED
+
+tests/cli/test_ingest_entrypoint.py::test_ingest_queue_artifact_reloads_real_outcomes_and_manifest[escalating]
+  /opt/anaconda3/lib/python3.12/site-packages/pandas/core/arrays/masked.py:56: UserWarning: Pandas requires version '1.4.2' or newer of 'bottleneck' (version '1.3.7' currently installed).
+    from pandas.core import (
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_queue_artifact_reloads_real_outcomes_and_manifest[escalating]
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_queue_artifact_reloads_real_outcomes_and_manifest[accepted-policy]
+2 failed, 45 deselected, 2 warnings in 3.54s

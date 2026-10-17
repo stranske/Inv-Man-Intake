@@ -1,0 +1,8 @@
+{
+  "command": "python -m pytest tests/cli/test_ingest_entrypoint.py -k queue -q -o addopts=",
+  "mutation": "Suppress the real production queue-artifact write before manifest hashing.",
+  "red_exit": 1,
+  "green_exit": 0,
+  "restored_identically": true,
+  "source_sha256": "0609842bf7f82defe8a182599e6bf3f8d302babaf99b6b025e7185bdbd0a405c"
+}

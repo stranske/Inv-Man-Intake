@@ -194,3 +194,96 @@ def test_consumer_ui_contract_exports() -> None:
         "build_query_from_params",
         "list_validation_queue",
     )
+
+
+def test_queue_handoff_replay_and_claim_complete_preserve_events(tmp_path):
+    from inv_man_intake.workflow_validation import (
+        load_validation_queue,
+        load_validation_queue_rows,
+        queue_replay_key,
+        write_validation_queue,
+    )
+
+    item = create_queue_item(
+        item_id=queue_replay_key("pkg", "low_coverage"),
+        package_id="pkg",
+        escalation_reason="low_coverage",
+    )
+    file = tmp_path / "queue.json"
+    write_validation_queue(file, [item, item])
+    assert load_validation_queue(file) == (item,)
+    claimed = claim_for_analyst_triage(load_validation_queue(file)[0], analyst_id="explicit-owner")
+    completed = transition_state(
+        claimed, actor_id="explicit-owner", actor_role="analyst", to_state="completed"
+    )
+    write_validation_queue(file, [completed])
+    assert load_validation_queue(file) == (completed,)
+    assert [event.action for event in load_validation_queue(file)[0].events] == [
+        "claim",
+        "state_transition",
+    ]
+    page = list_validation_queue(
+        load_validation_queue_rows(file),
+        query=ValidationQueueQuery(package_id="pkg", states=("completed",)),
+    )
+    assert page.total == 1 and page.items[0].owner_id == "explicit-owner"
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("state", "invented"),
+        ("owner_id", True),
+        ("events", {}),
+        ("created_at", "2026-01-01"),
+        ("package_id", None),
+    ],
+)
+def test_queue_loader_rejects_malformed_typed_records(tmp_path, field, value):
+    import json
+    from dataclasses import asdict
+
+    from inv_man_intake.workflow_validation import (
+        QUEUE_ARTIFACT_SCHEMA,
+        ValidationWorkflowError,
+        load_validation_queue,
+    )
+
+    raw = asdict(
+        create_queue_item(item_id="item", package_id="pkg", escalation_reason="low_coverage")
+    )
+    raw["events"] = []
+    raw[field] = value
+    file = tmp_path / "queue.json"
+    file.write_text(json.dumps({"schema_version": QUEUE_ARTIFACT_SCHEMA, "items": [raw]}))
+    with pytest.raises(ValidationWorkflowError):
+        load_validation_queue(file)
+
+
+def test_queue_loader_rejects_unknown_schema_and_duplicate_identity(tmp_path):
+    import json
+
+    from inv_man_intake.workflow_validation import (
+        ValidationWorkflowError,
+        load_validation_queue,
+        write_validation_queue,
+    )
+
+    item = create_queue_item(item_id="item", package_id="pkg", escalation_reason="low_coverage")
+    file = tmp_path / "queue.json"
+    write_validation_queue(file, [item])
+    payload = json.loads(file.read_text())
+    payload["items"] *= 2
+    file.write_text(json.dumps(payload))
+    with pytest.raises(ValidationWorkflowError, match="Duplicate"):
+        load_validation_queue(file)
+    file.write_text('{"schema_version":"unknown", "items":[]}')
+    with pytest.raises(ValidationWorkflowError, match="Unsupported"):
+        load_validation_queue(file)
+
+
+def test_queue_replay_pair_encoding_has_no_delimiter_collision():
+    from inv_man_intake.workflow_validation import queue_replay_key
+
+    assert queue_replay_key("a:b", "c") != queue_replay_key("a", "b:c")
+    assert queue_replay_key("pkg", "reason") == queue_replay_key("pkg", "reason")

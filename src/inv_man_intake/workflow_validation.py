@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+import hashlib
+import json
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
-from typing import Literal
+from pathlib import Path
+from typing import Literal, get_args
 
 ValidationState = Literal[
     "pending_triage",
@@ -246,3 +250,113 @@ def _require_non_empty(*, item_id: str, package_id: str, escalation_reason: str)
         raise ValidationWorkflowError("package_id must be non-empty")
     if not escalation_reason:
         raise ValidationWorkflowError("escalation_reason must be non-empty")
+
+
+QUEUE_ARTIFACT_SCHEMA = "validation-queue/v1"
+
+
+def queue_replay_key(package_id: str, escalation_reason: str) -> str:
+    """Stable identity across run IDs and replays; pair encoding avoids delimiter collisions."""
+    _require_non_empty(item_id="replay", package_id=package_id, escalation_reason=escalation_reason)
+    key = json.dumps([package_id, escalation_reason], ensure_ascii=False, separators=(",", ":"))
+    return "validation:" + hashlib.sha256(key.encode("utf-8")).hexdigest()
+
+
+def write_validation_queue(path: Path, items: Iterable[ValidationQueueItem]) -> None:
+    """Write a local versioned handoff, retaining ownership and the complete event history."""
+    unique: dict[tuple[str, str], ValidationQueueItem] = {}
+    for item in items:
+        key = (item.package_id, item.escalation_reason)
+        if key in unique and unique[key] != item:
+            raise ValidationWorkflowError("Conflicting queue records for the same replay key")
+        unique[key] = item
+    payload = {
+        "schema_version": QUEUE_ARTIFACT_SCHEMA,
+        "items": [
+            {**asdict(unique[key]), "events": [asdict(event) for event in unique[key].events]}
+            for key in sorted(unique)
+        ],
+    }
+    # Use the same decoder before publication, so the writer cannot create an invalid handoff.
+    _decode_validation_queue(payload)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def load_validation_queue(path: Path) -> tuple[ValidationQueueItem, ...]:
+    """Reload typed records/events for the existing claim/transfer/complete functions."""
+    return _decode_validation_queue(json.loads(path.read_text(encoding="utf-8")))
+
+
+def load_validation_queue_rows(path: Path) -> tuple[ValidationQueueRow, ...]:
+    return tuple(to_queue_row(item) for item in load_validation_queue(path))
+
+
+def _decode_validation_queue(payload: object) -> tuple[ValidationQueueItem, ...]:
+    if not isinstance(payload, dict) or set(payload) != {"schema_version", "items"}:
+        raise ValidationWorkflowError("Invalid validation queue artifact object")
+    if payload["schema_version"] != QUEUE_ARTIFACT_SCHEMA or not isinstance(payload["items"], list):
+        raise ValidationWorkflowError("Unsupported validation queue schema or items")
+    items = []
+    keys: set[tuple[str, str]] = set()
+    ids: set[str] = set()
+    fields = set(ValidationQueueItem.__dataclass_fields__)
+    event_fields = set(QueueEvent.__dataclass_fields__)
+    for raw in payload["items"]:
+        if not isinstance(raw, dict) or set(raw) != fields:
+            raise ValidationWorkflowError("Invalid queue item fields")
+        for key in ("item_id", "package_id", "escalation_reason", "created_at", "updated_at"):
+            if not isinstance(raw[key], str) or not raw[key].strip():
+                raise ValidationWorkflowError(f"Queue item {key} must be a non-empty string")
+        if raw["state"] not in get_args(ValidationState):
+            raise ValidationWorkflowError("Invalid queue state")
+        if raw["owner_role"] not in (None, *get_args(OwnerRole)):
+            raise ValidationWorkflowError("Invalid queue owner role")
+        owner = raw["owner_id"]
+        if owner is not None and (not isinstance(owner, str) or not owner.strip()):
+            raise ValidationWorkflowError("Invalid queue owner identity")
+        if (owner is None) != (raw["owner_role"] is None):
+            raise ValidationWorkflowError("Queue owner identity and role must agree")
+        if raw["state"] == "pending_triage" and owner is not None:
+            raise ValidationWorkflowError("Pending queue item must be unowned")
+        if raw["state"] != "pending_triage" and owner is None:
+            raise ValidationWorkflowError("Non-pending queue item must have an owner")
+        for key in ("created_at", "updated_at"):
+            _queue_timestamp(raw[key])
+        if _queue_timestamp(raw["updated_at"]) < _queue_timestamp(raw["created_at"]):
+            raise ValidationWorkflowError("Queue timestamps are out of order")
+        if not isinstance(raw["events"], list):
+            raise ValidationWorkflowError("Queue events must be a list")
+        events = []
+        for event in raw["events"]:
+            if not isinstance(event, dict) or set(event) != event_fields:
+                raise ValidationWorkflowError("Invalid queue event fields")
+            if event["action"] not in ("claim", "transfer", "state_transition"):
+                raise ValidationWorkflowError("Invalid queue event action")
+            if not isinstance(event["actor_id"], str) or not event["actor_id"].strip():
+                raise ValidationWorkflowError("Invalid queue event actor")
+            if event["actor_role"] not in get_args(OwnerRole):
+                raise ValidationWorkflowError("Invalid queue event actor role")
+            if event["note"] is not None and not isinstance(event["note"], str):
+                raise ValidationWorkflowError("Invalid queue event note")
+            _queue_timestamp(event["at"])
+            events.append(QueueEvent(**event))
+        replay_key = (raw["package_id"], raw["escalation_reason"])
+        if replay_key in keys or raw["item_id"] in ids:
+            raise ValidationWorkflowError("Duplicate queue replay key or item identity")
+        keys.add(replay_key)
+        ids.add(raw["item_id"])
+        items.append(ValidationQueueItem(**{**raw, "events": tuple(events)}))
+    return tuple(items)
+
+
+def _queue_timestamp(value: object) -> datetime:
+    if not isinstance(value, str):
+        raise ValidationWorkflowError("Queue timestamp must be an ISO UTC string")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValidationWorkflowError("Invalid queue timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValidationWorkflowError("Queue timestamp requires a timezone")
+    return parsed.astimezone(UTC)

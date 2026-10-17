@@ -30,6 +30,7 @@ MANIFEST_NAME = "manifest.json"
 _KIND_BY_NAME = {
     "run.json": "envelope",
     "metadata.json": "data",
+    "validation-queue.json": "data",
     "threshold-summary.json": "report",
     "explainability.json": "evidence",
 }
