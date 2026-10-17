@@ -199,6 +199,8 @@ def test_asset_class_aliases_resolve_to_launch_classes() -> None:
     assert normalize_asset_class("long-short-equity") == "equity_market_neutral"
     assert normalize_asset_class("multi_strategy") == "multi_strat"
     assert normalize_asset_class("credit") == "credit_long_short"
+    assert normalize_asset_class("credit long/short") == "credit_long_short"
+    assert normalize_asset_class("long/short equity") == "equity_market_neutral"
     assert set(ASSET_CLASS_ALIASES.values()).issubset(set(LAUNCH_ASSET_CLASSES))
     assert get_weight_set("multi_asset").asset_class == "multi_strat"
 

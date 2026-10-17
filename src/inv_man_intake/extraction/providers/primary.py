@@ -18,9 +18,18 @@ class PrimaryRegexExtractionProvider:
     _PATTERNS: tuple[tuple[str, str], ...] = (
         ("manager.name", r"manager\s*[:\-]?\s*([A-Za-z0-9 &/\-]+)"),
         ("strategy.asset_class", r"strategy asset class\s*[:\-]?\s*([^;\n]+)"),
-        ("terms.management_fee", r"management fee\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?%)"),
-        ("terms.performance_fee", r"performance fee\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?%)"),
-        ("performance.net_return_1y", r"net return 1y\s*[:\-]?\s*([0-9.-]+%)"),
+        (
+            "terms.management_fee",
+            r"management fee\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?\s*(?:%|percent(?:age)?|pct|bps|basis\s+points?))",
+        ),
+        (
+            "terms.performance_fee",
+            r"performance fee\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?\s*(?:%|percent(?:age)?|pct|bps|basis\s+points?))",
+        ),
+        (
+            "performance.net_return_1y",
+            r"net return 1y\s*[:\-]?\s*(-?[0-9]+(?:\.[0-9]+)?\s*(?:%|percent(?:age)?|pct|bps|basis\s+points?))",
+        ),
         ("operations.aum", r"aum\s*[:\-]\s*([^\r\n]+)"),
         ("team.key_person_risk", r"key person risk\s*[:\-]?\s*([^;\n]+)"),
         ("strategy.name", r"strategy\s*[:\-]?\s*([A-Za-z0-9 /\-]+)"),

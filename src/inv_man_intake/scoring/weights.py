@@ -136,7 +136,10 @@ def weights_for_registry(config_dir: Path | None = None) -> dict[str, dict[str, 
 def normalize_asset_class(asset_class: str) -> str:
     """Return the canonical v1 launch asset-class key for a label or alias."""
 
-    label = str(asset_class or "").strip().lower().replace("-", "_").replace(" ", "_")
+    label = (
+        str(asset_class or "").strip().lower().replace("-", "_").replace(" ", "_").replace("/", "_")
+    )
+    label = "_".join(part for part in label.split("_") if part)
     if not label:
         raise ValueError("asset_class must be non-empty")
     canonical = ASSET_CLASS_ALIASES.get(label, label)

@@ -14,6 +14,7 @@ from inv_man_intake.v1_smoke import (
     _evidence_backed_score_components,
     _field_component_provenance,
     _parse_aum,
+    _parse_percent,
     _score_components,
     _workbook_component_provenance,
 )
@@ -320,6 +321,76 @@ def test_evidence_backed_team_experience_remaining_tokens(risk_value: str, expec
     )
     assert varied is not None
     assert varied["team_experience"] == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "risk_value,expected",
+    [
+        ("No key-person risk", 0.90),
+        ("low key person risk", 0.90),
+        ("Low-risk team", 0.90),
+        ("minimal key person risk", 0.90),
+        ("negligible key-person risk", 0.90),
+        # Adverse signals still outrank the new reassuring spellings.
+        ("low key person risk, but founder resigned", 0.35),
+        ("minimal risk; one senior PM departure pending", 0.35),
+    ],
+)
+def test_evidence_backed_team_experience_natural_spellings(
+    risk_value: str, expected: float
+) -> None:
+    varied = _derived_scores(
+        extraction=_derived_extraction(**{"team.key_person_risk": {"value": risk_value}})
+    )
+    assert varied is not None
+    assert varied["team_experience"] == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("1.25%", 0.0125),
+        ("1.25 percent", 0.0125),
+        ("1.25 pct", 0.0125),
+        ("125 bps", 0.0125),
+        ("125 basis points", 0.0125),
+        ("8.4%", 0.084),
+        ("840 bps", 0.084),
+        ("-4.0 percent", -0.04),
+        ("1.25", None),
+        ("n/a", None),
+    ],
+)
+def test_parse_percent_accepts_spelled_and_bps_units(value: str, expected: float | None) -> None:
+    assert _parse_percent(value) == (pytest.approx(expected) if expected is not None else None)
+
+
+def test_evidence_backed_spelled_percentages_score_like_symbols() -> None:
+    baseline = _derived_scores()
+    spelled = _derived_scores(
+        extraction=_derived_extraction(
+            **{
+                "terms.management_fee": {"value": "125 bps"},
+                "performance.net_return_1y": {"value": "8.4 percent"},
+            }
+        )
+    )
+    assert baseline is not None and spelled is not None
+    assert spelled == baseline
+
+
+@pytest.mark.parametrize(
+    "asset_class",
+    ["credit long/short", "Credit Long-Short", "credit_long_short", "long/short equity"],
+)
+def test_evidence_backed_asset_class_separator_spellings(asset_class: str) -> None:
+    derived = _evidence_backed_score_components(
+        extraction=_derived_extraction(**{"strategy.asset_class": {"value": asset_class}}),
+        metrics=_derived_metrics(),
+        workbook_ref="track.xlsx@doc-1",
+    )
+    assert derived is not None
+    assert derived.asset_class in {"credit_long_short", "equity_market_neutral"}
 
 
 def test_workbook_component_provenance_uses_last_at_separator() -> None:

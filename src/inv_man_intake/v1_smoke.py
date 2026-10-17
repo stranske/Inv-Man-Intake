@@ -968,7 +968,9 @@ def _team_experience_score(risk_value: str) -> float:
     reassurance.
     """
 
-    risk_text = risk_value.lower()
+    # Hyphenated/slashed spellings ("key-person", "low-risk") read the same
+    # as their spaced forms, so normalize separators before matching.
+    risk_text = re.sub(r"\s+", " ", re.sub(r"[-/]", " ", risk_value.lower())).strip()
     # Remove only an explicitly negated departure phrase. Other adverse
     # mentions in the same text must still outrank reassuring language.
     adverse_text = re.sub(r"\bno\s+(?:pending\s+)?departures?\b", "", risk_text)
@@ -982,6 +984,7 @@ def _team_experience_score(risk_value: str) -> float:
         "no key person" in risk_text
         or "low risk" in risk_text
         or "stable team" in risk_text
+        or re.search(r"\b(?:low|minimal|negligible)\b", risk_text)
         or re.search(r"\bnone\b", risk_text)
     ):
         return 0.90
@@ -1013,7 +1016,19 @@ def _workbook_component_provenance(workbook_ref: str) -> ComponentProvenance:
 
 
 def _parse_percent(value: str) -> float | None:
-    match = re.search(r"(-?[0-9]+(?:\.[0-9]+)?)\s*%", value)
+    """Parse a percentage written as ``%``, ``percent``/``pct``, or basis points.
+
+    Submitted documents spell the same quantity several ways (``1.25%``,
+    ``1.25 percent``, ``125 bps``); all normalize to a decimal fraction.
+    A bare number with no unit stays unparseable rather than guessed.
+    """
+
+    bps = re.search(r"(-?[0-9]+(?:\.[0-9]+)?)\s*(?:bps|basis\s+points?)\b", value, re.IGNORECASE)
+    if bps:
+        return float(bps.group(1)) / 10_000.0
+    match = re.search(
+        r"(-?[0-9]+(?:\.[0-9]+)?)\s*(?:%|percent(?:age)?\b|pct\b)", value, re.IGNORECASE
+    )
     return float(match.group(1)) / 100.0 if match else None
 
 

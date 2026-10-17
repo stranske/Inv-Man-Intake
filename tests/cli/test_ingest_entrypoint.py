@@ -541,6 +541,37 @@ def test_ingest_score_key_person_change_changes_only_team_component(tmp_path: Pa
     assert changed["final_score"] > baseline["final_score"]
 
 
+def test_ingest_score_natural_spellings_score_end_to_end(tmp_path: Path) -> None:
+    """Spelled-out units and hyphenated risk text are submitted evidence too."""
+    baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
+    changed = _run_score(
+        _write_score_bundle(
+            tmp_path,
+            name="bundle-spelled",
+            pdf_replacements=(
+                (b"credit", b"credit long/short"),
+                (b"Management Fee: 1.25%", b"Management Fee: 125 bps"),
+                (b"Net Return 1Y: 8.4%", b"Net Return 1Y: 8.4 percent"),
+                (b"one senior PM departure pending", b"no key-person risk"),
+            ),
+        ),
+        tmp_path / "out-spelled",
+    )
+    assert isinstance(changed["final_score"], float)
+    base_scores = _component_scores(baseline)
+    changed_scores = _component_scores(changed)
+    # 125 bps == 1.25% and 8.4 percent == 8.4%: those components are unchanged.
+    assert changed_scores["operational_quality"] == pytest.approx(
+        base_scores["operational_quality"]
+    )
+    assert changed_scores["risk_adjusted_returns"] == pytest.approx(
+        base_scores["risk_adjusted_returns"]
+    )
+    # The hyphenated no-risk text reads as reassuring, not the neutral default.
+    assert changed_scores["team_experience"] == pytest.approx(0.90)
+    assert changed["final_score"] != pytest.approx(baseline["final_score"])
+
+
 def test_ingest_score_unsupported_asset_class_is_unavailable(tmp_path: Path) -> None:
     bundle = _write_score_bundle(
         tmp_path,
