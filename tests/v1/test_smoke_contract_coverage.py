@@ -313,6 +313,9 @@ def test_evidence_backed_aum_single_letter_units_scale_equivalently(aum_value: s
         ("none", 0.90),
         ("senior PM leaving", 0.35),
         ("founder resigned", 0.35),
+        ("two senior departures last year", 0.35),
+        ("key person departed", 0.35),
+        ("founder resigning next quarter", 0.35),
     ],
 )
 def test_evidence_backed_team_experience_remaining_tokens(risk_value: str, expected: float) -> None:
@@ -351,6 +354,8 @@ def test_evidence_backed_team_experience_natural_spellings(
     [
         ("1.25%", 0.0125),
         ("1.25 percent", 0.0125),
+        ("1.25 per cent", 0.0125),
+        ("8.4 per cent", 0.084),
         ("1.25 pct", 0.0125),
         ("125 bps", 0.0125),
         ("125 basis points", 0.0125),
@@ -381,7 +386,13 @@ def test_evidence_backed_spelled_percentages_score_like_symbols() -> None:
 
 @pytest.mark.parametrize(
     "asset_class",
-    ["credit long/short", "Credit Long-Short", "credit_long_short", "long/short equity"],
+    [
+        "credit long/short",
+        "Credit Long-Short",
+        "credit_long_short",
+        "long/short equity",
+        "Global Macro",
+    ],
 )
 def test_evidence_backed_asset_class_separator_spellings(asset_class: str) -> None:
     derived = _evidence_backed_score_components(
@@ -390,7 +401,7 @@ def test_evidence_backed_asset_class_separator_spellings(asset_class: str) -> No
         workbook_ref="track.xlsx@doc-1",
     )
     assert derived is not None
-    assert derived.asset_class in {"credit_long_short", "equity_market_neutral"}
+    assert derived.asset_class in {"credit_long_short", "equity_market_neutral", "macro"}
 
 
 def test_workbook_component_provenance_uses_last_at_separator() -> None:

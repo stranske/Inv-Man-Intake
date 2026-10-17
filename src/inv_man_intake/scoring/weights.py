@@ -36,6 +36,7 @@ ASSET_CLASS_ALIASES: Mapping[str, str] = MappingProxyType(
         "quantitative": "quant",
         "multi_strategy": "multi_strat",
         "multi_asset": "multi_strat",
+        "global_macro": "macro",
         "credit": "credit_long_short",
         "credit_ls": "credit_long_short",
         "credit_l_s": "credit_long_short",

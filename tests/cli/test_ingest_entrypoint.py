@@ -572,6 +572,38 @@ def test_ingest_score_natural_spellings_score_end_to_end(tmp_path: Path) -> None
     assert changed["final_score"] != pytest.approx(baseline["final_score"])
 
 
+def test_ingest_score_per_cent_and_departures_score_end_to_end(tmp_path: Path) -> None:
+    """``per cent`` units and plural departures are submitted evidence too.
+
+    Deliberate-break: reverting the ``per cent`` branch makes the fee
+    unparseable (score unavailable); reverting the departure stems makes
+    ``team_experience`` neutral (0.65) instead of adverse (0.35).
+    """
+    baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
+    changed = _run_score(
+        _write_score_bundle(
+            tmp_path,
+            name="bundle-per-cent",
+            pdf_replacements=(
+                (b"Management Fee: 1.25%", b"Management Fee: 1.25 per cent"),
+                (b"Net Return 1Y: 8.4%", b"Net Return 1Y: 8.4 per cent"),
+                (b"one senior PM departure pending", b"two senior departures announced"),
+            ),
+        ),
+        tmp_path / "out-per-cent",
+    )
+    assert isinstance(changed["final_score"], float)
+    base_scores = _component_scores(baseline)
+    changed_scores = _component_scores(changed)
+    assert changed_scores["operational_quality"] == pytest.approx(
+        base_scores["operational_quality"]
+    )
+    assert changed_scores["risk_adjusted_returns"] == pytest.approx(
+        base_scores["risk_adjusted_returns"]
+    )
+    assert changed_scores["team_experience"] == pytest.approx(0.35)
+
+
 def test_ingest_score_unsupported_asset_class_is_unavailable(tmp_path: Path) -> None:
     bundle = _write_score_bundle(
         tmp_path,

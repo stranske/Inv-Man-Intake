@@ -974,7 +974,7 @@ def _team_experience_score(risk_value: str) -> float:
     # Remove only an explicitly negated departure phrase. Other adverse
     # mentions in the same text must still outrank reassuring language.
     adverse_text = re.sub(r"\bno\s+(?:pending\s+)?departures?\b", "", risk_text)
-    if re.search(r"\b(?:departure|pending|leaving|resigned)\b", adverse_text):
+    if re.search(r"\b(?:depart\w*|resign\w*|pending|leaving)\b", adverse_text):
         return 0.35
     if re.search(r"\bhigh\b", risk_text):
         return 0.40
@@ -1019,15 +1019,18 @@ def _parse_percent(value: str) -> float | None:
     """Parse a percentage written as ``%``, ``percent``/``pct``, or basis points.
 
     Submitted documents spell the same quantity several ways (``1.25%``,
-    ``1.25 percent``, ``125 bps``); all normalize to a decimal fraction.
-    A bare number with no unit stays unparseable rather than guessed.
+    ``1.25 percent``, ``1.25 per cent``, ``125 bps``); all normalize to a
+    decimal fraction. A bare number with no unit stays unparseable rather
+    than guessed.
     """
 
     bps = re.search(r"(-?[0-9]+(?:\.[0-9]+)?)\s*(?:bps|basis\s+points?)\b", value, re.IGNORECASE)
     if bps:
         return float(bps.group(1)) / 10_000.0
     match = re.search(
-        r"(-?[0-9]+(?:\.[0-9]+)?)\s*(?:%|percent(?:age)?\b|pct\b)", value, re.IGNORECASE
+        r"(-?[0-9]+(?:\.[0-9]+)?)\s*(?:%|per\s+cent\b|percent(?:age)?\b|pct\b)",
+        value,
+        re.IGNORECASE,
     )
     return float(match.group(1)) / 100.0 if match else None
 
