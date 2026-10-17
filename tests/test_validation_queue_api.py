@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
+import json
+from dataclasses import asdict, replace
+from pathlib import Path
 
 import pytest
 
@@ -13,12 +15,18 @@ from inv_man_intake.validation_queue_api import (
 )
 from inv_man_intake.validation_queue_api import __all__ as queue_api_exports
 from inv_man_intake.workflow_validation import (
+    QUEUE_ARTIFACT_SCHEMA,
     ValidationQueueRow,
+    ValidationWorkflowError,
     claim_for_analyst_triage,
     create_queue_item,
+    load_validation_queue,
+    load_validation_queue_rows,
+    queue_replay_key,
     to_queue_row,
     transfer_owner,
     transition_state,
+    write_validation_queue,
 )
 
 
@@ -196,14 +204,7 @@ def test_consumer_ui_contract_exports() -> None:
     )
 
 
-def test_queue_handoff_replay_and_claim_complete_preserve_events(tmp_path):
-    from inv_man_intake.workflow_validation import (
-        load_validation_queue,
-        load_validation_queue_rows,
-        queue_replay_key,
-        write_validation_queue,
-    )
-
+def test_queue_handoff_replay_and_claim_complete_preserve_events(tmp_path: Path) -> None:
     item = create_queue_item(
         item_id=queue_replay_key("pkg", "low_coverage"),
         package_id="pkg",
@@ -230,60 +231,125 @@ def test_queue_handoff_replay_and_claim_complete_preserve_events(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "field,value",
+    "changes",
     [
-        ("state", "invented"),
-        ("owner_id", True),
-        ("events", {}),
-        ("created_at", "2026-01-01"),
-        ("package_id", None),
+        {"state": "invented"},
+        {"owner_id": True},
+        {"events": {}},
+        {"created_at": "2026-01-01"},
+        {"package_id": None},
+        {"item_id": " "},
+        {"escalation_reason": ""},
+        {"owner_id": "analyst", "owner_role": None},
+        {"owner_id": None, "owner_role": "analyst"},
+        {"owner_id": "analyst", "owner_role": "manager"},
+        {"owner_id": " ", "owner_role": "analyst"},
+        {"owner_id": "analyst", "owner_role": "analyst"},
+        {"state": "in_validation"},
+        {"state": "completed"},
+        {"created_at": "invalid"},
+        {"updated_at": 123},
+        {"updated_at": "2026-01-01T10:00:00"},
+        {"created_at": "2026-01-02T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z"},
+        {"unexpected_field": "value"},
     ],
 )
-def test_queue_loader_rejects_malformed_typed_records(tmp_path, field, value):
-    import json
-    from dataclasses import asdict
-
-    from inv_man_intake.workflow_validation import (
-        QUEUE_ARTIFACT_SCHEMA,
-        ValidationWorkflowError,
-        load_validation_queue,
-    )
-
+def test_queue_loader_rejects_malformed_typed_records(
+    tmp_path: Path, changes: dict[str, object]
+) -> None:
     raw = asdict(
         create_queue_item(item_id="item", package_id="pkg", escalation_reason="low_coverage")
     )
     raw["events"] = []
-    raw[field] = value
+    raw.update(changes)
     file = tmp_path / "queue.json"
     file.write_text(json.dumps({"schema_version": QUEUE_ARTIFACT_SCHEMA, "items": [raw]}))
     with pytest.raises(ValidationWorkflowError):
         load_validation_queue(file)
 
 
-def test_queue_loader_rejects_unknown_schema_and_duplicate_identity(tmp_path):
-    import json
-
-    from inv_man_intake.workflow_validation import (
-        ValidationWorkflowError,
-        load_validation_queue,
-        write_validation_queue,
-    )
-
+@pytest.mark.parametrize("duplicate", ["record", "item_id", "replay_key"])
+def test_queue_loader_rejects_duplicate_identity(tmp_path: Path, duplicate: str) -> None:
     item = create_queue_item(item_id="item", package_id="pkg", escalation_reason="low_coverage")
     file = tmp_path / "queue.json"
     write_validation_queue(file, [item])
     payload = json.loads(file.read_text())
-    payload["items"] *= 2
+    second = dict(payload["items"][0])
+    if duplicate == "item_id":
+        second["package_id"] = "other-package"
+    elif duplicate == "replay_key":
+        second["item_id"] = "other-item"
+    payload["items"].append(second)
     file.write_text(json.dumps(payload))
     with pytest.raises(ValidationWorkflowError, match="Duplicate"):
         load_validation_queue(file)
-    file.write_text('{"schema_version":"unknown", "items":[]}')
-    with pytest.raises(ValidationWorkflowError, match="Unsupported"):
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        [],
+        {"items": []},
+        {"schema_version": "unknown", "items": []},
+        {"schema_version": QUEUE_ARTIFACT_SCHEMA, "items": {}},
+        {"schema_version": QUEUE_ARTIFACT_SCHEMA, "items": [], "extra": True},
+        {"schema_version": QUEUE_ARTIFACT_SCHEMA, "items": [{}]},
+    ],
+)
+def test_queue_loader_rejects_malformed_schema(tmp_path: Path, payload: object) -> None:
+    file = tmp_path / "queue.json"
+    file.write_text(json.dumps(payload))
+    with pytest.raises(ValidationWorkflowError):
         load_validation_queue(file)
 
 
-def test_queue_replay_pair_encoding_has_no_delimiter_collision():
-    from inv_man_intake.workflow_validation import queue_replay_key
-
+def test_queue_replay_pair_encoding_has_no_delimiter_collision() -> None:
     assert queue_replay_key("a:b", "c") != queue_replay_key("a", "b:c")
     assert queue_replay_key("pkg", "reason") == queue_replay_key("pkg", "reason")
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"action": "invented"},
+        {"actor_id": " "},
+        {"actor_role": "manager"},
+        {"note": 42},
+        {"at": "2026-01-01T10:00:00"},
+        {"at": "invalid"},
+        {"at": None},
+        {"extra": True},
+    ],
+)
+def test_queue_loader_rejects_malformed_events(tmp_path: Path, changes: dict[str, object]) -> None:
+    item = claim_for_analyst_triage(
+        create_queue_item(item_id="item", package_id="pkg", escalation_reason="low_coverage"),
+        analyst_id="analyst",
+    )
+    raw = asdict(item)
+    event = asdict(item.events[0])
+    event.update(changes)
+    raw["events"] = [event]
+    file = tmp_path / "queue.json"
+    file.write_text(json.dumps({"schema_version": QUEUE_ARTIFACT_SCHEMA, "items": [raw]}))
+    with pytest.raises(ValidationWorkflowError):
+        load_validation_queue(file)
+
+
+@pytest.mark.parametrize("invalid", ["conflicting_replay", "duplicate_id", "unowned_completed"])
+def test_queue_writer_rejects_invalid_records_without_overwriting(
+    tmp_path: Path, invalid: str
+) -> None:
+    item = create_queue_item(item_id="item", package_id="pkg", escalation_reason="low_coverage")
+    file = tmp_path / "queue.json"
+    write_validation_queue(file, [item])
+    original = file.read_bytes()
+    if invalid == "conflicting_replay":
+        records = [item, claim_for_analyst_triage(item, analyst_id="analyst")]
+    elif invalid == "duplicate_id":
+        records = [item, replace(item, package_id="other-package")]
+    else:
+        records = [replace(item, state="completed")]
+    with pytest.raises(ValidationWorkflowError):
+        write_validation_queue(file, records)
+    assert file.read_bytes() == original

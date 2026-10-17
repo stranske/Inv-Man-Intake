@@ -781,9 +781,12 @@ def test_ingest_queue_artifact_reloads_real_outcomes_and_manifest(
 
     from inv_man_intake.validation_queue_api import ValidationQueueQuery, list_validation_queue
     from inv_man_intake.workflow_validation import (
+        claim_for_analyst_triage,
         load_validation_queue,
         load_validation_queue_rows,
         queue_replay_key,
+        transition_state,
+        write_validation_queue,
     )
 
     bundle = _write_external_layout_bundle(tmp_path / "bundle")
@@ -809,6 +812,13 @@ def test_ingest_queue_artifact_reloads_real_outcomes_and_manifest(
     )
     assert bool(run["escalation_state"]["escalate"]) is (not accepted)
     assert page.total == len(records) == (0 if accepted else 1)
+    assert (
+        list_validation_queue(
+            load_validation_queue_rows(queue_file),
+            query=ValidationQueueQuery(package_id="other-package"),
+        ).total
+        == 0
+    )
     assert "validation-queue.json" in run["artifact_refs"]
     entry = next(
         row
@@ -828,3 +838,30 @@ def test_ingest_queue_artifact_reloads_real_outcomes_and_manifest(
     assert [item.item_id for item in load_validation_queue(queue_file)] == [
         item.item_id for item in records
     ]
+    replayed_run = json.loads((output / "run.json").read_text())
+    assert replayed_run["run_id"] != run["run_id"]
+    if records:
+        claimed = claim_for_analyst_triage(
+            load_validation_queue(queue_file)[0], analyst_id="explicit-owner", note="Review started"
+        )
+        handoff = tmp_path / "reviewed-queue.json"
+        write_validation_queue(handoff, [claimed])
+        reloaded_claim = load_validation_queue(handoff)[0]
+        assert reloaded_claim == claimed
+        completed = transition_state(
+            reloaded_claim,
+            actor_id="explicit-owner",
+            actor_role="analyst",
+            to_state="completed",
+            note="Evidence verified",
+        )
+        write_validation_queue(handoff, [completed])
+        assert load_validation_queue(handoff) == (completed,)
+        assert [event.action for event in completed.events] == ["claim", "state_transition"]
+        assert [event.note for event in completed.events] == ["Review started", "Evidence verified"]
+        completed_page = list_validation_queue(
+            load_validation_queue_rows(handoff),
+            query=ValidationQueueQuery(package_id=completed.package_id, states=("completed",)),
+        )
+        assert completed_page.total == 1
+        assert completed_page.items[0].owner_id == "explicit-owner"
