@@ -340,7 +340,14 @@ def test_evidence_backed_team_experience_remaining_tokens(risk_value: str, expec
         ("Low-risk team", 0.90),
         ("minimal key person risk", 0.90),
         ("negligible key-person risk", 0.90),
+        ("nobody has left", 0.90),
+        ("no team members have left", 0.90),
+        ("team is stable", 0.90),
+        ("stable", 0.90),
+        ("no turnover", 0.90),
+        ("PM stepped down", 0.35),
         # Adverse signals still outrank the new reassuring spellings.
+        ("nobody has left, but founder resigned", 0.35),
         ("low key person risk, but founder resigned", 0.35),
         ("minimal risk; one senior PM departure pending", 0.35),
     ],
@@ -401,6 +408,8 @@ def test_evidence_backed_spelled_percentages_score_like_symbols() -> None:
         "long/short equity",
         "Global Macro",
         "Market Neutral",
+        "Market Neutral Equity",
+        "Long Short Credit",
     ],
 )
 def test_evidence_backed_asset_class_separator_spellings(asset_class: str) -> None:

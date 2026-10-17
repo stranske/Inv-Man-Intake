@@ -975,11 +975,16 @@ def _team_experience_score(risk_value: str) -> float:
     # mentions in the same text must still outrank reassuring language.
     adverse_text = re.sub(r"\bno\s+(?:pending\s+)?departures?\b", "", risk_text)
     adverse_text = re.sub(
-        r"\bno\s+(?:one|team member)\s+(?:has\s+|have\s+)?(?:left|departed|resigned|retired)\b",
+        r"\b(?:no one|nobody|no team members?|no members?)\s+"
+        r"(?:has\s+|have\s+)?(?:left|departed|resigned|retired|stepped down)\b",
         "",
         adverse_text,
     )
-    if re.search(r"\b(?:depart\w*|resign\w*|retir\w*|pending|leaving|left)\b", adverse_text):
+    if re.search(
+        r"\b(?:depart\w*|resign\w*|retir\w*|pending|leaving|left)\b"
+        r"|\b(?:stepped|steps|stepping)\s+down\b",
+        adverse_text,
+    ):
         return 0.35
     if re.search(r"\bhigh\b", risk_text):
         return 0.40
@@ -988,9 +993,14 @@ def _team_experience_score(risk_value: str) -> float:
     if (
         "no key person" in risk_text
         or "no departure" in risk_text
-        or "no one has left" in risk_text
+        or "no turnover" in risk_text
         or "low risk" in risk_text
-        or "stable team" in risk_text
+        or re.search(
+            r"\b(?:nobody|no one|no team members?|no members?)\s+"
+            r"(?:has\s+|have\s+)?(?:left|departed|resigned|retired|stepped down)\b",
+            risk_text,
+        )
+        or re.search(r"\bstable\b", risk_text)
         or re.search(r"\b(?:low|minimal|negligible)\b", risk_text)
         or re.search(r"\bnone\b", risk_text)
     ):

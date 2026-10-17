@@ -634,6 +634,36 @@ def test_ingest_score_singular_bp_mn_aum_and_left_score_end_to_end(tmp_path: Pat
     assert changed_scores["team_experience"] == pytest.approx(0.35)
 
 
+def test_ingest_score_word_order_class_and_negated_departure_score_end_to_end(
+    tmp_path: Path,
+) -> None:
+    """Word-order class labels and negated departures are submitted evidence.
+
+    Deliberate-break: removing the ``market_neutral_equity`` alias makes
+    scoring unavailable; removing the negated-departure handling makes
+    ``team_experience`` adverse (0.35) instead of reassuring (0.90).
+    """
+    baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
+    changed = _run_score(
+        _write_score_bundle(
+            tmp_path,
+            name="bundle-wordorder",
+            pdf_replacements=(
+                (b"credit", b"Market Neutral Equity"),
+                (b"$1.2bn", b"$120bn"),
+                (b"one senior PM departure pending", b"nobody has left"),
+            ),
+        ),
+        tmp_path / "out-wordorder",
+    )
+    assert isinstance(changed["final_score"], float)
+    base_scores = _component_scores(baseline)
+    changed_scores = _component_scores(changed)
+    # $120bn AUM saturates the log-scale AUM term, raising operational quality.
+    assert changed_scores["operational_quality"] > base_scores["operational_quality"]
+    assert changed_scores["team_experience"] == pytest.approx(0.90)
+
+
 def test_ingest_score_unsupported_asset_class_is_unavailable(tmp_path: Path) -> None:
     bundle = _write_score_bundle(
         tmp_path,
