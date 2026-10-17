@@ -419,6 +419,9 @@ def test_evidence_backed_components_missing_metrics_is_unavailable() -> None:
         ("450", 450),
         ("450 managed", None),
         ("$450M and $1.2bn", None),
+        ("€1,5bn", None),
+        ("1,2000 million", None),
+        (".5bn", None),
     ],
 )
 def test_parse_aum_requires_one_recognized_amount_and_unit(

@@ -972,7 +972,8 @@ def _parse_percent(value: str) -> float | None:
 
 _AUM_AMOUNT = r"(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?"
 _AUM_WITH_UNIT = re.compile(
-    rf"\$?\s*(?P<amount>{_AUM_AMOUNT})\s*" r"(?P<unit>billion|million|thousand|bn|mm|[kmb])\b",
+    rf"\$?\s*(?<![0-9.,])(?P<amount>{_AUM_AMOUNT})\s*"
+    r"(?P<unit>billion|million|thousand|bn|mm|[kmb])\b",
     re.IGNORECASE,
 )
 _AUM_UNITLESS = re.compile(rf"\s*\$?\s*(?P<amount>{_AUM_AMOUNT})\s*\Z")
