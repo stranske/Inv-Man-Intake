@@ -502,13 +502,11 @@ def _run_pipeline_core(
 
 def _entrypoint_tracer(*, sink: InMemoryTraceSink, allow_remote_tracing: bool = False) -> Tracer:
     """Keep local latency spans; remote export needs explicit synthetic-run opt-in."""
-    tracer = Tracer(enabled=True, sink=sink)
-    if (
-        not allow_remote_tracing
-        or not tracing_enabled_from_env()
-        or not os.getenv("LANGSMITH_API_KEY", "").strip()
-    ):
-        return tracer
+    if not allow_remote_tracing:
+        return Tracer(enabled=True, sink=sink)
+
+    if not tracing_enabled_from_env() or not os.getenv("LANGSMITH_API_KEY", "").strip():
+        return Tracer(enabled=True, sink=sink)
     from inv_man_intake.observability.langsmith_fleet import ensure_langsmith_project_defaults
     from inv_man_intake.observability.langsmith_sink import LangSmithTraceSink
 
