@@ -9,7 +9,14 @@ import pytest
 
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
 from inv_man_intake.performance.metrics import PerformanceMetrics
-from inv_man_intake.v1_smoke import _evidence_backed_score_components, _parse_aum, _score_components
+from inv_man_intake.scoring.explainability import ComponentProvenance
+from inv_man_intake.v1_smoke import (
+    _evidence_backed_score_components,
+    _field_component_provenance,
+    _parse_aum,
+    _score_components,
+    _workbook_component_provenance,
+)
 
 SMOKE_PATH = Path("src/inv_man_intake/v1_smoke.py")
 AUDIT_REPORT_PATH = Path("docs/reports/v1_smoke_contract_audit.md")
@@ -241,6 +248,54 @@ def test_parse_aum_requires_one_recognized_amount_and_unit(
     value: str, expected: float | None
 ) -> None:
     assert _parse_aum(value) == expected
+
+
+def test_workbook_component_provenance_splits_file_and_document_id() -> None:
+    assert _workbook_component_provenance("track.xlsx@doc-1") == ComponentProvenance(
+        source_kind="workbook", reference="track.xlsx", source_doc_id="doc-1"
+    )
+
+
+@pytest.mark.parametrize("workbook_ref", ["track.xlsx", "track.xlsx@"])
+def test_workbook_component_provenance_without_document_id_keeps_file(workbook_ref: str) -> None:
+    # Unresolved workbook refs stay workbook-kind with no document pointer,
+    # so downstream provenance resolution cannot mistake them for a document.
+    provenance = _workbook_component_provenance(workbook_ref)
+    assert provenance.source_kind == "workbook"
+    assert provenance.reference == "track.xlsx"
+    assert provenance.source_doc_id is None
+    assert provenance.source_page is None
+
+
+def test_field_component_provenance_carries_document_and_page() -> None:
+    field = ExtractedField(
+        key="operations.aum",
+        value="$1.2bn",
+        confidence=0.80,
+        source_doc_id="doc-1",
+        source_page=2,
+        method="test",
+    )
+    assert _field_component_provenance(field) == ComponentProvenance(
+        source_kind="document",
+        reference="operations.aum",
+        source_doc_id="doc-1",
+        source_page=2,
+    )
+
+
+def test_field_component_provenance_without_page_or_doc_is_unresolved() -> None:
+    field = ExtractedField(
+        key="operations.aum",
+        value="$1.2bn",
+        confidence=0.80,
+        source_doc_id="",
+        source_page=None,  # type: ignore[arg-type]
+        method="test",
+    )
+    provenance = _field_component_provenance(field)
+    assert provenance.source_doc_id is None
+    assert provenance.source_page is None
 
 
 def test_v1_smoke_contract_guard_accepts_current_smoke_path() -> None:
