@@ -165,6 +165,7 @@ def run_pipeline(
         package_id=package_id,
         threshold_config=threshold_config,
         content_root=bundle_path.parent,
+        allow_remote_tracing=False,
     )
     result = _build_run_result(artifacts)
     _write_run_artifacts(result=result, artifacts=artifacts, output_dir=output_dir)

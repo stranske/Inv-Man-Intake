@@ -293,7 +293,10 @@ def test_v1_acceptance_smoke_fails_when_conflict_case_lacks_queue_or_audit_evide
         )
 
 
-def test_v1_smoke_pipeline_uses_inmemory_sink_even_with_langsmith_env(monkeypatch) -> None:
+@pytest.mark.parametrize("allow_remote", [False, True])
+def test_v1_smoke_pipeline_uses_inmemory_sink_even_with_langsmith_env(
+    monkeypatch, allow_remote
+) -> None:
     class _FakeLangSmithClient:
         def __init__(self) -> None:
             self.create_calls: list[dict[str, Any]] = []
@@ -317,18 +320,26 @@ def test_v1_smoke_pipeline_uses_inmemory_sink_even_with_langsmith_env(monkeypatc
     )
     monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_pt_test")
     monkeypatch.setenv("LANGSMITH_PROJECT", "inv-man-intake-smoke")
+    monkeypatch.setenv("INV_MAN_TRACING_ENABLED", "true")
 
     artifacts = run_v1_smoke_pipeline(
         fixture_root=_FIXTURE_ROOT,
         package_id=_SMOKE_PACKAGE_ID,
         expected_document_ids=_EXPECTED_DOCUMENT_IDS,
+        allow_remote_tracing=allow_remote,
     )
 
     assert isinstance(artifacts.sink, InMemoryTraceSink)
-    assert len(clients) == 1
-    assert len(clients[0].create_calls) > 0
-    assert artifacts.trace_context.tags["langsmith_enabled"] == "true"
-    assert artifacts.trace_context.tags["langsmith_project"] == "inv-man-intake-smoke"
+    assert artifacts.sink.events, "local pipeline spans remain available in both modes"
+    if allow_remote:
+        assert len(clients) == 1
+        assert len(clients[0].create_calls) > 0
+        assert artifacts.trace_context.tags["langsmith_enabled"] == "true"
+        assert artifacts.trace_context.tags["langsmith_project"] == "inv-man-intake-smoke"
+    else:
+        assert clients == []
+        assert "langsmith_enabled" not in artifacts.trace_context.tags
+        assert "langsmith_project" not in artifacts.trace_context.tags
 
 
 def test_v1_smoke_pipeline_without_langsmith_key_uses_local_trace_context(monkeypatch) -> None:

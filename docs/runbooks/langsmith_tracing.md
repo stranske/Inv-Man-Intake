@@ -46,12 +46,31 @@ def extract_positions(payload: dict[str, object]) -> list[dict[str, object]]:
 
 ## Toggle Guidance
 
-- Use `enabled=False` for environments without tracing credentials.
-- Keep tracing calls in place; no-op mode preserves execution path.
+- Generic `Tracer.from_env` callers resolve `INV_MAN_TRACING_ENABLED`, then
+  `LANGSMITH_TRACING_ENABLED`, then `LANGCHAIN_TRACING_V2`; a primary false
+  value overrides lower-priority true values. The default is disabled.
+- Production `inv-man-ingest` / `run_pipeline` always keeps local in-memory
+  spans enabled for latency and correlation, and never constructs a LangSmith
+  trace sink or client. Credentials or toggles alone cannot enable its export.
+- Keep tracing calls in place; disabling external export preserves local
+  span names, stage tags and timing semantics.
+
+### Explicit synthetic smoke opt-in
+
+Only use approved synthetic, non-proprietary fixtures for this path. Python
+callers of `run_v1_smoke_pipeline` may pass `allow_remote_tracing=True`; its
+default is false. Remote export additionally requires a nonempty
+`LANGSMITH_API_KEY` and the resolved tracing toggle above to be true. An API key
+alone, a toggle alone or explicit opt-in with a resolved false toggle stays
+local. Production `run_pipeline` always passes `allow_remote_tracing=False`
+and exposes no override.
+
+The local fleet NDJSON artifact builder and its privacy checks are separate
+from this optional span exporter and remain available without enabling it.
 
 ## Environment Setup (LangSmith Keys)
 
-Set the following environment variables before running services that should emit traces:
+For an explicitly opted-in synthetic smoke run, configure:
 
 - `LANGSMITH_API_KEY`: LangSmith API key (required for uploads)
 - `LANGSMITH_PROJECT`: project name in LangSmith (recommended)
@@ -67,10 +86,11 @@ export LANGCHAIN_TRACING_V2="true"
 export INV_MAN_TRACING_ENABLED="true"
 ```
 
-When `LANGSMITH_API_KEY` is present, the repository defaults `LANGSMITH_PROJECT`
+For the optional remote sink, when `LANGSMITH_API_KEY` is present, the repository defaults `LANGSMITH_PROJECT`
 and `LANGCHAIN_PROJECT` to `inv-man-intake` and mirrors the key into
 `LANGCHAIN_API_KEY` for LangChain-compatible clients. Without a key, tracing
 and fleet record creation stay offline-safe and records use status `no_secret`.
+These project/key defaults do not opt production ingest into remote tracing.
 
 ## Fleet Dashboard Artifact
 

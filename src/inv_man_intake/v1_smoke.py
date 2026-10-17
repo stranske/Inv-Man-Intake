@@ -54,6 +54,7 @@ from inv_man_intake.observability import (
     new_trace_context,
 )
 from inv_man_intake.observability.langsmith_fleet import DEFAULT_PROJECT
+from inv_man_intake.observability.tracing import tracing_enabled_from_env
 from inv_man_intake.performance.characterize import characterize_series, gate_scoring_submission
 from inv_man_intake.performance.conflict_resolver import resolve_source_conflicts
 from inv_man_intake.performance.contracts import (
@@ -142,6 +143,7 @@ def run_v1_smoke_pipeline(
     intake_bundle_file: str = "pdf_primary_mixed_bundle.json",
     package_id: str,
     expected_document_ids: tuple[str, ...],
+    allow_remote_tracing: bool = False,
 ) -> V1SmokeArtifacts:
     """Run the smoke pipeline with strict package/document-id assertions.
 
@@ -149,6 +151,10 @@ def run_v1_smoke_pipeline(
     orchestration code path also used by the headless ``run_pipeline`` entry
     point in :mod:`inv_man_intake.run`. Keeping one core means the operator
     CLI and the acceptance smoke exercise identical pipeline behavior.
+
+    ``allow_remote_tracing`` is an explicit synthetic-fixture opt-in; it also
+    requires an enabled environment toggle and credentials. Production ingest
+    does not expose it and always keeps its spans local.
     """
 
     return _run_pipeline_core(
@@ -156,6 +162,7 @@ def run_v1_smoke_pipeline(
         intake_bundle_file=intake_bundle_file,
         package_id=package_id,
         expected_document_ids=expected_document_ids,
+        allow_remote_tracing=allow_remote_tracing,
     )
 
 
@@ -167,6 +174,7 @@ def _run_pipeline_core(
     expected_document_ids: tuple[str, ...] | None = None,
     threshold_config: ThresholdConfig | None = None,
     content_root: Path | None = None,
+    allow_remote_tracing: bool = False,
 ) -> V1SmokeArtifacts:
     """Execute the deterministic intake-to-scoring pipeline once.
 
@@ -186,14 +194,15 @@ def _run_pipeline_core(
     content_resolver = None if smoke_mode else filesystem_content_resolver(resolved_content_root)
 
     sink = InMemoryTraceSink()
-    tracer = _entrypoint_tracer(sink=sink)
+    tracer = _entrypoint_tracer(sink=sink, allow_remote_tracing=allow_remote_tracing)
     correlation_id = ensure_correlation_id()
     trace_tags = {
         "package_id": package_id,
         "stage": "intake",
         "correlation_id": correlation_id,
     }
-    trace_tags.update(_langsmith_context_tags())
+    if allow_remote_tracing and tracing_enabled_from_env():
+        trace_tags.update(_langsmith_context_tags())
     trace_context = new_trace_context(tags=trace_tags)
 
     service = IngestionService()
@@ -492,10 +501,13 @@ def _run_pipeline_core(
     )
 
 
-def _entrypoint_tracer(*, sink: InMemoryTraceSink) -> Tracer:
-    tracer = Tracer(enabled=True, sink=sink)
-    if not os.getenv("LANGSMITH_API_KEY", "").strip():
-        return tracer
+def _entrypoint_tracer(*, sink: InMemoryTraceSink, allow_remote_tracing: bool = False) -> Tracer:
+    """Keep local latency spans; remote export needs explicit synthetic-run opt-in."""
+    if not allow_remote_tracing:
+        return Tracer(enabled=True, sink=sink)
+
+    if not tracing_enabled_from_env() or not os.getenv("LANGSMITH_API_KEY", "").strip():
+        return Tracer(enabled=True, sink=sink)
     from inv_man_intake.observability.langsmith_fleet import ensure_langsmith_project_defaults
     from inv_man_intake.observability.langsmith_sink import LangSmithTraceSink
 
