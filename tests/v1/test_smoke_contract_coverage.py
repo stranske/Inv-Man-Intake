@@ -222,6 +222,80 @@ def test_evidence_backed_performance_consistency_tracks_volatility_only() -> Non
         assert calmer[name] == pytest.approx(baseline[name]), name
 
 
+def test_evidence_backed_components_clamp_extreme_workbook_inputs() -> None:
+    scores = _derived_scores(
+        metrics=_derived_metrics(
+            annualized_volatility=1.5, max_drawdown=0.50, sharpe_ratio=-2.0, sortino_ratio=-2.0
+        )
+    )
+    assert scores is not None
+    # Consistency clamps at 0: 0.6*(1-1.5) + 0.4*(1-min(0.5*4,1)) < 0.
+    assert scores["performance_consistency"] == pytest.approx(0.0)
+    # Risk: 0.8*clamp01(0.5-2/4) + 0.2*clamp01(0.5+0.084/0.20) = 0.184.
+    assert scores["risk_adjusted_returns"] == pytest.approx(0.184)
+    for name in ("operational_quality", "transparency", "team_experience"):
+        baseline = _derived_scores()
+        assert baseline is not None
+        assert scores[name] == pytest.approx(baseline[name]), name
+
+
+def test_evidence_backed_operational_quality_clamps_fee_and_aum() -> None:
+    scores = _derived_scores(
+        extraction=_derived_extraction(
+            **{
+                "operations.aum": {"value": "$1 trillion"},
+                "terms.management_fee": {"value": "5%"},
+            }
+        )
+    )
+    # "trillion" is not a recognized unit, so this must stay unavailable
+    # rather than guessing a scale from an unrecognized word.
+    assert scores is None
+    clamped = _derived_scores(
+        extraction=_derived_extraction(
+            **{
+                "operations.aum": {"value": "$1000bn"},
+                "terms.management_fee": {"value": "5%"},
+            }
+        )
+    )
+    assert clamped is not None
+    # AUM score clamps at 1 (log10(1e12)); fee score clamps at 0 (5% > 3%).
+    assert clamped["operational_quality"] == pytest.approx(0.6)
+
+
+@pytest.mark.parametrize("aum_value", ["$1.2b", "$1200mm", "$1200000k"])
+def test_evidence_backed_aum_single_letter_units_scale_equivalently(aum_value: str) -> None:
+    baseline = _derived_scores()
+    scaled = _derived_scores(
+        extraction=_derived_extraction(**{"operations.aum": {"value": aum_value}})
+    )
+    assert baseline is not None and scaled is not None
+    assert scaled["operational_quality"] == pytest.approx(baseline["operational_quality"])
+
+
+@pytest.mark.parametrize(
+    "risk_value,expected",
+    [
+        ("none", 0.90),
+        ("senior PM leaving", 0.35),
+        ("founder resigned", 0.35),
+    ],
+)
+def test_evidence_backed_team_experience_remaining_tokens(risk_value: str, expected: float) -> None:
+    varied = _derived_scores(
+        extraction=_derived_extraction(**{"team.key_person_risk": {"value": risk_value}})
+    )
+    assert varied is not None
+    assert varied["team_experience"] == pytest.approx(expected)
+
+
+def test_workbook_component_provenance_uses_last_at_separator() -> None:
+    provenance = _workbook_component_provenance("dir@track.xlsx@doc-1")
+    assert provenance.reference == "dir@track.xlsx"
+    assert provenance.source_doc_id == "doc-1"
+
+
 def test_evidence_backed_zero_aum_is_unavailable() -> None:
     extraction = _derived_extraction(**{"operations.aum": {"value": "$0"}})
     assert _derived_scores(extraction=extraction) is None
