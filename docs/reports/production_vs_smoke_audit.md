@@ -96,6 +96,7 @@ No automatic follow-up issues are created from this audit.
   - `test_ingest_score_never_calls_smoke_components` — production never invokes fixed smoke score components, with either sufficient or insufficient scoring evidence.
   - `test_ingest_primary_uses_submitted_bytes_filename_and_id` — renamed PDF and PowerPoint submissions reach extraction with their submitted bytes and registered IDs in both document orders; emitted fields and evidence retain those IDs.
   - `test_ingest_secondary_boundary_uses_submitted_workbook_bytes_and_id` — secondary extraction receives the renamed submitted workbook's bytes and registered document ID in both document orders, with a non-fixture package ID.
-  - `test_production_performance_source_deliberate_smoke_fixture_fails` — mutation of performance `source` to `smoke_fixture` fails the prevention assertion; restoring `submitted_workbook` passes.
+  - `test_production_performance_source_deliberate_smoke_fixture_fails` — mutation of performance `source` to `smoke_fixture` fails `_assert_production_performance_source`, the same prevention assertion used by the external-layout production test; restoring `submitted_workbook` passes.
+  - Audit classification validation requires exact test function definitions in the CLI and scoring modules; module paths, partial names, and names found only in comments do not count as evidence.
   - Existing layout / non-workbook / score deliberate-break tests continue to forbid fixture helpers and smoke constants on the headless path.
 - `tests/scoring/test_engine.py` — scoring engine invariants (unchanged by this audit).

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import ast
 import json
+import re
 import shutil
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -240,6 +242,67 @@ def test_production_smoke_audit_inventories_reachable_smoke_mode_branches() -> N
     assert "PRIMARY_EXTENSIONS" in source
 
 
+def _defined_test_names(source: str) -> set[str]:
+    return {
+        node.name
+        for node in ast.parse(source).body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name.startswith("test_")
+    }
+
+
+def _assert_audit_test_evidence(
+    boundary_id: str, evidence: str, entrypoint_names: set[str], engine_names: set[str]
+) -> None:
+    # Module paths are context, not citations of individual test functions.
+    cited_names = set(re.findall(r"\btest_[A-Za-z0-9_]+\b(?!\.py\b)", evidence))
+    missing = cited_names - (entrypoint_names | engine_names)
+    assert not missing, f"{boundary_id} cites missing tests: {sorted(missing)}"
+    if boundary_id in {
+        "B01",
+        "B02",
+        "B04",
+        "B05",
+        "B06",
+        "B07",
+        "B08",
+        "B09",
+        "B10",
+        "B11",
+        "B13",
+        "B14",
+        "B16",
+    }:
+        assert cited_names & entrypoint_names, f"{boundary_id} must cite an existing CLI test"
+    if boundary_id in {"B08", "B09"}:
+        assert cited_names & engine_names, f"{boundary_id} must cite an existing scoring test"
+
+
+@pytest.mark.parametrize(
+    "evidence",
+    ["test_", "tests/cli/test_ingest_entrypoint.py", "test_ingest", "test_missing"],
+)
+def test_audit_test_evidence_rejects_missing_or_partial_citations(evidence: str) -> None:
+    source = "def test_ingest_full(): pass\n# test_missing\n"
+    with pytest.raises(AssertionError):
+        _assert_audit_test_evidence("B01", evidence, _defined_test_names(source), set())
+
+
+def test_audit_test_evidence_accepts_exact_names_with_punctuation() -> None:
+    _assert_audit_test_evidence(
+        "B08",
+        "tests/cli/test_ingest_entrypoint.py (`test_ingest_full`): test_engine_full;",
+        {"test_ingest_full"},
+        {"test_engine_full"},
+    )
+
+
+@pytest.mark.parametrize("evidence", ["test_ingest_full", "test_engine_full"])
+def test_audit_scoring_evidence_requires_both_owner_modules(evidence: str) -> None:
+    with pytest.raises(AssertionError):
+        _assert_audit_test_evidence("B08", evidence, {"test_ingest_full"}, {"test_engine_full"})
+
+
 def test_production_smoke_audit_classifies_boundaries_with_existing_tests() -> None:
     """Classify each inventory boundary using CLI + scoring engine evidence.
 
@@ -248,8 +311,8 @@ def test_production_smoke_audit_classifies_boundaries_with_existing_tests() -> N
     owner test modules from the issue scope.
     """
     audit = _PRODUCTION_SMOKE_AUDIT.read_text(encoding="utf-8")
-    entrypoint_tests = _INGEST_ENTRYPOINT_TESTS.read_text(encoding="utf-8")
-    engine_tests = _SCORING_ENGINE_TESTS.read_text(encoding="utf-8")
+    entrypoint_tests = _defined_test_names(_INGEST_ENTRYPOINT_TESTS.read_text(encoding="utf-8"))
+    engine_tests = _defined_test_names(_SCORING_ENGINE_TESTS.read_text(encoding="utf-8"))
     rows = _parse_audit_boundary_rows(audit)
 
     assert set(rows) == set(_AUDIT_BOUNDARY_IDS)
@@ -272,31 +335,7 @@ def test_production_smoke_audit_classifies_boundaries_with_existing_tests() -> N
         if evidence_class == "confirmed production gap":
             assert "no auto-filed" in disposition or "return for human" in disposition
 
-        # Scope requires classification via these two test modules for smoke/score seams.
-        if boundary_id in {
-            "B01",
-            "B02",
-            "B04",
-            "B05",
-            "B06",
-            "B07",
-            "B10",
-            "B11",
-            "B13",
-            "B14",
-            "B16",
-        }:
-            assert "test_" in evidence, f"{boundary_id} must cite an existing CLI test"
-        if boundary_id in {"B08", "B09"}:
-            assert "tests/scoring/test_engine.py" in evidence or "test_engine.py" in evidence
-            assert "test_ingest_" in evidence or "test_ingest_entrypoint.py" in evidence
-
-        for token in evidence.replace("`", " ").replace(",", " ").replace("(", " ").split():
-            if not token.startswith("test_"):
-                continue
-            name = token.rstrip(").,;")
-            present = name in entrypoint_tests or name in engine_tests
-            assert present, f"{boundary_id} cites missing test {name}"
+        _assert_audit_test_evidence(boundary_id, evidence, entrypoint_tests, engine_tests)
 
     for label, expected_ids in _CLASSIFICATION_SUMMARY.items():
         assert classified[label] == expected_ids, f"summary drift for {label}"
@@ -348,6 +387,12 @@ def test_run_pipeline_disables_remote_tracing(
     assert observed == [False]
 
 
+def _assert_production_performance_source(run: dict) -> None:
+    assert (
+        run["performance"]["source"] == "submitted_workbook"
+    ), "production performance must use the submitted workbook"
+
+
 def test_production_performance_source_deliberate_smoke_fixture_fails(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -374,14 +419,17 @@ def test_production_performance_source_deliberate_smoke_fixture_fails(
     broken_dir = tmp_path / "broken"
     assert main([str(bundle_path), "--out", str(broken_dir)]) == 0
     broken = json.loads((broken_dir / "run.json").read_text(encoding="utf-8"))
-    with pytest.raises(AssertionError):
-        assert broken["performance"]["source"] == "submitted_workbook"
+    # Exercise the same prevention assertion used by the external-layout test.
+    with pytest.raises(
+        AssertionError, match="production performance must use the submitted workbook"
+    ):
+        _assert_production_performance_source(broken)
 
     monkeypatch.setattr(run_module, "_run_pipeline_core", original)
     restored_dir = tmp_path / "restored"
     assert main([str(bundle_path), "--out", str(restored_dir)]) == 0
     restored = json.loads((restored_dir / "run.json").read_text(encoding="utf-8"))
-    assert restored["performance"]["source"] == "submitted_workbook"
+    _assert_production_performance_source(restored)
 
 
 def test_production_queue_assignment_is_unowned_and_uses_live_clock(tmp_path: Path) -> None:
@@ -651,7 +699,7 @@ def test_ingest_entrypoint_runs_valid_bundle_outside_repository_fixture_layout(
         {"as_of": "2024-03-31", "value": 0.03},
     ]
     assert performance["status"] == "available"
-    assert performance["source"] == "submitted_workbook"
+    _assert_production_performance_source(run)
     assert performance["comparison_available"] is False
     assert performance["benchmark_available"] is False
     assert performance["metrics"]["benchmark_correlation"] is None
