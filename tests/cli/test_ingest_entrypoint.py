@@ -546,8 +546,9 @@ def test_ingest_primary_with_non_workbook_secondary(tmp_path, monkeypatch, exten
     "primary", ["summit_arc_investment_update.pdf", "harborline_strategy_review.pptx"]
 )
 @pytest.mark.parametrize("reverse", [False, True], ids=["primary-first", "workbook-first"])
+@pytest.mark.parametrize("explicit_id", [False, True], ids=["generated-id", "submitted-id"])
 def test_ingest_primary_uses_submitted_bytes_filename_and_id(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, primary: str, reverse: bool
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, primary: str, reverse: bool, explicit_id: bool
 ) -> None:
     """B04/B16: renamed primary submissions retain their content and registered identity."""
     from inv_man_intake import v1_smoke
@@ -560,12 +561,14 @@ def test_ingest_primary_uses_submitted_bytes_filename_and_id(
     submitted_name = f"submitted-manager-update{Path(primary).suffix}"
     submitted_bytes = (_FIXTURE_EXTRACTION / primary).read_bytes() + b"\nsubmitted-primary-marker\n"
     primary_entry["file_name"] = submitted_name
+    if explicit_id:
+        primary_entry["document_id"] = "external-manager-update-902"
     (bundle_path.parent / submitted_name).write_bytes(submitted_bytes)
     if reverse:
         payload["files"].reverse()
     bundle_path.write_text(json.dumps(payload), encoding="utf-8")
     primary_index = payload["files"].index(primary_entry)
-    expected_id = f"{payload['package_id']}:doc:{primary_index}"
+    expected_id = primary_entry.get("document_id", f"{payload['package_id']}:doc:{primary_index}")
     observed: list[tuple[str, str, bytes]] = []
     original = v1_smoke._run_extraction_smoke
 
@@ -586,8 +589,9 @@ def test_ingest_primary_uses_submitted_bytes_filename_and_id(
 
 
 @pytest.mark.parametrize("reverse", [False, True], ids=["primary-first", "workbook-first"])
+@pytest.mark.parametrize("explicit_id", [False, True], ids=["generated-id", "submitted-id"])
 def test_ingest_secondary_boundary_uses_submitted_workbook_bytes_and_id(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reverse: bool
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reverse: bool, explicit_id: bool
 ) -> None:
     """B05: production secondary extraction receives submitted content and identity."""
     from inv_man_intake import v1_smoke
@@ -600,6 +604,8 @@ def test_ingest_secondary_boundary_uses_submitted_workbook_bytes_and_id(
         if entry["role"] == "performance_track_record":
             (bundle_path.parent / entry["file_name"]).unlink()
             entry["file_name"] = workbook_name
+            if explicit_id:
+                entry["document_id"] = "external-track-record-417"
     workbook_path = bundle_path.parent / workbook_name
     _write_performance_workbook(workbook_path, [("2024-01-31", 0.12), ("2024-02-29", -0.07)])
     submitted_bytes = workbook_path.read_bytes()
@@ -609,7 +615,9 @@ def test_ingest_secondary_boundary_uses_submitted_workbook_bytes_and_id(
     workbook_index = next(
         index for index, entry in enumerate(payload["files"]) if entry["file_name"] == workbook_name
     )
-    expected_id = f"{payload['package_id']}:doc:{workbook_index}"
+    expected_id = payload["files"][workbook_index].get(
+        "document_id", f"{payload['package_id']}:doc:{workbook_index}"
+    )
     observed: list[tuple[str, bytes]] = []
     original = v1_smoke._run_secondary_extraction_boundary_smoke
 
