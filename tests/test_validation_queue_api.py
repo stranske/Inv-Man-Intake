@@ -336,6 +336,66 @@ def test_queue_loader_rejects_malformed_events(tmp_path: Path, changes: dict[str
         load_validation_queue(file)
 
 
+@pytest.mark.parametrize(
+    "event_times",
+    [
+        ("2025-12-31T23:59:59Z", "2026-01-01T00:00:02Z"),
+        ("2030-01-01T00:00:00Z", "2030-01-01T00:00:01Z"),
+        ("2026-01-01T00:00:02Z", "2026-01-01T00:00:01Z"),
+    ],
+    ids=["before-creation", "after-update", "reverse-order"],
+)
+def test_queue_handoff_rejects_event_times_outside_ordered_item_lifetime(
+    tmp_path: Path, event_times: tuple[str, str]
+) -> None:
+    claimed = claim_for_analyst_triage(
+        create_queue_item(item_id="item", package_id="pkg", escalation_reason="low_coverage"),
+        analyst_id="analyst",
+    )
+    completed = transition_state(
+        claimed, actor_id="analyst", actor_role="analyst", to_state="completed"
+    )
+    invalid = replace(
+        completed,
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-01T00:00:03Z",
+        events=tuple(
+            replace(event, at=at) for event, at in zip(completed.events, event_times, strict=True)
+        ),
+    )
+    file = tmp_path / "queue.json"
+    raw = asdict(invalid)
+    file.write_text(json.dumps({"schema_version": QUEUE_ARTIFACT_SCHEMA, "items": [raw]}))
+    with pytest.raises(ValidationWorkflowError, match="event timestamps"):
+        load_validation_queue(file)
+
+    write_validation_queue(file, [completed])
+    original = file.read_bytes()
+    with pytest.raises(ValidationWorkflowError, match="event timestamps"):
+        write_validation_queue(file, [invalid])
+    assert file.read_bytes() == original
+
+
+def test_queue_handoff_accepts_equal_event_times_and_lifetime_boundaries(tmp_path: Path) -> None:
+    claimed = claim_for_analyst_triage(
+        create_queue_item(item_id="item", package_id="pkg", escalation_reason="low_coverage"),
+        analyst_id="analyst",
+    )
+    completed = transition_state(
+        claimed, actor_id="analyst", actor_role="analyst", to_state="completed"
+    )
+    timestamp = "2026-01-01T00:00:00Z"
+    completed = replace(
+        completed,
+        created_at=timestamp,
+        updated_at=timestamp,
+        events=tuple(replace(event, at="2026-01-01T01:00:00+01:00") for event in completed.events),
+    )
+    file = tmp_path / "queue.json"
+    write_validation_queue(file, [completed])
+    assert load_validation_queue(file) == (completed,)
+
+
 @pytest.mark.parametrize("invalid", ["conflicting_replay", "duplicate_id", "unowned_completed"])
 def test_queue_writer_rejects_invalid_records_without_overwriting(
     tmp_path: Path, invalid: str

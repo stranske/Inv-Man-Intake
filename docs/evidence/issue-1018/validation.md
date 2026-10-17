@@ -1,18 +1,17 @@
 # Issue #1018 verification
 
-- [x] CLI/queue/API/smoke/manifest suite passes after formatting: **133 passed**,
+- [x] CLI/queue/API/smoke/manifest suite passes after formatting: **139 passed**,
   including all existing tests in these areas. Focused API replay/schema tests:
   **41 passed**, 10 deselected. See [suite output](regression-suite.txt) and
   [focused output](api-replay-schema.txt).
-- [ ] Commit the artifact-write disconnect evidence. Disconnecting the actual
-  production artifact write produces **2 failed**;
-  restoring the source byte-for-byte produces **2 passed**. Source and final CLI
+- [x] Verify the artifact-write disconnect evidence. Disconnecting the actual
+  production artifact write produces **4 failed**;
+  restoring the source byte-for-byte produces **4 passed**. Source and final CLI
   test SHA-256 values are recorded in [the proof](queue-write-proof.json), beside
   the [failure](queue-write-red.txt) and [restoration](queue-write-green.txt)
   transcripts. Only trailing whitespace was removed from the failure transcript.
-  Verification is complete, but committing is blocked: local `.git` is read-only,
-  and the GitHub tree creation tool requires approval under a `never` approval
-  policy. The updated evidence is present in the workspace.
+  The prior evidence was committed in `d495bc4`; these transcripts cover the added
+  saved-review replay regressions. The workspace `.git` remains read-only.
 - [x] Focused mypy passes for `run.py`, `v1_smoke.py`, `workflow_validation.py`,
   and `run_manifest.py`. Repository-wide Ruff, Black, and diff checks pass;
   see [static checks](static-checks.txt). The existing smoke transition test is
@@ -25,8 +24,10 @@
 
 The API tests additionally exercise malformed envelopes, ownership combinations,
 timestamps, event fields, independent duplicate item/replay identities, and writer
-rejection without replacing an existing artifact. The runtime implementation did
-not require changes.
+rejection without replacing an existing artifact. The runtime implementation now
+rejects audit timestamps outside the ordered item lifetime and rejects reuse of
+an output directory containing saved review progress. The added tests first failed
+against the previous implementation (three chronology cases and two replay cases).
 
 Black's concurrent execution stalled in this sandbox. All 331 Python files were
 checked successfully using individual Black invocations with a writable cache;

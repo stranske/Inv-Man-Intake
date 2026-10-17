@@ -321,13 +321,14 @@ def _decode_validation_queue(payload: object) -> tuple[ValidationQueueItem, ...]
             raise ValidationWorkflowError("Pending queue item must be unowned")
         if raw["state"] != "pending_triage" and owner is None:
             raise ValidationWorkflowError("Non-pending queue item must have an owner")
-        for key in ("created_at", "updated_at"):
-            _queue_timestamp(raw[key])
-        if _queue_timestamp(raw["updated_at"]) < _queue_timestamp(raw["created_at"]):
+        created_at = _queue_timestamp(raw["created_at"])
+        updated_at = _queue_timestamp(raw["updated_at"])
+        if updated_at < created_at:
             raise ValidationWorkflowError("Queue timestamps are out of order")
         if not isinstance(raw["events"], list):
             raise ValidationWorkflowError("Queue events must be a list")
         events = []
+        previous_at = created_at
         for event in raw["events"]:
             if not isinstance(event, dict) or set(event) != event_fields:
                 raise ValidationWorkflowError("Invalid queue event fields")
@@ -339,7 +340,10 @@ def _decode_validation_queue(payload: object) -> tuple[ValidationQueueItem, ...]
                 raise ValidationWorkflowError("Invalid queue event actor role")
             if event["note"] is not None and not isinstance(event["note"], str):
                 raise ValidationWorkflowError("Invalid queue event note")
-            _queue_timestamp(event["at"])
+            event_at = _queue_timestamp(event["at"])
+            if not previous_at <= event_at <= updated_at:
+                raise ValidationWorkflowError("Queue event timestamps are out of order or bounds")
+            previous_at = event_at
             events.append(QueueEvent(**event))
         replay_key = (raw["package_id"], raw["escalation_reason"])
         if replay_key in keys or raw["item_id"] in ids:

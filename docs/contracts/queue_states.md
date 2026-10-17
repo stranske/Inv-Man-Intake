@@ -132,3 +132,9 @@ and history, deduplicates identical replay records, and rejects conflicting reco
 the same replay key. Unknown schemas, malformed states/owners/timestamps and duplicate
 identities fail closed. This artifact does not assign an analyst or create a service,
 database, reassignment engine or SLA scheduler. The fixture smoke path is unchanged.
+
+Event timestamps must be nondecreasing and within the item's creation/update interval;
+equal timestamps are allowed because workflow timestamps have second precision.
+Reusing a CLI output directory containing saved review progress (ownership, events,
+or a state beyond pending triage) is rejected before writing any artifacts. Use a new
+`--out` directory for another ingest to retain the saved review and its audit history.

@@ -40,7 +40,7 @@ from inv_man_intake.observability.tracing import TraceContext
 from inv_man_intake.run_manifest import MANIFEST_NAME, build_manifest
 from inv_man_intake.scoring.contracts import ScoreResult
 from inv_man_intake.v1_smoke import V1SmokeArtifacts, _pipeline_latency_ms, _run_pipeline_core
-from inv_man_intake.workflow_validation import write_validation_queue
+from inv_man_intake.workflow_validation import load_validation_queue, write_validation_queue
 
 _ROOT_SPAN_NAME = "v1_acceptance.intake_register"
 
@@ -145,7 +145,8 @@ def run_pipeline(
 
     Returns the :class:`RunResult`. Writes ``run.json``, one evidence object per
     extracted field, and the four named artifact files into ``output_dir``
-    (created if missing).
+    (created if missing). Reusing an output directory with saved queue review
+    progress is rejected before any artifacts are changed; use a new directory.
 
     Raises:
         ValueError: The bundle is malformed, declares no usable ``package_id``,
@@ -159,6 +160,15 @@ def run_pipeline(
     package_id = bundle.get("package_id")
     if not isinstance(package_id, str) or not package_id.strip():
         raise ValueError("intake bundle must declare a non-empty string package_id")
+
+    queue_path = output_dir / ARTIFACT_QUEUE
+    if queue_path.exists() and any(
+        item.state != "pending_triage" or item.owner_id is not None or item.events
+        for item in load_validation_queue(queue_path)
+    ):
+        raise ValueError(
+            "output directory contains saved queue review progress; use a new --out directory"
+        )
 
     threshold_config = load_threshold_config(threshold_config_path or DEFAULT_THRESHOLD_CONFIG_PATH)
     artifacts = _run_pipeline_core(

@@ -865,3 +865,39 @@ def test_ingest_queue_artifact_reloads_real_outcomes_and_manifest(
         )
         assert completed_page.total == 1
         assert completed_page.items[0].owner_id == "explicit-owner"
+
+
+@pytest.mark.parametrize("completed", [False, True], ids=["claimed", "completed"])
+def test_ingest_queue_replay_preserves_saved_review_by_requiring_new_output(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], completed: bool
+) -> None:
+    from inv_man_intake.workflow_validation import (
+        claim_for_analyst_triage,
+        load_validation_queue,
+        transition_state,
+        write_validation_queue,
+    )
+
+    bundle = _write_external_layout_bundle(tmp_path / "bundle")
+    output = tmp_path / "output"
+    args = [str(bundle), "--out", str(output)]
+    assert main(args) == 0
+    queue_file = output / "validation-queue.json"
+    reviewed = claim_for_analyst_triage(
+        load_validation_queue(queue_file)[0], analyst_id="explicit-owner", note="Review started"
+    )
+    if completed:
+        reviewed = transition_state(
+            reviewed, actor_id="explicit-owner", actor_role="analyst", to_state="completed"
+        )
+    write_validation_queue(queue_file, [reviewed])
+    saved_files = {path.name: path.read_bytes() for path in output.iterdir()}
+
+    assert main(args) == 1
+    assert "queue review progress" in capsys.readouterr().err
+    assert load_validation_queue(queue_file) == (reviewed,)
+    assert {path.name: path.read_bytes() for path in output.iterdir()} == saved_files
+
+    # A new run directory remains usable without discarding the previous review.
+    assert main([str(bundle), "--out", str(tmp_path / "new-output")]) == 0
+    assert load_validation_queue(queue_file) == (reviewed,)
