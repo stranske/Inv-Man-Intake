@@ -1,0 +1,17 @@
+{
+  "1025-credential-restored-green.log": {
+    "raw_sha256": "76b594250d69afa5b9c4132f9ee5334968fea55264182482df57ae561bec8f86",
+    "published_sha256": "76b594250d69afa5b9c4132f9ee5334968fea55264182482df57ae561bec8f86",
+    "transformation": "remove trailing horizontal whitespace only; original raw retained in automation run-20261017T1607"
+  },
+  "1025-anaconda-green.log": {
+    "raw_sha256": "88a7625ba620f3bc4f14edf8f0877e2084734d4300a5a2d67c49aeeeed629bb9",
+    "published_sha256": "88a7625ba620f3bc4f14edf8f0877e2084734d4300a5a2d67c49aeeeed629bb9",
+    "transformation": "remove trailing horizontal whitespace only; original raw retained in automation run-20261017T1607"
+  },
+  "1025-credential-mutant-red.log": {
+    "raw_sha256": "2c9c4bff173e45ad18e5cee4eb6ba5a8c8e725b431702f60abdfb138f49233c0",
+    "published_sha256": "15949a2e7e9bcc9b5372ac2d58cf2923fa88d8bade9fc30411b6cd629116f5f8",
+    "transformation": "remove trailing horizontal whitespace only; original raw retained in automation run-20261017T1607"
+  }
+}
