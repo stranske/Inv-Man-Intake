@@ -1,0 +1,21 @@
+{
+  "broken_exit": 1,
+  "restored_exit": 0,
+  "base_revision": "2cf57809994743f44993378c6ea8446776214c02",
+  "fixed_source_sha256": "df0b5575911a9a9c84d0ae2fb1ff1f35edb7fafcadf11668d9cad892062b8ce5",
+  "broken_source_sha256": "bb1c42fe914e3a8733cb1ba3bf647d7fa46e601f7fd489535fdde06d5567eb7a",
+  "tests_sha256": "ff7acaccae882bfbc9e64d0d24873b60b70db979287db1a49f917c5864b0c0a0",
+  "byte_identical_restoration": true,
+  "command": [
+    "/opt/anaconda3/bin/python3",
+    "-m",
+    "pytest",
+    "-o",
+    "addopts=",
+    "tests/cli/test_ingest_entrypoint.py",
+    "-k",
+    "non_workbook_secondary",
+    "-q"
+  ],
+  "recorded_at": "2026-10-17T17:29:27.446561+00:00"
+}

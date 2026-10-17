@@ -172,6 +172,42 @@ def test_ingest_primary_only_pdf_and_pptx(tmp_path, monkeypatch, primary):
     assert result["final_score"] is None
 
 
+@pytest.mark.parametrize("extension", ["docx", "eml", "txt", "md"])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_ingest_primary_with_non_workbook_secondary(tmp_path, monkeypatch, extension, reverse):
+    """Supported attachments must not enter the XLSX-only secondary boundary."""
+    from inv_man_intake import v1_smoke
+
+    bundle = _write_external_layout_bundle(tmp_path / "bundle")
+    payload = json.loads(bundle.read_text())
+    attachment_name = f"supporting_material.{extension}"
+    payload["files"][1] = {
+        "file_name": attachment_name,
+        "role": "supporting_material",
+        "source_ref": "email:test-optional-attachment",
+    }
+    (bundle.parent / attachment_name).write_bytes(b"supported attachment; not a workbook")
+    if reverse:
+        payload["files"].reverse()
+    bundle.write_text(json.dumps(payload))
+
+    def forbidden_secondary(**kwargs):
+        pytest.fail("a non-workbook attachment entered the workbook boundary")
+
+    monkeypatch.setattr(v1_smoke, "_run_secondary_extraction_boundary_smoke", forbidden_secondary)
+    output = tmp_path / "out"
+    assert main([str(bundle), "--out", str(output)]) == 0
+    result = json.loads((output / "run.json").read_text())
+    assert result["performance"]["monthly"] is None
+    assert result["performance"]["status"] == "unavailable"
+    assert result["fields"]
+    primary_index = 1 if reverse else 0
+    expected_id = f"{payload['package_id']}:doc:{primary_index}"
+    assert {pointer["source_doc_id"] for pointer in result["provenance"]["evidence"].values()} == {
+        expected_id
+    }
+
+
 def test_ingest_file_order_permutations_equivalent(tmp_path):
     bundle = _write_external_layout_bundle(tmp_path / "bundle")
     payload = json.loads(bundle.read_text())
