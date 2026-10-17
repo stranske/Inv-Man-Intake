@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -145,6 +145,40 @@ def test_ingest_entrypoint_returns_nonzero_for_missing_bundle(tmp_path: Path) ->
     assert exit_code != 0
 
 
+_PRODUCTION_SMOKE_AUDIT = Path("docs/reports/production_vs_smoke_audit.md")
+_V1_SMOKE_SOURCE = Path("src/inv_man_intake/v1_smoke.py")
+# Reachable smoke_mode / fixed-stand-in inventory IDs from the production audit.
+_AUDIT_BOUNDARY_IDS = tuple(f"B{index:02d}" for index in range(1, 21))
+_SMOKE_MODE_MARKERS = (
+    "smoke_mode = expected_document_ids is not None",
+    "content_resolver = None if smoke_mode else filesystem_content_resolver",
+    '"source": "smoke_fixture" if smoke_mode else "submitted_workbook"',
+    "if not smoke_mode:",
+    "if smoke_mode:",
+    'analyst_id="analyst_001"',
+    "created_at=datetime(2026, 3, 4, 10, 0, tzinfo=UTC)",
+    "return _fixture_performance_series()",
+    "return _workbook_performance_series(track_record_bytes), None, None",
+)
+
+
+def test_production_smoke_audit_inventories_reachable_smoke_mode_branches() -> None:
+    """Inventory guard: audit enumerates every reachable smoke_mode / fixed stand-in."""
+    source = _V1_SMOKE_SOURCE.read_text(encoding="utf-8")
+    audit = _PRODUCTION_SMOKE_AUDIT.read_text(encoding="utf-8")
+
+    for marker in _SMOKE_MODE_MARKERS:
+        assert marker in source, f"missing reachable inventory marker in v1_smoke.py: {marker}"
+    for boundary_id in _AUDIT_BOUNDARY_IDS:
+        assert f"| {boundary_id} |" in audit, f"audit missing boundary {boundary_id}"
+
+    # Review-time document_ids[0]/[1] indexing is superseded by role/extension selection.
+    assert "document_ids[0]" not in source
+    assert "document_ids[1]" not in source
+    assert "_select_extraction_documents" in source
+    assert "PRIMARY_EXTENSIONS" in source
+
+
 def test_run_pipeline_invokes_core_without_smoke_document_ids(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -166,16 +200,85 @@ def test_run_pipeline_invokes_core_without_smoke_document_ids(
     assert observed == [None]
 
 
-def test_production_performance_source_deliberate_smoke_fixture_fails(tmp_path: Path) -> None:
-    """Deliberate-break gate: production runs must not label performance as smoke_fixture."""
+def test_run_pipeline_disables_remote_tracing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Production ``run_pipeline`` must keep tracing local (audit B13)."""
+    from inv_man_intake import run as run_module
+    from inv_man_intake import v1_smoke
+
+    observed: list[bool] = []
+    original = v1_smoke._run_pipeline_core
+
+    def recording_core(**kwargs):
+        observed.append(bool(kwargs.get("allow_remote_tracing", True)))
+        return original(**kwargs)
+
+    monkeypatch.setattr(run_module, "_run_pipeline_core", recording_core)
     bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
-    output_dir = tmp_path / "out"
-    assert main([str(bundle_path), "--out", str(output_dir)]) == 0
-    run = json.loads((output_dir / "run.json").read_text())
-    assert run["performance"]["source"] == "submitted_workbook"
-    run["performance"]["source"] = "smoke_fixture"
+    assert main([str(bundle_path), "--out", str(tmp_path / "out")]) == 0
+    assert observed == [False]
+
+
+def test_production_performance_source_deliberate_smoke_fixture_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Deliberate-break gate: mislabeling production performance as smoke_fixture fails.
+
+    Mutating the core result to ``smoke_fixture`` makes the prevention assertion
+    fail; restoring ``submitted_workbook`` passes (audit B07 / acceptance mutation).
+    """
+    from dataclasses import replace
+
+    from inv_man_intake import run as run_module
+    from inv_man_intake import v1_smoke
+
+    bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
+    original = v1_smoke._run_pipeline_core
+
+    def mislabeled_core(**kwargs):
+        artifacts = original(**kwargs)
+        bad_performance = dict(artifacts.performance)
+        bad_performance["source"] = "smoke_fixture"
+        return replace(artifacts, performance=bad_performance)
+
+    monkeypatch.setattr(run_module, "_run_pipeline_core", mislabeled_core)
+    broken_dir = tmp_path / "broken"
+    assert main([str(bundle_path), "--out", str(broken_dir)]) == 0
+    broken = json.loads((broken_dir / "run.json").read_text(encoding="utf-8"))
     with pytest.raises(AssertionError):
-        assert run["performance"]["source"] == "submitted_workbook"
+        assert broken["performance"]["source"] == "submitted_workbook"
+
+    monkeypatch.setattr(run_module, "_run_pipeline_core", original)
+    restored_dir = tmp_path / "restored"
+    assert main([str(bundle_path), "--out", str(restored_dir)]) == 0
+    restored = json.loads((restored_dir / "run.json").read_text(encoding="utf-8"))
+    assert restored["performance"]["source"] == "submitted_workbook"
+
+
+def test_production_queue_assignment_uses_placeholder_analyst(tmp_path: Path) -> None:
+    """Documents confirmed gap B10: production still uses fixed analyst_001 / clock.
+
+    This audit PR does not repair queue assignment; the assertion locks the
+    current placeholder so a real operator-driven assignment must update tests.
+    """
+    from inv_man_intake import v1_smoke
+    from inv_man_intake.run import run_pipeline
+
+    bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
+    package_id = json.loads(bundle_path.read_text(encoding="utf-8"))["package_id"]
+    artifacts = v1_smoke._run_pipeline_core(
+        fixture_root=bundle_path.parent,
+        intake_bundle_file=bundle_path.name,
+        package_id=package_id,
+        content_root=bundle_path.parent,
+        allow_remote_tracing=False,
+    )
+    assert artifacts.queue_assignment.owner_id == "analyst_001"
+    assert artifacts.queue_assignment.owner_role == "analyst"
+    assert artifacts.queue_assignment.sla.created_at == datetime(2026, 3, 4, 10, 0, tzinfo=UTC)
+    # Keep run_pipeline exercised so the gap remains visible on the headless path.
+    run_pipeline(bundle_path, output_dir=tmp_path / "out")
 
 
 @pytest.mark.parametrize(
