@@ -141,6 +141,85 @@ def test_evidence_backed_components_below_minimum_evidence(extraction, metrics) 
     assert _derived_scores(extraction=extraction, metrics=metrics) is None
 
 
+def test_evidence_backed_operational_quality_exact_value() -> None:
+    scores = _derived_scores()
+    assert scores is not None
+    # AUM $1.2bn: (log10(1.2e9)-6)/4 = 0.7698; fee 1.25%: 1-0.0125/0.03 = 0.5833.
+    # operational_quality = 0.6*0.7698 + 0.4*0.5833.
+    assert scores["operational_quality"] == pytest.approx(0.695211, abs=1e-6)
+    assert scores["operational_quality"] != 0.69  # smoke constant
+
+
+@pytest.mark.parametrize(
+    "aum_value",
+    ["$1.2bn", "$1.2 billion", "$1200 million", "$1200m", "$1200000 thousand", "$1200000000"],
+)
+def test_evidence_backed_aum_units_scale_equivalently(aum_value: str) -> None:
+    baseline = _derived_scores()
+    scaled = _derived_scores(
+        extraction=_derived_extraction(**{"operations.aum": {"value": aum_value}})
+    )
+    assert baseline is not None and scaled is not None
+    assert scaled["operational_quality"] == pytest.approx(baseline["operational_quality"])
+    for name in ("performance_consistency", "risk_adjusted_returns", "transparency"):
+        assert scaled[name] == pytest.approx(baseline[name]), name
+
+
+def test_evidence_backed_risk_adjusted_without_sortino_uses_sharpe_only() -> None:
+    with_sortino = _derived_scores()
+    without = _derived_scores(metrics=_derived_metrics(sortino_ratio=None))
+    assert with_sortino is not None and without is not None
+    # Sharpe-only: 0.8*clamp01(0.5+1.0/4) + 0.2*clamp01(0.5+0.084/0.20) = 0.784.
+    assert without["risk_adjusted_returns"] == pytest.approx(0.784)
+    assert without["risk_adjusted_returns"] != with_sortino["risk_adjusted_returns"]
+    for name in ("performance_consistency", "operational_quality", "transparency"):
+        assert without[name] == pytest.approx(with_sortino[name]), name
+
+
+@pytest.mark.parametrize(
+    "risk_value,expected",
+    [
+        ("no key person risk; stable team", 0.90),
+        ("low risk", 0.90),
+        ("one senior PM departure pending", 0.35),
+        ("high key person risk", 0.40),
+        ("moderate key person risk", 0.60),
+        ("medium key person risk", 0.60),
+        ("key person risk under review", 0.65),
+    ],
+)
+def test_evidence_backed_team_experience_branches(risk_value: str, expected: float) -> None:
+    baseline = _derived_scores()
+    varied = _derived_scores(
+        extraction=_derived_extraction(**{"team.key_person_risk": {"value": risk_value}})
+    )
+    assert baseline is not None and varied is not None
+    assert varied["team_experience"] == pytest.approx(expected)
+    for name in (
+        "performance_consistency",
+        "risk_adjusted_returns",
+        "operational_quality",
+        "transparency",
+    ):
+        assert varied[name] == pytest.approx(baseline[name]), name
+
+
+def test_evidence_backed_performance_consistency_tracks_volatility_only() -> None:
+    baseline = _derived_scores()
+    calmer = _derived_scores(metrics=_derived_metrics(annualized_volatility=0.05))
+    assert baseline is not None and calmer is not None
+    # 0.6*(1-0.05) + 0.4*(1-min(0.05*4,1)) = 0.57 + 0.32.
+    assert calmer["performance_consistency"] == pytest.approx(0.89)
+    assert calmer["performance_consistency"] > baseline["performance_consistency"]
+    for name in ("risk_adjusted_returns", "operational_quality", "transparency"):
+        assert calmer[name] == pytest.approx(baseline[name]), name
+
+
+def test_evidence_backed_zero_aum_is_unavailable() -> None:
+    extraction = _derived_extraction(**{"operations.aum": {"value": "$0"}})
+    assert _derived_scores(extraction=extraction) is None
+
+
 def test_evidence_backed_components_missing_metrics_is_unavailable() -> None:
     derived = _evidence_backed_score_components(
         extraction=_derived_extraction(), metrics=None, workbook_ref="track.xlsx@doc-1"
