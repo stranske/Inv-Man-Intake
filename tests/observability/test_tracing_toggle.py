@@ -111,16 +111,30 @@ def test_entrypoint_tracer_disabled_remote_never_constructs_sink(
 
 
 @pytest.mark.parametrize(
-    ("allow_remote", "toggle", "remote_expected"),
-    [(False, "true", False), (True, "false", False), (True, None, False), (True, "true", True)],
+    ("allow_remote", "toggle", "api_key", "remote_expected"),
+    [
+        (False, "true", "fake-offline-regression-key", False),
+        (True, "false", "fake-offline-regression-key", False),
+        (True, None, "fake-offline-regression-key", False),
+        (True, "true", "fake-offline-regression-key", True),
+        (True, "true", None, False),
+        (True, "true", "   ", False),
+    ],
 )
 def test_entrypoint_tracer_requires_explicit_remote_opt_in(
-    monkeypatch: pytest.MonkeyPatch, allow_remote: bool, toggle: str | None, remote_expected: bool
+    monkeypatch: pytest.MonkeyPatch,
+    allow_remote: bool,
+    toggle: str | None,
+    api_key: str | None,
+    remote_expected: bool,
 ) -> None:
     from inv_man_intake.observability import langsmith_sink
     from inv_man_intake.v1_smoke import _entrypoint_tracer
 
-    monkeypatch.setenv("LANGSMITH_API_KEY", "fake-offline-regression-key")
+    if api_key is None:
+        monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    else:
+        monkeypatch.setenv("LANGSMITH_API_KEY", api_key)
     monkeypatch.setenv("LANGSMITH_TRACING_ENABLED", "true" if toggle == "false" else "false")
     monkeypatch.setenv("LANGCHAIN_TRACING_V2", "false")
     if toggle is None:
