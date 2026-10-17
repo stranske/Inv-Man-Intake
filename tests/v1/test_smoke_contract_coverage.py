@@ -296,6 +296,79 @@ def test_workbook_component_provenance_uses_last_at_separator() -> None:
     assert provenance.source_doc_id == "doc-1"
 
 
+def test_evidence_backed_minimum_evidence_boundaries_are_inclusive() -> None:
+    # Exactly _MIN_WORKBOOK_OBSERVATIONS observations still scores.
+    at_floor = _derived_scores(metrics=_derived_metrics(observation_count=3))
+    assert at_floor is not None
+    assert at_floor == _derived_scores()
+    # Every key field exactly at _MIN_FIELD_CONFIDENCE still scores.
+    fields = {
+        key: {"confidence": 0.50}
+        for key in (
+            "strategy.asset_class",
+            "terms.management_fee",
+            "performance.net_return_1y",
+            "operations.aum",
+            "team.key_person_risk",
+        )
+    }
+    at_confidence_floor = _derived_scores(extraction=_derived_extraction(**fields))
+    assert at_confidence_floor is not None
+    assert at_confidence_floor["transparency"] == pytest.approx(0.50)
+    for name in (
+        "performance_consistency",
+        "risk_adjusted_returns",
+        "operational_quality",
+        "team_experience",
+    ):
+        assert at_confidence_floor[name] == pytest.approx(at_floor[name]), name
+
+
+def test_evidence_backed_performance_consistency_tracks_drawdown_only() -> None:
+    baseline = _derived_scores()
+    deeper = _derived_scores(metrics=_derived_metrics(max_drawdown=0.20))
+    assert baseline is not None and deeper is not None
+    # 0.6*(1-0.10) + 0.4*(1-min(0.20*4,1)) = 0.54 + 0.08.
+    assert deeper["performance_consistency"] == pytest.approx(0.62)
+    assert deeper["performance_consistency"] < baseline["performance_consistency"]
+    for name in ("risk_adjusted_returns", "operational_quality", "transparency", "team_experience"):
+        assert deeper[name] == pytest.approx(baseline[name]), name
+
+
+def test_evidence_backed_risk_adjusted_tracks_sharpe_only() -> None:
+    baseline = _derived_scores()
+    stronger = _derived_scores(metrics=_derived_metrics(sharpe_ratio=2.0))
+    assert baseline is not None and stronger is not None
+    # Sharpe-like (2.0+1.4)/2=1.7: 0.8*clamp01(0.5+1.7/4) + 0.2*clamp01(0.5+0.084/0.20).
+    assert stronger["risk_adjusted_returns"] == pytest.approx(0.924)
+    assert stronger["risk_adjusted_returns"] > baseline["risk_adjusted_returns"]
+    for name in (
+        "performance_consistency",
+        "operational_quality",
+        "transparency",
+        "team_experience",
+    ):
+        assert stronger[name] == pytest.approx(baseline[name]), name
+
+
+def test_evidence_backed_negative_net_return_lowers_risk_adjusted_only() -> None:
+    baseline = _derived_scores()
+    negative = _derived_scores(
+        extraction=_derived_extraction(**{"performance.net_return_1y": {"value": "-4.0%"}})
+    )
+    assert baseline is not None and negative is not None
+    # 0.8*clamp01(0.5+1.2/4) + 0.2*clamp01(0.5-0.04/0.20) = 0.64 + 0.06.
+    assert negative["risk_adjusted_returns"] == pytest.approx(0.70)
+    assert negative["risk_adjusted_returns"] < baseline["risk_adjusted_returns"]
+    for name in (
+        "performance_consistency",
+        "operational_quality",
+        "transparency",
+        "team_experience",
+    ):
+        assert negative[name] == pytest.approx(baseline[name]), name
+
+
 def test_evidence_backed_zero_aum_is_unavailable() -> None:
     extraction = _derived_extraction(**{"operations.aum": {"value": "$0"}})
     assert _derived_scores(extraction=extraction) is None
