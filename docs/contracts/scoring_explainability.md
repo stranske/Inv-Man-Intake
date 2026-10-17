@@ -59,7 +59,9 @@ A production score requires all of the following:
   `performance.net_return_1y`, `operations.aum`, `team.key_person_risk`) have
   nonblank values, extraction confidence **at least 0.50**, a source document
   ID and a source page. The explainability builder requires document pages
-  to be 1-based and resolves each pointer against the extracted evidence.
+  to be 1-based. Production constructs pointers from extracted fields; the CLI
+  regression checks their resolution against the extracted evidence. The builder
+  validates pointer structure, not membership in an external evidence registry.
 - The submitted workbook supplies **at least three monthly observations** and
   non-null annualized volatility, maximum drawdown and Sharpe ratio. Sortino
   is optional. Fixture returns and invented benchmarks do not fill gaps.

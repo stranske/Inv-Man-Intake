@@ -47,3 +47,6 @@ and normalization now appear in `docs/contracts/scoring_explainability.md`.
 
 This packet is local acceptance evidence, not a replacement provider PASS or
 permission to bypass current-head review, CI, merge and source-verification gates.
+
+`original-source-issue.md` preserves the complete captured source body; the
+acceptance mapping above does not replace its original criteria or non-goals.
