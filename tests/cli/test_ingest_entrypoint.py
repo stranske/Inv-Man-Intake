@@ -145,6 +145,39 @@ def test_ingest_entrypoint_returns_nonzero_for_missing_bundle(tmp_path: Path) ->
     assert exit_code != 0
 
 
+def test_run_pipeline_invokes_core_without_smoke_document_ids(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Production must never pass ``expected_document_ids`` (smoke_mode gate)."""
+    from inv_man_intake import run as run_module
+    from inv_man_intake import v1_smoke
+
+    observed: list[tuple[str, ...] | None] = []
+    original = v1_smoke._run_pipeline_core
+
+    def recording_core(**kwargs):
+        observed.append(kwargs.get("expected_document_ids"))
+        return original(**kwargs)
+
+    monkeypatch.setattr(run_module, "_run_pipeline_core", recording_core)
+    bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
+    output_dir = tmp_path / "out"
+    assert main([str(bundle_path), "--out", str(output_dir)]) == 0
+    assert observed == [None]
+
+
+def test_production_performance_source_deliberate_smoke_fixture_fails(tmp_path: Path) -> None:
+    """Deliberate-break gate: production runs must not label performance as smoke_fixture."""
+    bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
+    output_dir = tmp_path / "out"
+    assert main([str(bundle_path), "--out", str(output_dir)]) == 0
+    run = json.loads((output_dir / "run.json").read_text())
+    assert run["performance"]["source"] == "submitted_workbook"
+    run["performance"]["source"] = "smoke_fixture"
+    with pytest.raises(AssertionError):
+        assert run["performance"]["source"] == "submitted_workbook"
+
+
 @pytest.mark.parametrize(
     "primary", ["summit_arc_investment_update.pdf", "harborline_strategy_review.pptx"]
 )
