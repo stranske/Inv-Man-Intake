@@ -6,6 +6,7 @@ import ast
 import json
 import re
 import shutil
+from collections import Counter
 from datetime import UTC, date, datetime
 from itertools import permutations
 from pathlib import Path
@@ -171,6 +172,20 @@ _SMOKE_MODE_MARKERS = (
     "build_legacy_pdf_fixture_service()",
     'model="deterministic-pdf-parser"',
 )
+# One entry per conditional, including repeated predicates in the same function.
+# Boundary IDs tie both statement and expression branches to the audit table.
+_AUDITED_SMOKE_BRANCHES = (
+    ("_run_pipeline_core", "IfExp", "smoke_mode", "B02"),
+    ("_run_pipeline_core", "If", "expected_document_ids is None", "B03"),
+    ("_run_pipeline_core", "If", "smoke_mode", "B05"),
+    ("_run_pipeline_core", "IfExp", "smoke_mode", "B07"),
+    ("_run_pipeline_core", "If", "smoke_mode", "B10"),
+    ("_run_pipeline_core", "If", "not smoke_mode", "B08"),
+    ("_run_pipeline_core", "If", "smoke_mode", "B09"),
+    ("_run_pipeline_core", "IfExp", "smoke_mode", "B10"),
+    ("_pipeline_document_bytes", "If", "smoke_mode", "B04"),
+    ("_resolve_performance_series", "If", "smoke_mode", "B06"),
+)
 # Classification buckets from docs/reports/production_vs_smoke_audit.md.
 _CLASSIFICATION_SUMMARY = {
     "intentional smoke controls (retain)": frozenset(
@@ -226,11 +241,35 @@ def _parse_audit_boundary_rows(audit: str) -> dict[str, dict[str, str]]:
     return rows
 
 
+def _assert_audited_smoke_branches(source: str) -> None:
+    branches: Counter[tuple[str, str, str]] = Counter()
+    for function in ast.parse(source).body:
+        if not isinstance(function, ast.FunctionDef):
+            continue
+        for node in ast.walk(function):
+            if not isinstance(node, (ast.If, ast.IfExp)):
+                continue
+            if any(
+                isinstance(name, ast.Name) and name.id in {"smoke_mode", "expected_document_ids"}
+                for name in ast.walk(node.test)
+            ):
+                branches[(function.name, type(node).__name__, ast.unparse(node.test))] += 1
+    expected = Counter(
+        (function, kind, predicate) for function, kind, predicate, _ in _AUDITED_SMOKE_BRANCHES
+    )
+    assert branches == expected, (
+        "smoke branch inventory changed; update the audit disposition: "
+        f"added={branches - expected}, removed={expected - branches}"
+    )
+
+
 def test_production_smoke_audit_inventories_reachable_smoke_mode_branches() -> None:
     """Inventory guard: audit enumerates every reachable smoke_mode / fixed stand-in."""
     source = _V1_SMOKE_SOURCE.read_text(encoding="utf-8")
     audit = _PRODUCTION_SMOKE_AUDIT.read_text(encoding="utf-8")
 
+    _assert_audited_smoke_branches(source)
+    assert {boundary_id for *_, boundary_id in _AUDITED_SMOKE_BRANCHES} <= set(_AUDIT_BOUNDARY_IDS)
     for marker in _SMOKE_MODE_MARKERS:
         assert marker in source, f"missing reachable inventory marker in v1_smoke.py: {marker}"
     for boundary_id in _AUDIT_BOUNDARY_IDS:
@@ -241,6 +280,22 @@ def test_production_smoke_audit_inventories_reachable_smoke_mode_branches() -> N
     assert "document_ids[1]" not in source
     assert "_select_extraction_documents" in source
     assert "PRIMARY_EXTENSIONS" in source
+
+
+@pytest.mark.parametrize(
+    "new_branch",
+    ["if smoke_mode:\n        pass", "unreviewed_value = None if smoke_mode else False"],
+    ids=["statement", "expression"],
+)
+def test_smoke_branch_inventory_rejects_unreviewed_conditionals(new_branch: str) -> None:
+    source = _V1_SMOKE_SOURCE.read_text(encoding="utf-8")
+    discriminator = "smoke_mode = expected_document_ids is not None"
+    mutated = source.replace(discriminator, f"{discriminator}\n    {new_branch}", 1)
+
+    # Existing source markers survive this regression; the complete inventory must fail.
+    with pytest.raises(AssertionError, match="smoke branch inventory changed"):
+        _assert_audited_smoke_branches(mutated)
+    _assert_audited_smoke_branches(source)
 
 
 def _defined_test_names(source: str) -> set[str]:
