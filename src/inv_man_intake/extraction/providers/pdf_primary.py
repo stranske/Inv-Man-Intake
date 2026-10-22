@@ -29,7 +29,7 @@ class PdfPrimaryExtractionProvider:
         ("strategy.asset_class", r"strategy asset class\s*[:\-]\s*([^;\n]+)", 0.93),
         ("terms.management_fee", r"management fee\s*[:\-]\s*([0-9]+(?:\.[0-9]+)?%)", 0.91),
         ("performance.net_return_1y", r"net return 1y\s*[:\-]\s*([0-9.-]+%)", 0.88),
-        ("operations.aum", r"aum\s*[:\-]\s*([$A-Za-z0-9.]+)", 0.72),
+        ("operations.aum", r"aum\s*[:\-]\s*([^\r\n]+)", 0.72),
         ("team.key_person_risk", r"key person risk\s*[:\-]\s*([^;\n]+)", 0.50),
     )
     _PAGE_PATTERN = re.compile(r"\bpage\s+(?P<page>[0-9]+)\b", re.IGNORECASE)

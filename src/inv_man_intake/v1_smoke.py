@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import io
 import json
+import math
 import os
+import re
 import sqlite3
 import zipfile
 from dataclasses import dataclass
@@ -13,6 +15,8 @@ from pathlib import Path
 from typing import Any
 from xml.etree.ElementTree import ParseError
 
+from inv_man_intake.contracts.intake_contract import PRIMARY_EXTENSIONS
+from inv_man_intake.data.models import Document
 from inv_man_intake.data.repository import CoreRepository
 from inv_man_intake.extraction.confidence import (
     ThresholdConfig,
@@ -52,6 +56,7 @@ from inv_man_intake.observability import (
     new_trace_context,
 )
 from inv_man_intake.observability.langsmith_fleet import DEFAULT_PROJECT
+from inv_man_intake.observability.tracing import tracing_enabled_from_env
 from inv_man_intake.performance.characterize import characterize_series, gate_scoring_submission
 from inv_man_intake.performance.conflict_resolver import resolve_source_conflicts
 from inv_man_intake.performance.contracts import (
@@ -62,16 +67,26 @@ from inv_man_intake.performance.contracts import (
 from inv_man_intake.performance.ingest import load_xlsx_timeseries
 from inv_man_intake.performance.metrics import compute_metrics
 from inv_man_intake.performance.normalize import normalize_payload
-from inv_man_intake.queue.assignment import create_analyst_first_assignment
+from inv_man_intake.queue.assignment import QueueAssignmentRecord, create_analyst_first_assignment
 from inv_man_intake.scoring.contracts import ScoreComponent, ScoreSubmission
 from inv_man_intake.scoring.engine import compute_score
 from inv_man_intake.scoring.explainability import (
+    ComponentProvenance,
     ScoreComponentInput,
     build_explainability_payload,
     format_explainability_payload,
 )
-from inv_man_intake.scoring.weights import get_weight_set, weights_for_registry
+from inv_man_intake.scoring.weights import (
+    get_weight_set,
+    normalize_asset_class,
+    weights_for_registry,
+)
 from inv_man_intake.storage.document_store import InMemoryDocumentStore
+from inv_man_intake.workflow_validation import (
+    ValidationQueueItem,
+    create_queue_item,
+    queue_replay_key,
+)
 
 # Single source of truth for the default extraction threshold policy. The production CLI
 # (run.py) loads this same file; the smoke/demo fallback must not drift from it (see #694).
@@ -132,6 +147,7 @@ class V1SmokeArtifacts:
     formatted_explainability: dict[str, object]
     langsmith_fleet_records: list[dict[str, Any]]
     performance: dict[str, Any]
+    queue_items: tuple[ValidationQueueItem, ...] = ()
 
 
 def run_v1_smoke_pipeline(
@@ -140,6 +156,7 @@ def run_v1_smoke_pipeline(
     intake_bundle_file: str = "pdf_primary_mixed_bundle.json",
     package_id: str,
     expected_document_ids: tuple[str, ...],
+    allow_remote_tracing: bool = False,
 ) -> V1SmokeArtifacts:
     """Run the smoke pipeline with strict package/document-id assertions.
 
@@ -147,6 +164,10 @@ def run_v1_smoke_pipeline(
     orchestration code path also used by the headless ``run_pipeline`` entry
     point in :mod:`inv_man_intake.run`. Keeping one core means the operator
     CLI and the acceptance smoke exercise identical pipeline behavior.
+
+    ``allow_remote_tracing`` is an explicit synthetic-fixture opt-in; it also
+    requires an enabled environment toggle and credentials. Production ingest
+    does not expose it and always keeps its spans local.
     """
 
     return _run_pipeline_core(
@@ -154,6 +175,7 @@ def run_v1_smoke_pipeline(
         intake_bundle_file=intake_bundle_file,
         package_id=package_id,
         expected_document_ids=expected_document_ids,
+        allow_remote_tracing=allow_remote_tracing,
     )
 
 
@@ -165,6 +187,7 @@ def _run_pipeline_core(
     expected_document_ids: tuple[str, ...] | None = None,
     threshold_config: ThresholdConfig | None = None,
     content_root: Path | None = None,
+    allow_remote_tracing: bool = False,
 ) -> V1SmokeArtifacts:
     """Execute the deterministic intake-to-scoring pipeline once.
 
@@ -184,14 +207,15 @@ def _run_pipeline_core(
     content_resolver = None if smoke_mode else filesystem_content_resolver(resolved_content_root)
 
     sink = InMemoryTraceSink()
-    tracer = _entrypoint_tracer(sink=sink)
+    tracer = _entrypoint_tracer(sink=sink, allow_remote_tracing=allow_remote_tracing)
     correlation_id = ensure_correlation_id()
     trace_tags = {
         "package_id": package_id,
         "stage": "intake",
         "correlation_id": correlation_id,
     }
-    trace_tags.update(_langsmith_context_tags())
+    if allow_remote_tracing and tracing_enabled_from_env():
+        trace_tags.update(_langsmith_context_tags())
     trace_context = new_trace_context(tags=trace_tags)
 
     service = IngestionService()
@@ -230,11 +254,12 @@ def _run_pipeline_core(
         tags={"stage": "extract"},
     )
 
-    primary_document = core_repository.get_document(record.document_ids[0])
-    assert primary_document is not None, "primary document must be registered"
+    primary_document, secondary_document = _select_extraction_documents(
+        repository=core_repository, document_ids=record.document_ids, file_entries=file_entries
+    )
     primary_file_name = primary_document.file_name
     primary_content = _pipeline_document_bytes(
-        document_id=record.document_ids[0],
+        document_id=primary_document.document_id,
         fund_id=record.fund_id,
         file_name=primary_file_name,
         smoke_mode=smoke_mode,
@@ -244,38 +269,36 @@ def _run_pipeline_core(
     extraction_result = _run_extraction_smoke(
         tracer=tracer,
         trace_context=extraction_context,
-        source_doc_id=record.document_ids[0],
+        source_doc_id=primary_document.document_id,
         primary_file_name=primary_file_name,
         content=primary_content,
         correlation_id=correlation_id,
     )
-    if len(record.document_ids) < 2:
-        raise ValueError("intake bundle must register at least two documents for extraction")
-    secondary_document = core_repository.get_document(record.document_ids[1])
-    assert secondary_document is not None, "secondary document must be registered"
-    if smoke_mode:
-        # Smoke bundles may name synthetic secondary files that are not checked in;
-        # the boundary exercise only needs representative xlsx bytes.
-        secondary_content = _fixture_bytes(
-            fixture_root=fixture_root,
-            file_name="summit_arc_track_record.xlsx",
+    secondary_extraction_result = None
+    if secondary_document is not None:
+        if smoke_mode:
+            # Smoke bundles may name synthetic secondary files that are not checked in;
+            # the boundary exercise only needs representative xlsx bytes.
+            secondary_content = _fixture_bytes(
+                fixture_root=fixture_root,
+                file_name="summit_arc_track_record.xlsx",
+            )
+        else:
+            secondary_content = _pipeline_document_bytes(
+                document_id=secondary_document.document_id,
+                fund_id=record.fund_id,
+                file_name=secondary_document.file_name,
+                smoke_mode=smoke_mode,
+                fixture_root=fixture_root,
+                document_store=document_store,
+            )
+        secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
+            tracer=tracer,
+            trace_context=extraction_context,
+            source_doc_id=secondary_document.document_id,
+            content=secondary_content,
+            correlation_id=correlation_id,
         )
-    else:
-        secondary_content = _pipeline_document_bytes(
-            document_id=record.document_ids[1],
-            fund_id=record.fund_id,
-            file_name=secondary_document.file_name,
-            smoke_mode=smoke_mode,
-            fixture_root=fixture_root,
-            document_store=document_store,
-        )
-    secondary_extraction_result = _run_secondary_extraction_boundary_smoke(
-        tracer=tracer,
-        trace_context=extraction_context,
-        source_doc_id=record.document_ids[1],
-        content=secondary_content,
-        correlation_id=correlation_id,
-    )
     with tracer.start_span(
         name="v1_acceptance.threshold_handling",
         context=extraction_context,
@@ -376,11 +399,27 @@ def _run_pipeline_core(
         context=queue_context,
         metadata={"package_id": record.package_id},
     ):
-        queue_assignment = create_analyst_first_assignment(
-            item_id=f"{record.package_id}:validation:performance_conflict:{correlation_id}",
-            analyst_id="analyst_001",
-            created_at=datetime(2026, 3, 4, 10, 0, tzinfo=UTC),
-        )
+        queue_items: tuple[ValidationQueueItem, ...] = ()
+        queue_assignment: QueueAssignmentRecord | ValidationQueueItem | None
+        if smoke_mode:
+            queue_assignment = create_analyst_first_assignment(
+                item_id=f"{record.package_id}:validation:performance_conflict:{correlation_id}",
+                analyst_id="analyst_001",
+                created_at=datetime(2026, 3, 4, 10, 0, tzinfo=UTC),
+            )
+        else:
+            reasons = []
+            if threshold_decision.escalate:
+                reasons.append(threshold_decision.escalation_reason or "extraction_escalation")
+            queue_items = tuple(
+                create_queue_item(
+                    item_id=queue_replay_key(record.package_id, reason),
+                    package_id=record.package_id,
+                    escalation_reason=reason,
+                )
+                for reason in sorted(set(reasons))
+            )
+            queue_assignment = queue_items[0] if queue_items else None
 
     scoring_context = child_trace_context(
         performance_context,
@@ -392,18 +431,60 @@ def _run_pipeline_core(
         context=scoring_context,
         metadata={
             "manager_id": record.fund_id,
-            "queue_item_id": queue_assignment.item_id,
+            "queue_item_id": queue_assignment.item_id if queue_assignment is not None else None,
             "correlation_id": correlation_id,
         },
     ):
-        # Reference component values and benchmark-based scores are smoke-only.
-        # Production scoring remains unavailable until evidence-backed inputs exist.
+        # Reference component values are smoke-only. Production scoring derives
+        # components from submitted evidence (see
+        # ``_evidence_backed_score_components``) and stays unavailable when that
+        # evidence is below the documented minimum thresholds.
         score = None
-        formatted_explainability: dict[str, object] = {
-            "status": "unavailable",
-            "overall_score": None,
-            "reason": "evidence_backed_score_components_unavailable",
-        }
+        formatted_explainability = _unavailable_explainability(
+            "evidence_backed_score_components_unavailable"
+        )
+        if not smoke_mode:
+            derived = _evidence_backed_score_components(
+                extraction=extraction_with_thresholds,
+                metrics=metrics,
+                workbook_ref=_workbook_provenance_ref(
+                    repository=core_repository,
+                    record=record,
+                    file_entries=file_entries,
+                ),
+            )
+            if derived is not None and characterization is not None:
+                try:
+                    production_submission = gate_scoring_submission(
+                        ScoreSubmission(
+                            manager_id=record.fund_id,
+                            asset_class=derived.asset_class,
+                            components=derived.components,
+                        ),
+                        characterization=characterization,
+                    )
+                except PermissionError:
+                    production_submission = None
+                    formatted_explainability = _unavailable_explainability(
+                        "operator_confirmation_required"
+                    )
+                if production_submission is not None:
+                    score = compute_score(
+                        production_submission,
+                        weights_by_asset_class=weights_for_registry(),
+                    )
+                    production_explainability = build_explainability_payload(
+                        components=_explainability_inputs(
+                            score.asset_class,
+                            derived.components,
+                            rationales=derived.rationales,
+                            provenances=derived.provenances,
+                        ),
+                        overall_score=score.final_score,
+                    )
+                    formatted_explainability = format_explainability_payload(
+                        production_explainability
+                    )
         if smoke_mode:
             assert metrics is not None and characterization is not None
             components = _score_components(metrics.benchmark_correlation)
@@ -430,7 +511,11 @@ def _run_pipeline_core(
         secondary_extraction=secondary_extraction_result,
         validation_status="escalated" if threshold_decision.escalate else "accepted",
         score_count=len(score.contributions) if score is not None else 0,
-        review_queue_outcome=queue_assignment.owner_role,
+        review_queue_outcome=(
+            getattr(queue_assignment, "owner_role", "none")
+            if smoke_mode
+            else "pending_triage" if queue_items else "none"
+        ),
         artifact_refs=(
             f"artifact:packages/{record.package_id}/metadata.json",
             "artifact:extraction/threshold-summary.json",
@@ -488,13 +573,17 @@ def _run_pipeline_core(
         formatted_explainability=formatted_explainability,
         langsmith_fleet_records=langsmith_fleet_records,
         performance=performance,
+        queue_items=queue_items,
     )
 
 
-def _entrypoint_tracer(*, sink: InMemoryTraceSink) -> Tracer:
-    tracer = Tracer(enabled=True, sink=sink)
-    if not os.getenv("LANGSMITH_API_KEY", "").strip():
-        return tracer
+def _entrypoint_tracer(*, sink: InMemoryTraceSink, allow_remote_tracing: bool = False) -> Tracer:
+    """Keep local latency spans; remote export needs explicit synthetic-run opt-in."""
+    if not allow_remote_tracing:
+        return Tracer(enabled=True, sink=sink)
+
+    if not tracing_enabled_from_env() or not os.getenv("LANGSMITH_API_KEY", "").strip():
+        return Tracer(enabled=True, sink=sink)
     from inv_man_intake.observability.langsmith_fleet import ensure_langsmith_project_defaults
     from inv_man_intake.observability.langsmith_sink import LangSmithTraceSink
 
@@ -516,6 +605,35 @@ def _langsmith_context_tags() -> dict[str, str]:
         "langsmith_enabled": "true",
         "langsmith_project": project_name,
     }
+
+
+def _select_extraction_documents(
+    *, repository: CoreRepository, document_ids: tuple[str, ...], file_entries: list[dict[str, Any]]
+) -> tuple[Document, Document | None]:
+    """Select registered document metadata, independently of submission order."""
+    documents = []
+    for document_id in document_ids:
+        document = repository.get_document(document_id)
+        if document is None:
+            raise ValueError(f"submitted document {document_id!r} is not registered")
+        documents.append(document)
+    documents.sort(key=lambda document: (document.file_name.casefold(), document.document_id))
+    primaries = [
+        document
+        for document in documents
+        if Path(document.file_name).suffix.lower().lstrip(".") in PRIMARY_EXTENSIONS
+    ]
+    if not primaries:
+        raise ValueError("intake bundle has no registered primary PDF or PPTX")
+    workbooks = [
+        document for document in documents if Path(document.file_name).suffix.lower() == ".xlsx"
+    ]
+    workbook_name = _performance_track_record_file_name(file_entries)
+    preferred = next(
+        (document for document in workbooks if document.file_name == workbook_name),
+        workbooks[0] if workbooks else None,
+    )
+    return primaries[0], preferred
 
 
 def _run_extraction_smoke(
@@ -551,11 +669,13 @@ def _run_extraction_smoke(
         },
         trace_context=trace_context,
     )
-    assert result.resolved is True
-    assert result.provider_used == service.backend_name
-    assert result.data is not None
-    extracted = result.data["result"]
-    assert isinstance(extracted, ExtractedDocumentResult)
+    if not result.resolved or result.provider_used != service.backend_name or result.data is None:
+        raise ValueError(f"primary document extraction unavailable for {primary_file_name!r}")
+    extracted = result.data.get("result")
+    if not isinstance(extracted, ExtractedDocumentResult):
+        raise ValueError(
+            f"primary document extraction returned no result for {primary_file_name!r}"
+        )
     return extracted
 
 
@@ -837,6 +957,270 @@ def _fixture_performance_series() -> tuple[PerformanceSeries, PerformanceSeries,
     return xlsx, deck, benchmark
 
 
+#: Minimum-evidence thresholds for production (evidence-backed) scoring.
+#: All five key fields must be present with provenance and confidence at or
+#: above ``_MIN_FIELD_CONFIDENCE``; the workbook must yield at least
+#: ``_MIN_WORKBOOK_OBSERVATIONS`` monthly observations with volatility,
+#: drawdown and Sharpe available. Below any threshold, scoring stays
+#: unavailable (``evidence_backed_score_components_unavailable``).
+_MIN_FIELD_CONFIDENCE = 0.50
+_MIN_WORKBOOK_OBSERVATIONS = 3
+_KEY_FIELD_KEYS = (
+    "strategy.asset_class",
+    "terms.management_fee",
+    "performance.net_return_1y",
+    "operations.aum",
+    "team.key_person_risk",
+)
+
+
+@dataclass(frozen=True)
+class _DerivedScoring:
+    asset_class: str
+    components: tuple[ScoreComponent, ...]
+    rationales: dict[str, str]
+    provenances: dict[str, tuple[ComponentProvenance, ...]]
+
+
+def _clamp01(value: float) -> float:
+    return max(0.0, min(1.0, value))
+
+
+def _team_experience_score(risk_value: str) -> float:
+    """Score key-person risk text; adverse signals outrank reassuring ones.
+
+    Matching is word-boundary based so substrings do not misfire (``high``
+    in ``highly``, ``none`` in ``nonexistent``). A text that mentions both
+    stability and a pending departure scores on the departure, not the
+    reassurance.
+    """
+
+    risk_text = risk_value.lower()
+    # Remove only an explicitly negated departure phrase. Other adverse
+    # mentions in the same text must still outrank reassuring language.
+    adverse_text = re.sub(r"\bno\s+(?:pending\s+)?departures?\b", "", risk_text)
+    if re.search(r"\b(?:departure|pending|leaving|resigned)\b", adverse_text):
+        return 0.35
+    if re.search(r"\bhigh\b", risk_text):
+        return 0.40
+    if re.search(r"\b(?:moderate|medium)\b", risk_text):
+        return 0.60
+    if (
+        "no key person" in risk_text
+        or "low risk" in risk_text
+        or "stable team" in risk_text
+        or re.search(r"\bnone\b", risk_text)
+    ):
+        return 0.90
+    return 0.65
+
+
+def _field_provenance(field: Any) -> str:
+    return f"{field.key}@{field.source_doc_id}:page {field.source_page} (confidence {field.confidence:.2f})"
+
+
+def _field_component_provenance(field: Any) -> ComponentProvenance:
+    return ComponentProvenance(
+        source_kind="document",
+        reference=str(field.key),
+        source_doc_id=str(field.source_doc_id) or None,
+        source_page=int(field.source_page) if field.source_page is not None else None,
+    )
+
+
+def _workbook_component_provenance(workbook_ref: str) -> ComponentProvenance:
+    file_name, separator, document_id = workbook_ref.rpartition("@")
+    if not separator:
+        return ComponentProvenance(source_kind="workbook", reference=workbook_ref)
+    return ComponentProvenance(
+        source_kind="workbook",
+        reference=file_name,
+        source_doc_id=document_id or None,
+    )
+
+
+def _parse_percent(value: str) -> float | None:
+    match = re.search(r"(-?[0-9]+(?:\.[0-9]+)?)\s*%", value)
+    return float(match.group(1)) / 100.0 if match else None
+
+
+_AUM_AMOUNT = r"(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?"
+_AUM_WITH_UNIT = re.compile(
+    rf"\$?\s*(?<![0-9.,])(?P<amount>{_AUM_AMOUNT})\s*"
+    r"(?P<unit>billion|million|thousand|bn|mm|[kmb])\b",
+    re.IGNORECASE,
+)
+_AUM_UNITLESS = re.compile(rf"\s*\$?\s*(?P<amount>{_AUM_AMOUNT})\s*\Z")
+
+
+def _parse_aum(value: str) -> float | None:
+    """Parse one unambiguous AUM amount without guessing from unrelated numbers."""
+
+    candidates = list(_AUM_WITH_UNIT.finditer(value))
+    if len(candidates) == 1:
+        match = candidates[0]
+        amount = float(match.group("amount").replace(",", ""))
+        unit = match.group("unit").lower()
+        multiplier = {
+            "b": 1_000_000_000.0,
+            "bn": 1_000_000_000.0,
+            "billion": 1_000_000_000.0,
+            "m": 1_000_000.0,
+            "mm": 1_000_000.0,
+            "million": 1_000_000.0,
+            "k": 1_000.0,
+            "thousand": 1_000.0,
+        }[unit]
+        return amount * multiplier
+    if candidates:
+        return None
+    unitless = _AUM_UNITLESS.fullmatch(value)
+    if unitless is None:
+        return None
+    return float(unitless.group("amount").replace(",", ""))
+
+
+def _unavailable_explainability(reason: str) -> dict[str, object]:
+    return {"status": "unavailable", "overall_score": None, "reason": reason}
+
+
+def _evidence_backed_score_components(
+    *,
+    extraction: ExtractedDocumentResult,
+    metrics: Any,
+    workbook_ref: str,
+) -> _DerivedScoring | None:
+    """Map extracted fields and workbook metrics to the five score components.
+
+    Returns ``None`` when evidence is below the minimum thresholds documented
+    at ``_MIN_FIELD_CONFIDENCE`` / ``_MIN_WORKBOOK_OBSERVATIONS``.
+
+    Component mapping (each in [0, 1], deterministic):
+    - ``performance_consistency``: workbook volatility and max drawdown.
+    - ``risk_adjusted_returns``: workbook Sharpe/Sortino mapped around 0.5,
+      blended with the extracted 1Y net return.
+    - ``operational_quality``: extracted AUM (log scale) and management fee.
+    - ``transparency``: mean confidence of the five provenance-backed fields.
+    - ``team_experience``: rule-based reading of the key-person-risk field.
+    """
+
+    fields = {field.key: field for field in extraction.fields}
+    key_fields = []
+    for key in _KEY_FIELD_KEYS:
+        field = fields.get(key)
+        if field is None or field.confidence < _MIN_FIELD_CONFIDENCE:
+            return None
+        if not field.source_doc_id or field.source_page is None or not field.value.strip():
+            return None
+        key_fields.append(field)
+    if metrics is None or metrics.observation_count < _MIN_WORKBOOK_OBSERVATIONS:
+        return None
+    if (
+        metrics.annualized_volatility is None
+        or metrics.max_drawdown is None
+        or metrics.sharpe_ratio is None
+    ):
+        return None
+    try:
+        asset_class = normalize_asset_class(fields["strategy.asset_class"].value)
+    except ValueError:
+        return None
+    net_return = _parse_percent(fields["performance.net_return_1y"].value)
+    fee = _parse_percent(fields["terms.management_fee"].value)
+    aum = _parse_aum(fields["operations.aum"].value)
+    if net_return is None or fee is None or aum is None or aum <= 0:
+        return None
+
+    by_key = {field.key: field for field in key_fields}
+    performance_consistency = round(
+        _clamp01(
+            0.6 * (1.0 - metrics.annualized_volatility)
+            + 0.4 * (1.0 - min(metrics.max_drawdown * 4.0, 1.0))
+        ),
+        6,
+    )
+    sharpe_like = metrics.sharpe_ratio
+    if metrics.sortino_ratio is not None:
+        sharpe_like = (metrics.sharpe_ratio + metrics.sortino_ratio) / 2.0
+    risk_adjusted = round(
+        _clamp01(0.8 * _clamp01(0.5 + sharpe_like / 4.0) + 0.2 * _clamp01(0.5 + net_return / 0.20)),
+        6,
+    )
+    aum_score = _clamp01((math.log10(aum) - 6.0) / 4.0)
+    operational_quality = round(_clamp01(0.6 * aum_score + 0.4 * _clamp01(1.0 - fee / 0.03)), 6)
+    transparency = round(
+        _clamp01(sum(field.confidence for field in key_fields) / len(key_fields)), 6
+    )
+    team_experience = _team_experience_score(fields["team.key_person_risk"].value)
+
+    components = (
+        ScoreComponent("performance_consistency", performance_consistency),
+        ScoreComponent("risk_adjusted_returns", risk_adjusted),
+        ScoreComponent("operational_quality", operational_quality),
+        ScoreComponent("transparency", transparency),
+        ScoreComponent("team_experience", team_experience),
+    )
+    rationales = {
+        "performance_consistency": (
+            f"Workbook volatility/drawdown from {workbook_ref} "
+            f"(n={metrics.observation_count}); evidence {_field_provenance(by_key['performance.net_return_1y'])}"
+        ),
+        "risk_adjusted_returns": (
+            f"Sharpe/Sortino from {workbook_ref} blended with extracted net return; "
+            f"evidence {_field_provenance(by_key['performance.net_return_1y'])}"
+        ),
+        "operational_quality": (
+            f"AUM and fee scale; evidence {_field_provenance(by_key['operations.aum'])}; "
+            f"{_field_provenance(by_key['terms.management_fee'])}"
+        ),
+        "transparency": (
+            "Mean confidence of provenance-backed key fields; evidence "
+            + "; ".join(_field_provenance(field) for field in key_fields)
+        ),
+        "team_experience": (
+            f"Key-person risk reading; evidence {_field_provenance(by_key['team.key_person_risk'])}"
+        ),
+    }
+    workbook_provenance = _workbook_component_provenance(workbook_ref)
+    provenances = {
+        "performance_consistency": (
+            workbook_provenance,
+            _field_component_provenance(by_key["performance.net_return_1y"]),
+        ),
+        "risk_adjusted_returns": (
+            workbook_provenance,
+            _field_component_provenance(by_key["performance.net_return_1y"]),
+        ),
+        "operational_quality": (
+            _field_component_provenance(by_key["operations.aum"]),
+            _field_component_provenance(by_key["terms.management_fee"]),
+        ),
+        "transparency": tuple(_field_component_provenance(field) for field in key_fields),
+        "team_experience": (_field_component_provenance(by_key["team.key_person_risk"]),),
+    }
+    return _DerivedScoring(
+        asset_class=asset_class,
+        components=components,
+        rationales=rationales,
+        provenances=provenances,
+    )
+
+
+def _workbook_provenance_ref(
+    *,
+    repository: CoreRepository,
+    record: Any,
+    file_entries: list[dict[str, Any]],
+) -> str:
+    file_name = _performance_track_record_file_name(file_entries) or "submitted_workbook"
+    document_id = _document_id_for_file_name(
+        repository=repository, document_ids=record.document_ids, file_name=file_name
+    )
+    if document_id is not None:
+        return f"{file_name}@{document_id}"
+    return file_name
+
+
 def _score_components(benchmark_correlation: float | None) -> tuple[ScoreComponent, ...]:
     assert benchmark_correlation is not None
     correlation_component = max(0.0, min(1.0, benchmark_correlation))
@@ -852,21 +1236,31 @@ def _score_components(benchmark_correlation: float | None) -> tuple[ScoreCompone
 def _explainability_inputs(
     asset_class: str,
     components: tuple[ScoreComponent, ...],
+    rationales: dict[str, str] | None = None,
+    provenances: dict[str, tuple[ComponentProvenance, ...]] | None = None,
 ) -> tuple[ScoreComponentInput, ...]:
     weights = get_weight_set(asset_class).weights
-    rationale_by_component = {
+    rationale_by_component = rationales or {
         "performance_consistency": "Normalized monthly track record is complete.",
         "risk_adjusted_returns": "Prioritized metrics include Sharpe and correlation evidence.",
         "operational_quality": "AUM field is present but below auto-accept confidence.",
         "transparency": "Provenance pointers tie extracted fields to source pages.",
         "team_experience": "Key-person note is routed for analyst review.",
     }
+    # Smoke/demo components have no submitted-evidence derivation; attribute
+    # them to the analyst queue assignee instead of a document page.
+    # Production callers pass ``provenances`` explicitly: a missing entry is a
+    # derivation bug, not analyst evidence, so fail instead of misattributing.
+    analyst_provenance = (ComponentProvenance(source_kind="analyst", reference="analyst_001"),)
     return tuple(
         ScoreComponentInput(
             component=component.name,
             weight=weights[component.name],
             score=component.value,
             rationale=rationale_by_component[component.name],
+            provenance=(
+                provenances[component.name] if provenances is not None else analyst_provenance
+            ),
         )
         for component in components
     )

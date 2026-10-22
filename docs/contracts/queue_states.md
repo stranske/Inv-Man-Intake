@@ -113,3 +113,28 @@ assignment item id) and parses this file's `## States` bullet list to
 assert that documented state names match `ValidationState` in
 `workflow_validation.py`. Doc/code drift on either the canonical state set
 or the integrated transition path therefore fails CI before merge.
+
+
+## Local production handoff
+
+`inv-man-ingest` writes `validation-queue.json` with `schema_version: validation-queue/v1`
+and an `items` list. The run's artifact references and SHA-256 manifest include it,
+including an empty list when the actual extraction outcomes require no review.
+Items start unowned in `pending_triage`; their stable identity hashes the JSON pair
+`[package_id, escalation_reason]`, independent of trace/run IDs. Creation and workflow
+events use timezone-aware UTC timestamps rather than the smoke fixture's fixed date.
+
+Use `workflow_validation.load_validation_queue(path)` for typed items and full events,
+or `load_validation_queue_rows(path)` with `validation_queue_api.list_validation_queue`
+for package/state filters and pagination. Existing claim/transfer/transition functions
+operate on the reloaded records. `write_validation_queue(path, items)` retains ownership
+and history, deduplicates identical replay records, and rejects conflicting records for
+the same replay key. Unknown schemas, malformed states/owners/timestamps and duplicate
+identities fail closed. This artifact does not assign an analyst or create a service,
+database, reassignment engine or SLA scheduler. The fixture smoke path is unchanged.
+
+Event timestamps must be nondecreasing and within the item's creation/update interval;
+equal timestamps are allowed because workflow timestamps have second precision.
+Reusing a CLI output directory containing saved review progress (ownership, events,
+or a state beyond pending triage) is rejected before writing any artifacts. Use a new
+`--out` directory for another ingest to retain the saved review and its audit history.

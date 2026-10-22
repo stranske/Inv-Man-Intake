@@ -1,0 +1,9 @@
+{
+  "command": "pytest tests/cli/test_ingest_entrypoint.py -k queue -m \"not slow\" -q -o addopts=",
+  "mutation": "Remove the real production queue-artifact write before manifest hashing.",
+  "red_exit": 1,
+  "green_exit": 0,
+  "restored_identically": true,
+  "source_sha256": "ca1b7fc037c71fd1254a434ea3b4c8910463c2833b9d0ca25168a462ebf6d590",
+  "test_source_sha256": "7b14d35175000bb348b4694dded9d685aaee39dfa25567091dc5ac2bfe8c1ee0"
+}

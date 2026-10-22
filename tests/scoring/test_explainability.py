@@ -10,6 +10,7 @@ import pytest
 from inv_man_intake.scoring.contracts import ScoreComponent, ScoreSubmission
 from inv_man_intake.scoring.engine import compute_score, default_weights_by_asset_class
 from inv_man_intake.scoring.explainability import (
+    ComponentProvenance,
     ScoreComponentInput,
     build_explainability_payload,
     format_explainability_payload,
@@ -40,6 +41,104 @@ def test_build_payload_computes_component_contributions_and_reconciles_total() -
         "alpha_quality",
         "risk_stability",
     )
+
+
+def test_payload_carries_structured_provenance_per_component() -> None:
+    payload = build_explainability_payload(
+        components=(
+            ScoreComponentInput(
+                component="alpha_quality",
+                weight=1.0,
+                score=0.75,
+                rationale="Consistent alpha generation in lookback window.",
+                provenance=(
+                    ComponentProvenance(
+                        source_kind="document",
+                        reference="performance.net_return_1y",
+                        source_doc_id="doc-1",
+                        source_page=3,
+                    ),
+                    ComponentProvenance(
+                        source_kind="workbook",
+                        reference="track_record.xlsx",
+                        source_doc_id="doc-2",
+                    ),
+                ),
+            ),
+        )
+    )
+
+    formatted = format_explainability_payload(payload)
+    components = cast(list[dict[str, Any]], formatted["components"])
+    assert components[0]["provenance"] == [
+        {
+            "source_kind": "document",
+            "reference": "performance.net_return_1y",
+            "source_doc_id": "doc-1",
+            "source_page": 3,
+        },
+        {
+            "source_kind": "workbook",
+            "reference": "track_record.xlsx",
+            "source_doc_id": "doc-2",
+            "source_page": None,
+        },
+    ]
+
+    with pytest.raises(ValueError, match="provenance.reference must be non-empty"):
+        build_explainability_payload(
+            components=(
+                ScoreComponentInput(
+                    component="alpha_quality",
+                    weight=1.0,
+                    score=0.5,
+                    rationale="valid",
+                    provenance=(ComponentProvenance(source_kind="document", reference="  "),),
+                ),
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    ("provenance", "message"),
+    [
+        (
+            ComponentProvenance(source_kind="web", reference="x", source_doc_id="d", source_page=1),
+            "source_kind must be one of",
+        ),
+        (
+            ComponentProvenance(source_kind="document", reference="x"),
+            "source_doc_id is required for document",
+        ),
+        (
+            ComponentProvenance(source_kind="document", reference="x", source_doc_id="d"),
+            "source_page must be >= 1",
+        ),
+        (
+            ComponentProvenance(
+                source_kind="workbook", reference="x.xlsx", source_doc_id="d", source_page=2
+            ),
+            "source_page must be null for workbook",
+        ),
+        (
+            ComponentProvenance(source_kind="analyst", reference="a1", source_page=1),
+            "source_page must be null for analyst",
+        ),
+    ],
+)
+def test_payload_rejects_unresolvable_provenance(provenance, message) -> None:
+    with pytest.raises(ValueError, match=message):
+        build_explainability_payload(
+            components=(
+                ScoreComponentInput(
+                    component="alpha_quality",
+                    weight=1.0,
+                    score=0.5,
+                    rationale="valid",
+                    provenance=(provenance,),
+                ),
+            )
+        )
 
 
 def test_build_payload_rejects_non_reconciling_overall_score() -> None:

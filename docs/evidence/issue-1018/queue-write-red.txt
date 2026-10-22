@@ -1,0 +1,148 @@
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+__ test_ingest_queue_artifact_reloads_real_outcomes_and_manifest[escalating] ___
+
+tmp_path = PosixPath('/tmp/pytest-of-runner/pytest-5/test_ingest_queue_artifact_rel0')
+accepted = False
+
+    @pytest.mark.parametrize("accepted", [False, True], ids=["escalating", "accepted-policy"])
+    def test_ingest_queue_artifact_reloads_real_outcomes_and_manifest(
+        tmp_path: Path, accepted: bool
+    ) -> None:
+        import hashlib
+
+        from inv_man_intake.validation_queue_api import ValidationQueueQuery, list_validation_queue
+        from inv_man_intake.workflow_validation import (
+            claim_for_analyst_triage,
+            load_validation_queue,
+            load_validation_queue_rows,
+            queue_replay_key,
+            transition_state,
+            write_validation_queue,
+        )
+
+        bundle = _write_external_layout_bundle(tmp_path / "bundle")
+        output = tmp_path / "output"
+        args = [str(bundle), "--out", str(output)]
+        if accepted:
+            # A real caller-supplied policy accepts AUM(.72) while leaving the fixture defaults alone.
+            policy = tmp_path / "thresholds.yaml"
+            policy.write_text(
+                Path("config/extraction_thresholds.yaml")
+                .read_text()
+                .replace("key_field_confidence_min: 0.75", "key_field_confidence_min: 0.70")
+            )
+            args += ["--threshold-config", str(policy)]
+        started = datetime.now(UTC).replace(microsecond=0)
+>       assert main(args) == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = main(['/tmp/pytest-of-runner/pytest-5/test_ingest_queue_artifact_rel0/bundle/external_intake_bundle.json', '--out', '/tmp/pytest-of-runner/pytest-5/test_ingest_queue_artifact_rel0/output'])
+
+tests/cli/test_ingest_entrypoint.py:805: AssertionError
+----------------------------- Captured stderr call -----------------------------
+error: intake run failed: [Errno 2] No such file or directory: '/tmp/pytest-of-runner/pytest-5/test_ingest_queue_artifact_rel0/output/validation-queue.json'
+_ test_ingest_queue_artifact_reloads_real_outcomes_and_manifest[accepted-policy] _
+
+tmp_path = PosixPath('/tmp/pytest-of-runner/pytest-5/test_ingest_queue_artifact_rel1')
+accepted = True
+
+    @pytest.mark.parametrize("accepted", [False, True], ids=["escalating", "accepted-policy"])
+    def test_ingest_queue_artifact_reloads_real_outcomes_and_manifest(
+        tmp_path: Path, accepted: bool
+    ) -> None:
+        import hashlib
+
+        from inv_man_intake.validation_queue_api import ValidationQueueQuery, list_validation_queue
+        from inv_man_intake.workflow_validation import (
+            claim_for_analyst_triage,
+            load_validation_queue,
+            load_validation_queue_rows,
+            queue_replay_key,
+            transition_state,
+            write_validation_queue,
+        )
+
+        bundle = _write_external_layout_bundle(tmp_path / "bundle")
+        output = tmp_path / "output"
+        args = [str(bundle), "--out", str(output)]
+        if accepted:
+            # A real caller-supplied policy accepts AUM(.72) while leaving the fixture defaults alone.
+            policy = tmp_path / "thresholds.yaml"
+            policy.write_text(
+                Path("config/extraction_thresholds.yaml")
+                .read_text()
+                .replace("key_field_confidence_min: 0.75", "key_field_confidence_min: 0.70")
+            )
+            args += ["--threshold-config", str(policy)]
+        started = datetime.now(UTC).replace(microsecond=0)
+>       assert main(args) == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = main(['/tmp/pytest-of-runner/pytest-5/test_ingest_queue_artifact_rel1/bundle/external_intake_bundle.json', '--out', '/tmp/p...t_rel1/output', '--threshold-config', '/tmp/pytest-of-runner/pytest-5/test_ingest_queue_artifact_rel1/thresholds.yaml'])
+
+tests/cli/test_ingest_entrypoint.py:805: AssertionError
+----------------------------- Captured stderr call -----------------------------
+error: intake run failed: [Errno 2] No such file or directory: '/tmp/pytest-of-runner/pytest-5/test_ingest_queue_artifact_rel1/output/validation-queue.json'
+_ test_ingest_queue_replay_preserves_saved_review_by_requiring_new_output[claimed] _
+
+tmp_path = PosixPath('/tmp/pytest-of-runner/pytest-5/test_ingest_queue_replay_prese0')
+capsys = <_pytest.capture.CaptureFixture object at 0x7f534d580c20>
+completed = False
+
+    @pytest.mark.parametrize("completed", [False, True], ids=["claimed", "completed"])
+    def test_ingest_queue_replay_preserves_saved_review_by_requiring_new_output(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str], completed: bool
+    ) -> None:
+        from inv_man_intake.workflow_validation import (
+            claim_for_analyst_triage,
+            load_validation_queue,
+            transition_state,
+            write_validation_queue,
+        )
+
+        bundle = _write_external_layout_bundle(tmp_path / "bundle")
+        output = tmp_path / "output"
+        args = [str(bundle), "--out", str(output)]
+>       assert main(args) == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = main(['/tmp/pytest-of-runner/pytest-5/test_ingest_queue_replay_prese0/bundle/external_intake_bundle.json', '--out', '/tmp/pytest-of-runner/pytest-5/test_ingest_queue_replay_prese0/output'])
+
+tests/cli/test_ingest_entrypoint.py:884: AssertionError
+----------------------------- Captured stderr call -----------------------------
+error: intake run failed: [Errno 2] No such file or directory: '/tmp/pytest-of-runner/pytest-5/test_ingest_queue_replay_prese0/output/validation-queue.json'
+_ test_ingest_queue_replay_preserves_saved_review_by_requiring_new_output[completed] _
+
+tmp_path = PosixPath('/tmp/pytest-of-runner/pytest-5/test_ingest_queue_replay_prese1')
+capsys = <_pytest.capture.CaptureFixture object at 0x7f534d566c10>
+completed = True
+
+    @pytest.mark.parametrize("completed", [False, True], ids=["claimed", "completed"])
+    def test_ingest_queue_replay_preserves_saved_review_by_requiring_new_output(
+        tmp_path: Path, capsys: pytest.CaptureFixture[str], completed: bool
+    ) -> None:
+        from inv_man_intake.workflow_validation import (
+            claim_for_analyst_triage,
+            load_validation_queue,
+            transition_state,
+            write_validation_queue,
+        )
+
+        bundle = _write_external_layout_bundle(tmp_path / "bundle")
+        output = tmp_path / "output"
+        args = [str(bundle), "--out", str(output)]
+>       assert main(args) == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = main(['/tmp/pytest-of-runner/pytest-5/test_ingest_queue_replay_prese1/bundle/external_intake_bundle.json', '--out', '/tmp/pytest-of-runner/pytest-5/test_ingest_queue_replay_prese1/output'])
+
+tests/cli/test_ingest_entrypoint.py:884: AssertionError
+----------------------------- Captured stderr call -----------------------------
+error: intake run failed: [Errno 2] No such file or directory: '/tmp/pytest-of-runner/pytest-5/test_ingest_queue_replay_prese1/output/validation-queue.json'
+=========================== short test summary info ============================
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_queue_artifact_reloads_real_outcomes_and_manifest[escalating] - AssertionError: assert 1 == 0
+ +  where 1 = main(['/tmp/pytest-of-runner/pytest-5/test_ingest_queue_artifact_rel0/bundle/external_intake_bundle.json', '--out', '/tmp/pytest-of-runner/pytest-5/test_ingest_queue_artifact_rel0/output'])
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_queue_artifact_reloads_real_outcomes_and_manifest[accepted-policy] - AssertionError: assert 1 == 0
+ +  where 1 = main(['/tmp/pytest-of-runner/pytest-5/test_ingest_queue_artifact_rel1/bundle/external_intake_bundle.json', '--out', '/tmp/p...t_rel1/output', '--threshold-config', '/tmp/pytest-of-runner/pytest-5/test_ingest_queue_artifact_rel1/thresholds.yaml'])
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_queue_replay_preserves_saved_review_by_requiring_new_output[claimed] - AssertionError: assert 1 == 0
+ +  where 1 = main(['/tmp/pytest-of-runner/pytest-5/test_ingest_queue_replay_prese0/bundle/external_intake_bundle.json', '--out', '/tmp/pytest-of-runner/pytest-5/test_ingest_queue_replay_prese0/output'])
+FAILED tests/cli/test_ingest_entrypoint.py::test_ingest_queue_replay_preserves_saved_review_by_requiring_new_output[completed] - AssertionError: assert 1 == 0
+ +  where 1 = main(['/tmp/pytest-of-runner/pytest-5/test_ingest_queue_replay_prese1/bundle/external_intake_bundle.json', '--out', '/tmp/pytest-of-runner/pytest-5/test_ingest_queue_replay_prese1/output'])
+4 failed, 45 deselected in 0.45s

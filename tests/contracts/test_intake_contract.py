@@ -34,6 +34,15 @@ def test_validate_intake_payload_accepts_valid_payload() -> None:
     assert result.errors == ()
 
 
+@pytest.mark.parametrize("extension", ["pdf", "pptx"])
+def test_validate_intake_payload_accepts_primary_only_example(extension) -> None:
+    payload = _valid_payload()
+    payload["files"] = [{"file_name": f"manager_deck.{extension}", "role": "investment_deck"}]
+    result = validate_intake_payload(payload)
+    assert result.is_valid is True
+    assert result.errors == ()
+
+
 def test_validate_intake_payload_rejects_missing_required_metadata() -> None:
     payload = _valid_payload()
     metadata = payload["metadata"]

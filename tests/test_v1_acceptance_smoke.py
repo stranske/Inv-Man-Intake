@@ -20,6 +20,7 @@ from inv_man_intake.v1_smoke import (
     _assert_registered_package_state,
     _document_source_names,
     _score_components,
+    _unavailable_explainability,
     run_v1_smoke_pipeline,
 )
 
@@ -114,6 +115,16 @@ def test_v1_acceptance_smoke_exercises_intake_to_scoring_path(v1_smoke_artifacts
     assert score.final_score == pytest.approx(0.7809)
     assert formatted_explainability["overall_score"] == pytest.approx(score.final_score)
     assert formatted_explainability["components"]
+    # Smoke-only components carry analyst provenance, never document pages.
+    for component in formatted_explainability["components"]:
+        assert component["provenance"] == [
+            {
+                "source_kind": "analyst",
+                "reference": "analyst_001",
+                "source_doc_id": None,
+                "source_page": None,
+            }
+        ]
     assert score.contributions["risk_adjusted_returns"] > 0
 
     assert {event.trace_id for event in sink.events} == {trace_context.trace_id}
@@ -293,7 +304,10 @@ def test_v1_acceptance_smoke_fails_when_conflict_case_lacks_queue_or_audit_evide
         )
 
 
-def test_v1_smoke_pipeline_uses_inmemory_sink_even_with_langsmith_env(monkeypatch) -> None:
+@pytest.mark.parametrize("allow_remote", [False, True])
+def test_v1_smoke_pipeline_uses_inmemory_sink_even_with_langsmith_env(
+    monkeypatch, allow_remote
+) -> None:
     class _FakeLangSmithClient:
         def __init__(self) -> None:
             self.create_calls: list[dict[str, Any]] = []
@@ -317,18 +331,26 @@ def test_v1_smoke_pipeline_uses_inmemory_sink_even_with_langsmith_env(monkeypatc
     )
     monkeypatch.setenv("LANGSMITH_API_KEY", "lsv2_pt_test")
     monkeypatch.setenv("LANGSMITH_PROJECT", "inv-man-intake-smoke")
+    monkeypatch.setenv("INV_MAN_TRACING_ENABLED", "true")
 
     artifacts = run_v1_smoke_pipeline(
         fixture_root=_FIXTURE_ROOT,
         package_id=_SMOKE_PACKAGE_ID,
         expected_document_ids=_EXPECTED_DOCUMENT_IDS,
+        allow_remote_tracing=allow_remote,
     )
 
     assert isinstance(artifacts.sink, InMemoryTraceSink)
-    assert len(clients) == 1
-    assert len(clients[0].create_calls) > 0
-    assert artifacts.trace_context.tags["langsmith_enabled"] == "true"
-    assert artifacts.trace_context.tags["langsmith_project"] == "inv-man-intake-smoke"
+    assert artifacts.sink.events, "local pipeline spans remain available in both modes"
+    if allow_remote:
+        assert len(clients) == 1
+        assert len(clients[0].create_calls) > 0
+        assert artifacts.trace_context.tags["langsmith_enabled"] == "true"
+        assert artifacts.trace_context.tags["langsmith_project"] == "inv-man-intake-smoke"
+    else:
+        assert clients == []
+        assert "langsmith_enabled" not in artifacts.trace_context.tags
+        assert "langsmith_project" not in artifacts.trace_context.tags
 
 
 def test_v1_smoke_pipeline_without_langsmith_key_uses_local_trace_context(monkeypatch) -> None:
@@ -343,6 +365,14 @@ def test_v1_smoke_pipeline_without_langsmith_key_uses_local_trace_context(monkey
 
     assert "langsmith_enabled" not in artifacts.trace_context.tags
     assert "langsmith_project" not in artifacts.trace_context.tags
+
+
+def test_unavailable_explainability_names_operator_confirmation_action() -> None:
+    assert _unavailable_explainability("operator_confirmation_required") == {
+        "status": "unavailable",
+        "overall_score": None,
+        "reason": "operator_confirmation_required",
+    }
 
 
 def _write_weight_file(directory: Path, *, asset_class: str, weights_block: str) -> None:

@@ -55,3 +55,15 @@ def test_primary_provider_extracts_expected_baseline_keys() -> None:
     assert "terms.performance_fee" in keys
     assert "strategy.name" in keys
     assert "benchmark.name" in keys
+
+
+def test_primary_provider_preserves_complete_aum_text_for_downstream_validation() -> None:
+    provider = PrimaryRegexExtractionProvider()
+
+    result = provider.extract(
+        source_doc_id="doc_aum",
+        content=b"AUM: 2025: $1.2bn; secondary figure $450M\n",
+    )
+
+    fields = {field.key: field for field in result.fields}
+    assert fields["operations.aum"].value == "2025: $1.2bn; secondary figure $450M"

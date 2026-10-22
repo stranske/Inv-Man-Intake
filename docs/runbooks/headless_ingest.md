@@ -47,3 +47,10 @@ carry extracted field values, so it is written **only** to the operator-supplied
 upload path. Any future LLM-backed extraction provider must be gated behind an
 authorized no-train endpoint with redaction, or disabled for the proprietary
 zone — out of scope for this entry point.
+
+Production `inv-man-ingest` / `run_pipeline` always uses the local in-memory
+trace sink. `LANGSMITH_API_KEY` and tracing environment toggles do not enable
+remote export from this path, even when all toggles are true. Local spans remain
+enabled for correlation and latency measurements. There is no remote-tracing
+CLI switch. The separate synthetic smoke API may explicitly opt in as described
+in [the tracing runbook](langsmith_tracing.md#explicit-synthetic-smoke-opt-in).

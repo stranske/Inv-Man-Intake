@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from inv_man_intake.observability.tracing import (
     LANGCHAIN_TRACE_ENABLED_ENV_KEY,
     LANGSMITH_TRACE_ENABLED_ENV_KEY,
@@ -28,6 +30,139 @@ def test_tracer_disabled_mode_emits_no_events() -> None:
         pass
 
     assert sink.events == []
+
+
+def test_entrypoint_tracer_production_keeps_only_local_sink(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from inv_man_intake import v1_smoke
+    from inv_man_intake.observability import langsmith_sink
+
+    monkeypatch.setenv("LANGSMITH_API_KEY", "fake-offline-regression-key")
+    for key in (
+        TRACE_ENABLED_ENV_KEY,
+        LANGSMITH_TRACE_ENABLED_ENV_KEY,
+        LANGCHAIN_TRACE_ENABLED_ENV_KEY,
+    ):
+        monkeypatch.setenv(key, "true")
+
+    def forbidden_remote_configuration(*args, **kwargs):
+        pytest.fail("production must return the local tracer before resolving remote settings")
+
+    monkeypatch.setattr(v1_smoke, "tracing_enabled_from_env", forbidden_remote_configuration)
+    monkeypatch.setattr(
+        langsmith_sink.LangSmithTraceSink, "from_env", forbidden_remote_configuration
+    )
+    monkeypatch.setattr(langsmith_sink, "_default_client_factory", forbidden_remote_configuration)
+    sink = InMemoryTraceSink()
+    tracer = v1_smoke._entrypoint_tracer(sink=sink)
+
+    assert tracer._sink is sink
+    context = new_trace_context()
+    with tracer.start_span(name="production_stage", context=context):
+        pass
+
+    assert len(sink.events) == 2
+    assert all(event.trace_id == context.trace_id for event in sink.events)
+    assert sink.events[1].ended_at is not None
+
+
+@pytest.mark.parametrize(
+    "toggles",
+    [
+        {},
+        {
+            TRACE_ENABLED_ENV_KEY: "false",
+            LANGSMITH_TRACE_ENABLED_ENV_KEY: "true",
+            LANGCHAIN_TRACE_ENABLED_ENV_KEY: "true",
+        },
+        {LANGSMITH_TRACE_ENABLED_ENV_KEY: "false", LANGCHAIN_TRACE_ENABLED_ENV_KEY: "true"},
+        {LANGCHAIN_TRACE_ENABLED_ENV_KEY: "false"},
+    ],
+    ids=["unset", "primary-false", "langsmith-false", "langchain-false"],
+)
+def test_entrypoint_tracer_disabled_remote_never_constructs_sink(
+    monkeypatch: pytest.MonkeyPatch, toggles: dict[str, str]
+) -> None:
+    from inv_man_intake.observability import langsmith_sink
+    from inv_man_intake.v1_smoke import _entrypoint_tracer
+
+    monkeypatch.setenv("LANGSMITH_API_KEY", "fake-offline-regression-key")
+    for key in (
+        TRACE_ENABLED_ENV_KEY,
+        LANGSMITH_TRACE_ENABLED_ENV_KEY,
+        LANGCHAIN_TRACE_ENABLED_ENV_KEY,
+    ):
+        monkeypatch.delenv(key, raising=False)
+    for key, value in toggles.items():
+        monkeypatch.setenv(key, value)
+
+    def forbidden_sink(*args, **kwargs):
+        pytest.fail("disabled remote tracing must never construct a LangSmith sink")
+
+    monkeypatch.setattr(langsmith_sink.LangSmithTraceSink, "from_env", forbidden_sink)
+    sink = InMemoryTraceSink()
+    tracer = _entrypoint_tracer(sink=sink, allow_remote_tracing=True)
+
+    assert tracer._sink is sink
+    with tracer.start_span(name="local_stage", context=new_trace_context()):
+        pass
+    assert len(sink.events) == 2
+
+
+@pytest.mark.parametrize(
+    ("allow_remote", "toggle", "api_key", "remote_expected"),
+    [
+        (False, "true", "fake-offline-regression-key", False),
+        (True, "false", "fake-offline-regression-key", False),
+        (True, None, "fake-offline-regression-key", False),
+        (True, "true", "fake-offline-regression-key", True),
+        (True, "true", None, False),
+        (True, "true", "   ", False),
+    ],
+)
+def test_entrypoint_tracer_requires_explicit_remote_opt_in(
+    monkeypatch: pytest.MonkeyPatch,
+    allow_remote: bool,
+    toggle: str | None,
+    api_key: str | None,
+    remote_expected: bool,
+) -> None:
+    from inv_man_intake.observability import langsmith_sink
+    from inv_man_intake.v1_smoke import _entrypoint_tracer
+
+    if api_key is None:
+        monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    else:
+        monkeypatch.setenv("LANGSMITH_API_KEY", api_key)
+    monkeypatch.setenv("LANGSMITH_TRACING_ENABLED", "true" if toggle == "false" else "false")
+    monkeypatch.setenv("LANGCHAIN_TRACING_V2", "false")
+    if toggle is None:
+        monkeypatch.delenv("INV_MAN_TRACING_ENABLED", raising=False)
+    else:
+        monkeypatch.setenv("INV_MAN_TRACING_ENABLED", toggle)
+    remote_events = []
+    client_constructions = []
+
+    class FakeClient:
+        def create_run(self, **kwargs):
+            remote_events.append("start")
+
+        def update_run(self, *args, **kwargs):
+            remote_events.append("end")
+
+    def fake_client():
+        client_constructions.append("client")
+        return FakeClient()
+
+    monkeypatch.setattr(langsmith_sink, "_default_client_factory", fake_client)
+    sink = InMemoryTraceSink()
+    tracer = _entrypoint_tracer(sink=sink, allow_remote_tracing=allow_remote)
+    with tracer.start_span(name="local_stage", context=new_trace_context()):
+        pass
+    assert len(sink.events) == 2, "local timing and propagation stay enabled"
+    assert remote_events == (["start", "end"] if remote_expected else [])
+    assert client_constructions == (["client"] if remote_expected else [])
 
 
 def test_tracer_enabled_mode_emits_start_and_end_events() -> None:
