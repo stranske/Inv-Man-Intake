@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,24 @@ RUNTIME_KEYS = {
     "PYTHON_VERSION",
     "COVERAGE_REFERENCE_RUNTIME",
 }
+# Matrix axes that commonly feed actions/setup-python.
+MATRIX_RUNTIME_KEYS = {"python", "python_version", "python-version"}
+FROMJSON_MATRIX_RE = re.compile(
+    r"""^\$\{\{\s*fromJSON\(\s*(['"])(?P<payload>.*)\1\s*\)\s*\}\}$""",
+    re.DOTALL,
+)
+OPAQUE_MATRIX = object()
+
+
+def _decode_fromjson_matrix(value: str) -> Any | None:
+    """Decode a literal ``${{ fromJSON('...') }}`` matrix, else ``None``."""
+    match = FROMJSON_MATRIX_RE.fullmatch(value.strip())
+    if match is None:
+        return None
+    try:
+        return json.loads(match.group("payload"))
+    except (TypeError, ValueError):
+        return None
 
 
 def _runtime_pins(
@@ -27,12 +46,21 @@ def _runtime_pins(
     if isinstance(node, dict):
         for key, value in node.items():
             path = f"{location}.{key}"
-            if key in RUNTIME_KEYS or (in_matrix and key == "python"):
+            entering_matrix = key == "matrix" and location.endswith(".strategy")
+            if key in RUNTIME_KEYS or (in_matrix and key in MATRIX_RUNTIME_KEYS):
                 yield path, value
+            if entering_matrix and isinstance(value, str):
+                decoded = _decode_fromjson_matrix(value)
+                if decoded is None:
+                    # Reject matrices the scanner cannot inspect so they cannot hide 3.12.
+                    yield path, OPAQUE_MATRIX
+                    continue
+                yield from _runtime_pins(decoded, path, in_matrix=True)
+                continue
             yield from _runtime_pins(
                 value,
                 path,
-                in_matrix=in_matrix or (key == "matrix" and location.endswith(".strategy")),
+                in_matrix=in_matrix or entering_matrix,
             )
     elif isinstance(node, list):
         for index, value in enumerate(node):
@@ -40,6 +68,8 @@ def _runtime_pins(
 
 
 def _contains_old_runtime(value: Any) -> bool:
+    if value is OPAQUE_MATRIX:
+        return True
     if isinstance(value, list):
         return any(_contains_old_runtime(item) for item in value)
     if isinstance(value, str):
@@ -74,19 +104,21 @@ def test_workflow_python_pins_follow_standard() -> None:
 
 
 @pytest.mark.parametrize(
-    "matrix",
+    "matrix, step_ref",
     [
-        {"python": ["3.12"]},
-        {"python": ["3.12.9", "3.14"]},
-        {"include": [{"python": "3.12", "os": "ubuntu-latest"}]},
+        ({"python": ["3.12"]}, "${{ matrix.python }}"),
+        ({"python": ["3.12.9", "3.14"]}, "${{ matrix.python }}"),
+        ({"include": [{"python": "3.12", "os": "ubuntu-latest"}]}, "${{ matrix.python }}"),
+        ({"python_version": ["3.12"]}, "${{ matrix.python_version }}"),
+        ({"python-version": ["3.12", "3.14"]}, "${{ matrix.python-version }}"),
     ],
 )
-def test_named_python_matrix_cannot_hide_old_runtime(matrix: dict[str, Any]) -> None:
+def test_named_python_matrix_cannot_hide_old_runtime(matrix: dict[str, Any], step_ref: str) -> None:
     workflow = {
         "jobs": {
             "test": {
                 "strategy": {"matrix": matrix},
-                "steps": [{"with": {"python-version": "${{ matrix.python }}"}}],
+                "steps": [{"with": {"python-version": step_ref}}],
             }
         }
     }
@@ -95,6 +127,32 @@ def test_named_python_matrix_cannot_hide_old_runtime(matrix: dict[str, Any]) -> 
     ]
     assert len(offenders) == 1
     assert ".strategy.matrix." in offenders[0]
+
+
+@pytest.mark.parametrize(
+    "matrix_expr",
+    [
+        '${{ fromJSON(\'{"python":["3.12"]}\') }}',
+        '${{ fromJSON("{\\"python_version\\":[\\"3.12\\",\\"3.14\\"]}") }}',
+        "${{ fromJSON(inputs.matrix) }}",
+        "${{ inputs.python_matrix }}",
+    ],
+)
+def test_expression_valued_matrix_cannot_hide_old_runtime(matrix_expr: str) -> None:
+    """Literal fromJSON 3.12 pins and opaque matrix expressions must both fail the guard."""
+    workflow = {
+        "jobs": {
+            "test": {
+                "strategy": {"matrix": matrix_expr},
+                "steps": [{"with": {"python-version": "${{ matrix.python }}"}}],
+            }
+        }
+    }
+    offenders = [
+        path for path, value in _runtime_pins(workflow, "ci.yml") if _contains_old_runtime(value)
+    ]
+    assert len(offenders) == 1
+    assert offenders[0].startswith("ci.yml.jobs.test.strategy.matrix")
 
 
 @pytest.mark.parametrize("filename, job", [("ci.yml", "python"), ("pr-00-gate.yml", "python-ci")])
@@ -124,3 +182,18 @@ def test_json_matrix_deliberate_break_and_restore(
 
 def test_unrelated_python_metadata_is_not_a_runtime_pin() -> None:
     assert list(_runtime_pins({"metadata": {"python": "3.12"}}, "ci.yml")) == []
+
+
+def test_literal_fromjson_matrix_without_old_runtime_is_allowed() -> None:
+    workflow = {
+        "jobs": {
+            "test": {
+                "strategy": {"matrix": '${{ fromJSON(\'{"python":["3.13","3.14"]}\') }}'},
+                "steps": [{"with": {"python-version": "${{ matrix.python }}"}}],
+            }
+        }
+    }
+    offenders = [
+        path for path, value in _runtime_pins(workflow, "ci.yml") if _contains_old_runtime(value)
+    ]
+    assert offenders == []
