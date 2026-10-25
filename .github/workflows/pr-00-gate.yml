@@ -128,7 +128,7 @@ jobs:
       }}
     uses: stranske/Workflows/.github/workflows/reusable-10-ci-python.yml@main
     with:
-      python-versions: '["3.12", "3.13"]'
+      python-versions: '["3.13", "3.14"]'
       coverage-min: "80"
       # Run the Black format check on PRs too. ci.yml (push-to-main) already enforces
       # Black (format_check defaults true), so leaving it off here let unformatted code
