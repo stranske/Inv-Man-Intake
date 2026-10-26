@@ -155,6 +155,36 @@ def test_expression_valued_matrix_cannot_hide_old_runtime(matrix_expr: str) -> N
     assert offenders[0].startswith("ci.yml.jobs.test.strategy.matrix")
 
 
+def test_malformed_literal_fromjson_matrix_is_opaque() -> None:
+    """A literal fromJSON payload that fails JSON decoding must be treated as opaque."""
+    workflow = {
+        "jobs": {
+            "test": {
+                "strategy": {"matrix": "${{ fromJSON('{\"python\":[}') }}"},
+            }
+        }
+    }
+    values = [
+        value
+        for path, value in _runtime_pins(workflow, "ci.yml")
+        if path == "ci.yml.jobs.test.strategy.matrix"
+    ]
+    assert values == [OPAQUE_MATRIX]
+    assert _contains_old_runtime(OPAQUE_MATRIX)
+
+
+@pytest.mark.parametrize("filename", ["ci.yml", "pr-00-gate.yml"])
+def test_owned_caller_workflow_text_has_no_312_lines(filename: str) -> None:
+    """Line-level guard matching the Nov 7 persistence acceptance read for owned callers."""
+    text = (WORKFLOWS / filename).read_text(encoding="utf-8")
+    offenders = [
+        f"{filename}:{index}:{line.rstrip()}"
+        for index, line in enumerate(text.splitlines(), start=1)
+        if "3.12" in line
+    ]
+    assert not offenders, f"Lines matching 3.12 remain: {offenders}"
+
+
 @pytest.mark.parametrize("filename, job", [("ci.yml", "python"), ("pr-00-gate.yml", "python-ci")])
 def test_json_matrix_deliberate_break_and_restore(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, filename: str, job: str
