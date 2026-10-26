@@ -89,6 +89,8 @@ def _runtime_pins(
 def _contains_old_runtime(value: Any) -> bool:
     if value is OPAQUE_MATRIX:
         return True
+    if isinstance(value, dict):
+        return any(_contains_old_runtime(item) for item in value.values())
     if isinstance(value, list):
         return any(_contains_old_runtime(item) for item in value)
     if isinstance(value, str):
@@ -100,6 +102,40 @@ def _contains_old_runtime(value: Any) -> bool:
             if decoded != value:
                 return _contains_old_runtime(decoded)
     return str(value) == "3.12" or str(value).startswith("3.12.")
+
+
+@pytest.mark.parametrize("version, expected", [("3.12", True), ("3.12.9", True), ("3.14", False)])
+def test_object_valued_python_matrix_axis(version: str, expected: bool) -> None:
+    workflow = {
+        "jobs": {
+            "test": {
+                "strategy": {"matrix": {"include": [{"python": {"version": version}}]}},
+                "steps": [{"with": {"python-version": "${{ matrix.python.version }}"}}],
+            }
+        }
+    }
+    offenders = [
+        path for path, value in _runtime_pins(workflow, "ci.yml") if _contains_old_runtime(value)
+    ]
+    assert offenders == (["ci.yml.jobs.test.strategy.matrix.include[0].python"] if expected else [])
+
+
+def test_yaml_escaped_object_valued_python_matrix_axis() -> None:
+    workflow = yaml.safe_load(r"""jobs:
+  test:
+    strategy:
+      matrix:
+        include:
+          - python:
+              version: "\u0033\u002e12"
+    steps:
+      - with:
+          python-version: ${{ matrix.python.version }}
+""")
+    offenders = [
+        path for path, value in _runtime_pins(workflow, "ci.yml") if _contains_old_runtime(value)
+    ]
+    assert offenders == ["ci.yml.jobs.test.strategy.matrix.include[0].python"]
 
 
 def test_workflow_python_pins_follow_standard() -> None:
