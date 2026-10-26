@@ -303,6 +303,49 @@ def test_json_matrix_deliberate_break_and_restore(
     test_workflow_python_pins_follow_standard()
 
 
+@pytest.mark.parametrize("suffix", [".yml", ".yaml"])
+@pytest.mark.parametrize("runtime", ["3.12", 3.12], ids=["quoted", "unquoted"])
+@pytest.mark.parametrize(
+    "container, runtime_key",
+    [
+        ("with", "python-version"),
+        ("with", "python-versions"),
+        ("with", "primary-python-version"),
+        ("with", "coverage-python-version"),
+        ("env", "PYTHON_VERSION"),
+        ("env", "COVERAGE_REFERENCE_RUNTIME"),
+    ],
+)
+def test_named_guard_checks_runtime_keys_in_additional_workflows(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    suffix: str,
+    runtime: str | float,
+    container: str,
+    runtime_key: str,
+) -> None:
+    """No runtime key in another workflow may bypass the named guard's YAML scan."""
+    for name in ("ci.yml", "pr-00-gate.yml"):
+        (tmp_path / name).write_bytes((WORKFLOWS / name).read_bytes())
+    monkeypatch.setattr(f"{__name__}.WORKFLOWS", tmp_path)
+    path = tmp_path / f"additional{suffix}"
+    workflow = {"jobs": {"test": {"steps": [{container: {runtime_key: "3.14"}}]}}}
+    path.write_text(yaml.safe_dump(workflow), encoding="utf-8")
+    test_workflow_python_pins_follow_standard()
+
+    original = path.read_bytes()
+    workflow["jobs"]["test"]["steps"][0][container][runtime_key] = runtime
+    path.write_text(yaml.safe_dump(workflow), encoding="utf-8")
+    with pytest.raises(AssertionError, match="Python 3.12 runtime pins remain") as failure:
+        test_workflow_python_pins_follow_standard()
+    assert str(failure.value).splitlines()[0] == (
+        f"Python 3.12 runtime pins remain: ['{path.name}.jobs.test.steps[0].{container}.{runtime_key}']"
+    )
+
+    path.write_bytes(original)
+    test_workflow_python_pins_follow_standard()
+
+
 def test_unquoted_yaml_float_runtime_pin_is_rejected() -> None:
     """Unquoted ``3.12`` becomes a YAML float and must still fail the named guard."""
     workflow = {"jobs": {"test": {"steps": [{"with": {"python-version": 3.12}}]}}}
