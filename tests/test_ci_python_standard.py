@@ -29,8 +29,8 @@ FROMJSON_MATRIX_RE = re.compile(
 OPAQUE_MATRIX = object()
 
 
-def _decode_fromjson_matrix(value: str) -> Any | None:
-    """Decode a literal ``${{ fromJSON('...') }}`` matrix, else ``None``."""
+def _decode_fromjson_literal(value: str) -> Any | None:
+    """Decode a literal ``${{ fromJSON('...') }}`` payload, else ``None``."""
     match = FROMJSON_MATRIX_RE.fullmatch(value.strip())
     if match is None:
         return None
@@ -38,6 +38,22 @@ def _decode_fromjson_matrix(value: str) -> Any | None:
         return json.loads(match.group("payload"))
     except (TypeError, ValueError):
         return None
+
+
+def _inspect_fromjson_value(value: str) -> Any:
+    """Decode literal fromJSON, else mark opaque fromJSON expressions uninspectable."""
+    decoded = _decode_fromjson_literal(value)
+    if decoded is not None:
+        return decoded
+    stripped = value.strip()
+    if stripped.startswith("${{") and "fromJSON" in stripped:
+        # Malformed literal or non-literal fromJSON — cannot prove absence of 3.12.
+        return OPAQUE_MATRIX
+    return value
+
+
+# Back-compat alias used by matrix-level decoding paths and existing tests.
+_decode_fromjson_matrix = _decode_fromjson_literal
 
 
 def _runtime_pins(
@@ -48,9 +64,12 @@ def _runtime_pins(
             path = f"{location}.{key}"
             entering_matrix = key == "matrix" and location.endswith(".strategy")
             if key in RUNTIME_KEYS or (in_matrix and key in MATRIX_RUNTIME_KEYS):
-                yield path, value
+                if isinstance(value, str):
+                    yield path, _inspect_fromjson_value(value)
+                else:
+                    yield path, value
             if entering_matrix and isinstance(value, str):
-                decoded = _decode_fromjson_matrix(value)
+                decoded = _decode_fromjson_literal(value)
                 if decoded is None:
                     # Reject matrices the scanner cannot inspect so they cannot hide 3.12.
                     yield path, OPAQUE_MATRIX
@@ -178,6 +197,45 @@ def test_malformed_literal_fromjson_matrix_is_opaque() -> None:
     ]
     assert values == [OPAQUE_MATRIX]
     assert _contains_old_runtime(OPAQUE_MATRIX)
+
+
+@pytest.mark.parametrize(
+    "axis_expr",
+    [
+        '${{ fromJSON(\'["3.12","3.14"]\') }}',
+        "${{ fromJSON('[\"3.12\"]') }}",
+        "${{ fromJSON(inputs.python_versions) }}",
+    ],
+)
+def test_fromjson_matrix_axis_cannot_hide_old_runtime(axis_expr: str) -> None:
+    """Literal or opaque fromJSON on a matrix axis must fail the named guard."""
+    workflow = {
+        "jobs": {
+            "test": {
+                "strategy": {"matrix": {"python": axis_expr}},
+                "steps": [{"with": {"python-version": "${{ matrix.python }}"}}],
+            }
+        }
+    }
+    offenders = [
+        path for path, value in _runtime_pins(workflow, "ci.yml") if _contains_old_runtime(value)
+    ]
+    assert offenders == ["ci.yml.jobs.test.strategy.matrix.python"]
+
+
+def test_literal_fromjson_matrix_axis_without_old_runtime_is_allowed() -> None:
+    workflow = {
+        "jobs": {
+            "test": {
+                "strategy": {"matrix": {"python": '${{ fromJSON(\'["3.13","3.14"]\') }}'}},
+                "steps": [{"with": {"python-version": "${{ matrix.python }}"}}],
+            }
+        }
+    }
+    offenders = [
+        path for path, value in _runtime_pins(workflow, "ci.yml") if _contains_old_runtime(value)
+    ]
+    assert offenders == []
 
 
 def _lines_matching_312(filename: str, text: str) -> list[str]:
