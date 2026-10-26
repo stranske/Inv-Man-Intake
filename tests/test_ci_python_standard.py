@@ -180,16 +180,44 @@ def test_malformed_literal_fromjson_matrix_is_opaque() -> None:
     assert _contains_old_runtime(OPAQUE_MATRIX)
 
 
-@pytest.mark.parametrize("filename", ["ci.yml", "pr-00-gate.yml"])
-def test_owned_caller_workflow_text_has_no_312_lines(filename: str) -> None:
-    """Line-level guard matching the Nov 7 persistence acceptance read for owned callers."""
-    text = (WORKFLOWS / filename).read_text(encoding="utf-8")
-    offenders = [
+def _lines_matching_312(filename: str, text: str) -> list[str]:
+    """Return ``file:line:text`` entries for the Nov 7 pass-number substring read."""
+    return [
         f"{filename}:{index}:{line.rstrip()}"
         for index, line in enumerate(text.splitlines(), start=1)
         if "3.12" in line
     ]
+
+
+@pytest.mark.parametrize("filename", ["ci.yml", "pr-00-gate.yml"])
+def test_owned_caller_workflow_text_has_no_312_lines(filename: str) -> None:
+    """Line-level guard matching the Nov 7 persistence acceptance read for owned callers."""
+    text = (WORKFLOWS / filename).read_text(encoding="utf-8")
+    offenders = _lines_matching_312(filename, text)
     assert not offenders, f"Lines matching 3.12 remain: {offenders}"
+
+
+@pytest.mark.parametrize("filename", ["ci.yml", "pr-00-gate.yml"])
+def test_line_level_312_deliberate_break_and_restore(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, filename: str
+) -> None:
+    """Pass-number substring guard must fail when a 3.12 line is reintroduced, then recover."""
+    for name in ("ci.yml", "pr-00-gate.yml"):
+        (tmp_path / name).write_bytes((WORKFLOWS / name).read_bytes())
+    monkeypatch.setattr(f"{__name__}.WORKFLOWS", tmp_path)
+    test_owned_caller_workflow_text_has_no_312_lines(filename)
+
+    path = tmp_path / filename
+    original = path.read_bytes()
+    path.write_text(
+        original.decode("utf-8") + "\n# keepalive pass-number probe: 3.12\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(AssertionError, match="Lines matching 3.12 remain"):
+        test_owned_caller_workflow_text_has_no_312_lines(filename)
+
+    path.write_bytes(original)
+    test_owned_caller_workflow_text_has_no_312_lines(filename)
 
 
 @pytest.mark.parametrize("filename, job", [("ci.yml", "python"), ("pr-00-gate.yml", "python-ci")])
@@ -215,6 +243,15 @@ def test_json_matrix_deliberate_break_and_restore(
 
     path.write_bytes(original)
     test_workflow_python_pins_follow_standard()
+
+
+def test_unquoted_yaml_float_runtime_pin_is_rejected() -> None:
+    """Unquoted ``3.12`` becomes a YAML float and must still fail the named guard."""
+    workflow = {"jobs": {"test": {"steps": [{"with": {"python-version": 3.12}}]}}}
+    offenders = [
+        path for path, value in _runtime_pins(workflow, "ci.yml") if _contains_old_runtime(value)
+    ]
+    assert offenders == ["ci.yml.jobs.test.steps[0].with.python-version"]
 
 
 def test_unrelated_python_metadata_is_not_a_runtime_pin() -> None:
