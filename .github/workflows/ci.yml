@@ -28,6 +28,7 @@ jobs:
       python-versions: '["3.13", "3.14"]'
       typecheck: true
       coverage: true
+      coverage-python-version: '3.14'
       coverage-min: '80'
     secrets: inherit
 

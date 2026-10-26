@@ -99,8 +99,15 @@ def test_workflow_python_pins_follow_standard() -> None:
     assert not offenders, f"Python 3.12 runtime pins remain: {offenders}"
     for filename, job in (("ci.yml", "python"), ("pr-00-gate.yml", "python-ci")):
         config = workflows[filename]["jobs"][job]
-        assert json.loads(config["with"]["python-versions"]) == ["3.13", "3.14"]
+        with_inputs = config["with"]
+        assert json.loads(with_inputs["python-versions"]) == ["3.13", "3.14"]
+        assert with_inputs.get("coverage-python-version") == "3.14"
         assert not config.get("continue-on-error", False)
+    # Match Template/create-only gate: explicit primary runtime, not an ambient default.
+    assert (
+        workflows["pr-00-gate.yml"]["jobs"]["python-ci"]["with"].get("primary-python-version")
+        == "3.14"
+    )
 
 
 @pytest.mark.parametrize(
