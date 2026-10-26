@@ -94,6 +94,9 @@ def _contains_old_runtime(value: Any) -> bool:
     if isinstance(value, list):
         return any(_contains_old_runtime(item) for item in value)
     if isinstance(value, str):
+        inspected = _inspect_fromjson_value(value)
+        if inspected is OPAQUE_MATRIX or inspected != value:
+            return _contains_old_runtime(inspected)
         try:
             decoded = json.loads(value)
         except (TypeError, ValueError):
@@ -136,6 +139,32 @@ def test_yaml_escaped_object_valued_python_matrix_axis() -> None:
         path for path, value in _runtime_pins(workflow, "ci.yml") if _contains_old_runtime(value)
     ]
     assert offenders == ["ci.yml.jobs.test.strategy.matrix.include[0].python"]
+
+
+@pytest.mark.parametrize(
+    "expression, expected",
+    [
+        ("${{ fromJSON('\"3.12\"') }}", True),
+        (r"""${{ fromJSON('"\u0033\u002e12"') }}""", True),
+        ("${{ fromJSON('\"3.14\"') }}", False),
+        (r"""${{ fromJSON('"\u0033\u002e14"') }}""", False),
+        ("${{ fromJSON(needs.setup.outputs.python) }}", True),
+        ("${{ fromJSON('invalid-json') }}", True),
+    ],
+)
+def test_expression_valued_object_python_axis(expression: str, expected: bool) -> None:
+    workflow = {
+        "jobs": {
+            "test": {
+                "strategy": {"matrix": {"include": [{"python": {"version": expression}}]}},
+                "steps": [{"with": {"python-version": "${{ matrix.python.version }}"}}],
+            }
+        }
+    }
+    offenders = [
+        path for path, value in _runtime_pins(workflow, "ci.yml") if _contains_old_runtime(value)
+    ]
+    assert offenders == (["ci.yml.jobs.test.strategy.matrix.include[0].python"] if expected else [])
 
 
 def test_workflow_python_pins_follow_standard() -> None:
