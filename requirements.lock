@@ -164,7 +164,7 @@ mpmath==1.3.0
     # via sympy
 multiprocess==0.70.19
     # via mpire
-mypy==2.4.0
+mypy==2.4.1
     # via inv-man-intake (pyproject.toml)
 mypy-extensions==1.1.0
     # via
@@ -312,7 +312,7 @@ pypdfium2==5.12.1
     #   docling-slim
 pytesseract==0.3.13
     # via doc-lineage
-pytest==9.1.1
+pytest==9.2.0
     # via
     #   inv-man-intake (pyproject.toml)
     #   pytest-cov
