@@ -14,16 +14,12 @@ exposed for headless use as `inv_man_intake.run.run_pipeline`.
 # Production resolves document bytes from the bundle JSON directory only
 # (see src/inv_man_intake/run.py content_root=bundle_path.parent). The checked-in
 # pdf_primary_mixed_bundle.json lists four files; only the PDF/XLSX bytes ship under
-# tests/fixtures/extraction/. Stage those two beside a trimmed bundle JSON:
-export BUNDLE_DIR="$(mktemp -d)"
-cp tests/fixtures/extraction/summit_arc_investment_update.pdf \
-   tests/fixtures/extraction/summit_arc_track_record.xlsx \
-   "$BUNDLE_DIR/"
-python3 -c 'import json, os, pathlib; root=pathlib.Path("."); data=json.loads((root/"tests/fixtures/intake/pdf_primary_mixed_bundle.json").read_text()); keep={"summit_arc_investment_update.pdf","summit_arc_track_record.xlsx"}; data["files"]=[entry for entry in data["files"] if entry["file_name"] in keep]; out=pathlib.Path(os.environ["BUNDLE_DIR"])/"mixed_bundle.json"; out.write_text(json.dumps(data, indent=2)+"\n")'
-inv-man-ingest "$BUNDLE_DIR/mixed_bundle.json" --out ./.run-out
+# tests/fixtures/extraction/. Stage those beside a trimmed bundle JSON:
+BUNDLE="$(python -c 'from pathlib import Path; from tempfile import mkdtemp; from tests.conftest import stage_headless_reference_bundle; print(stage_headless_reference_bundle(Path(mkdtemp())))')"
+inv-man-ingest "$BUNDLE" --out ./.run-out
 
-# Equivalent module form (same paths after staging):
-python -m inv_man_intake.cli.ingest "$BUNDLE_DIR/mixed_bundle.json" --out ./.run-out
+# Equivalent module form (same path after staging):
+python -m inv_man_intake.cli.ingest "$BUNDLE" --out ./.run-out
 ```
 
 - `bundle` (positional): path to the intake bundle JSON file.
