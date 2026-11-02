@@ -12,9 +12,7 @@ import sys
 from pathlib import Path
 
 DOC_PATH = Path("docs/runbooks/headless_ingest.md")
-_KEEP_FILES = frozenset(
-    {"summit_arc_investment_update.pdf", "summit_arc_track_record.xlsx"}
-)
+_KEEP_FILES = frozenset({"summit_arc_investment_update.pdf", "summit_arc_track_record.xlsx"})
 
 
 def _primary_inv_man_ingest_command(text: str) -> str:
@@ -39,9 +37,7 @@ def _stage_bundle_like_runbook(repo_root: Path, bundle_dir: Path) -> Path:
             encoding="utf-8"
         )
     )
-    payload["files"] = [
-        entry for entry in payload["files"] if entry["file_name"] in _KEEP_FILES
-    ]
+    payload["files"] = [entry for entry in payload["files"] if entry["file_name"] in _KEEP_FILES]
     staged_bundle = bundle_dir / "mixed_bundle.json"
     staged_bundle.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return staged_bundle
