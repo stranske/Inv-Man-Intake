@@ -10,12 +10,21 @@ exposed for headless use as `inv_man_intake.run.run_pipeline`.
 
 ## Invocation
 
-```bash
-# Console script (installed via [project.scripts]):
-inv-man-ingest tests/fixtures/intake/pdf_primary_mixed_bundle.json --out ./.run-out
+Run every command from the **repository checkout root**. The staging helper imports
+`tests.conftest`, so a dev install that includes **pytest** and the `tests` package
+is required (for example `pip install -e ".[dev]"`); a runtime-only install may not
+provide those modules, and paths in the helper are relative to the checkout root.
 
-# Equivalent module form:
-python -m inv_man_intake.cli.ingest tests/fixtures/intake/pdf_primary_mixed_bundle.json --out ./.run-out
+```bash
+# Production resolves document bytes from the bundle JSON directory only
+# (see src/inv_man_intake/run.py content_root=bundle_path.parent). The checked-in
+# pdf_primary_mixed_bundle.json lists four files; only the PDF/XLSX bytes ship under
+# tests/fixtures/extraction/. Stage those beside a trimmed bundle JSON:
+BUNDLE="$(python -c 'from pathlib import Path; from tempfile import mkdtemp; from tests.conftest import stage_headless_reference_bundle; print(stage_headless_reference_bundle(Path(mkdtemp())))')"
+inv-man-ingest "$BUNDLE" --out ./.run-out
+
+# Equivalent module form (same path after staging):
+python -m inv_man_intake.cli.ingest "$BUNDLE" --out ./.run-out
 ```
 
 - `bundle` (positional): path to the intake bundle JSON file.
