@@ -10,6 +10,11 @@ exposed for headless use as `inv_man_intake.run.run_pipeline`.
 
 ## Invocation
 
+Run every command from the **repository checkout root**. The staging helper imports
+`tests.conftest`, so a dev install that includes **pytest** and the `tests` package
+is required (for example `pip install -e ".[dev]"`); a runtime-only install may not
+provide those modules, and paths in the helper are relative to the checkout root.
+
 ```bash
 # Production resolves document bytes from the bundle JSON directory only
 # (see src/inv_man_intake/run.py content_root=bundle_path.parent). The checked-in
