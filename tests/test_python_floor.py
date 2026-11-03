@@ -14,7 +14,7 @@ CLASSIFIER = re.compile(r"Programming Language :: Python :: (3\.\d+)")
 
 
 def _version(value: object) -> tuple[int, int]:
-    match = re.fullmatch(r"(?:py)?(\d)\.?(\d+)(?:\.\d+)?", str(value))
+    match = re.fullmatch(r"(?:py)?(\d)\.?(\d+)", str(value))
     assert match, f"unrecognised Python version {value!r}"
     return (int(match.group(1)), int(match.group(2)))
 
