@@ -51,7 +51,8 @@ def _assert_tool_targets(tool: dict) -> None:
     if "target-version" in tool.get("ruff", {}):
         targets["ruff"] = [tool["ruff"]["target-version"]]
     if "target-version" in tool.get("black", {}):
-        targets["black"] = tool["black"]["target-version"]
+        raw = tool["black"]["target-version"]
+        targets["black"] = raw if isinstance(raw, list) else [raw]
     if "python_version" in tool.get("mypy", {}):
         targets["mypy"] = [tool["mypy"]["python_version"]]
     for name, values in targets.items():
@@ -123,10 +124,15 @@ def test_classifier_checks(classifiers: list[str], accepted: bool) -> None:
             True,
         ),
         ({"mypy": {"python_version": "3.14"}}, True),
+        ({"ruff": {"target-version": "py311"}}, False),
         ({"ruff": {"target-version": "py312"}}, False),
+        ({"black": {"target-version": ["py311"]}}, False),
+        ({"black": {"target-version": ["py312"]}}, False),
         ({"black": {"target-version": ["py311", "py313"]}}, False),
         ({"black": {"target-version": []}}, False),
+        ({"mypy": {"python_version": "3.11"}}, False),
         ({"mypy": {"python_version": "3.12"}}, False),
+        ({"ruff": {"target-version": "py3.1.1"}}, False),
     ],
 )
 def test_tool_target_checks(tool: dict, accepted: bool) -> None:
