@@ -102,22 +102,47 @@ def register_intake_bundle(
         fallback=normalized_fund_name,
         prefix="fund",
     )
+
+    file_entries = [entry for entry in bundle["files"] if isinstance(entry, dict)]
+    files = [
+        IntakeFile(
+            file_name=_as_non_empty_str(entry.get("file_name")),
+            role=_as_non_empty_str(entry.get("role")),
+            source_ref=_as_non_empty_str(entry.get("source_ref")) or None,
+            document_id=_as_non_empty_str(entry.get("document_id")) or None,
+        )
+        for entry in file_entries
+    ]
+
     if core_repository is not None and document_store is not None:
         core_repository.ensure_core_schema()
-        firm_name = _as_non_empty_str(metadata.get("firm_name")) or firm_id
-        try:
-            firm_id = _resolve_firm_id(
-                core_repository=core_repository,
-                explicit_id=_as_non_empty_str(metadata.get("firm_id")),
-                fallback_id=firm_id,
-                name=firm_name,
+        duplicate_message = _duplicate_registration_message(
+            service=service,
+            package_id=package_id,
+            files=files,
+        )
+        if duplicate_message is not None:
+            return IntakeRegistrationResult(
+                accepted=False,
+                package_id=package_id,
+                status=None,
+                errors=(
+                    IntakeValidationIssue(
+                        code="duplicate_package_id",
+                        path="package_id",
+                        message=duplicate_message,
+                    ),
+                ),
+                warnings=validation.warnings,
             )
-            fund_id = _resolve_fund_id(
-                core_repository=core_repository,
-                explicit_id=_as_non_empty_str(metadata.get("fund_id")),
-                fallback_id=fund_id,
-                firm_id=firm_id,
-                name=_as_non_empty_str(metadata.get("fund_name")) or fund_id,
+        try:
+            firm_id, fund_id = core_repository.run_write_serialized(
+                lambda: _resolve_and_claim_firm_fund(
+                    core_repository=core_repository,
+                    metadata=metadata,
+                    initial_firm_id=firm_id,
+                    initial_fund_id=fund_id,
+                )
             )
         except ValueError as exc:
             return IntakeRegistrationResult(
@@ -133,17 +158,6 @@ def register_intake_bundle(
                 ),
                 warnings=validation.warnings,
             )
-
-    file_entries = [entry for entry in bundle["files"] if isinstance(entry, dict)]
-    files = [
-        IntakeFile(
-            file_name=_as_non_empty_str(entry.get("file_name")),
-            role=_as_non_empty_str(entry.get("role")),
-            source_ref=_as_non_empty_str(entry.get("source_ref")) or None,
-            document_id=_as_non_empty_str(entry.get("document_id")) or None,
-        )
-        for entry in file_entries
-    ]
 
     try:
         record = service.receive_package(
@@ -351,39 +365,16 @@ def _persist_accepted_bundle(
     source_channel = _as_non_empty_str(metadata.get("source_channel"))
     version_date = _version_date(metadata, received_at)
 
-    firm_name = _as_non_empty_str(metadata.get("firm_name")) or firm_id
     resolved_firm_id = firm_id
-    fund_name = _as_non_empty_str(metadata.get("fund_name")) or fund_id
     resolved_fund_id = fund_id
 
-    if core_repository.get_firm(resolved_firm_id) is None:
-        core_repository.create_firm(
-            Firm(
-                firm_id=resolved_firm_id,
-                legal_name=firm_name,
-                aliases_json=_aliases_json_for_name(firm_name),
-                created_at=received_at,
-            )
-        )
-    else:
-        _append_firm_alias(core_repository, resolved_firm_id, firm_name)
-
-    fund = Fund(
-        fund_id=resolved_fund_id,
+    _upsert_firm_and_fund(
+        core_repository=core_repository,
         firm_id=resolved_firm_id,
-        fund_name=fund_name,
-        strategy=_as_non_empty_str(metadata.get("strategy")) or None,
-        asset_class=_as_non_empty_str(metadata.get("asset_class")) or None,
-        created_at=received_at,
-        aliases_json=_aliases_json_for_name(fund_name),
+        fund_id=resolved_fund_id,
+        metadata=metadata,
+        received_at=received_at,
     )
-    existing_fund = core_repository.get_fund(resolved_fund_id)
-    if existing_fund is None:
-        core_repository.create_fund(fund)
-    else:
-        merged_fund = _merge_fund(existing=existing_fund, incoming=fund)
-        if merged_fund != existing_fund:
-            core_repository.update_fund(merged_fund)
 
     version_records: list[DocumentVersionRecord] = []
     for document_id, entry in zip(document_ids, file_entries, strict=True):
@@ -479,6 +470,105 @@ def _is_iso_date(value: str) -> bool:
     except ValueError:
         return False
     return True
+
+
+def _duplicate_registration_message(
+    *,
+    service: IngestionService,
+    package_id: str,
+    files: list[IntakeFile],
+) -> str | None:
+    try:
+        service.get_record(package_id)
+    except KeyError:
+        pass
+    else:
+        return f"package_id={package_id} already exists"
+
+    try:
+        document_ids = IngestionService._resolve_document_ids(package_id=package_id, files=files)
+    except ValueError as exc:
+        return str(exc)
+    for document_id in document_ids:
+        try:
+            existing = service.get_record_by_document(document_id)
+        except KeyError:
+            continue
+        return f"document_id={document_id} already exists on package_id={existing.package_id}"
+    return None
+
+
+def _resolve_and_claim_firm_fund(
+    *,
+    core_repository: CoreRepository,
+    metadata: dict[str, Any],
+    initial_firm_id: str,
+    initial_fund_id: str,
+) -> tuple[str, str]:
+    firm_name = _as_non_empty_str(metadata.get("firm_name")) or initial_firm_id
+    firm_id = _resolve_firm_id(
+        core_repository=core_repository,
+        explicit_id=_as_non_empty_str(metadata.get("firm_id")),
+        fallback_id=initial_firm_id,
+        name=firm_name,
+    )
+    fund_name = _as_non_empty_str(metadata.get("fund_name")) or initial_fund_id
+    fund_id = _resolve_fund_id(
+        core_repository=core_repository,
+        explicit_id=_as_non_empty_str(metadata.get("fund_id")),
+        fallback_id=initial_fund_id,
+        firm_id=firm_id,
+        name=fund_name,
+    )
+    received_at = _as_non_empty_str(metadata.get("received_at"))
+    _upsert_firm_and_fund(
+        core_repository=core_repository,
+        firm_id=firm_id,
+        fund_id=fund_id,
+        metadata=metadata,
+        received_at=received_at,
+    )
+    return firm_id, fund_id
+
+
+def _upsert_firm_and_fund(
+    *,
+    core_repository: CoreRepository,
+    firm_id: str,
+    fund_id: str,
+    metadata: dict[str, Any],
+    received_at: str,
+) -> None:
+    firm_name = _as_non_empty_str(metadata.get("firm_name")) or firm_id
+    if core_repository.get_firm(firm_id) is None:
+        core_repository.create_firm(
+            Firm(
+                firm_id=firm_id,
+                legal_name=firm_name,
+                aliases_json=_aliases_json_for_name(firm_name),
+                created_at=received_at,
+            )
+        )
+    else:
+        _append_firm_alias(core_repository, firm_id, firm_name)
+
+    fund_name = _as_non_empty_str(metadata.get("fund_name")) or fund_id
+    fund = Fund(
+        fund_id=fund_id,
+        firm_id=firm_id,
+        fund_name=fund_name,
+        strategy=_as_non_empty_str(metadata.get("strategy")) or None,
+        asset_class=_as_non_empty_str(metadata.get("asset_class")) or None,
+        created_at=received_at,
+        aliases_json=_aliases_json_for_name(fund_name),
+    )
+    existing_fund = core_repository.get_fund(fund_id)
+    if existing_fund is None:
+        core_repository.create_fund(fund)
+    else:
+        merged_fund = _merge_fund(existing=existing_fund, incoming=fund)
+        if merged_fund != existing_fund:
+            core_repository.update_fund(merged_fund)
 
 
 def _resolve_firm_id(
