@@ -537,7 +537,8 @@ def _resolve_fund_id(
     existing = core_repository.get_fund(fallback_id)
     if existing is not None and existing.firm_id != firm_id:
         fallback_id = f"{fallback_id}__{firm_id}"
-        _ensure_fund_belongs_to_firm(core_repository, fallback_id, firm_id)
+        if core_repository.get_fund(fallback_id) is not None:
+            raise ValueError(f"fallback fund_id={fallback_id!r} is already in use")
     return fallback_id
 
 

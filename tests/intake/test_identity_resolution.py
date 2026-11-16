@@ -262,3 +262,32 @@ def test_normalize_entity_name_strips_common_legal_suffixes() -> None:
 
 def test_normalize_entity_name_collapses_unicode_spacing_before_id_minting() -> None:
     assert normalize_entity_name("Summit\u00a0Arc Advisors LLC") == "summit arc advisors"
+
+
+def test_occupied_scoped_fallback_cannot_capture_unrelated_fund() -> None:
+    service = IngestionService()
+    repository, store = _registry()
+    alpha = _bundle(
+        package_id="pkg_alpha", firm_name="Alpha Advisors", fund_name="Global Opportunities"
+    )
+    assert register_intake_bundle(alpha, service, repository, store).accepted
+
+    beta_income = _bundle(
+        package_id="pkg_beta_income", firm_name="Beta Advisors", fund_name="Income"
+    )
+    scoped_id = "fund_global_opportunities__firm_beta_advisors"
+    beta_income["metadata"]["fund_id"] = scoped_id
+    assert register_intake_bundle(beta_income, service, repository, store).accepted
+    original = repository.get_fund(scoped_id)
+
+    beta_global = _bundle(
+        package_id="pkg_beta_global", firm_name="Beta Advisors", fund_name="Global Opportunities"
+    )
+    result = register_intake_bundle(beta_global, service, repository, store)
+
+    assert not result.accepted
+    assert result.errors[0].code == "identity_resolution_error"
+    assert repository.get_fund(scoped_id) == original
+    assert repository.count_core_rows() == (2, 2, 2)
+    with pytest.raises(KeyError, match="unknown package_id=pkg_beta_global"):
+        service.get_record("pkg_beta_global")
