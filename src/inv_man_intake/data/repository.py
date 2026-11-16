@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, TypeVar
 
 from inv_man_intake.data.models import Document, Firm, Fund
 from inv_man_intake.data.provenance import (
@@ -14,6 +15,8 @@ from inv_man_intake.data.provenance import (
     VisualArtifactRecord,
 )
 
+_T = TypeVar("_T")
+
 
 class CoreRepository:
     """Repository for firm/fund/document persistence and lookups."""
@@ -21,6 +24,31 @@ class CoreRepository:
     def __init__(self, connection: sqlite3.Connection) -> None:
         self._connection = connection
         self._connection.execute("PRAGMA foreign_keys = ON")
+        self._defer_commits = False
+
+    def run_write_serialized(self, operation: Callable[[], _T]) -> _T:
+        """Run one write-critical section with SQLite write locking across connections."""
+        previous = self._defer_commits
+        self._defer_commits = True
+        try:
+            if self._connection.in_transaction:
+                # Caller owns the transaction: never commit or roll it back here.
+                return operation()
+            self._connection.execute("BEGIN IMMEDIATE")
+            try:
+                result = operation()
+                self._connection.commit()
+                return result
+            except BaseException:
+                self._connection.rollback()
+                raise
+        finally:
+            self._defer_commits = previous
+
+    def _maybe_commit(self) -> None:
+        if self._defer_commits:
+            return
+        self._connection.commit()
 
     def ensure_core_schema(self) -> None:
         self._connection.executescript("""
@@ -59,14 +87,14 @@ class CoreRepository:
         }
         if "aliases_json" not in fund_columns:
             self._connection.execute("ALTER TABLE funds ADD COLUMN aliases_json TEXT")
-        self._connection.commit()
+        self._maybe_commit()
 
     def create_firm(self, firm: Firm) -> None:
         self._connection.execute(
             "INSERT INTO firms (firm_id, legal_name, aliases_json, created_at) VALUES (?, ?, ?, ?)",
             (firm.firm_id, firm.legal_name, firm.aliases_json, firm.created_at),
         )
-        self._connection.commit()
+        self._maybe_commit()
 
     def get_firm(self, firm_id: str) -> Firm | None:
         row = self._connection.execute(
@@ -89,7 +117,7 @@ class CoreRepository:
         )
         if cursor.rowcount == 0:
             raise KeyError(f"unknown firm_id={firm_id}")
-        self._connection.commit()
+        self._maybe_commit()
 
     def list_firms(self) -> tuple[Firm, ...]:
         rows = self._connection.execute(
@@ -122,7 +150,7 @@ class CoreRepository:
                 fund.aliases_json,
             ),
         )
-        self._connection.commit()
+        self._maybe_commit()
 
     def get_fund(self, fund_id: str) -> Fund | None:
         row = self._connection.execute(
@@ -162,7 +190,7 @@ class CoreRepository:
         )
         if cursor.rowcount == 0:
             raise KeyError(f"unknown fund_id={fund.fund_id}")
-        self._connection.commit()
+        self._maybe_commit()
 
     def list_funds(self, firm_id: str | None = None) -> tuple[Fund, ...]:
         if firm_id is None:
@@ -209,7 +237,7 @@ class CoreRepository:
                 document.created_at,
             ),
         )
-        self._connection.commit()
+        self._maybe_commit()
 
     def get_document(self, document_id: str) -> Document | None:
         row = self._connection.execute(
@@ -250,7 +278,7 @@ class CoreRepository:
         )
         if cursor.rowcount == 0:
             raise KeyError(f"unknown document_id={document.document_id}")
-        self._connection.commit()
+        self._maybe_commit()
 
     def list_document_versions(self, fund_id: str, file_name: str) -> tuple[Document, ...]:
         rows = self._connection.execute(
