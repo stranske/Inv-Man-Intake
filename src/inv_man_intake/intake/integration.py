@@ -365,7 +365,6 @@ def _persist_accepted_bundle(
     source_channel = _as_non_empty_str(metadata.get("source_channel"))
     version_date = _version_date(metadata, received_at)
 
-    resolved_firm_id = firm_id
     resolved_fund_id = fund_id
 
     version_records: list[DocumentVersionRecord] = []
