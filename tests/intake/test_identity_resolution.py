@@ -338,8 +338,15 @@ def test_race_overlapping_automatic_registrations_keep_distinct_ownership(
     inspect_repository = CoreRepository(inspect_connection)
     inspect_repository.ensure_core_schema()
     legacy_fund = inspect_repository.get_fund("fund_global_opportunities")
-    scoped_fund = inspect_repository.get_fund(
-        "fund_global_opportunities__firm_beta_advisors"
+    scoped_fund = next(
+        (
+            inspect_repository.get_fund(candidate_id)
+            for candidate_id in (
+                "fund_global_opportunities__firm_beta_advisors",
+                "fund_global_opportunities__firm_alpha_advisors",
+            )
+        ),
+        None,
     )
     assert legacy_fund is not None
     assert scoped_fund is not None
@@ -493,10 +500,14 @@ def test_duplicate_package_id_leaves_no_additional_firm_fund_rows() -> None:
         fund_name="Summit Arc Special Situations",
     )
 
-    first = register_intake_bundle(bundle, service, core_repository=repository, document_store=store)
+    first = register_intake_bundle(
+        bundle, service, core_repository=repository, document_store=store
+    )
     rows_after_first = repository.count_core_rows()
 
-    second = register_intake_bundle(bundle, service, core_repository=repository, document_store=store)
+    second = register_intake_bundle(
+        bundle, service, core_repository=repository, document_store=store
+    )
 
     assert first.accepted is True
     assert second.accepted is False

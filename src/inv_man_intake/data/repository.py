@@ -3,19 +3,19 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import UTC, datetime
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Any, TypeVar
 
 from inv_man_intake.data.models import Document, Firm, Fund
-
-_T = TypeVar("_T")
 from inv_man_intake.data.provenance import (
     CorrectionRecord,
     ExtractedFieldRecord,
     VisualArtifactFeedbackRecord,
     VisualArtifactRecord,
 )
+
+_T = TypeVar("_T")
 
 
 class CoreRepository:

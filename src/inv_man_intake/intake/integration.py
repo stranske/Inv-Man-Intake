@@ -638,8 +638,7 @@ def _ensure_fund_belongs_to_firm(
     existing = core_repository.get_fund(fund_id)
     if existing is not None and existing.firm_id != firm_id:
         raise ValueError(
-            f"fund_id={fund_id!r} belongs to firm_id={existing.firm_id!r}, "
-            f"not firm_id={firm_id!r}"
+            f"fund_id={fund_id!r} belongs to firm_id={existing.firm_id!r}, not firm_id={firm_id!r}"
         )
 
 
