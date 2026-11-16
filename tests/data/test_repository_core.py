@@ -258,3 +258,83 @@ def test_list_provenance_rows_reads_when_table_exists() -> None:
 
     rows = repo.list_provenance_rows("doc_1")
     assert rows == (("terms.management_fee", "2%", 4),)
+
+
+def _firm(firm_id: str) -> Firm:
+    return Firm(
+        firm_id=firm_id,
+        legal_name=f"{firm_id} Capital",
+        aliases_json=None,
+        created_at="2026-03-01T09:00:00Z",
+    )
+
+
+def test_run_write_serialized_lock_failure_restores_commit_mode(tmp_path) -> None:
+    db_path = tmp_path / "core.sqlite3"
+    holder = sqlite3.connect(db_path)
+    CoreRepository(holder).ensure_core_schema()
+    conn_b = sqlite3.connect(db_path, timeout=0)
+    repo_b = CoreRepository(conn_b)
+
+    holder.execute("BEGIN IMMEDIATE")
+    called = False
+
+    def _operation() -> None:
+        nonlocal called
+        called = True
+
+    with pytest.raises(sqlite3.OperationalError):
+        repo_b.run_write_serialized(_operation)
+    assert called is False
+    assert conn_b.in_transaction is False
+    holder.rollback()
+
+    repo_b.create_firm(_firm("firm_after_busy"))
+    assert conn_b.in_transaction is False
+
+    observer = sqlite3.connect(db_path)
+    rows = observer.execute(
+        "SELECT firm_id FROM firms WHERE firm_id = ?", ("firm_after_busy",)
+    ).fetchall()
+    assert rows == [("firm_after_busy",)]
+    for conn in (observer, conn_b, holder):
+        conn.close()
+
+
+def test_run_write_serialized_in_caller_transaction_does_not_commit_or_rollback(
+    tmp_path,
+) -> None:
+    db_path = tmp_path / "core.sqlite3"
+    conn = sqlite3.connect(db_path)
+    repo = CoreRepository(conn)
+    repo.ensure_core_schema()
+
+    conn.execute(
+        "INSERT INTO firms (firm_id, legal_name, aliases_json, created_at) VALUES (?, ?, ?, ?)",
+        ("firm_caller", "Caller Capital", None, "2026-03-01T09:00:00Z"),
+    )
+    assert conn.in_transaction is True
+
+    def _operation() -> None:
+        repo.create_firm(_firm("firm_callback"))
+        raise RuntimeError("callback failed")
+
+    with pytest.raises(RuntimeError, match="callback failed"):
+        repo.run_write_serialized(_operation)
+
+    assert conn.in_transaction is True
+    observer = sqlite3.connect(db_path)
+    assert observer.execute("SELECT firm_id FROM firms").fetchall() == []
+    assert sorted(row[0] for row in conn.execute("SELECT firm_id FROM firms")) == [
+        "firm_callback",
+        "firm_caller",
+    ]
+
+    conn.rollback()
+    assert observer.execute("SELECT firm_id FROM firms").fetchall() == []
+    assert conn.execute("SELECT firm_id FROM firms").fetchall() == []
+
+    repo.create_firm(_firm("firm_after"))
+    assert observer.execute("SELECT firm_id FROM firms").fetchall() == [("firm_after",)]
+    observer.close()
+    conn.close()

@@ -28,18 +28,20 @@ class CoreRepository:
 
     def run_write_serialized(self, operation: Callable[[], _T]) -> _T:
         """Run one write-critical section with SQLite write locking across connections."""
-        if self._connection.in_transaction:
-            return operation()
         previous = self._defer_commits
         self._defer_commits = True
-        self._connection.execute("BEGIN IMMEDIATE")
         try:
-            result = operation()
-            self._connection.commit()
-            return result
-        except BaseException:
-            self._connection.rollback()
-            raise
+            if self._connection.in_transaction:
+                # Caller owns the transaction: never commit or roll it back here.
+                return operation()
+            self._connection.execute("BEGIN IMMEDIATE")
+            try:
+                result = operation()
+                self._connection.commit()
+                return result
+            except BaseException:
+                self._connection.rollback()
+                raise
         finally:
             self._defer_commits = previous
 
