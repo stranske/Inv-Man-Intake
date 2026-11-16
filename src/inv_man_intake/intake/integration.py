@@ -368,14 +368,6 @@ def _persist_accepted_bundle(
     resolved_firm_id = firm_id
     resolved_fund_id = fund_id
 
-    _upsert_firm_and_fund(
-        core_repository=core_repository,
-        firm_id=resolved_firm_id,
-        fund_id=resolved_fund_id,
-        metadata=metadata,
-        received_at=received_at,
-    )
-
     version_records: list[DocumentVersionRecord] = []
     for document_id, entry in zip(document_ids, file_entries, strict=True):
         file_name = _as_non_empty_str(entry.get("file_name"))
