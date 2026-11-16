@@ -338,16 +338,14 @@ def test_race_overlapping_automatic_registrations_keep_distinct_ownership(
     inspect_repository = CoreRepository(inspect_connection)
     inspect_repository.ensure_core_schema()
     legacy_fund = inspect_repository.get_fund("fund_global_opportunities")
-    scoped_fund = next(
-        (
-            inspect_repository.get_fund(candidate_id)
-            for candidate_id in (
-                "fund_global_opportunities__firm_beta_advisors",
-                "fund_global_opportunities__firm_alpha_advisors",
-            )
-        ),
-        None,
-    )
+    scoped_fund = None
+    for candidate_id in (
+        "fund_global_opportunities__firm_beta_advisors",
+        "fund_global_opportunities__firm_alpha_advisors",
+    ):
+        scoped_fund = inspect_repository.get_fund(candidate_id)
+        if scoped_fund is not None:
+            break
     assert legacy_fund is not None
     assert scoped_fund is not None
     assert {legacy_fund.firm_id, scoped_fund.firm_id} == {
