@@ -515,6 +515,7 @@ def _resolve_fund_id(
     name: str,
 ) -> str:
     if explicit_id:
+        _ensure_fund_belongs_to_firm(core_repository, explicit_id, firm_id)
         return explicit_id
 
     normalized = normalize_entity_name(name)
@@ -531,7 +532,24 @@ def _resolve_fund_id(
         )
     if unique_matches:
         return unique_matches[0]
+
+    # Keep legacy fallback IDs unless another firm already owns the ID.
+    existing = core_repository.get_fund(fallback_id)
+    if existing is not None and existing.firm_id != firm_id:
+        fallback_id = f"{fallback_id}__{firm_id}"
+        _ensure_fund_belongs_to_firm(core_repository, fallback_id, firm_id)
     return fallback_id
+
+
+def _ensure_fund_belongs_to_firm(
+    core_repository: CoreRepository, fund_id: str, firm_id: str
+) -> None:
+    existing = core_repository.get_fund(fund_id)
+    if existing is not None and existing.firm_id != firm_id:
+        raise ValueError(
+            f"fund_id={fund_id!r} belongs to firm_id={existing.firm_id!r}, "
+            f"not firm_id={firm_id!r}"
+        )
 
 
 def _firm_has_alias(firm: Firm, normalized_name: str) -> bool:
@@ -616,7 +634,6 @@ def _merge_fund(*, existing: Fund, incoming: Fund) -> Fund:
     """Preserve canonical fund identity while recording incoming name variants."""
     return replace(
         existing,
-        firm_id=incoming.firm_id or existing.firm_id,
         fund_name=existing.fund_name,
         strategy=incoming.strategy if incoming.strategy is not None else existing.strategy,
         asset_class=(

@@ -7,6 +7,8 @@ import json
 import sqlite3
 from typing import Any
 
+import pytest
+
 from inv_man_intake.data.repository import CoreRepository
 from inv_man_intake.intake.integration import normalize_entity_name, register_intake_bundle
 from inv_man_intake.intake.service import IngestionService
@@ -158,6 +160,97 @@ def test_explicit_ids_are_preserved_over_normalized_name_matches() -> None:
     assert service.get_record("pkg_summit_arc_002").fund_id == "fund_custom_special_situations"
     assert repository.get_firm("firm_custom_summit_arc") is not None
     assert repository.get_fund("fund_custom_special_situations") is not None
+
+
+def test_same_fund_name_under_two_firms_stays_distinct() -> None:
+    service = IngestionService()
+    repository, store = _registry()
+    alpha = _bundle(
+        package_id="pkg_alpha",
+        firm_name="Alpha Advisors",
+        fund_name="Global Opportunities",
+    )
+    beta = _bundle(
+        package_id="pkg_beta",
+        firm_name="Beta Advisors",
+        fund_name="Global Opportunities",
+    )
+
+    first = register_intake_bundle(alpha, service, repository, store)
+    assert first.accepted
+    alpha_record = service.get_record("pkg_alpha")
+    original = repository.get_fund(alpha_record.fund_id)
+    assert original is not None
+    assert original.fund_id == "fund_global_opportunities"
+    assert original.firm_id == "firm_alpha_advisors"
+
+    second = register_intake_bundle(beta, service, repository, store)
+    assert second.accepted
+    beta_record = service.get_record("pkg_beta")
+    assert alpha_record.fund_id != beta_record.fund_id
+    assert beta_record.fund_id == "fund_global_opportunities__firm_beta_advisors"
+    assert repository.get_fund(original.fund_id) == original
+    assert repository.count_core_rows() == (2, 2, 2)
+
+    for record, expected_firm in (
+        (alpha_record, "firm_alpha_advisors"),
+        (beta_record, "firm_beta_advisors"),
+    ):
+        document = repository.get_document(record.document_ids[0])
+        assert document is not None
+        assert document.fund_id == record.fund_id
+        document_fund = repository.get_fund(document.fund_id)
+        assert document_fund is not None
+        assert document_fund.firm_id == record.firm_id == expected_firm
+
+    beta_alias = _bundle(
+        package_id="pkg_beta_alias",
+        firm_name="Beta Advisors LLC",
+        fund_name="Global Opportunities LP",
+    )
+    assert register_intake_bundle(beta_alias, service, repository, store).accepted
+    assert service.get_record("pkg_beta_alias").fund_id == beta_record.fund_id
+    assert repository.count_core_rows() == (2, 2, 3)
+
+
+def test_explicit_fund_id_reused_across_firms_is_rejected() -> None:
+    service = IngestionService()
+    connection = sqlite3.connect(":memory:")
+    repository = CoreRepository(connection)
+    store = InMemoryDocumentStore()
+    alpha = _bundle(
+        package_id="pkg_alpha",
+        firm_name="Alpha Advisors",
+        fund_name="Global Opportunities",
+    )
+    first = register_intake_bundle(alpha, service, repository, store)
+    assert first.accepted
+    (original_version,) = first.persisted_documents
+    original_rows = tuple(connection.iterdump())
+
+    beta = _bundle(
+        package_id="pkg_beta",
+        firm_name="Beta Advisors",
+        fund_name="Global Opportunities",
+    )
+    beta["metadata"]["fund_id"] = "fund_global_opportunities"
+    beta["files"][0]["document_id"] = "doc_beta"
+    result = register_intake_bundle(beta, service, repository, store)
+
+    assert not result.accepted
+    (error,) = result.errors
+    assert error.code == "identity_resolution_error"
+    assert error.path == "metadata"
+    assert error.message == (
+        "fund_id='fund_global_opportunities' belongs to firm_id='firm_alpha_advisors', "
+        "not firm_id='firm_beta_advisors'"
+    )
+    assert result.persisted_documents == ()
+    with pytest.raises(KeyError, match="unknown package_id=pkg_beta"):
+        service.get_record("pkg_beta")
+    assert tuple(connection.iterdump()) == original_rows
+    assert store.list_versions(original_version.document_key) == (original_version,)
+    assert store.list_versions("fund_global_opportunities/doc_beta") == ()
 
 
 def test_normalize_entity_name_strips_common_legal_suffixes() -> None:
