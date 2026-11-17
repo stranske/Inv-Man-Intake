@@ -18,6 +18,14 @@ def build_evidence_objects(fields: Iterable[Mapping[str, Any]]) -> list[dict[str
 
     The identifier hashes the canonical evidence payload, so repeated runs over
     identical field provenance produce byte-identical file names and contents.
+
+    Provider ``source_page`` values are one-based physical page/slide numbers
+    with ``0`` as the unknown-page sentinel, while ``locator.page`` is
+    zero-based per the document-identity conventions. Positive pages are
+    therefore shifted down by one and the sentinel omits ``locator.page``.
+    Because the locator is hashed, this conversion changed evidence IDs for
+    page-bearing evidence relative to earlier releases; repeated emissions over
+    equivalent fields remain deterministic.
     """
 
     objects: list[dict[str, Any]] = []
@@ -111,7 +119,11 @@ def _locator(*, field: Mapping[str, Any], location: Mapping[str, Any]) -> dict[s
     if page is None:
         page = location.get("source_page")
     if page is not None:
-        locator["page"] = int(page)
+        provider_page = int(page)
+        if provider_page < 0:
+            raise ValueError(f"source_page must be non-negative; got {provider_page!r}")
+        if provider_page > 0:
+            locator["page"] = provider_page - 1
 
     table_index = location.get("table_index")
     if table_index is not None:
