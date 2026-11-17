@@ -76,6 +76,14 @@ reads DrawingML `<a:t>` text runs per slide, emits canonical fields with documen
 (1-based `source_page`), and calls `validate_extracted_document_result(...)` before returning. The
 v1 smoke pipeline dispatches to this provider when a bundle's primary `file_name` ends in `.pptx`.
 
+Provider and internal `source_page` values stay 1-based, with `0` reserved as the unknown-page
+sentinel. When `inv_man_intake.emit.evidence_objects` projects fields into `evidence-object/v1`,
+it converts positive pages to the zero-based `locator.page` required by
+`document-identity-conventions.md` (`source_page=3` becomes `locator.page=2`) and omits
+`locator.page` for the `0` sentinel while keeping other locator fields. Because the locator is part
+of the hashed payload, this conversion changed `evidence_id` values for page-bearing evidence
+relative to earlier emitters; repeated emissions over equivalent fields remain deterministic.
+
 Secondary v1 roles such as XLSX are routed through the same provider/orchestrator boundary in smoke
 coverage. Until a dedicated XLSX parser exists, unsupported secondary bytes produce deterministic
 `ops_review` escalation rather than hard-coded extracted fields. Because OOXML containers
