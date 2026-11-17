@@ -6,7 +6,6 @@ import ast
 import json
 import re
 import shutil
-from calendar import monthrange
 from collections import Counter
 from datetime import UTC, date, datetime
 from itertools import permutations
@@ -237,9 +236,6 @@ _EVIDENCE_CLASS_TO_SUMMARY = {
     "intentional production path (post-#1019 seam)": "production path ok / shared policy",
     "intentional shared policy": "production path ok / shared policy",
     "confirmed production gap": "confirmed gaps → product review (no auto-file)",
-    "partially repaired by #1084 (benchmark gap remains)": (
-        "confirmed gaps → product review (no auto-file)"
-    ),
     "production path repaired by #1018 / #1034": "production path ok / shared policy",
     "production path repaired by #1083": "production path ok / shared policy",
     "architectural seam": "architectural / mixed / unknown",
@@ -427,22 +423,13 @@ def test_production_smoke_audit_classifies_boundaries_with_existing_tests() -> N
         assert row["production_contract"].strip(), f"{boundary_id} missing production contract"
         assert disposition.strip(), f"{boundary_id} missing disposition"
 
-        if evidence_class in {
-            "confirmed production gap",
-            "partially repaired by #1084 (benchmark gap remains)",
-        }:
+        if evidence_class == "confirmed production gap":
             assert "no auto-filed" in disposition or "return for human" in disposition
 
         _assert_audit_test_evidence(boundary_id, evidence, entrypoint_tests, engine_tests)
 
     for label, expected_ids in _CLASSIFICATION_SUMMARY.items():
         assert classified[label] == expected_ids, f"summary drift for {label}"
-    # #1084: B11's deck comparison is repaired; only the benchmark gap stays with a human.
-    assert rows["B11"]["evidence_class"] == "partially repaired by #1084 (benchmark gap remains)"
-    assert (
-        "test_production_conflict_over_5pct_emits_performance_conflict_queue_item"
-        in rows["B11"]["classification_evidence"]
-    )
 
     human_section = audit.split("## Uncovered items returned for human review", maxsplit=1)[1]
     assert "No automatic follow-up issues are created" in human_section
@@ -660,6 +647,7 @@ def _compressed_two_page_pdf() -> bytes:
     pdf.showPage()
     pdf.drawString(72, 720, "AUM: $1.2bn")
     pdf.drawString(72, 700, "Net Return 1Y: 8.4%")
+    pdf.drawString(72, 680, "Strategy: Summit Arc Credit")
     pdf.showPage()
     pdf.save()
     return stream.getvalue()
@@ -693,11 +681,15 @@ def test_production_pdf_routes_to_doc_lineage_not_legacy_fixture(
 
     run = json.loads((output / "run.json").read_text(encoding="utf-8"))
     fields = {field["key"]: field for field in run["fields"]}
+    assert not any(
+        field["key"] == "strategy.name" and field["source_page"] == 1 for field in run["fields"]
+    )
     expected = {
         "strategy.asset_class": ("credit", 1),
         "terms.management_fee": ("1.25%", 1),
         "operations.aum": ("$1.2bn", 2),
         "performance.net_return_1y": ("8.4%", 2),
+        "strategy.name": ("Summit Arc Credit", 2),
     }
     for key, (value, page) in expected.items():
         assert fields[key]["value"] == value
@@ -1731,234 +1723,3 @@ def test_ingest_queue_replay_preserves_saved_review_by_requiring_new_output(
     # A new run directory remains usable without discarding the previous review.
     assert main([str(bundle), "--out", str(tmp_path / "new-output"), *policy_args]) == 0
     assert load_validation_queue(queue_file) == (reviewed,)
-
-
-_CONFLICT_MONTHS = [date(2023 + (index // 12), index % 12 + 1, 15) for index in range(20)]
-_CONFLICT_WORKBOOK_DATES = [
-    month.replace(day=monthrange(month.year, month.month)[1]).isoformat()
-    for month in _CONFLICT_MONTHS
-]
-_CONFLICT_WORKBOOK_VALUES = [round(0.004 + 0.001 * index, 6) for index in range(20)]
-
-
-def _monthly_return_lines(conflicts: int) -> list[str]:
-    values = list(_CONFLICT_WORKBOOK_VALUES)
-    for index in range(conflicts):
-        values[index * 7] = round(values[index * 7] + 0.02, 6)
-    return [
-        f"MONTHLY_RETURN as_of={as_of} value={value} frequency=monthly"
-        for as_of, value in zip(_CONFLICT_MONTHS, values, strict=True)
-    ]
-
-
-def _write_pptx_with_slide_lines(
-    source: Path,
-    target: Path,
-    lines: list[str],
-    *,
-    layout: str,
-) -> None:
-    import zipfile
-    from xml.sax.saxutils import escape
-
-    def _paragraph_xml(line: str) -> str:
-        run = f"<a:r><a:t>{escape(line)}</a:t></a:r>"
-        if layout == "split_runs":
-            midpoint = len(line) // 2
-            run = (
-                f"<a:r><a:t>{escape(line[:midpoint])}</a:t></a:r>"
-                f"<a:r><a:t>{escape(line[midpoint:])}</a:t></a:r>"
-            )
-        elif layout == "trailing_field":
-            run += "<a:fld><a:t> draft</a:t></a:fld>"
-        return f"<a:p>{run}</a:p>"
-
-    paragraphs = "".join(_paragraph_xml(line) for line in lines)
-    slide = (
-        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
-        'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">'
-        "<p:cSld><p:spTree><p:sp><p:txBody><a:bodyPr/>"
-        f"{paragraphs}</p:txBody></p:sp></p:spTree></p:cSld></p:sld>"
-    )
-    with zipfile.ZipFile(source) as original, zipfile.ZipFile(target, "w") as updated:
-        for info in original.infolist():
-            data = original.read(info.filename)
-            if info.filename == "ppt/presentation.xml":
-                data = data.replace(
-                    b"</p:sldIdLst>", b'<p:sldId id="258" r:id="rId3"/></p:sldIdLst>'
-                )
-            elif info.filename == "ppt/_rels/presentation.xml.rels":
-                data = data.replace(
-                    b"</Relationships>",
-                    b'<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/'
-                    b'officeDocument/2006/relationships/slide" Target="slides/slide3.xml"/>'
-                    b"</Relationships>",
-                )
-            updated.writestr(info, data)
-        updated.writestr("ppt/slides/slide3.xml", slide)
-
-
-@pytest.mark.parametrize(
-    (
-        "lines",
-        "expected_status",
-        "expected_reason",
-        "expected_conflicts",
-        "expected_overlap",
-        "expected_unmatched",
-        "layout",
-    ),
-    [
-        (_monthly_return_lines(2), "comparable", None, 2, 20, [], "run"),
-        (_monthly_return_lines(2), "comparable", None, 2, 20, [], "split_runs"),
-        (_monthly_return_lines(1), "comparable", None, 1, 20, [], "run"),
-        (
-            _monthly_return_lines(1)[:10]
-            + ["MONTHLY_RETURN as_of=2024-09-15 value=0.03 frequency=monthly"],
-            "comparable",
-            None,
-            1,
-            10,
-            ["2024-09"],
-            "run",
-        ),
-        (None, "unavailable", "unsupported_document_format", None, 0, [], "run"),
-        ([], "unavailable", "no_document_monthly_rows", None, 0, [], "run"),
-        (
-            _monthly_return_lines(0)[:19]
-            + [f"MONTHLY_RETURN as_of={_CONFLICT_MONTHS[19]} value=2%"],
-            "unavailable",
-            "unsupported_document_rows",
-            None,
-            0,
-            [],
-            "run",
-        ),
-        (
-            _monthly_return_lines(0)[:1],
-            "unavailable",
-            "unsupported_document_rows",
-            None,
-            0,
-            [],
-            "trailing_field",
-        ),
-        (
-            _monthly_return_lines(0)
-            + ["MONTHLY_RETURN as_of=2023-01-05 value=0.5 frequency=monthly"],
-            "non_comparable",
-            "ambiguous_document_rows",
-            None,
-            0,
-            [],
-            "run",
-        ),
-        (
-            ["MONTHLY_RETURN as_of=2019-01-31 value=0.01 frequency=monthly"],
-            "non_comparable",
-            "no_overlapping_periods",
-            None,
-            0,
-            ["2019-01"],
-            "run",
-        ),
-    ],
-    ids=[
-        "2-of-20-escalates",
-        "2-of-20-escalates-split-runs",
-        "1-of-20-at-threshold",
-        "1-of-10-partial-overlap-escalates",
-        "pdf-primary-unavailable",
-        "no-rows-unavailable",
-        "malformed-row-unavailable",
-        "trailing-field-unavailable",
-        "ambiguous-month-non-comparable",
-        "nonoverlapping-non-comparable",
-    ],
-)
-def test_production_conflict_over_5pct_emits_performance_conflict_queue_item(
-    tmp_path: Path,
-    lines: list[str] | None,
-    expected_status: str,
-    expected_reason: str | None,
-    expected_conflicts: int | None,
-    expected_overlap: int,
-    expected_unmatched: list[str],
-    layout: str,
-) -> None:
-    """#1084: submitted deck returns reach the resolver and >5% conflicts reach the queue."""
-    from inv_man_intake.workflow_validation import load_validation_queue
-
-    bundle_path = _write_external_layout_bundle(tmp_path / "bundle")
-    payload = json.loads(bundle_path.read_text())
-    primary_entry = next(
-        entry for entry in payload["files"] if entry["role"] != "performance_track_record"
-    )
-    if lines is not None:
-        (bundle_path.parent / primary_entry["file_name"]).unlink()
-        primary_entry["file_name"] = "submitted-deck.pptx"
-        _write_pptx_with_slide_lines(
-            _FIXTURE_EXTRACTION / "harborline_strategy_review.pptx",
-            bundle_path.parent / primary_entry["file_name"],
-            lines,
-            layout=layout,
-        )
-    bundle_path.write_text(json.dumps(payload))
-    workbook_name = "summit_arc_track_record.xlsx"
-    _write_performance_workbook(
-        bundle_path.parent / workbook_name,
-        list(zip(_CONFLICT_WORKBOOK_DATES, _CONFLICT_WORKBOOK_VALUES, strict=True)),
-    )
-
-    output = tmp_path / "out"
-    assert main([str(bundle_path), "--out", str(output)]) == 0
-    run = json.loads((output / "run.json").read_text())
-    performance = run["performance"]
-    comparison = performance["comparison"]
-    queue = {
-        item.escalation_reason: item
-        for item in load_validation_queue(output / "validation-queue.json")
-    }
-
-    # Workbook precedence: the resolved series is the workbook's, whatever the deck says.
-    assert [point["value"] for point in performance["monthly"]] == _CONFLICT_WORKBOOK_VALUES
-    assert [point["as_of"] for point in performance["monthly"]] == _CONFLICT_WORKBOOK_DATES
-    assert comparison["status"] == expected_status
-    assert comparison["reason"] == expected_reason
-    assert comparison["overlap_count"] == expected_overlap
-    assert comparison["unmatched_document_periods"] == expected_unmatched
-    assert comparison["threshold_percent"] == 5.0
-    assert comparison["workbook_source"]["file_name"] == workbook_name
-    assert comparison["document_source"]["file_name"] == primary_entry["file_name"]
-    primary_id = comparison["document_source"]["document_id"]
-    assert primary_id in run["inputs"]["document_ids"]
-
-    if expected_conflicts is None:
-        assert performance["comparison_available"] is False
-        assert comparison["overlap_count"] == comparison["conflict_count"] == 0
-        assert comparison["escalate"] is False and comparison["audit"] == []
-        assert "performance_conflict" not in queue
-        return
-
-    assert performance["comparison_available"] is True
-    assert comparison["conflict_count"] == expected_conflicts
-    expected_percentage = 100 * expected_conflicts / expected_overlap
-    assert comparison["conflict_percentage"] == pytest.approx(expected_percentage)
-    assert comparison["escalate"] is (expected_percentage > 5.0)
-    assert len(comparison["audit"]) == expected_overlap
-    conflicts = [row for row in comparison["audit"] if row["is_conflict"]]
-    assert len(conflicts) == expected_conflicts
-    for index, row in enumerate(comparison["audit"]):
-        evidence = row["document_evidence"]
-        assert row["workbook_as_of"] == _CONFLICT_WORKBOOK_DATES[index]
-        assert evidence["document_as_of"] == _CONFLICT_MONTHS[index].isoformat()
-        assert evidence["source_doc_id"] == primary_id
-        assert evidence["source_page"] == 3
-        assert evidence["snippet"].startswith(f"MONTHLY_RETURN as_of={evidence['document_as_of']}")
-    if comparison["escalate"]:
-        item = queue["performance_conflict"]
-        assert item.state == "pending_triage" and item.owner_id is None
-        assert item.details == comparison
-    else:
-        assert "performance_conflict" not in queue

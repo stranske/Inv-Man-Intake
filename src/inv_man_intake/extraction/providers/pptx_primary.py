@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 import io
-import math
-import posixpath
 import re
 import zipfile
-from dataclasses import dataclass
 from xml.etree import ElementTree as ET
 
 from inv_man_intake.extraction.providers.base import (
@@ -21,48 +18,7 @@ from inv_man_intake.extraction.providers.pdf_primary import UnsupportedDocumentF
 
 _DRAWINGML_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 _TEXT_TAG = f"{{{_DRAWINGML_NS}}}t"
-_PARAGRAPH_TAG = f"{{{_DRAWINGML_NS}}}p"
-_RUN_TAG = f"{{{_DRAWINGML_NS}}}r"
-_FIELD_TAG = f"{{{_DRAWINGML_NS}}}fld"
-_BREAK_TAG = f"{{{_DRAWINGML_NS}}}br"
-_PRESENTATIONML_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
-_SLIDE_ID_LIST_TAG = f"{{{_PRESENTATIONML_NS}}}sldIdLst"
-_SLIDE_ID_TAG = f"{{{_PRESENTATIONML_NS}}}sldId"
-_RELATIONSHIP_ID_ATTR = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
-_PACKAGE_RELATIONSHIP_TAG = (
-    "{http://schemas.openxmlformats.org/package/2006/relationships}Relationship"
-)
-_PRESENTATION_RELS_PART = "ppt/_rels/presentation.xml.rels"
 _SLIDE_NAME_PATTERN = re.compile(r"^ppt/slides/slide(?P<index>[1-9][0-9]*)\.xml$")
-_MONTHLY_RETURN_PREFIX = "MONTHLY_RETURN"
-_MONTHLY_RETURN_PATTERN = re.compile(
-    r"^MONTHLY_RETURN as_of=(?P<as_of>[0-9]{4}-[0-9]{2}-[0-9]{2})"
-    r" value=(?P<value>[-+]?[0-9]+(?:\.[0-9]+)?) frequency=monthly$"
-)
-
-
-@dataclass(frozen=True)
-class MonthlyReturnRow:
-    """One canonical ``MONTHLY_RETURN`` slide row with its document evidence."""
-
-    as_of: str
-    value: float
-    source_doc_id: str
-    source_page: int
-    snippet: str
-
-    def as_timeseries_row(self) -> dict[str, object]:
-        """Return the row shape accepted by ``load_document_timeseries``."""
-
-        return {"frequency": "monthly", "as_of": self.as_of, "value": self.value}
-
-
-@dataclass(frozen=True)
-class MonthlyReturnRows:
-    """Canonical monthly-return rows plus ``MONTHLY_RETURN`` lines that did not match."""
-
-    rows: tuple[MonthlyReturnRow, ...]
-    unsupported_lines: tuple[str, ...]
 
 
 class PptxPrimaryExtractionProvider:
@@ -128,126 +84,6 @@ class PptxPrimaryExtractionProvider:
         )
         validate_extracted_document_result(result)
         return result
-
-    def monthly_return_rows(self, source_doc_id: str, content: bytes) -> MonthlyReturnRows:
-        """Read explicit ``MONTHLY_RETURN as_of=YYYY-MM-DD value=<decimal> frequency=monthly`` rows.
-
-        Only whole slide text lines in exactly that form are rows. Any other line
-        starting with ``MONTHLY_RETURN`` is reported as unsupported rather than
-        guessed at; values are decimal returns, never percentages.
-        """
-
-        rows: list[MonthlyReturnRow] = []
-        unsupported: list[str] = []
-        for slide_index, logical_lines in self._slide_logical_lines(content):
-            for raw_line in logical_lines:
-                line = raw_line.strip()
-                if not line.startswith(_MONTHLY_RETURN_PREFIX):
-                    continue
-                match = _MONTHLY_RETURN_PATTERN.match(line)
-                value = float(match.group("value")) if match else math.nan
-                if match is None or not math.isfinite(value):
-                    unsupported.append(line)
-                    continue
-                rows.append(
-                    MonthlyReturnRow(
-                        as_of=match.group("as_of"),
-                        value=value,
-                        source_doc_id=source_doc_id,
-                        source_page=slide_index,
-                        snippet=line,
-                    )
-                )
-        return MonthlyReturnRows(rows=tuple(rows), unsupported_lines=tuple(unsupported))
-
-    @classmethod
-    def _logical_lines_from_root(cls, root: ET.Element) -> list[str]:
-        """Join runs and fields, using ``<a:br/>`` and paragraph boundaries as line breaks."""
-
-        lines: list[str] = []
-        for paragraph in root.iter(_PARAGRAPH_TAG):
-            buffer: list[str] = []
-            for child in paragraph:
-                if child.tag in {_RUN_TAG, _FIELD_TAG}:
-                    for text_node in child.iter(_TEXT_TAG):
-                        buffer.append(text_node.text or "")
-                elif child.tag == _BREAK_TAG:
-                    lines.append("".join(buffer))
-                    buffer = []
-            lines.append("".join(buffer))
-        return lines
-
-    @classmethod
-    def _slide_logical_lines(cls, content: bytes) -> list[tuple[int, tuple[str, ...]]]:
-        if not content.startswith(b"PK\x03\x04"):
-            raise UnsupportedDocumentFormatError("pptx-primary only supports PPTX bytes")
-        try:
-            archive = zipfile.ZipFile(io.BytesIO(content))
-        except zipfile.BadZipFile as exc:
-            raise UnsupportedDocumentFormatError("pptx-primary only supports PPTX bytes") from exc
-        with archive as zf:
-            names = zf.namelist()
-            if "ppt/presentation.xml" not in names:
-                raise UnsupportedDocumentFormatError("pptx-primary only supports PPTX bytes")
-            slides: list[tuple[int, tuple[str, ...]]] = []
-            for slide_index, name in cls._presentation_ordered_slides(zf, names):
-                try:
-                    root = ET.fromstring(zf.read(name))
-                except (ET.ParseError, UnicodeDecodeError) as exc:
-                    raise UnsupportedDocumentFormatError(
-                        "pptx-primary only supports PPTX bytes"
-                    ) from exc
-                slides.append((slide_index, tuple(cls._logical_lines_from_root(root))))
-        slides.sort(key=lambda item: item[0])
-        return slides
-
-    @staticmethod
-    def _presentation_ordered_slides(
-        zf: zipfile.ZipFile, names: list[str]
-    ) -> list[tuple[int, str]]:
-        """Return ``(1-based presentation position, slide part)`` pairs.
-
-        Order comes from ``p:sldIdLst`` resolved through ``presentation.xml.rels``;
-        unreferenced slide parts are excluded. Only when ``p:sldIdLst`` is absent
-        does the numeric part filename stand in for the slide position.
-        """
-
-        try:
-            presentation = ET.fromstring(zf.read("ppt/presentation.xml"))
-        except (ET.ParseError, UnicodeDecodeError) as exc:
-            raise UnsupportedDocumentFormatError("pptx-primary only supports PPTX bytes") from exc
-        slide_id_list = presentation.find(_SLIDE_ID_LIST_TAG)
-        if slide_id_list is None:
-            fallback: list[tuple[int, str]] = []
-            for name in names:
-                slide_match = _SLIDE_NAME_PATTERN.match(name)
-                if slide_match is not None:
-                    fallback.append((int(slide_match.group("index")), name))
-            return fallback
-        if _PRESENTATION_RELS_PART not in names:
-            raise UnsupportedDocumentFormatError("pptx-primary only supports PPTX bytes")
-        try:
-            relationships = ET.fromstring(zf.read(_PRESENTATION_RELS_PART))
-        except (ET.ParseError, UnicodeDecodeError) as exc:
-            raise UnsupportedDocumentFormatError("pptx-primary only supports PPTX bytes") from exc
-        targets: dict[str, str] = {}
-        for relationship in relationships.iter(_PACKAGE_RELATIONSHIP_TAG):
-            rel_id = relationship.get("Id")
-            target = relationship.get("Target")
-            if not rel_id or not target:
-                continue
-            if target.startswith("/"):
-                part = posixpath.normpath(target.lstrip("/"))
-            else:
-                part = posixpath.normpath(posixpath.join("ppt", target))
-            targets[rel_id] = part
-        ordered: list[tuple[int, str]] = []
-        for position, slide_id in enumerate(slide_id_list.iter(_SLIDE_ID_TAG), start=1):
-            slide_part = targets.get(slide_id.get(_RELATIONSHIP_ID_ATTR, ""))
-            if slide_part is None or slide_part not in names:
-                raise UnsupportedDocumentFormatError("pptx-primary only supports PPTX bytes")
-            ordered.append((position, slide_part))
-        return ordered
 
     @classmethod
     def _slide_texts(cls, content: bytes) -> list[tuple[int, str]]:

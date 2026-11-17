@@ -32,7 +32,6 @@ from inv_man_intake.extraction.service import (
     build_legacy_pdf_fixture_service,
     build_pyodide_light_service,
     extraction_service_extractor,
-    read_pptx_monthly_return_rows,
 )
 from inv_man_intake.intake.integration import (
     filesystem_content_resolver,
@@ -59,17 +58,13 @@ from inv_man_intake.observability import (
 from inv_man_intake.observability.langsmith_fleet import DEFAULT_PROJECT
 from inv_man_intake.observability.tracing import tracing_enabled_from_env
 from inv_man_intake.performance.characterize import characterize_series, gate_scoring_submission
-from inv_man_intake.performance.conflict_resolver import (
-    DEFAULT_ESCALATION_THRESHOLD_PERCENT,
-    ConflictResolutionResult,
-    resolve_source_conflicts,
-)
+from inv_man_intake.performance.conflict_resolver import resolve_source_conflicts
 from inv_man_intake.performance.contracts import (
     PerformancePayload,
     PerformancePoint,
     PerformanceSeries,
 )
-from inv_man_intake.performance.ingest import load_document_timeseries, load_xlsx_timeseries
+from inv_man_intake.performance.ingest import load_xlsx_timeseries
 from inv_man_intake.performance.metrics import compute_metrics
 from inv_man_intake.performance.normalize import normalize_payload
 from inv_man_intake.queue.assignment import QueueAssignmentRecord, create_analyst_first_assignment
@@ -358,23 +353,11 @@ def _run_pipeline_core(
             core_repository=core_repository,
         )
         conflict_result = normalized = metrics = characterization = None
-        comparison_series, comparison = _document_comparison_series(
-            workbook_series=xlsx_series,
-            supplied_series=deck_series,
-            primary_document=primary_document,
-            primary_content=primary_content,
-            workbook_document=_performance_track_record_document(
-                repository=core_repository,
-                record=record,
-                file_entries=file_entries,
-            ),
-        )
         if xlsx_series is not None:
             conflict_result = resolve_source_conflicts(
                 xlsx_series=xlsx_series,
-                other_series=comparison_series,
+                other_series=deck_series,
             )
-            comparison = _comparison_details(comparison, conflict_result)
             normalized = normalize_payload(
                 PerformancePayload(monthly=conflict_result.resolved_series)
             )
@@ -405,8 +388,7 @@ def _run_pipeline_core(
                 else None
             ),
             "metrics": metrics.to_canonical_dict() if metrics is not None else None,
-            "comparison_available": comparison_series is not None,
-            "comparison": comparison,
+            "comparison_available": deck_series is not None,
             "benchmark_available": benchmark_series is not None,
         }
 
@@ -433,14 +415,11 @@ def _run_pipeline_core(
             reasons = []
             if threshold_decision.escalate:
                 reasons.append(threshold_decision.escalation_reason or "extraction_escalation")
-            if conflict_result is not None and conflict_result.escalate:
-                reasons.append(_PERFORMANCE_CONFLICT_REASON)
             queue_items = tuple(
                 create_queue_item(
                     item_id=queue_replay_key(record.package_id, reason),
                     package_id=record.package_id,
                     escalation_reason=reason,
-                    details=comparison if reason == _PERFORMANCE_CONFLICT_REASON else None,
                 )
                 for reason in sorted(set(reasons))
             )
@@ -922,166 +901,6 @@ def _resolve_performance_series(
         )
         return _workbook_performance_series(track_record_bytes), None, None
     return None, None, None
-
-
-_PERFORMANCE_CONFLICT_REASON = "performance_conflict"
-
-
-def _performance_track_record_document(
-    *, repository: CoreRepository, record: IngestRecord, file_entries: list[dict[str, Any]]
-) -> Document | None:
-    file_name = _performance_track_record_file_name(file_entries)
-    if file_name is None:
-        return None
-    document_id = _document_id_for_file_name(
-        repository=repository, document_ids=record.document_ids, file_name=file_name
-    )
-    return repository.get_document(document_id) if document_id is not None else None
-
-
-def _document_source_ref(document: Document | None) -> dict[str, str] | None:
-    if document is None:
-        return None
-    return {"document_id": document.document_id, "file_name": document.file_name}
-
-
-def _document_comparison_series(
-    *,
-    workbook_series: PerformanceSeries | None,
-    supplied_series: PerformanceSeries | None,
-    primary_document: Document,
-    primary_content: bytes,
-    workbook_document: Document | None,
-) -> tuple[PerformanceSeries | None, dict[str, Any]]:
-    """Return the document series to compare with the workbook, plus why it is (un)available.
-
-    A supplied series (the smoke fixture deck) is used as-is. Otherwise only
-    explicit ``MONTHLY_RETURN`` rows on a submitted PPTX primary are read, and
-    only months present once in both sources are compared; the document points
-    take the workbook's ``as_of`` so the resolver keeps workbook precedence and
-    never adds document-only months to the resolved series.
-    """
-    details: dict[str, Any] = {
-        "status": "unavailable",
-        "reason": None,
-        "threshold_percent": DEFAULT_ESCALATION_THRESHOLD_PERCENT,
-        "workbook_source": _document_source_ref(workbook_document),
-        "document_source": _document_source_ref(primary_document),
-        "document_row_count": 0,
-        "unsupported_rows": [],
-        "unmatched_document_periods": [],
-        "overlap_count": 0,
-        "conflict_count": 0,
-        "conflict_percentage": None,
-        "escalate": False,
-        "audit": [],
-    }
-
-    def unavailable(reason: str, status: str = "unavailable") -> tuple[None, dict[str, Any]]:
-        details.update(status=status, reason=reason)
-        return None, details
-
-    if supplied_series is not None:
-        details.update(status="comparable", document_source={"source": "smoke_fixture"})
-        details["document_row_count"] = len(supplied_series.points)
-        return supplied_series, details
-    if workbook_series is None:
-        return unavailable("workbook_unavailable")
-    if Path(primary_document.file_name).suffix.lower() != ".pptx":
-        return unavailable("unsupported_document_format")
-    extracted = read_pptx_monthly_return_rows(primary_document.document_id, primary_content)
-    if extracted is None:
-        return unavailable("unsupported_document_format")
-    details["document_row_count"] = len(extracted.rows)
-    details["unsupported_rows"] = list(extracted.unsupported_lines)
-    if extracted.unsupported_lines:
-        return unavailable("unsupported_document_rows")
-    if not extracted.rows:
-        return unavailable("no_document_monthly_rows")
-
-    document_rows = sorted(extracted.rows, key=lambda row: row.as_of)
-    try:
-        document_series = load_document_timeseries(
-            [row.as_timeseries_row() for row in document_rows]
-        ).monthly
-    except ValueError:
-        return unavailable("ambiguous_document_rows", "non_comparable")
-    document_by_period = _points_by_month(document_series)
-    workbook_by_period = _points_by_month(workbook_series)
-    if document_by_period is None:
-        return unavailable("ambiguous_document_rows", "non_comparable")
-    if workbook_by_period is None:
-        return unavailable("ambiguous_workbook_periods", "non_comparable")
-
-    evidence_by_as_of = {row.as_of: row for row in document_rows}
-    overlap = sorted(set(document_by_period) & set(workbook_by_period))
-    details["unmatched_document_periods"] = sorted(
-        set(document_by_period) - set(workbook_by_period)
-    )
-    if not overlap:
-        return unavailable("no_overlapping_periods", "non_comparable")
-    details["document_evidence"] = {}
-    for period in overlap:
-        row = evidence_by_as_of[document_by_period[period].as_of.isoformat()]
-        details["document_evidence"][workbook_by_period[period].as_of.isoformat()] = {
-            "period": period,
-            "document_as_of": row.as_of,
-            "source_doc_id": row.source_doc_id,
-            "source_page": row.source_page,
-            "snippet": row.snippet,
-        }
-    details["status"] = "comparable"
-    return (
-        PerformanceSeries(
-            "monthly",
-            tuple(
-                PerformancePoint(
-                    as_of=workbook_by_period[period].as_of,
-                    value=document_by_period[period].value,
-                )
-                for period in overlap
-            ),
-        ),
-        details,
-    )
-
-
-def _points_by_month(series: PerformanceSeries) -> dict[str, PerformancePoint] | None:
-    """Key points by ``YYYY-MM``; ``None`` when a month appears more than once."""
-    by_period: dict[str, PerformancePoint] = {}
-    for point in series.points:
-        period = point.as_of.strftime("%Y-%m")
-        if period in by_period:
-            return None
-        by_period[period] = point
-    return by_period
-
-
-def _comparison_details(
-    details: dict[str, Any], conflict_result: ConflictResolutionResult
-) -> dict[str, Any]:
-    if details["status"] != "comparable":
-        return details
-    evidence = details.pop("document_evidence", {})
-    return {
-        **details,
-        "overlap_count": conflict_result.overlap_count,
-        "conflict_count": conflict_result.conflict_count,
-        "conflict_percentage": conflict_result.conflict_percentage,
-        "escalate": conflict_result.escalate,
-        "audit": [
-            {
-                "workbook_as_of": entry.as_of.isoformat(),
-                "workbook_value": entry.xlsx_value,
-                "document_value": entry.other_value,
-                "absolute_difference": entry.absolute_difference,
-                "percent_difference": entry.percent_difference,
-                "is_conflict": entry.is_conflict,
-                "document_evidence": evidence.get(entry.as_of.isoformat()),
-            }
-            for entry in conflict_result.audit_entries
-        ],
-    }
 
 
 def _workbook_performance_series(content: bytes) -> PerformanceSeries | None:

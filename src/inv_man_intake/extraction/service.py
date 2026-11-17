@@ -4,15 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol, cast, runtime_checkable
+from typing import Protocol, cast, runtime_checkable
 
 from inv_man_intake.extraction.providers.base import (
     ExtractedDocumentResult,
     ExtractionProvider,
 )
-
-if TYPE_CHECKING:
-    from inv_man_intake.extraction.providers.pptx_primary import MonthlyReturnRows
 
 
 @runtime_checkable
@@ -161,18 +158,6 @@ def build_pyodide_light_service(
     return DefaultExtractionService(backend=PyodideLightTransportBackend(provider))
 
 
-def read_pptx_monthly_return_rows(source_doc_id: str, content: bytes) -> MonthlyReturnRows | None:
-    """Read explicit ``MONTHLY_RETURN`` slide rows; ``None`` when the deck is unreadable."""
-
-    from inv_man_intake.extraction.providers.pdf_primary import UnsupportedDocumentFormatError
-    from inv_man_intake.extraction.providers.pptx_primary import PptxPrimaryExtractionProvider
-
-    try:
-        return PptxPrimaryExtractionProvider().monthly_return_rows(source_doc_id, content)
-    except UnsupportedDocumentFormatError:
-        return None
-
-
 def build_legacy_pdf_fixture_service() -> ExtractionService:
     """Read the nonconforming historical PDF smoke fixture through its original parser."""
 
@@ -243,5 +228,4 @@ __all__ = [
     "build_pyodide_light_service",
     "ensure_extraction_service",
     "extraction_service_extractor",
-    "read_pptx_monthly_return_rows",
 ]
