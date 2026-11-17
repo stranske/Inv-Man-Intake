@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal, get_args
+from typing import Any, Literal, get_args
 
 ValidationState = Literal[
     "pending_triage",
@@ -64,6 +64,9 @@ class ValidationQueueItem:
     created_at: str
     updated_at: str
     events: tuple[QueueEvent, ...] = ()
+    # Optional JSON evidence for the escalation (e.g. performance comparison counts and
+    # source references). Omitted from the artifact when absent, so older files reload.
+    details: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -81,7 +84,11 @@ class ValidationQueueRow:
 
 
 def create_queue_item(
-    *, item_id: str, package_id: str, escalation_reason: str
+    *,
+    item_id: str,
+    package_id: str,
+    escalation_reason: str,
+    details: dict[str, Any] | None = None,
 ) -> ValidationQueueItem:
     """Create an unowned queue item in pending triage state."""
 
@@ -97,6 +104,7 @@ def create_queue_item(
         created_at=timestamp,
         updated_at=timestamp,
         events=(),
+        details=details,
     )
 
 
@@ -272,15 +280,19 @@ def write_validation_queue(path: Path, items: Iterable[ValidationQueueItem]) -> 
         unique[key] = item
     payload = {
         "schema_version": QUEUE_ARTIFACT_SCHEMA,
-        "items": [
-            {**asdict(unique[key]), "events": [asdict(event) for event in unique[key].events]}
-            for key in sorted(unique)
-        ],
+        "items": [_queue_item_payload(unique[key]) for key in sorted(unique)],
     }
     # Use the same decoder before publication, so the writer cannot create an invalid handoff.
     _decode_validation_queue(payload)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _queue_item_payload(item: ValidationQueueItem) -> dict[str, Any]:
+    payload = {**asdict(item), "events": [asdict(event) for event in item.events]}
+    if item.details is None:
+        del payload["details"]
+    return payload
 
 
 def load_validation_queue(path: Path) -> tuple[ValidationQueueItem, ...]:
@@ -301,10 +313,15 @@ def _decode_validation_queue(payload: object) -> tuple[ValidationQueueItem, ...]
     keys: set[tuple[str, str]] = set()
     ids: set[str] = set()
     fields = set(ValidationQueueItem.__dataclass_fields__)
+    required_fields = fields - {"details"}
     event_fields = set(QueueEvent.__dataclass_fields__)
     for raw in payload["items"]:
-        if not isinstance(raw, dict) or set(raw) != fields:
+        if not isinstance(raw, dict) or set(raw) not in (fields, required_fields):
             raise ValidationWorkflowError("Invalid queue item fields")
+        if raw.get("details") is not None and not (
+            isinstance(raw["details"], dict) and all(isinstance(key, str) for key in raw["details"])
+        ):
+            raise ValidationWorkflowError("Queue item details must be an object")
         for key in ("item_id", "package_id", "escalation_reason", "created_at", "updated_at"):
             if not isinstance(raw[key], str) or not raw[key].strip():
                 raise ValidationWorkflowError(f"Queue item {key} must be a non-empty string")

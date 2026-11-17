@@ -230,6 +230,33 @@ def test_queue_handoff_replay_and_claim_complete_preserve_events(tmp_path: Path)
     assert page.total == 1 and page.items[0].owner_id == "explicit-owner"
 
 
+def test_queue_handoff_round_trips_details_and_reloads_items_without_details(
+    tmp_path: Path,
+) -> None:
+    details = {"conflict_count": 2, "audit": [{"is_conflict": True}], "escalate": True}
+    detailed = create_queue_item(
+        item_id=queue_replay_key("pkg", "performance_conflict"),
+        package_id="pkg",
+        escalation_reason="performance_conflict",
+        details=details,
+    )
+    plain = create_queue_item(
+        item_id=queue_replay_key("pkg", "low_coverage"),
+        package_id="pkg",
+        escalation_reason="low_coverage",
+    )
+    file = tmp_path / "queue.json"
+    write_validation_queue(file, [detailed, plain])
+
+    items = {raw["escalation_reason"]: raw for raw in json.loads(file.read_text())["items"]}
+    assert items["performance_conflict"]["details"] == details
+    # Items without details keep the pre-#1084 artifact shape.
+    assert "details" not in items["low_coverage"]
+    assert load_validation_queue(file) == (plain, detailed)
+    claimed = claim_for_analyst_triage(load_validation_queue(file)[1], analyst_id="analyst-1")
+    assert claimed.details == details
+
+
 @pytest.mark.parametrize(
     "changes",
     [
@@ -252,6 +279,8 @@ def test_queue_handoff_replay_and_claim_complete_preserve_events(tmp_path: Path)
         {"updated_at": "2026-01-01T10:00:00"},
         {"created_at": "2026-01-02T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z"},
         {"unexpected_field": "value"},
+        {"details": []},
+        {"details": "performance_conflict"},
     ],
 )
 def test_queue_loader_rejects_malformed_typed_records(
