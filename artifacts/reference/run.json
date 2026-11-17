@@ -15,7 +15,6 @@
     "evidence-3c08344c3c1314937f4c96d51869cd43d079cac2c81ead5d694b122ab69f785d.json",
     "evidence-5df8aa7537dc1cbc675c8bb8e65a22b12fb64c15d72ec0b6b71a1942f0546e0e.json",
     "evidence-666913c9dc25a1112db9c7a835805db6b96af5029f8422332efc01640de387a7.json",
-    "evidence-977d7a34a1385c71ee9d94621d206c18824fbc72e036b86986bea68120d62c89.json",
     "evidence-c008188dfd0796edc7dc6f1357f8c3c864867b8559d82b058d5e2e0c13f2721b.json",
     "evidence-c4387b42741ccaa9cc4c3185511a6cb4b389a23eb462c0e783b033d442d75ffe.json",
     "evidence-e8f695d745a93b476c29f5fe163001a077944db229797eefa0c27af7c64f54e3.json"
@@ -36,7 +35,6 @@
     "evidence:sha256:3c08344c3c1314937f4c96d51869cd43d079cac2c81ead5d694b122ab69f785d",
     "evidence:sha256:5df8aa7537dc1cbc675c8bb8e65a22b12fb64c15d72ec0b6b71a1942f0546e0e",
     "evidence:sha256:666913c9dc25a1112db9c7a835805db6b96af5029f8422332efc01640de387a7",
-    "evidence:sha256:977d7a34a1385c71ee9d94621d206c18824fbc72e036b86986bea68120d62c89",
     "evidence:sha256:c008188dfd0796edc7dc6f1357f8c3c864867b8559d82b058d5e2e0c13f2721b",
     "evidence:sha256:c4387b42741ccaa9cc4c3185511a6cb4b389a23eb462c0e783b033d442d75ffe",
     "evidence:sha256:e8f695d745a93b476c29f5fe163001a077944db229797eefa0c27af7c64f54e3"
@@ -67,27 +65,6 @@
       "source_doc_id": "pkg_pdf_mixed_001:doc:0",
       "source_page": 1,
       "value": "credit"
-    },
-    {
-      "confidence": 0.82,
-      "key": "strategy.name",
-      "location": {
-        "bbox": null,
-        "image_index": null,
-        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
-        "source_page": 1,
-        "table_index": null
-      },
-      "method": "doc-lineage:text_layer",
-      "snippet": "Strategy Asset Class",
-      "snippet_metadata": {
-        "char_end": 20,
-        "char_start": 0,
-        "kind": "regex-match"
-      },
-      "source_doc_id": "pkg_pdf_mixed_001:doc:0",
-      "source_page": 1,
-      "value": "Asset Class"
     },
     {
       "confidence": 0.82,
@@ -245,7 +222,6 @@
       "evidence-3c08344c3c1314937f4c96d51869cd43d079cac2c81ead5d694b122ab69f785d.json",
       "evidence-5df8aa7537dc1cbc675c8bb8e65a22b12fb64c15d72ec0b6b71a1942f0546e0e.json",
       "evidence-666913c9dc25a1112db9c7a835805db6b96af5029f8422332efc01640de387a7.json",
-      "evidence-977d7a34a1385c71ee9d94621d206c18824fbc72e036b86986bea68120d62c89.json",
       "evidence-c008188dfd0796edc7dc6f1357f8c3c864867b8559d82b058d5e2e0c13f2721b.json",
       "evidence-c4387b42741ccaa9cc4c3185511a6cb4b389a23eb462c0e783b033d442d75ffe.json",
       "evidence-e8f695d745a93b476c29f5fe163001a077944db229797eefa0c27af7c64f54e3.json"
@@ -253,7 +229,7 @@
     "manifest_ref": "artifact:manifest.json",
     "summary": {
       "escalation_reason": "none",
-      "field_count": 9,
+      "field_count": 8,
       "final_score": null
     }
   },
@@ -351,25 +327,6 @@
         "source_doc_id": "pkg_pdf_mixed_001:doc:0",
         "source_page": 1
       },
-      "strategy.name": {
-        "confidence": 0.82,
-        "location": {
-          "bbox": null,
-          "image_index": null,
-          "source_doc_id": "pkg_pdf_mixed_001:doc:0",
-          "source_page": 1,
-          "table_index": null
-        },
-        "method": "doc-lineage:text_layer",
-        "snippet": "Strategy Asset Class",
-        "snippet_metadata": {
-          "char_end": 20,
-          "char_start": 0,
-          "kind": "regex-match"
-        },
-        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
-        "source_page": 1
-      },
       "team.key_person_risk": {
         "confidence": 0.82,
         "location": {
@@ -409,19 +366,19 @@
         "source_page": 3
       }
     },
-    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
     "provider": "doc-lineage",
-    "python_version": "3.13.13",
+    "python_version": "3.12.2",
     "tool": "inv-man-ingest",
     "tool_version": "0.1.0"
   },
   "repo": "stranske/Inv-Man-Intake",
-  "run_id": "run_6fc6e8b7cd584b82ae978ba0a490e142",
+  "run_id": "run_565c51b45dfa4b439cee954f45d5ff9f",
   "schema_version": "run-contract/v1",
   "status": "success",
   "tool": "inv-man-ingest",
   "trace_refs": [
-    "trace:trace_41fb8db655b3496e9012621bdb025010"
+    "trace:trace_9a49faeafc9341e8a28f08577c4f085d"
   ],
   "warnings": [
     {
