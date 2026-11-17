@@ -318,7 +318,7 @@ def _decode_validation_queue(payload: object) -> tuple[ValidationQueueItem, ...]
     for raw in payload["items"]:
         if not isinstance(raw, dict) or set(raw) not in (fields, required_fields):
             raise ValidationWorkflowError("Invalid queue item fields")
-        if "details" in raw and not (
+        if raw.get("details") is not None and not (
             isinstance(raw["details"], dict) and all(isinstance(key, str) for key in raw["details"])
         ):
             raise ValidationWorkflowError("Queue item details must be an object")

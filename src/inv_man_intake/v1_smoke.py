@@ -28,12 +28,11 @@ from inv_man_intake.extraction.confidence import (
 from inv_man_intake.extraction.doc_type import classify_doc_type
 from inv_man_intake.extraction.orchestrator import ExtractionOrchestrator
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult
-from inv_man_intake.extraction.providers.pdf_primary import UnsupportedDocumentFormatError
-from inv_man_intake.extraction.providers.pptx_primary import PptxPrimaryExtractionProvider
 from inv_man_intake.extraction.service import (
     build_legacy_pdf_fixture_service,
     build_pyodide_light_service,
     extraction_service_extractor,
+    read_pptx_monthly_return_rows,
 )
 from inv_man_intake.intake.integration import (
     filesystem_content_resolver,
@@ -536,9 +535,7 @@ def _run_pipeline_core(
         review_queue_outcome=(
             getattr(queue_assignment, "owner_role", "none")
             if smoke_mode
-            else "pending_triage"
-            if queue_items
-            else "none"
+            else "pending_triage" if queue_items else "none"
         ),
         artifact_refs=(
             f"artifact:packages/{record.package_id}/metadata.json",
@@ -929,11 +926,8 @@ def _document_comparison_series(
         return unavailable("workbook_unavailable")
     if Path(primary_document.file_name).suffix.lower() != ".pptx":
         return unavailable("unsupported_document_format")
-    try:
-        extracted = PptxPrimaryExtractionProvider().monthly_return_rows(
-            primary_document.document_id, primary_content
-        )
-    except UnsupportedDocumentFormatError:
+    extracted = read_pptx_monthly_return_rows(primary_document.document_id, primary_content)
+    if extracted is None:
         return unavailable("unsupported_document_format")
     details["document_row_count"] = len(extracted.rows)
     details["unsupported_rows"] = list(extracted.unsupported_lines)

@@ -379,9 +379,9 @@ def test_production_smoke_audit_classifies_boundaries_with_existing_tests() -> N
     classified: dict[str, set[str]] = {label: set() for label in _CLASSIFICATION_SUMMARY}
     for boundary_id, row in rows.items():
         evidence_class = row["evidence_class"].lower()
-        assert evidence_class in _EVIDENCE_CLASS_TO_SUMMARY, (
-            f"{boundary_id} has unknown evidence class {row['evidence_class']!r}"
-        )
+        assert (
+            evidence_class in _EVIDENCE_CLASS_TO_SUMMARY
+        ), f"{boundary_id} has unknown evidence class {row['evidence_class']!r}"
         summary_label = _EVIDENCE_CLASS_TO_SUMMARY[evidence_class]
         classified[summary_label].add(boundary_id)
 
@@ -456,9 +456,9 @@ def test_run_pipeline_disables_remote_tracing(
 
 
 def _assert_production_performance_source(run: dict) -> None:
-    assert run["performance"]["source"] == "submitted_workbook", (
-        "production performance must use the submitted workbook"
-    )
+    assert (
+        run["performance"]["source"] == "submitted_workbook"
+    ), "production performance must use the submitted workbook"
 
 
 def test_production_performance_source_deliberate_smoke_fixture_fails(
