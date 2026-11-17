@@ -27,6 +27,7 @@ from inv_man_intake.extraction.orchestrator import (
 from inv_man_intake.extraction.service import (
     DefaultExtractionService,
     ExtractionService,
+    MissingExtractionDependencyError,
     ProviderTransportBackend,
     PyodideLightTransportBackend,
     StubServiceTransportBackend,
@@ -44,6 +45,7 @@ __all__ = [
     "ExtractionFailedError",
     "ExtractionOrchestrator",
     "ExtractionService",
+    "MissingExtractionDependencyError",
     "CrossCheckReport",
     "FieldCrossCheck",
     "FieldObservation",

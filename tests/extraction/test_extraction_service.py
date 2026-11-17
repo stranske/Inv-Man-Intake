@@ -9,6 +9,7 @@ import pytest
 from inv_man_intake.extraction.providers.base import ExtractedDocumentResult, ExtractedField
 from inv_man_intake.extraction.service import (
     DefaultExtractionService,
+    MissingExtractionDependencyError,
     ProviderTransportBackend,
     PyodideLightTransportBackend,
     build_docling_service,
@@ -99,6 +100,61 @@ def test_pyodide_light_propagates_broken_doc_lineage_install(monkeypatch) -> Non
 
     with pytest.raises(ModuleNotFoundError, match="pypdf"):
         build_pyodide_light_service("manager.pdf")
+
+
+def test_required_doc_lineage_raises_explicit_missing_dependency(monkeypatch) -> None:
+    from inv_man_intake.extraction.providers import doc_lineage_adapter
+
+    class _Unavailable:
+        def __init__(self) -> None:
+            raise ModuleNotFoundError("No module named 'doc_lineage'", name="doc_lineage")
+
+    monkeypatch.setattr(doc_lineage_adapter, "DocLineageExtractionProvider", _Unavailable)
+
+    with pytest.raises(MissingExtractionDependencyError, match="extraction-doc-lineage") as info:
+        build_pyodide_light_service("manager.pdf", require_doc_lineage=True)
+
+    assert info.value.package == "doc_lineage"
+    assert info.value.extra == "extraction-doc-lineage"
+    assert info.value.file_name == "manager.pdf"
+    assert isinstance(info.value.__cause__, ModuleNotFoundError)
+
+
+def test_required_doc_lineage_still_propagates_broken_install(monkeypatch) -> None:
+    from inv_man_intake.extraction.providers import doc_lineage_adapter
+
+    class _Broken:
+        def __init__(self) -> None:
+            raise ModuleNotFoundError("No module named 'pypdf'", name="pypdf")
+
+    monkeypatch.setattr(doc_lineage_adapter, "DocLineageExtractionProvider", _Broken)
+
+    with pytest.raises(ModuleNotFoundError, match="pypdf") as info:
+        build_pyodide_light_service("manager.pdf", require_doc_lineage=True)
+
+    assert not isinstance(info.value, MissingExtractionDependencyError)
+
+
+def test_required_doc_lineage_does_not_affect_pptx(monkeypatch) -> None:
+    from inv_man_intake.extraction.providers import doc_lineage_adapter
+
+    class _Unavailable:
+        def __init__(self) -> None:
+            raise ModuleNotFoundError("No module named 'doc_lineage'", name="doc_lineage")
+
+    monkeypatch.setattr(doc_lineage_adapter, "DocLineageExtractionProvider", _Unavailable)
+
+    service = build_pyodide_light_service("manager.pptx", require_doc_lineage=True)
+
+    assert service.backend.provider.name == "pptx-primary"
+
+
+def test_required_doc_lineage_selects_doc_lineage_when_installed() -> None:
+    pytest.importorskip("doc_lineage.extract")
+
+    service = build_pyodide_light_service("manager.pdf", require_doc_lineage=True)
+
+    assert service.backend.provider.name == "doc-lineage"
 
 
 def test_consumers_do_not_import_concrete_extractors_directly() -> None:
