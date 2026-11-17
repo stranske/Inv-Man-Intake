@@ -20,6 +20,9 @@ from inv_man_intake.extraction.providers.pdf_primary import UnsupportedDocumentF
 
 _DRAWINGML_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 _TEXT_TAG = f"{{{_DRAWINGML_NS}}}t"
+_PARAGRAPH_TAG = f"{{{_DRAWINGML_NS}}}p"
+_RUN_TAG = f"{{{_DRAWINGML_NS}}}r"
+_BREAK_TAG = f"{{{_DRAWINGML_NS}}}br"
 _SLIDE_NAME_PATTERN = re.compile(r"^ppt/slides/slide(?P<index>[1-9][0-9]*)\.xml$")
 _MONTHLY_RETURN_PREFIX = "MONTHLY_RETURN"
 _MONTHLY_RETURN_PATTERN = re.compile(
@@ -126,8 +129,8 @@ class PptxPrimaryExtractionProvider:
 
         rows: list[MonthlyReturnRow] = []
         unsupported: list[str] = []
-        for slide_index, text in self._slide_texts(content):
-            for raw_line in text.splitlines():
+        for slide_index, logical_lines in self._slide_logical_lines(content):
+            for raw_line in logical_lines:
                 line = raw_line.strip()
                 if not line.startswith(_MONTHLY_RETURN_PREFIX):
                     continue
@@ -146,6 +149,51 @@ class PptxPrimaryExtractionProvider:
                     )
                 )
         return MonthlyReturnRows(rows=tuple(rows), unsupported_lines=tuple(unsupported))
+
+    @classmethod
+    def _logical_lines_from_root(cls, root: ET.Element) -> list[str]:
+        """Concatenate runs within each paragraph; treat ``<a:br/>`` and paragraphs as line breaks."""
+
+        lines: list[str] = []
+        for paragraph in root.iter(_PARAGRAPH_TAG):
+            buffer: list[str] = []
+            for child in paragraph:
+                if child.tag == _RUN_TAG:
+                    for text_node in child.iter(_TEXT_TAG):
+                        buffer.append(text_node.text or "")
+                elif child.tag == _BREAK_TAG:
+                    lines.append("".join(buffer))
+                    buffer = []
+            lines.append("".join(buffer))
+        return lines
+
+    @classmethod
+    def _slide_logical_lines(cls, content: bytes) -> list[tuple[int, tuple[str, ...]]]:
+        if not content.startswith(b"PK\x03\x04"):
+            raise UnsupportedDocumentFormatError("pptx-primary only supports PPTX bytes")
+        try:
+            archive = zipfile.ZipFile(io.BytesIO(content))
+        except zipfile.BadZipFile as exc:
+            raise UnsupportedDocumentFormatError("pptx-primary only supports PPTX bytes") from exc
+        with archive as zf:
+            names = zf.namelist()
+            if "ppt/presentation.xml" not in names:
+                raise UnsupportedDocumentFormatError("pptx-primary only supports PPTX bytes")
+            slides: list[tuple[int, tuple[str, ...]]] = []
+            for name in names:
+                slide_match = _SLIDE_NAME_PATTERN.match(name)
+                if slide_match is None:
+                    continue
+                slide_index = int(slide_match.group("index"))
+                try:
+                    root = ET.fromstring(zf.read(name))
+                except (ET.ParseError, UnicodeDecodeError) as exc:
+                    raise UnsupportedDocumentFormatError(
+                        "pptx-primary only supports PPTX bytes"
+                    ) from exc
+                slides.append((slide_index, tuple(cls._logical_lines_from_root(root))))
+        slides.sort(key=lambda item: item[0])
+        return slides
 
     @classmethod
     def _slide_texts(cls, content: bytes) -> list[tuple[int, str]]:

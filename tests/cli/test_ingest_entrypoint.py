@@ -1563,11 +1563,29 @@ def _monthly_return_lines(conflicts: int) -> list[str]:
     ]
 
 
-def _write_pptx_with_slide_lines(source: Path, target: Path, lines: list[str]) -> None:
+def _write_pptx_with_slide_lines(
+    source: Path,
+    target: Path,
+    lines: list[str],
+    *,
+    split_runs: bool = False,
+) -> None:
     import zipfile
     from xml.sax.saxutils import escape
 
-    paragraphs = "".join(f"<a:p><a:r><a:t>{escape(line)}</a:t></a:r></a:p>" for line in lines)
+    def _paragraph_xml(line: str) -> str:
+        if not split_runs:
+            return f"<a:p><a:r><a:t>{escape(line)}</a:t></a:r></a:p>"
+        midpoint = len(line) // 2
+        first, second = line[:midpoint], line[midpoint:]
+        return (
+            "<a:p>"
+            f"<a:r><a:t>{escape(first)}</a:t></a:r>"
+            f"<a:r><a:t>{escape(second)}</a:t></a:r>"
+            "</a:p>"
+        )
+
+    paragraphs = "".join(_paragraph_xml(line) for line in lines)
     slide = (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
@@ -1582,18 +1600,20 @@ def _write_pptx_with_slide_lines(source: Path, target: Path, lines: list[str]) -
 
 
 @pytest.mark.parametrize(
-    ("lines", "expected_status", "expected_reason", "expected_conflicts"),
+    ("lines", "expected_status", "expected_reason", "expected_conflicts", "split_runs"),
     [
-        (_monthly_return_lines(2), "comparable", None, 2),
-        (_monthly_return_lines(1), "comparable", None, 1),
-        (None, "unavailable", "unsupported_document_format", None),
-        ([], "unavailable", "no_document_monthly_rows", None),
+        (_monthly_return_lines(2), "comparable", None, 2, False),
+        (_monthly_return_lines(2), "comparable", None, 2, True),
+        (_monthly_return_lines(1), "comparable", None, 1, False),
+        (None, "unavailable", "unsupported_document_format", None, False),
+        ([], "unavailable", "no_document_monthly_rows", None, False),
         (
             _monthly_return_lines(0)[:19]
             + [f"MONTHLY_RETURN as_of={_CONFLICT_MONTHS[19]} value=2%"],
             "unavailable",
             "unsupported_document_rows",
             None,
+            False,
         ),
         (
             _monthly_return_lines(0)
@@ -1601,16 +1621,19 @@ def _write_pptx_with_slide_lines(source: Path, target: Path, lines: list[str]) -
             "non_comparable",
             "ambiguous_document_rows",
             None,
+            False,
         ),
         (
             ["MONTHLY_RETURN as_of=2019-01-31 value=0.01 frequency=monthly"],
             "non_comparable",
             "no_overlapping_periods",
             None,
+            False,
         ),
     ],
     ids=[
         "2-of-20-escalates",
+        "2-of-20-escalates-split-runs",
         "1-of-20-at-threshold",
         "pdf-primary-unavailable",
         "no-rows-unavailable",
@@ -1625,6 +1648,7 @@ def test_production_conflict_over_5pct_emits_performance_conflict_queue_item(
     expected_status: str,
     expected_reason: str | None,
     expected_conflicts: int | None,
+    split_runs: bool,
 ) -> None:
     """#1084: submitted deck returns reach the resolver and >5% conflicts reach the queue."""
     from inv_man_intake.workflow_validation import load_validation_queue
@@ -1641,6 +1665,7 @@ def test_production_conflict_over_5pct_emits_performance_conflict_queue_item(
             _FIXTURE_EXTRACTION / "harborline_strategy_review.pptx",
             bundle_path.parent / primary_entry["file_name"],
             lines,
+            split_runs=split_runs,
         )
     bundle_path.write_text(json.dumps(payload))
     workbook_name = "summit_arc_track_record.xlsx"
