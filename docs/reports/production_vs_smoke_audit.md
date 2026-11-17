@@ -49,10 +49,10 @@ Columns:
 | B12 | `v1_smoke.py` / `run.py` stores | always | Ephemeral `:memory:` SQLite + `InMemoryDocumentStore` for CLI run | same | architectural seam | Documented in `docs/runbooks/headless_ingest.md`; #382 readiness | out of scope for this audit; not smoke-gated |
 | B13 | `run.py` `allow_remote_tracing=False` | always from `run_pipeline` | Local spans only | Smoke API may opt in | intentional / prevention | `test_ingest_ignores_langsmith_key_when_tracing_disabled`; `test_run_pipeline_disables_remote_tracing` | keep; production OK |
 | B14 | `v1_smoke.py` `_run_secondary_extraction_boundary_smoke` | secondary workbook selected | Unsupported-secondary boundary (ops_review) for xlsx secondary | same call; smoke may feed fixture bytes (B05) | intentional smoke control (boundary) | `test_ingest_primary_with_non_workbook_secondary` | keep boundary; not a silent production stub |
-| B15 | `v1_smoke.py` `_run_extraction_smoke` PDF service | primary `.pdf` | Uses `build_legacy_pdf_fixture_service` for this shared path | same | mixed / historical corpus seam | `test_ingest_primary_only_pdf_and_pptx`; `test_ingest_entrypoint_runs_valid_bundle_outside_repository_fixture_layout` | return for human / extraction owner if Doc-Lineage-only production is required; **no auto-filed issue** |
+| B15 | `v1_smoke.py` `_run_extraction_smoke` PDF service | `smoke_mode` | `.pdf` → `build_pyodide_light_service(..., require_doc_lineage=True)` (Doc-Lineage, physical-page provenance); absent extra raises `MissingExtractionDependencyError`; transitive `ModuleNotFoundError` (broken install) propagates | `build_legacy_pdf_fixture_service` for the historical pseudo-PDF corpus | production path repaired by #1083 | `test_production_pdf_routes_to_doc_lineage_not_legacy_fixture`; `test_production_pdf_missing_doc_lineage_extra_fails_visibly`; `test_production_pdf_broken_doc_lineage_install_propagates` | keep legacy parser smoke-only; production repaired |
 | B16 | `v1_smoke.py` `_select_extraction_documents` | always | Select primary by `PRIMARY_EXTENSIONS` + preferred workbook by role; order-independent | same | **superseded review claim** | `test_ingest_file_order_permutations_equivalent`; `test_ingest_primary_only_pdf_and_pptx`; `test_ingest_multiple_workbooks_selects_track_record_by_role` | review-time `document_ids[0]`/`[1]` / two-doc guard **no longer present** |
 | B17 | `v1_smoke.py` threshold key field tuple | always | Shared mandatory field set for threshold profile | same | intentional shared policy | `tests/run/test_pipeline_threshold_config.py` | keep; not smoke-gated |
-| B18 | `v1_smoke.py` orchestrator `fixture-fallback` | primary extract | Named fallback route on primary failure | same | intentional / OCR-fallback partial | `test_ingest_primary_with_non_workbook_secondary`; Codex “OCR/fallback” partial — unknown near-term OCR adapter scope | unknown whether a separate production OCR adapter is in near-term scope — **return for human**; **no auto-filed issue** |
+| B18 | `v1_smoke.py` `_run_extraction_smoke` fallback route | `smoke_mode` | Named `incomplete-extraction` route; unresolved primary raises `ExtractionReviewRequiredError` (ops_review route, provider errors); no id-only stand-in | `fixture-fallback` id-only stand-in, rejected by the provider check | production path repaired by #1083 | `test_production_incomplete_extraction_routes_to_review` | keep; OCR runs inside the Doc-Lineage primary (`ocr_enabled=True`), so no separate OCR fallback adapter |
 | B19 | `v1_smoke.py` `_explainability_inputs` analyst provenance | smoke components without provenances | Production passes explicit provenances | Defaults to `analyst_001` provenance | intentional smoke control | `test_ingest_score_explainability_provenance_is_resolvable`; `test_ingest_score_deliberate_break_constants_would_fail` | keep smoke-only |
 | B20 | `v1_smoke.py` fleet `model="deterministic-pdf-parser"` | always | Telemetry label for this path | same | architectural seam | fleet builders; not asserted as a score/queue stub in `tests/cli/test_ingest_entrypoint.py` | out of scope; not a silent score/queue stub |
 
@@ -62,10 +62,10 @@ Columns:
 | --- | --- |
 | Intentional smoke controls (retain) | B02, B03, B04, B05, B06, B09, B14, B19 |
 | Prevention assertions (tests must hold) | B01, B07, B13 |
-| Production path OK / shared policy | B08, B10, B17 |
+| Production path OK / shared policy | B08, B10, B15, B17, B18 |
 | Confirmed gaps → product review (no auto-file) | B11 |
 | Superseded review claim | B16 |
-| Architectural / mixed / unknown | B12, B15, B18, B20 |
+| Architectural / mixed / unknown | B12, B20 |
 
 ## Linked approved owners (known gaps; no new issues filed)
 
@@ -74,8 +74,8 @@ Columns:
 | Historical fixed analyst queue assignment | queue / validation assignment | #1018 / merged #1034; `docs/contracts/queue_states.md` | Repaired: local replayable unowned pending-triage items with actual UTC timestamps; smoke fixture retains its fixed analyst/date |
 | Cross-source performance comparison unavailable | performance / ingest | `docs/contracts/performance_normalization.md`; production returns deck/benchmark `None` | Confirm whether deck/benchmark ingest is near-term scope |
 | Ephemeral stores in headless CLI | persistence / ops | `docs/runbooks/headless_ingest.md`; #382 | Documented seam; not introduced by this audit |
-| Primary PDF legacy fixture service on shared path | extraction | `docs/contracts/extraction_service.md`; #380 / #9 family | Confirm Doc-Lineage-only requirement for arbitrary packages |
-| OCR / fallback adapter beyond named fixture-fallback | extraction | `docs/contracts/extraction_provider_contract.md` fallback section | Confirm near-term OCR adapter scope |
+| Primary PDF legacy fixture service on shared path | extraction | `docs/contracts/extraction_service.md`; #1083 | Repaired: production `.pdf` requires Doc-Lineage; legacy parser is smoke-only |
+| OCR / fallback adapter beyond named fixture-fallback | extraction | `docs/contracts/extraction_provider_contract.md` fallback section; #1083 | Repaired: production fallback is the `incomplete-extraction` review route; OCR is inside Doc-Lineage |
 
 Scoring evidence-backed production path (B08) is already exercised by CLI score-bundle tests; smoke hardcoded components (B09) remain smoke-only. Historical #1019 described an earlier `score=None`-only production branch; current head derives scores when evidence thresholds are met.
 
@@ -85,8 +85,8 @@ No automatic follow-up issues are created from this audit.
 
 1. **Queue placeholder (B10), resolved by #1034** — production uses the local versioned queue handoff from #1018. No service/API selection is needed for that delivered contract; original source acceptance remains verifier-owned.
 2. **Deck/benchmark comparison (B11)** — production workbook path does not populate deck/benchmark series; confirm near-term scope outside smoke fixtures.
-3. **Primary PDF service selection (B15)** — shared path still selects `build_legacy_pdf_fixture_service` for `.pdf`; confirm whether arbitrary production PDFs must use Doc-Lineage exclusively.
-4. **OCR/fallback route (B18)** — named `fixture-fallback` / secondary unsupported route remain; confirm whether a dedicated production OCR adapter is in scope.
+3. **Primary PDF service selection (B15), resolved by #1083** — production `.pdf` requires Doc-Lineage; `build_legacy_pdf_fixture_service` is smoke-only.
+4. **OCR/fallback route (B18), resolved by #1083** — production replaces the id-only `fixture-fallback` with the attributable `incomplete-extraction` review route; OCR runs inside Doc-Lineage.
 
 ## Prevention coverage (this PR)
 
@@ -101,6 +101,9 @@ No automatic follow-up issues are created from this audit.
   - `test_ingest_uses_registered_bytes_after_source_files_change` — independently replacing or removing the primary and workbook files immediately after successful registration preserves the registered asset class, monthly returns, and numeric scoring. Temporarily rereading source files instead of using the document store makes all four cases fail; restoring the source passes.
   - `test_ingest_multiple_workbooks_selects_track_record_by_role` — all six orders of a three-document submission select the declared track record over a differently valued supporting workbook, preserving secondary bytes/identity, performance values, and scoring provenance. Temporarily disabling role preference makes all six cases fail; restoring it passes.
   - `test_production_performance_source_deliberate_smoke_fixture_fails` — mutation of performance `source` to `smoke_fixture` fails `_assert_production_performance_source`, the same prevention assertion used by the external-layout production test; restoring `submitted_workbook` passes.
+  - `test_production_pdf_routes_to_doc_lineage_not_legacy_fixture` — with `build_legacy_pdf_fixture_service` forbidden, a 2-page compressed PDF (unreadable by pdf-primary) extracts canonical labels with physical-page provenance through Doc-Lineage. Temporarily routing production `.pdf` back to the legacy service makes this test fail; restoring the source passes.
+  - `test_production_pdf_missing_doc_lineage_extra_fails_visibly` / `test_production_pdf_broken_doc_lineage_install_propagates` — an absent extra raises `MissingExtractionDependencyError` without a pdf-primary downgrade; a transitive `ModuleNotFoundError` propagates unchanged.
+  - `test_production_incomplete_extraction_routes_to_review` — an unreadable production PDF fails with the `incomplete-extraction` disposition, ops_review route, and the Doc-Lineage error; no run artifacts are written.
   - Audit classification validation requires exact test function definitions in the CLI and scoring modules; module paths, partial names, and names found only in comments do not count as evidence.
   - Existing layout / non-workbook / score deliberate-break tests continue to forbid fixture helpers and smoke constants on the headless path.
 - `tests/scoring/test_engine.py` — scoring engine invariants (unchanged by this audit).

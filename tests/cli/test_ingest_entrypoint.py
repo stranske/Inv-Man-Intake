@@ -17,6 +17,11 @@ from inv_man_intake.cli.ingest import main
 
 _BUNDLE = "tests/fixtures/intake/pdf_primary_mixed_bundle.json"
 _FIXTURE_EXTRACTION = Path("tests/fixtures/extraction")
+# Production PDFs route to Doc-Lineage, which needs a conforming PDF; the
+# historical pseudo-PDF of the same name stays the smoke-only pdf-primary corpus.
+_PRODUCTION_FIXTURE_SOURCES = {
+    "summit_arc_investment_update.pdf": "summit_arc_investment_update_conforming.pdf",
+}
 _ARTIFACT_FILES = (
     "run.json",
     "metadata.json",
@@ -49,11 +54,31 @@ def _minimal_external_bundle_payload() -> dict[str, object]:
     return payload
 
 
+def _production_fixture(file_name: str) -> Path:
+    return _FIXTURE_EXTRACTION / _PRODUCTION_FIXTURE_SOURCES.get(file_name, file_name)
+
+
+def _write_review_policy(tmp_path: Path) -> Path:
+    """Explicit policy that escalates the reference run for analyst review.
+
+    Doc-Lineage scores every parsed field 0.82, which the default policy accepts;
+    escalation must come from caller policy rather than a parser's fixed AUM score.
+    """
+    policy = tmp_path / "review-thresholds.yaml"
+    policy.write_text(
+        Path("config/extraction_thresholds.yaml")
+        .read_text(encoding="utf-8")
+        .replace("key_field_confidence_min: 0.75", "key_field_confidence_min: 0.85"),
+        encoding="utf-8",
+    )
+    return policy
+
+
 def _write_external_layout_bundle(tmp_path: Path) -> Path:
     tmp_path.mkdir(parents=True, exist_ok=True)
     bundle_payload = _minimal_external_bundle_payload()
     for entry in bundle_payload["files"]:
-        source = _FIXTURE_EXTRACTION / entry["file_name"]
+        source = _production_fixture(entry["file_name"])
         target = tmp_path / entry["file_name"]
         shutil.copyfile(source, target)
     bundle_path = tmp_path / "external_intake_bundle.json"
@@ -101,7 +126,10 @@ def test_ingest_ignores_langsmith_key_when_tracing_disabled(
 def test_ingest_run_json_carries_score_escalation_and_evidence(tmp_path: Path) -> None:
     bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
     output_dir = tmp_path / "out"
-    assert main([str(bundle_path), "--out", str(output_dir)]) == 0
+    policy = _write_review_policy(tmp_path)
+    assert (
+        main([str(bundle_path), "--out", str(output_dir), "--threshold-config", str(policy)]) == 0
+    )
 
     run_payload = json.loads((output_dir / "run.json").read_text(encoding="utf-8"))
 
@@ -168,8 +196,10 @@ _SMOKE_MODE_MARKERS = (
     "return _workbook_performance_series(track_record_bytes), None, None",
     'sqlite3.connect(":memory:")',
     "InMemoryDocumentStore()",
-    'fallback_name="fixture-fallback"',
+    '("fixture-fallback", _fixture_id_only_extractor)',
+    "(INCOMPLETE_EXTRACTION_DISPOSITION, _incomplete_extraction_extractor)",
     "build_legacy_pdf_fixture_service()",
+    "build_pyodide_light_service(primary_file_name, require_doc_lineage=True)",
     'model="deterministic-pdf-parser"',
 )
 # One entry per conditional, including repeated predicates in the same function.
@@ -185,6 +215,8 @@ _AUDITED_SMOKE_BRANCHES = (
     ("_run_pipeline_core", "IfExp", "smoke_mode", "B10"),
     ("_pipeline_document_bytes", "If", "smoke_mode", "B04"),
     ("_resolve_performance_series", "If", "smoke_mode", "B06"),
+    ("_run_extraction_smoke", "If", "smoke_mode", "B15"),
+    ("_run_extraction_smoke", "IfExp", "smoke_mode", "B18"),
 )
 # Classification buckets from docs/reports/production_vs_smoke_audit.md.
 _CLASSIFICATION_SUMMARY = {
@@ -192,10 +224,10 @@ _CLASSIFICATION_SUMMARY = {
         {"B02", "B03", "B04", "B05", "B06", "B09", "B14", "B19"}
     ),
     "prevention assertions (tests must hold)": frozenset({"B01", "B07", "B13"}),
-    "production path ok / shared policy": frozenset({"B08", "B10", "B17"}),
+    "production path ok / shared policy": frozenset({"B08", "B10", "B15", "B17", "B18"}),
     "confirmed gaps → product review (no auto-file)": frozenset({"B11"}),
     "superseded review claim": frozenset({"B16"}),
-    "architectural / mixed / unknown": frozenset({"B12", "B15", "B18", "B20"}),
+    "architectural / mixed / unknown": frozenset({"B12", "B20"}),
 }
 _EVIDENCE_CLASS_TO_SUMMARY = {
     "prevention assertion": "prevention assertions (tests must hold)",
@@ -205,6 +237,7 @@ _EVIDENCE_CLASS_TO_SUMMARY = {
     "intentional shared policy": "production path ok / shared policy",
     "confirmed production gap": "confirmed gaps → product review (no auto-file)",
     "production path repaired by #1018 / #1034": "production path ok / shared policy",
+    "production path repaired by #1083": "production path ok / shared policy",
     "architectural seam": "architectural / mixed / unknown",
     "intentional / prevention": "prevention assertions (tests must hold)",
     "mixed / historical corpus seam": "architectural / mixed / unknown",
@@ -327,7 +360,9 @@ def _assert_audit_test_evidence(
         "B11",
         "B13",
         "B14",
+        "B15",
         "B16",
+        "B18",
     }:
         assert cited_names & entrypoint_names, f"{boundary_id} must cite an existing CLI test"
     if boundary_id in {"B08", "B09"}:
@@ -493,6 +528,7 @@ def test_production_queue_assignment_is_unowned_and_uses_live_clock(
 ) -> None:
     """Retain the production queue handoff delivered by #1018 / #1034."""
     from inv_man_intake import v1_smoke, workflow_validation
+    from inv_man_intake.extraction.confidence import load_threshold_config
     from inv_man_intake.run import run_pipeline
 
     current_time = datetime(2031, 7, 9, 14, 23, 11, tzinfo=UTC)
@@ -506,10 +542,12 @@ def test_production_queue_assignment_is_unowned_and_uses_live_clock(
     monkeypatch.setattr(workflow_validation, "datetime", ControlledDateTime)
     bundle_path = _write_external_layout_bundle(tmp_path / "bundle-root")
     package_id = json.loads(bundle_path.read_text(encoding="utf-8"))["package_id"]
+    policy = _write_review_policy(tmp_path)
     artifacts = v1_smoke._run_pipeline_core(
         fixture_root=bundle_path.parent,
         intake_bundle_file=bundle_path.name,
         package_id=package_id,
+        threshold_config=load_threshold_config(policy),
         content_root=bundle_path.parent,
         allow_remote_tracing=False,
     )
@@ -524,7 +562,7 @@ def test_production_queue_assignment_is_unowned_and_uses_live_clock(
     # Advance within the same day: checking only the date would miss a fixed clock.
     current_time = datetime(2031, 7, 9, 14, 23, 37, tzinfo=UTC)
     output_dir = tmp_path / "out"
-    run_pipeline(bundle_path, output_dir=output_dir)
+    run_pipeline(bundle_path, output_dir=output_dir, threshold_config_path=policy)
     (saved_item,) = workflow_validation.load_validation_queue(output_dir / "validation-queue.json")
     assert saved_item.owner_id is saved_item.owner_role is None
     assert saved_item.state == "pending_triage"
@@ -544,7 +582,7 @@ def test_ingest_primary_only_pdf_and_pptx(tmp_path, monkeypatch, primary):
     payload = json.loads(bundle.read_text())
     entry = payload["files"][0]
     entry["file_name"] = primary
-    shutil.copyfile(_FIXTURE_EXTRACTION / primary, bundle.parent / primary)
+    shutil.copyfile(_production_fixture(primary), bundle.parent / primary)
     payload["files"] = [entry]
     bundle.write_text(json.dumps(payload))
 
@@ -597,6 +635,157 @@ def test_ingest_primary_with_non_workbook_secondary(tmp_path, monkeypatch, exten
     }
 
 
+def _compressed_two_page_pdf() -> bytes:
+    from io import BytesIO
+
+    from reportlab.pdfgen import canvas
+
+    stream = BytesIO()
+    pdf = canvas.Canvas(stream, pageCompression=1, invariant=1)
+    pdf.drawString(72, 720, "Strategy Asset Class: credit")
+    pdf.drawString(72, 700, "Management Fee: 1.25%")
+    pdf.showPage()
+    pdf.drawString(72, 720, "AUM: $1.2bn")
+    pdf.drawString(72, 700, "Net Return 1Y: 8.4%")
+    pdf.showPage()
+    pdf.save()
+    return stream.getvalue()
+
+
+def _forbid_legacy_pdf_fixture_service(monkeypatch: pytest.MonkeyPatch) -> None:
+    from inv_man_intake import v1_smoke
+
+    def legacy_fixture_service():
+        raise AssertionError("production PDFs must not use build_legacy_pdf_fixture_service")
+
+    monkeypatch.setattr(v1_smoke, "build_legacy_pdf_fixture_service", legacy_fixture_service)
+
+
+def test_production_pdf_routes_to_doc_lineage_not_legacy_fixture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B15: production .pdf extraction uses Doc-Lineage, never the pseudo-PDF parser."""
+    from inv_man_intake.extraction.providers.pdf_primary import PdfPrimaryExtractionProvider
+
+    _forbid_legacy_pdf_fixture_service(monkeypatch)
+    pdf_bytes = _compressed_two_page_pdf()
+    # Compressed content streams carry no literal text the legacy parser can read.
+    assert b"/FlateDecode" in pdf_bytes
+    assert PdfPrimaryExtractionProvider().extract("probe", pdf_bytes).fields == ()
+    bundle = _write_external_layout_bundle(tmp_path / "bundle")
+    (bundle.parent / "summit_arc_investment_update.pdf").write_bytes(pdf_bytes)
+
+    output = tmp_path / "out"
+    assert main([str(bundle), "--out", str(output)]) == 0
+
+    run = json.loads((output / "run.json").read_text(encoding="utf-8"))
+    fields = {field["key"]: field for field in run["fields"]}
+    expected = {
+        "strategy.asset_class": ("credit", 1),
+        "terms.management_fee": ("1.25%", 1),
+        "operations.aum": ("$1.2bn", 2),
+        "performance.net_return_1y": ("8.4%", 2),
+    }
+    for key, (value, page) in expected.items():
+        assert fields[key]["value"] == value
+        assert fields[key]["source_page"] == page
+        assert fields[key]["location"]["source_page"] == page
+        assert fields[key]["method"] == "doc-lineage:text_layer"
+        assert run["provenance"]["evidence"][key]["source_page"] == page
+
+
+def test_production_pdf_missing_doc_lineage_extra_fails_visibly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B15: an absent extra is a named dependency error, not a pdf-primary downgrade."""
+    from inv_man_intake.extraction import MissingExtractionDependencyError
+    from inv_man_intake.extraction.providers import doc_lineage_adapter, pdf_primary
+
+    class AbsentDocLineage:
+        def __init__(self) -> None:
+            raise ModuleNotFoundError("No module named 'doc_lineage'", name="doc_lineage")
+
+    class ForbiddenPdfPrimary:
+        def __init__(self) -> None:
+            raise AssertionError("production must not downgrade to pdf-primary")
+
+    _forbid_legacy_pdf_fixture_service(monkeypatch)
+    monkeypatch.setattr(doc_lineage_adapter, "DocLineageExtractionProvider", AbsentDocLineage)
+    monkeypatch.setattr(pdf_primary, "PdfPrimaryExtractionProvider", ForbiddenPdfPrimary)
+    bundle = _write_external_layout_bundle(tmp_path / "bundle")
+    output = tmp_path / "out"
+
+    with pytest.raises(MissingExtractionDependencyError, match="extraction-doc-lineage") as caught:
+        main([str(bundle), "--out", str(output)])
+
+    assert caught.value.package == "doc_lineage"
+    assert caught.value.file_name == "summit_arc_investment_update.pdf"
+    assert not (output / "run.json").exists()
+
+
+def test_production_pdf_broken_doc_lineage_install_propagates(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B15: a transitive import failure inside Doc-Lineage is not relabelled as missing."""
+    from inv_man_intake.extraction import MissingExtractionDependencyError
+    from inv_man_intake.extraction.providers import doc_lineage_adapter
+
+    class BrokenDocLineage:
+        def __init__(self) -> None:
+            raise ModuleNotFoundError("No module named 'pypdf'", name="pypdf")
+
+    _forbid_legacy_pdf_fixture_service(monkeypatch)
+    monkeypatch.setattr(doc_lineage_adapter, "DocLineageExtractionProvider", BrokenDocLineage)
+    bundle = _write_external_layout_bundle(tmp_path / "bundle")
+    output = tmp_path / "out"
+
+    with pytest.raises(ModuleNotFoundError) as caught:
+        main([str(bundle), "--out", str(output)])
+
+    assert caught.value.name == "pypdf"
+    assert not isinstance(caught.value, MissingExtractionDependencyError)
+    assert not (output / "run.json").exists()
+
+
+def test_production_incomplete_extraction_routes_to_review(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """B18: unresolved production extraction is an attributable review outcome, not id-only."""
+    from inv_man_intake import v1_smoke
+    from inv_man_intake.observability import Tracer, new_trace_context
+
+    _forbid_legacy_pdf_fixture_service(monkeypatch)
+    # The historical pseudo-PDF has no font resources: Doc-Lineage reads no page text.
+    unreadable = (_FIXTURE_EXTRACTION / "summit_arc_investment_update.pdf").read_bytes()
+    bundle = _write_external_layout_bundle(tmp_path / "bundle")
+    (bundle.parent / "summit_arc_investment_update.pdf").write_bytes(unreadable)
+    output = tmp_path / "out"
+
+    assert main([str(bundle), "--out", str(output)]) == 1
+    err = capsys.readouterr().err
+    assert "incomplete-extraction" in err
+    assert "Doc-Lineage left unreadable PDF pages" in err
+    assert not (output / "run.json").exists()
+
+    with pytest.raises(v1_smoke.ExtractionReviewRequiredError) as caught:
+        v1_smoke._run_extraction_smoke(
+            tracer=Tracer(enabled=False),
+            trace_context=new_trace_context(),
+            source_doc_id="doc-unreadable",
+            primary_file_name="manager_update.pdf",
+            content=unreadable,
+            correlation_id="corr-unreadable",
+            smoke_mode=False,
+        )
+    failure = caught.value
+    assert failure.disposition == v1_smoke.INCOMPLETE_EXTRACTION_DISPOSITION
+    assert failure.file_name == "manager_update.pdf"
+    assert failure.escalation_route == "ops_review"
+    assert failure.errors[0].startswith("pyodide-light: Doc-Lineage left unreadable PDF pages")
+    assert failure.errors[1].startswith("incomplete-extraction: no production fallback")
+    assert "doc-unreadable" in failure.errors[1]
+
+
 @pytest.mark.parametrize(
     "primary", ["summit_arc_investment_update.pdf", "harborline_strategy_review.pptx"]
 )
@@ -614,7 +803,7 @@ def test_ingest_primary_uses_submitted_bytes_filename_and_id(
     primary_entry = next(entry for entry in payload["files"] if entry["file_name"].endswith(".pdf"))
     (bundle_path.parent / primary_entry["file_name"]).unlink()
     submitted_name = f"submitted-manager-update{Path(primary).suffix}"
-    submitted_bytes = (_FIXTURE_EXTRACTION / primary).read_bytes() + b"\nsubmitted-primary-marker\n"
+    submitted_bytes = _production_fixture(primary).read_bytes() + b"\nsubmitted-primary-marker\n"
     primary_entry["file_name"] = submitted_name
     if explicit_id:
         primary_entry["document_id"] = "external-manager-update-902"
@@ -1261,7 +1450,8 @@ def test_ingest_score_deliberate_break_constants_would_fail(tmp_path: Path) -> N
     baseline = _run_score(_write_score_bundle(tmp_path, name="bundle-base"), tmp_path / "out-base")
     scores = _component_scores(baseline)
     assert scores["operational_quality"] != pytest.approx(0.69)
-    assert scores["transparency"] == pytest.approx(0.788)
+    # Mean Doc-Lineage confidence of the five key fields; the smoke constant is 0.74.
+    assert scores["transparency"] == pytest.approx(0.82)
     assert scores["team_experience"] == pytest.approx(0.35)
     changed = _run_score(
         _write_score_bundle(
@@ -1424,15 +1614,9 @@ def test_ingest_queue_artifact_reloads_real_outcomes_and_manifest(
     bundle = _write_external_layout_bundle(tmp_path / "bundle")
     output = tmp_path / "output"
     args = [str(bundle), "--out", str(output)]
-    if accepted:
-        # A real caller-supplied policy accepts AUM(.72) while leaving the fixture defaults alone.
-        policy = tmp_path / "thresholds.yaml"
-        policy.write_text(
-            Path("config/extraction_thresholds.yaml")
-            .read_text()
-            .replace("key_field_confidence_min: 0.75", "key_field_confidence_min: 0.70")
-        )
-        args += ["--threshold-config", str(policy)]
+    if not accepted:
+        # A real caller-supplied policy rejects Doc-Lineage's 0.82 fields; defaults accept them.
+        args += ["--threshold-config", str(_write_review_policy(tmp_path))]
     started = datetime.now(UTC).replace(microsecond=0)
     assert main(args) == 0
     run = json.loads((output / "run.json").read_text())
@@ -1512,7 +1696,8 @@ def test_ingest_queue_replay_preserves_saved_review_by_requiring_new_output(
 
     bundle = _write_external_layout_bundle(tmp_path / "bundle")
     output = tmp_path / "output"
-    args = [str(bundle), "--out", str(output)]
+    policy_args = ["--threshold-config", str(_write_review_policy(tmp_path))]
+    args = [str(bundle), "--out", str(output), *policy_args]
     assert main(args) == 0
     queue_file = output / "validation-queue.json"
     reviewed = claim_for_analyst_triage(
@@ -1531,5 +1716,5 @@ def test_ingest_queue_replay_preserves_saved_review_by_requiring_new_output(
     assert {path.name: path.read_bytes() for path in output.iterdir()} == saved_files
 
     # A new run directory remains usable without discarding the previous review.
-    assert main([str(bundle), "--out", str(tmp_path / "new-output")]) == 0
+    assert main([str(bundle), "--out", str(tmp_path / "new-output"), *policy_args]) == 0
     assert load_validation_queue(queue_file) == (reviewed,)
