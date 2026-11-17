@@ -26,10 +26,9 @@ def _write_strict_threshold_config(config_path: Path) -> None:
                 "field_auto_accept_min: 0.85",
                 "key_field_confidence_min: 0.75",
                 "document_key_field_coverage_min: 0.80",
-                "mandatory_field_min: 0.80",
+                # Above Doc-Lineage's 0.82; listing only AUM proves the YAML list is honored.
+                "mandatory_field_min: 0.85",
                 "mandatory_fields:",
-                "  - terms.management_fee",
-                "  - performance.net_return_1y",
                 "  - operations.aum",
                 "",
             ]

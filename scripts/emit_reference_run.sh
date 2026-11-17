@@ -11,14 +11,10 @@ trap 'rm -rf "${staging_dir}"' EXIT
 
 bundle_src="tests/fixtures/intake/pdf_primary_mixed_bundle.json"
 extraction_root="tests/fixtures/extraction"
-needed_files=(
-  summit_arc_investment_update.pdf
-  summit_arc_track_record.xlsx
-)
-
-for file_name in "${needed_files[@]}"; do
-  cp "${extraction_root}/${file_name}" "${staging_dir}/${file_name}"
-done
+cp "${extraction_root}/summit_arc_investment_update_conforming.pdf" \
+  "${staging_dir}/summit_arc_investment_update.pdf"
+cp "${extraction_root}/summit_arc_track_record.xlsx" \
+  "${staging_dir}/summit_arc_track_record.xlsx"
 
 python - "${bundle_src}" "${staging_dir}/reference_bundle.json" <<'PY'
 import json

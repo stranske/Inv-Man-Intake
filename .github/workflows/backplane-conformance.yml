@@ -49,7 +49,7 @@ jobs:
           '
           }
           if pyproject_declares_distribution || [ -f setup.py ] || [ -f setup.cfg ]; then
-            python -m pip install -e .
+            python -m pip install -e ".[extraction-doc-lineage]"
           else
             echo "No project/build metadata; skipping editable install (opt-in stub not yet tuned)."
           fi

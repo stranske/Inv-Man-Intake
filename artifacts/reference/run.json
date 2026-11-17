@@ -8,125 +8,206 @@
     "run.json",
     "metadata.json",
     "threshold-summary.json",
-    "explainability.json"
+    "explainability.json",
+    "validation-queue.json",
+    "evidence-1294f3f589f5283afe4c8166c47d419958d395eb3fc0174e4c1945e94653d07b.json",
+    "evidence-2c36109f6f8ce75270cedc0d7d54309aa6393414cf5878820a43d3298999ae10.json",
+    "evidence-3c08344c3c1314937f4c96d51869cd43d079cac2c81ead5d694b122ab69f785d.json",
+    "evidence-5df8aa7537dc1cbc675c8bb8e65a22b12fb64c15d72ec0b6b71a1942f0546e0e.json",
+    "evidence-666913c9dc25a1112db9c7a835805db6b96af5029f8422332efc01640de387a7.json",
+    "evidence-977d7a34a1385c71ee9d94621d206c18824fbc72e036b86986bea68120d62c89.json",
+    "evidence-c008188dfd0796edc7dc6f1357f8c3c864867b8559d82b058d5e2e0c13f2721b.json",
+    "evidence-c4387b42741ccaa9cc4c3185511a6cb4b389a23eb462c0e783b033d442d75ffe.json",
+    "evidence-e8f695d745a93b476c29f5fe163001a077944db229797eefa0c27af7c64f54e3.json"
   ],
   "confidence_state": {
-    "auto_accept_fields": [
-      "strategy.asset_class",
-      "terms.management_fee",
-      "performance.net_return_1y"
-    ],
-    "auto_pass_document": false,
-    "key_field_coverage_ratio": 0.6
+    "auto_accept_fields": [],
+    "auto_pass_document": true,
+    "key_field_coverage_ratio": 1.0
   },
   "escalation_state": {
-    "auto_pass_document": false,
-    "escalate": true,
-    "reason": "low_key_field_coverage"
+    "auto_pass_document": true,
+    "escalate": false,
+    "reason": "none"
   },
   "evidence_refs": [
-    "document:pkg_pdf_mixed_001:doc:0#page=0",
-    "document:pkg_pdf_mixed_001:doc:0#page=11",
-    "document:pkg_pdf_mixed_001:doc:0#page=2",
-    "document:pkg_pdf_mixed_001:doc:0#page=3",
-    "document:pkg_pdf_mixed_001:doc:0#page=4",
-    "document:pkg_pdf_mixed_001:doc:0#page=8"
+    "evidence:sha256:1294f3f589f5283afe4c8166c47d419958d395eb3fc0174e4c1945e94653d07b",
+    "evidence:sha256:2c36109f6f8ce75270cedc0d7d54309aa6393414cf5878820a43d3298999ae10",
+    "evidence:sha256:3c08344c3c1314937f4c96d51869cd43d079cac2c81ead5d694b122ab69f785d",
+    "evidence:sha256:5df8aa7537dc1cbc675c8bb8e65a22b12fb64c15d72ec0b6b71a1942f0546e0e",
+    "evidence:sha256:666913c9dc25a1112db9c7a835805db6b96af5029f8422332efc01640de387a7",
+    "evidence:sha256:977d7a34a1385c71ee9d94621d206c18824fbc72e036b86986bea68120d62c89",
+    "evidence:sha256:c008188dfd0796edc7dc6f1357f8c3c864867b8559d82b058d5e2e0c13f2721b",
+    "evidence:sha256:c4387b42741ccaa9cc4c3185511a6cb4b389a23eb462c0e783b033d442d75ffe",
+    "evidence:sha256:e8f695d745a93b476c29f5fe163001a077944db229797eefa0c27af7c64f54e3"
   ],
   "explainability": {
-    "components": [
-      {
-        "component": "operational_quality",
-        "contribution": 0.138,
-        "rationale": "AUM field is present but below auto-accept confidence.",
-        "weight": 0.2
-      },
-      {
-        "component": "performance_consistency",
-        "contribution": 0.2,
-        "rationale": "Normalized monthly track record is complete.",
-        "weight": 0.25
-      },
-      {
-        "component": "risk_adjusted_returns",
-        "contribution": 0.234,
-        "rationale": "Prioritized metrics include Sharpe and correlation evidence.",
-        "weight": 0.3
-      },
-      {
-        "component": "team_experience",
-        "contribution": 0.0979,
-        "rationale": "Key-person note is routed for analyst review.",
-        "weight": 0.1
-      },
-      {
-        "component": "transparency",
-        "contribution": 0.111,
-        "rationale": "Provenance pointers tie extracted fields to source pages.",
-        "weight": 0.15
-      }
-    ],
-    "overall_score": 0.7809,
-    "total_contribution": 0.7809
+    "overall_score": null,
+    "reason": "evidence_backed_score_components_unavailable",
+    "status": "unavailable"
   },
   "fields": [
     {
-      "confidence": 0.93,
+      "confidence": 0.82,
       "key": "strategy.asset_class",
+      "location": {
+        "bbox": null,
+        "image_index": null,
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 1,
+        "table_index": null
+      },
+      "method": "doc-lineage:text_layer",
+      "snippet": "Strategy Asset Class: credit",
+      "snippet_metadata": {
+        "char_end": 28,
+        "char_start": 0,
+        "kind": "regex-match"
+      },
       "source_doc_id": "pkg_pdf_mixed_001:doc:0",
-      "source_page": 2,
+      "source_page": 1,
       "value": "credit"
     },
     {
-      "confidence": 0.91,
-      "key": "terms.management_fee",
+      "confidence": 0.82,
+      "key": "strategy.name",
+      "location": {
+        "bbox": null,
+        "image_index": null,
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 1,
+        "table_index": null
+      },
+      "method": "doc-lineage:text_layer",
+      "snippet": "Strategy Asset Class",
+      "snippet_metadata": {
+        "char_end": 20,
+        "char_start": 0,
+        "kind": "regex-match"
+      },
       "source_doc_id": "pkg_pdf_mixed_001:doc:0",
-      "source_page": 4,
-      "value": "1.25%"
+      "source_page": 1,
+      "value": "Asset Class"
     },
     {
-      "confidence": 0.88,
-      "key": "performance.net_return_1y",
-      "source_doc_id": "pkg_pdf_mixed_001:doc:0",
-      "source_page": 8,
-      "value": "8.4%"
-    },
-    {
-      "confidence": 0.72,
+      "confidence": 0.82,
       "key": "operations.aum",
+      "location": {
+        "bbox": null,
+        "image_index": null,
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 2,
+        "table_index": null
+      },
+      "method": "doc-lineage:text_layer",
+      "snippet": "AUM: $1.2bn",
+      "snippet_metadata": {
+        "char_end": 11,
+        "char_start": 0,
+        "kind": "regex-match"
+      },
       "source_doc_id": "pkg_pdf_mixed_001:doc:0",
-      "source_page": 3,
+      "source_page": 2,
       "value": "$1.2bn"
     },
     {
-      "confidence": 0.5,
-      "key": "team.key_person_risk",
+      "confidence": 0.82,
+      "key": "terms.management_fee",
+      "location": {
+        "bbox": null,
+        "image_index": null,
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 3,
+        "table_index": null
+      },
+      "method": "doc-lineage:text_layer",
+      "snippet": "Management Fee: 1.25%",
+      "snippet_metadata": {
+        "char_end": 21,
+        "char_start": 0,
+        "kind": "regex-match"
+      },
       "source_doc_id": "pkg_pdf_mixed_001:doc:0",
-      "source_page": 11,
+      "source_page": 3,
+      "value": "1.25%"
+    },
+    {
+      "confidence": 0.82,
+      "key": "performance.net_return_1y",
+      "location": {
+        "bbox": null,
+        "image_index": null,
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 4,
+        "table_index": null
+      },
+      "method": "doc-lineage:text_layer",
+      "snippet": "Net Return 1Y: 8.4%",
+      "snippet_metadata": {
+        "char_end": 19,
+        "char_start": 0,
+        "kind": "regex-match"
+      },
+      "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+      "source_page": 4,
+      "value": "8.4%"
+    },
+    {
+      "confidence": 0.82,
+      "key": "team.key_person_risk",
+      "location": {
+        "bbox": null,
+        "image_index": null,
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 5,
+        "table_index": null
+      },
+      "method": "doc-lineage:text_layer",
+      "snippet": "Key Person Risk: one senior PM departure pending",
+      "snippet_metadata": {
+        "char_end": 48,
+        "char_start": 0,
+        "kind": "regex-match"
+      },
+      "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+      "source_page": 5,
       "value": "one senior PM departure pending"
     },
     {
       "confidence": 1.0,
       "key": "confidence.document.key_field_coverage_ratio",
+      "location": null,
+      "method": "threshold-summary",
+      "snippet": null,
+      "snippet_metadata": null,
       "source_doc_id": "pkg_pdf_mixed_001:doc:0",
       "source_page": 0,
-      "value": "0.6000"
+      "value": "1.0000"
     },
     {
       "confidence": 1.0,
       "key": "confidence.document.auto_pass",
+      "location": null,
+      "method": "threshold-summary",
+      "snippet": null,
+      "snippet_metadata": null,
       "source_doc_id": "pkg_pdf_mixed_001:doc:0",
       "source_page": 0,
-      "value": "false"
+      "value": "true"
     },
     {
       "confidence": 1.0,
       "key": "confidence.document.escalation_reason",
+      "location": null,
+      "method": "threshold-summary",
+      "snippet": null,
+      "snippet_metadata": null,
       "source_doc_id": "pkg_pdf_mixed_001:doc:0",
       "source_page": 0,
-      "value": "low_key_field_coverage"
+      "value": "none"
     }
   ],
-  "final_score": 0.7809,
+  "final_score": null,
   "github_issue": "stranske/Inv-Man-Intake#474",
   "identity_refs": [
     "firm:firm_summit_arc_advisors",
@@ -135,11 +216,9 @@
   "inputs": {
     "document_ids": [
       "pkg_pdf_mixed_001:doc:0",
-      "pkg_pdf_mixed_001:doc:1",
-      "pkg_pdf_mixed_001:doc:2",
-      "pkg_pdf_mixed_001:doc:3"
+      "pkg_pdf_mixed_001:doc:1"
     ],
-    "file_count": 4,
+    "file_count": 2,
     "firm_id": "firm_summit_arc_advisors",
     "fund_id": "fund_summit_arc_special_situations",
     "package_id": "pkg_pdf_mixed_001",
@@ -159,68 +238,200 @@
       "run.json",
       "metadata.json",
       "threshold-summary.json",
-      "explainability.json"
+      "explainability.json",
+      "validation-queue.json",
+      "evidence-1294f3f589f5283afe4c8166c47d419958d395eb3fc0174e4c1945e94653d07b.json",
+      "evidence-2c36109f6f8ce75270cedc0d7d54309aa6393414cf5878820a43d3298999ae10.json",
+      "evidence-3c08344c3c1314937f4c96d51869cd43d079cac2c81ead5d694b122ab69f785d.json",
+      "evidence-5df8aa7537dc1cbc675c8bb8e65a22b12fb64c15d72ec0b6b71a1942f0546e0e.json",
+      "evidence-666913c9dc25a1112db9c7a835805db6b96af5029f8422332efc01640de387a7.json",
+      "evidence-977d7a34a1385c71ee9d94621d206c18824fbc72e036b86986bea68120d62c89.json",
+      "evidence-c008188dfd0796edc7dc6f1357f8c3c864867b8559d82b058d5e2e0c13f2721b.json",
+      "evidence-c4387b42741ccaa9cc4c3185511a6cb4b389a23eb462c0e783b033d442d75ffe.json",
+      "evidence-e8f695d745a93b476c29f5fe163001a077944db229797eefa0c27af7c64f54e3.json"
     ],
     "manifest_ref": "artifact:manifest.json",
     "summary": {
-      "escalation_reason": "low_key_field_coverage",
-      "field_count": 8,
-      "final_score": 0.7809
+      "escalation_reason": "none",
+      "field_count": 9,
+      "final_score": null
     }
+  },
+  "performance": {
+    "benchmark_available": false,
+    "comparison_available": false,
+    "metrics": null,
+    "monthly": null,
+    "source": "submitted_workbook",
+    "status": "unavailable"
   },
   "provenance": {
     "evidence": {
       "confidence.document.auto_pass": {
+        "confidence": 1.0,
+        "location": null,
+        "method": "threshold-summary",
+        "snippet": null,
+        "snippet_metadata": null,
         "source_doc_id": "pkg_pdf_mixed_001:doc:0",
         "source_page": 0
       },
       "confidence.document.escalation_reason": {
+        "confidence": 1.0,
+        "location": null,
+        "method": "threshold-summary",
+        "snippet": null,
+        "snippet_metadata": null,
         "source_doc_id": "pkg_pdf_mixed_001:doc:0",
         "source_page": 0
       },
       "confidence.document.key_field_coverage_ratio": {
+        "confidence": 1.0,
+        "location": null,
+        "method": "threshold-summary",
+        "snippet": null,
+        "snippet_metadata": null,
         "source_doc_id": "pkg_pdf_mixed_001:doc:0",
         "source_page": 0
       },
       "operations.aum": {
-        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
-        "source_page": 3
-      },
-      "performance.net_return_1y": {
-        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
-        "source_page": 8
-      },
-      "strategy.asset_class": {
+        "confidence": 0.82,
+        "location": {
+          "bbox": null,
+          "image_index": null,
+          "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+          "source_page": 2,
+          "table_index": null
+        },
+        "method": "doc-lineage:text_layer",
+        "snippet": "AUM: $1.2bn",
+        "snippet_metadata": {
+          "char_end": 11,
+          "char_start": 0,
+          "kind": "regex-match"
+        },
         "source_doc_id": "pkg_pdf_mixed_001:doc:0",
         "source_page": 2
       },
-      "team.key_person_risk": {
-        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
-        "source_page": 11
-      },
-      "terms.management_fee": {
+      "performance.net_return_1y": {
+        "confidence": 0.82,
+        "location": {
+          "bbox": null,
+          "image_index": null,
+          "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+          "source_page": 4,
+          "table_index": null
+        },
+        "method": "doc-lineage:text_layer",
+        "snippet": "Net Return 1Y: 8.4%",
+        "snippet_metadata": {
+          "char_end": 19,
+          "char_start": 0,
+          "kind": "regex-match"
+        },
         "source_doc_id": "pkg_pdf_mixed_001:doc:0",
         "source_page": 4
+      },
+      "strategy.asset_class": {
+        "confidence": 0.82,
+        "location": {
+          "bbox": null,
+          "image_index": null,
+          "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+          "source_page": 1,
+          "table_index": null
+        },
+        "method": "doc-lineage:text_layer",
+        "snippet": "Strategy Asset Class: credit",
+        "snippet_metadata": {
+          "char_end": 28,
+          "char_start": 0,
+          "kind": "regex-match"
+        },
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 1
+      },
+      "strategy.name": {
+        "confidence": 0.82,
+        "location": {
+          "bbox": null,
+          "image_index": null,
+          "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+          "source_page": 1,
+          "table_index": null
+        },
+        "method": "doc-lineage:text_layer",
+        "snippet": "Strategy Asset Class",
+        "snippet_metadata": {
+          "char_end": 20,
+          "char_start": 0,
+          "kind": "regex-match"
+        },
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 1
+      },
+      "team.key_person_risk": {
+        "confidence": 0.82,
+        "location": {
+          "bbox": null,
+          "image_index": null,
+          "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+          "source_page": 5,
+          "table_index": null
+        },
+        "method": "doc-lineage:text_layer",
+        "snippet": "Key Person Risk: one senior PM departure pending",
+        "snippet_metadata": {
+          "char_end": 48,
+          "char_start": 0,
+          "kind": "regex-match"
+        },
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 5
+      },
+      "terms.management_fee": {
+        "confidence": 0.82,
+        "location": {
+          "bbox": null,
+          "image_index": null,
+          "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+          "source_page": 3,
+          "table_index": null
+        },
+        "method": "doc-lineage:text_layer",
+        "snippet": "Management Fee: 1.25%",
+        "snippet_metadata": {
+          "char_end": 21,
+          "char_start": 0,
+          "kind": "regex-match"
+        },
+        "source_doc_id": "pkg_pdf_mixed_001:doc:0",
+        "source_page": 3
       }
     },
-    "platform": "macOS-26.5-arm64-arm-64bit",
-    "provider": "pdf-primary",
-    "python_version": "3.12.2",
+    "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "provider": "doc-lineage",
+    "python_version": "3.13.13",
     "tool": "inv-man-ingest",
     "tool_version": "0.1.0"
   },
   "repo": "stranske/Inv-Man-Intake",
-  "run_id": "run_bf17ee5a622147e7a7903e5eb077747f",
+  "run_id": "run_6fc6e8b7cd584b82ae978ba0a490e142",
   "schema_version": "run-contract/v1",
   "status": "success",
   "tool": "inv-man-ingest",
   "trace_refs": [
-    "trace:trace_533d3242dbd543aa8380263de7a44431"
+    "trace:trace_41fb8db655b3496e9012621bdb025010"
   ],
   "warnings": [
     {
-      "code": "threshold:low_key_field_coverage",
-      "message": "threshold:low_key_field_coverage",
+      "code": "performance:unavailable",
+      "message": "performance:unavailable",
+      "severity": "warning"
+    },
+    {
+      "code": "scoring:unavailable",
+      "message": "scoring:unavailable",
       "severity": "warning"
     }
   ]

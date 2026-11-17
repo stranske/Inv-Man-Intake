@@ -1,0 +1,9 @@
+{
+  "confidence": 1.0,
+  "evidence_id": "evidence:sha256:c008188dfd0796edc7dc6f1357f8c3c864867b8559d82b058d5e2e0c13f2721b",
+  "excerpt": null,
+  "fact_ref": "confidence.document.key_field_coverage_ratio",
+  "method": "computed",
+  "schema_version": "evidence-object/v1",
+  "source_id": "pkg_pdf_mixed_001:doc:0"
+}
