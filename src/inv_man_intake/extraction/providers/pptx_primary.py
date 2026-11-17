@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import math
+import posixpath
 import re
 import zipfile
 from dataclasses import dataclass
@@ -24,6 +25,14 @@ _PARAGRAPH_TAG = f"{{{_DRAWINGML_NS}}}p"
 _RUN_TAG = f"{{{_DRAWINGML_NS}}}r"
 _FIELD_TAG = f"{{{_DRAWINGML_NS}}}fld"
 _BREAK_TAG = f"{{{_DRAWINGML_NS}}}br"
+_PRESENTATIONML_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
+_SLIDE_ID_LIST_TAG = f"{{{_PRESENTATIONML_NS}}}sldIdLst"
+_SLIDE_ID_TAG = f"{{{_PRESENTATIONML_NS}}}sldId"
+_RELATIONSHIP_ID_ATTR = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
+_PACKAGE_RELATIONSHIP_TAG = (
+    "{http://schemas.openxmlformats.org/package/2006/relationships}Relationship"
+)
+_PRESENTATION_RELS_PART = "ppt/_rels/presentation.xml.rels"
 _SLIDE_NAME_PATTERN = re.compile(r"^ppt/slides/slide(?P<index>[1-9][0-9]*)\.xml$")
 _MONTHLY_RETURN_PREFIX = "MONTHLY_RETURN"
 _MONTHLY_RETURN_PATTERN = re.compile(
@@ -181,11 +190,7 @@ class PptxPrimaryExtractionProvider:
             if "ppt/presentation.xml" not in names:
                 raise UnsupportedDocumentFormatError("pptx-primary only supports PPTX bytes")
             slides: list[tuple[int, tuple[str, ...]]] = []
-            for name in names:
-                slide_match = _SLIDE_NAME_PATTERN.match(name)
-                if slide_match is None:
-                    continue
-                slide_index = int(slide_match.group("index"))
+            for slide_index, name in cls._presentation_ordered_slides(zf, names):
                 try:
                     root = ET.fromstring(zf.read(name))
                 except (ET.ParseError, UnicodeDecodeError) as exc:
@@ -195,6 +200,54 @@ class PptxPrimaryExtractionProvider:
                 slides.append((slide_index, tuple(cls._logical_lines_from_root(root))))
         slides.sort(key=lambda item: item[0])
         return slides
+
+    @staticmethod
+    def _presentation_ordered_slides(
+        zf: zipfile.ZipFile, names: list[str]
+    ) -> list[tuple[int, str]]:
+        """Return ``(1-based presentation position, slide part)`` pairs.
+
+        Order comes from ``p:sldIdLst`` resolved through ``presentation.xml.rels``;
+        unreferenced slide parts are excluded. Only when ``p:sldIdLst`` is absent
+        does the numeric part filename stand in for the slide position.
+        """
+
+        try:
+            presentation = ET.fromstring(zf.read("ppt/presentation.xml"))
+        except (ET.ParseError, UnicodeDecodeError) as exc:
+            raise UnsupportedDocumentFormatError("pptx-primary only supports PPTX bytes") from exc
+        slide_id_list = presentation.find(_SLIDE_ID_LIST_TAG)
+        if slide_id_list is None:
+            fallback: list[tuple[int, str]] = []
+            for name in names:
+                slide_match = _SLIDE_NAME_PATTERN.match(name)
+                if slide_match is not None:
+                    fallback.append((int(slide_match.group("index")), name))
+            return fallback
+        if _PRESENTATION_RELS_PART not in names:
+            raise UnsupportedDocumentFormatError("pptx-primary only supports PPTX bytes")
+        try:
+            relationships = ET.fromstring(zf.read(_PRESENTATION_RELS_PART))
+        except (ET.ParseError, UnicodeDecodeError) as exc:
+            raise UnsupportedDocumentFormatError("pptx-primary only supports PPTX bytes") from exc
+        targets: dict[str, str] = {}
+        for relationship in relationships.iter(_PACKAGE_RELATIONSHIP_TAG):
+            rel_id = relationship.get("Id")
+            target = relationship.get("Target")
+            if not rel_id or not target:
+                continue
+            if target.startswith("/"):
+                part = posixpath.normpath(target.lstrip("/"))
+            else:
+                part = posixpath.normpath(posixpath.join("ppt", target))
+            targets[rel_id] = part
+        ordered: list[tuple[int, str]] = []
+        for position, slide_id in enumerate(slide_id_list.iter(_SLIDE_ID_TAG), start=1):
+            slide_part = targets.get(slide_id.get(_RELATIONSHIP_ID_ATTR, ""))
+            if slide_part is None or slide_part not in names:
+                raise UnsupportedDocumentFormatError("pptx-primary only supports PPTX bytes")
+            ordered.append((position, slide_part))
+        return ordered
 
     @classmethod
     def _slide_texts(cls, content: bytes) -> list[tuple[int, str]]:

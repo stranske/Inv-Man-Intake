@@ -1783,7 +1783,19 @@ def _write_pptx_with_slide_lines(
     )
     with zipfile.ZipFile(source) as original, zipfile.ZipFile(target, "w") as updated:
         for info in original.infolist():
-            updated.writestr(info, original.read(info.filename))
+            data = original.read(info.filename)
+            if info.filename == "ppt/presentation.xml":
+                data = data.replace(
+                    b"</p:sldIdLst>", b'<p:sldId id="258" r:id="rId3"/></p:sldIdLst>'
+                )
+            elif info.filename == "ppt/_rels/presentation.xml.rels":
+                data = data.replace(
+                    b"</Relationships>",
+                    b'<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/'
+                    b'officeDocument/2006/relationships/slide" Target="slides/slide3.xml"/>'
+                    b"</Relationships>",
+                )
+            updated.writestr(info, data)
         updated.writestr("ppt/slides/slide3.xml", slide)
 
 
