@@ -22,6 +22,7 @@ _DRAWINGML_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 _TEXT_TAG = f"{{{_DRAWINGML_NS}}}t"
 _PARAGRAPH_TAG = f"{{{_DRAWINGML_NS}}}p"
 _RUN_TAG = f"{{{_DRAWINGML_NS}}}r"
+_FIELD_TAG = f"{{{_DRAWINGML_NS}}}fld"
 _BREAK_TAG = f"{{{_DRAWINGML_NS}}}br"
 _SLIDE_NAME_PATTERN = re.compile(r"^ppt/slides/slide(?P<index>[1-9][0-9]*)\.xml$")
 _MONTHLY_RETURN_PREFIX = "MONTHLY_RETURN"
@@ -152,13 +153,13 @@ class PptxPrimaryExtractionProvider:
 
     @classmethod
     def _logical_lines_from_root(cls, root: ET.Element) -> list[str]:
-        """Concatenate runs within each paragraph; treat ``<a:br/>`` and paragraphs as line breaks."""
+        """Join runs and fields, using ``<a:br/>`` and paragraph boundaries as line breaks."""
 
         lines: list[str] = []
         for paragraph in root.iter(_PARAGRAPH_TAG):
             buffer: list[str] = []
             for child in paragraph:
-                if child.tag == _RUN_TAG:
+                if child.tag in {_RUN_TAG, _FIELD_TAG}:
                     for text_node in child.iter(_TEXT_TAG):
                         buffer.append(text_node.text or "")
                 elif child.tag == _BREAK_TAG:

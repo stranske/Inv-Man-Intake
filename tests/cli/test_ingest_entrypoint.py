@@ -6,6 +6,7 @@ import ast
 import json
 import re
 import shutil
+from calendar import monthrange
 from collections import Counter
 from datetime import UTC, date, datetime
 from itertools import permutations
@@ -1732,8 +1733,10 @@ def test_ingest_queue_replay_preserves_saved_review_by_requiring_new_output(
     assert load_validation_queue(queue_file) == (reviewed,)
 
 
-_CONFLICT_MONTHS = [
-    date(2023 + (index // 12), index % 12 + 1, 28).isoformat() for index in range(20)
+_CONFLICT_MONTHS = [date(2023 + (index // 12), index % 12 + 1, 15) for index in range(20)]
+_CONFLICT_WORKBOOK_DATES = [
+    month.replace(day=monthrange(month.year, month.month)[1]).isoformat()
+    for month in _CONFLICT_MONTHS
 ]
 _CONFLICT_WORKBOOK_VALUES = [round(0.004 + 0.001 * index, 6) for index in range(20)]
 
@@ -1753,22 +1756,22 @@ def _write_pptx_with_slide_lines(
     target: Path,
     lines: list[str],
     *,
-    split_runs: bool = False,
+    layout: str,
 ) -> None:
     import zipfile
     from xml.sax.saxutils import escape
 
     def _paragraph_xml(line: str) -> str:
-        if not split_runs:
-            return f"<a:p><a:r><a:t>{escape(line)}</a:t></a:r></a:p>"
-        midpoint = len(line) // 2
-        first, second = line[:midpoint], line[midpoint:]
-        return (
-            "<a:p>"
-            f"<a:r><a:t>{escape(first)}</a:t></a:r>"
-            f"<a:r><a:t>{escape(second)}</a:t></a:r>"
-            "</a:p>"
-        )
+        run = f"<a:r><a:t>{escape(line)}</a:t></a:r>"
+        if layout == "split_runs":
+            midpoint = len(line) // 2
+            run = (
+                f"<a:r><a:t>{escape(line[:midpoint])}</a:t></a:r>"
+                f"<a:r><a:t>{escape(line[midpoint:])}</a:t></a:r>"
+            )
+        elif layout == "trailing_field":
+            run += "<a:fld><a:t> draft</a:t></a:fld>"
+        return f"<a:p>{run}</a:p>"
 
     paragraphs = "".join(_paragraph_xml(line) for line in lines)
     slide = (
@@ -1785,20 +1788,49 @@ def _write_pptx_with_slide_lines(
 
 
 @pytest.mark.parametrize(
-    ("lines", "expected_status", "expected_reason", "expected_conflicts", "split_runs"),
+    (
+        "lines",
+        "expected_status",
+        "expected_reason",
+        "expected_conflicts",
+        "expected_overlap",
+        "expected_unmatched",
+        "layout",
+    ),
     [
-        (_monthly_return_lines(2), "comparable", None, 2, False),
-        (_monthly_return_lines(2), "comparable", None, 2, True),
-        (_monthly_return_lines(1), "comparable", None, 1, False),
-        (None, "unavailable", "unsupported_document_format", None, False),
-        ([], "unavailable", "no_document_monthly_rows", None, False),
+        (_monthly_return_lines(2), "comparable", None, 2, 20, [], "run"),
+        (_monthly_return_lines(2), "comparable", None, 2, 20, [], "split_runs"),
+        (_monthly_return_lines(1), "comparable", None, 1, 20, [], "run"),
+        (
+            _monthly_return_lines(1)[:10]
+            + ["MONTHLY_RETURN as_of=2024-09-15 value=0.03 frequency=monthly"],
+            "comparable",
+            None,
+            1,
+            10,
+            ["2024-09"],
+            "run",
+        ),
+        (None, "unavailable", "unsupported_document_format", None, 0, [], "run"),
+        ([], "unavailable", "no_document_monthly_rows", None, 0, [], "run"),
         (
             _monthly_return_lines(0)[:19]
             + [f"MONTHLY_RETURN as_of={_CONFLICT_MONTHS[19]} value=2%"],
             "unavailable",
             "unsupported_document_rows",
             None,
-            False,
+            0,
+            [],
+            "run",
+        ),
+        (
+            _monthly_return_lines(0)[:1],
+            "unavailable",
+            "unsupported_document_rows",
+            None,
+            0,
+            [],
+            "trailing_field",
         ),
         (
             _monthly_return_lines(0)
@@ -1806,23 +1838,29 @@ def _write_pptx_with_slide_lines(
             "non_comparable",
             "ambiguous_document_rows",
             None,
-            False,
+            0,
+            [],
+            "run",
         ),
         (
             ["MONTHLY_RETURN as_of=2019-01-31 value=0.01 frequency=monthly"],
             "non_comparable",
             "no_overlapping_periods",
             None,
-            False,
+            0,
+            ["2019-01"],
+            "run",
         ),
     ],
     ids=[
         "2-of-20-escalates",
         "2-of-20-escalates-split-runs",
         "1-of-20-at-threshold",
+        "1-of-10-partial-overlap-escalates",
         "pdf-primary-unavailable",
         "no-rows-unavailable",
         "malformed-row-unavailable",
+        "trailing-field-unavailable",
         "ambiguous-month-non-comparable",
         "nonoverlapping-non-comparable",
     ],
@@ -1833,7 +1871,9 @@ def test_production_conflict_over_5pct_emits_performance_conflict_queue_item(
     expected_status: str,
     expected_reason: str | None,
     expected_conflicts: int | None,
-    split_runs: bool,
+    expected_overlap: int,
+    expected_unmatched: list[str],
+    layout: str,
 ) -> None:
     """#1084: submitted deck returns reach the resolver and >5% conflicts reach the queue."""
     from inv_man_intake.workflow_validation import load_validation_queue
@@ -1850,13 +1890,13 @@ def test_production_conflict_over_5pct_emits_performance_conflict_queue_item(
             _FIXTURE_EXTRACTION / "harborline_strategy_review.pptx",
             bundle_path.parent / primary_entry["file_name"],
             lines,
-            split_runs=split_runs,
+            layout=layout,
         )
     bundle_path.write_text(json.dumps(payload))
     workbook_name = "summit_arc_track_record.xlsx"
     _write_performance_workbook(
         bundle_path.parent / workbook_name,
-        list(zip(_CONFLICT_MONTHS, _CONFLICT_WORKBOOK_VALUES, strict=True)),
+        list(zip(_CONFLICT_WORKBOOK_DATES, _CONFLICT_WORKBOOK_VALUES, strict=True)),
     )
 
     output = tmp_path / "out"
@@ -1871,8 +1911,11 @@ def test_production_conflict_over_5pct_emits_performance_conflict_queue_item(
 
     # Workbook precedence: the resolved series is the workbook's, whatever the deck says.
     assert [point["value"] for point in performance["monthly"]] == _CONFLICT_WORKBOOK_VALUES
+    assert [point["as_of"] for point in performance["monthly"]] == _CONFLICT_WORKBOOK_DATES
     assert comparison["status"] == expected_status
     assert comparison["reason"] == expected_reason
+    assert comparison["overlap_count"] == expected_overlap
+    assert comparison["unmatched_document_periods"] == expected_unmatched
     assert comparison["threshold_percent"] == 5.0
     assert comparison["workbook_source"]["file_name"] == workbook_name
     assert comparison["document_source"]["file_name"] == primary_entry["file_name"]
@@ -1887,15 +1930,17 @@ def test_production_conflict_over_5pct_emits_performance_conflict_queue_item(
         return
 
     assert performance["comparison_available"] is True
-    assert comparison["overlap_count"] == 20
     assert comparison["conflict_count"] == expected_conflicts
-    assert comparison["conflict_percentage"] == pytest.approx(expected_conflicts * 5.0)
-    assert comparison["escalate"] is (expected_conflicts * 5.0 > 5.0)
-    assert len(comparison["audit"]) == 20
+    expected_percentage = 100 * expected_conflicts / expected_overlap
+    assert comparison["conflict_percentage"] == pytest.approx(expected_percentage)
+    assert comparison["escalate"] is (expected_percentage > 5.0)
+    assert len(comparison["audit"]) == expected_overlap
     conflicts = [row for row in comparison["audit"] if row["is_conflict"]]
     assert len(conflicts) == expected_conflicts
-    for row in comparison["audit"]:
+    for index, row in enumerate(comparison["audit"]):
         evidence = row["document_evidence"]
+        assert row["workbook_as_of"] == _CONFLICT_WORKBOOK_DATES[index]
+        assert evidence["document_as_of"] == _CONFLICT_MONTHS[index].isoformat()
         assert evidence["source_doc_id"] == primary_id
         assert evidence["source_page"] == 3
         assert evidence["snippet"].startswith(f"MONTHLY_RETURN as_of={evidence['document_as_of']}")
