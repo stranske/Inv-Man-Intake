@@ -647,6 +647,7 @@ def _compressed_two_page_pdf() -> bytes:
     pdf.showPage()
     pdf.drawString(72, 720, "AUM: $1.2bn")
     pdf.drawString(72, 700, "Net Return 1Y: 8.4%")
+    pdf.drawString(72, 680, "Strategy: Summit Arc Credit")
     pdf.showPage()
     pdf.save()
     return stream.getvalue()
@@ -680,11 +681,15 @@ def test_production_pdf_routes_to_doc_lineage_not_legacy_fixture(
 
     run = json.loads((output / "run.json").read_text(encoding="utf-8"))
     fields = {field["key"]: field for field in run["fields"]}
+    assert not any(
+        field["key"] == "strategy.name" and field["source_page"] == 1 for field in run["fields"]
+    )
     expected = {
         "strategy.asset_class": ("credit", 1),
         "terms.management_fee": ("1.25%", 1),
         "operations.aum": ("$1.2bn", 2),
         "performance.net_return_1y": ("8.4%", 2),
+        "strategy.name": ("Summit Arc Credit", 2),
     }
     for key, (value, page) in expected.items():
         assert fields[key]["value"] == value

@@ -41,14 +41,6 @@
       "sha256": "4e2184ea7e502f3f42e8d40fd7dac42e2e91dba8f6b3ef2ecfc30bfc0657924d"
     },
     {
-      "artifact_id": "evidence-977d7a34a1385c71ee9d94621d206c18824fbc72e036b86986bea68120d62c89.json",
-      "bytes": 332,
-      "kind": "evidence",
-      "name": "evidence-977d7a34a1385c71ee9d94621d206c18824fbc72e036b86986bea68120d62c89.json",
-      "path": "evidence-977d7a34a1385c71ee9d94621d206c18824fbc72e036b86986bea68120d62c89.json",
-      "sha256": "73684bee4270c36d9d8041c191bb470525098d27b6ca3069a23d396fe993cfe4"
-    },
-    {
       "artifact_id": "evidence-c008188dfd0796edc7dc6f1357f8c3c864867b8559d82b058d5e2e0c13f2721b.json",
       "bytes": 314,
       "kind": "evidence",
@@ -90,11 +82,11 @@
     },
     {
       "artifact_id": "run.json",
-      "bytes": 13522,
+      "bytes": 12143,
       "kind": "envelope",
       "name": "run.json",
       "path": "run.json",
-      "sha256": "b5a6c1abad5ce4140c372f30d6e58f04f7d2a6543b5a4a356c6ab4b27c282ae6"
+      "sha256": "5fe6ef5812cc46fd757b643bd4f6d40d530f51e4fffd68af0a33350e6b9a971d"
     },
     {
       "artifact_id": "threshold-summary.json",
@@ -113,8 +105,8 @@
       "sha256": "5befdffa31d6dbffa2d995e6a2a2c9532e0a60323472b83fd293ef3bd5190cfb"
     }
   ],
-  "run_id": "run_6fc6e8b7cd584b82ae978ba0a490e142",
+  "run_id": "run_565c51b45dfa4b439cee954f45d5ff9f",
   "schema_version": "artifact-manifest/v1",
   "tool": "inv-man-ingest",
-  "trace_id": "trace_41fb8db655b3496e9012621bdb025010"
+  "trace_id": "trace_9a49faeafc9341e8a28f08577c4f085d"
 }
