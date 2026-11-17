@@ -1,0 +1,12 @@
+{
+  "confidence": 0.82,
+  "evidence_id": "evidence:sha256:c4387b42741ccaa9cc4c3185511a6cb4b389a23eb462c0e783b033d442d75ffe",
+  "excerpt": "Net Return 1Y: 8.4%",
+  "fact_ref": "performance.net_return_1y",
+  "locator": {
+    "page": 3
+  },
+  "method": "text",
+  "schema_version": "evidence-object/v1",
+  "source_id": "pkg_pdf_mixed_001:doc:0"
+}

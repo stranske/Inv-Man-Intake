@@ -1,0 +1,12 @@
+{
+  "confidence": 0.82,
+  "evidence_id": "evidence:sha256:e8f695d745a93b476c29f5fe163001a077944db229797eefa0c27af7c64f54e3",
+  "excerpt": "Strategy Asset Class: credit",
+  "fact_ref": "strategy.asset_class",
+  "locator": {
+    "page": 0
+  },
+  "method": "text",
+  "schema_version": "evidence-object/v1",
+  "source_id": "pkg_pdf_mixed_001:doc:0"
+}

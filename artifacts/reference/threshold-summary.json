@@ -1,16 +1,12 @@
 {
-  "auto_accept_fields": [
-    "strategy.asset_class",
-    "terms.management_fee",
-    "performance.net_return_1y"
-  ],
-  "auto_pass_document": false,
+  "auto_accept_fields": [],
+  "auto_pass_document": true,
   "document": {
-    "confidence.document.auto_pass": "false",
-    "confidence.document.escalation_reason": "low_key_field_coverage",
-    "confidence.document.key_field_coverage_ratio": "0.6000"
+    "confidence.document.auto_pass": "true",
+    "confidence.document.escalation_reason": "none",
+    "confidence.document.key_field_coverage_ratio": "1.0000"
   },
-  "escalate": true,
-  "escalation_reason": "low_key_field_coverage",
-  "key_field_coverage_ratio": 0.6
+  "escalate": false,
+  "escalation_reason": "none",
+  "key_field_coverage_ratio": 1.0
 }
