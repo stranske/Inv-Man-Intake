@@ -104,8 +104,34 @@ def ensure_extraction_service(candidate: object) -> ExtractionService:
     raise TypeError("expected an ExtractionService or legacy ExtractionProvider")
 
 
-def build_pyodide_light_service(file_name: str) -> ExtractionService:
-    """Create the default no-egress extraction service for current app paths."""
+class MissingExtractionDependencyError(RuntimeError):
+    """A required optional extraction package is not installed.
+
+    Raised only for the top-level package being absent. A ``ModuleNotFoundError``
+    for any other module (a transitive import inside an installed package) is a
+    broken install and propagates unchanged.
+    """
+
+    def __init__(self, *, package: str, extra: str, file_name: str) -> None:
+        self.package = package
+        self.extra = extra
+        self.file_name = file_name
+        super().__init__(
+            f"{package} is required to extract {file_name!r}; "
+            f"install the {extra!r} extra (pip install 'inv-man-intake[{extra}]')"
+        )
+
+
+def build_pyodide_light_service(
+    file_name: str, *, require_doc_lineage: bool = False
+) -> ExtractionService:
+    """Create the default no-egress extraction service for current app paths.
+
+    With ``require_doc_lineage=False`` (default callers), a missing Doc-Lineage
+    package falls back to the ``pdf-primary`` compatibility parser. Production
+    callers pass ``require_doc_lineage=True`` so a missing extra raises
+    :class:`MissingExtractionDependencyError` instead of silently downgrading.
+    """
 
     from inv_man_intake.extraction.providers.pptx_primary import PptxPrimaryExtractionProvider
 
@@ -122,6 +148,12 @@ def build_pyodide_light_service(file_name: str) -> ExtractionService:
         except ModuleNotFoundError as exc:
             if exc.name != "doc_lineage":
                 raise
+            if require_doc_lineage:
+                raise MissingExtractionDependencyError(
+                    package="doc_lineage",
+                    extra="extraction-doc-lineage",
+                    file_name=file_name,
+                ) from exc
             # Temporary compatibility path for deployments without the optional extra.
             from inv_man_intake.extraction.providers.pdf_primary import PdfPrimaryExtractionProvider
 
@@ -199,6 +231,7 @@ def extraction_service_extractor(
 __all__ = [
     "DefaultExtractionService",
     "ExtractionService",
+    "MissingExtractionDependencyError",
     "ProviderTransportBackend",
     "PyodideLightTransportBackend",
     "StubServiceTransportBackend",

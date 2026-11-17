@@ -1,0 +1,12 @@
+{
+  "confidence": 0.82,
+  "evidence_id": "evidence:sha256:1294f3f589f5283afe4c8166c47d419958d395eb3fc0174e4c1945e94653d07b",
+  "excerpt": "AUM: $1.2bn",
+  "fact_ref": "operations.aum",
+  "locator": {
+    "page": 1
+  },
+  "method": "text",
+  "schema_version": "evidence-object/v1",
+  "source_id": "pkg_pdf_mixed_001:doc:0"
+}

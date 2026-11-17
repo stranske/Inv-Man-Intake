@@ -34,6 +34,11 @@ _HEADLESS_REFERENCE_FILES = (
     "summit_arc_track_record.xlsx",
 )
 _EXTRACTION_FIXTURE_ROOT = Path("tests/fixtures/extraction")
+# Production runs route PDFs to Doc-Lineage, so stage the conforming PDF under
+# the bundle's file name; the pseudo-PDF of that name is the smoke-only corpus.
+_HEADLESS_REFERENCE_SOURCES = {
+    "summit_arc_investment_update.pdf": "summit_arc_investment_update_conforming.pdf",
+}
 
 
 def stage_headless_reference_bundle(tmp_path: Path) -> Path:
@@ -46,7 +51,8 @@ def stage_headless_reference_bundle(tmp_path: Path) -> Path:
         entry for entry in payload["files"] if entry["file_name"] in _HEADLESS_REFERENCE_FILES
     ]
     for file_name in _HEADLESS_REFERENCE_FILES:
-        shutil.copyfile(_EXTRACTION_FIXTURE_ROOT / file_name, bundle_root / file_name)
+        source = _HEADLESS_REFERENCE_SOURCES.get(file_name, file_name)
+        shutil.copyfile(_EXTRACTION_FIXTURE_ROOT / source, bundle_root / file_name)
     bundle_path = bundle_root / "reference_bundle.json"
     bundle_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return bundle_path

@@ -1,0 +1,12 @@
+{
+  "confidence": 0.82,
+  "evidence_id": "evidence:sha256:3c08344c3c1314937f4c96d51869cd43d079cac2c81ead5d694b122ab69f785d",
+  "excerpt": "Management Fee: 1.25%",
+  "fact_ref": "terms.management_fee",
+  "locator": {
+    "page": 2
+  },
+  "method": "text",
+  "schema_version": "evidence-object/v1",
+  "source_id": "pkg_pdf_mixed_001:doc:0"
+}

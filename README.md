@@ -51,7 +51,7 @@ until evidence-backed scoring components exist; the fixture score is smoke-only.
 ## Quick Start
 
 ```bash
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,extraction-doc-lineage]"
 pytest
 ruff check src/ tests/
 mypy

@@ -1,0 +1,9 @@
+{
+  "confidence": 1.0,
+  "evidence_id": "evidence:sha256:5df8aa7537dc1cbc675c8bb8e65a22b12fb64c15d72ec0b6b71a1942f0546e0e",
+  "excerpt": null,
+  "fact_ref": "confidence.document.auto_pass",
+  "method": "computed",
+  "schema_version": "evidence-object/v1",
+  "source_id": "pkg_pdf_mixed_001:doc:0"
+}

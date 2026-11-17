@@ -184,6 +184,9 @@ def run_v1_smoke_pipeline(
     )
 
 
+INCOMPLETE_EXTRACTION_DISPOSITION = "incomplete-extraction"
+
+
 def _run_pipeline_core(
     *,
     fixture_root: Path,
@@ -278,6 +281,7 @@ def _run_pipeline_core(
         primary_file_name=primary_file_name,
         content=primary_content,
         correlation_id=correlation_id,
+        smoke_mode=smoke_mode,
     )
     secondary_extraction_result = None
     if secondary_document is not None:
@@ -657,6 +661,34 @@ def _select_extraction_documents(
     return primaries[0], preferred
 
 
+class ExtractionReviewRequiredError(ValueError):
+    """Production primary extraction did not resolve; route the document to review.
+
+    Carries the orchestrator's escalation disposition so the failure stays
+    attributable to the provider that failed instead of collapsing into an
+    id-only stand-in result.
+    """
+
+    def __init__(
+        self,
+        *,
+        file_name: str,
+        escalation_route: str | None,
+        escalation_reason: str | None,
+        errors: tuple[str, ...],
+    ) -> None:
+        self.file_name = file_name
+        self.disposition = INCOMPLETE_EXTRACTION_DISPOSITION
+        self.escalation_route = escalation_route
+        self.escalation_reason = escalation_reason
+        self.errors = errors
+        detail = "; ".join(errors) or escalation_reason or "extraction-unresolved"
+        super().__init__(
+            f"{INCOMPLETE_EXTRACTION_DISPOSITION}: primary document extraction for "
+            f"{file_name!r} routed to {escalation_route or 'review'}: {detail}"
+        )
+
+
 def _run_extraction_smoke(
     *,
     tracer: Tracer,
@@ -665,19 +697,30 @@ def _run_extraction_smoke(
     primary_file_name: str,
     content: bytes,
     correlation_id: str,
+    smoke_mode: bool = True,
 ) -> ExtractedDocumentResult:
-    # This historical smoke corpus contains a deliberately minimal pseudo-PDF
-    # understood by pdf-primary, not a conforming PDF for the shared extractor.
-    # Keep its golden baseline explicit; the default service selects Doc-Lineage.
-    service = (
-        build_legacy_pdf_fixture_service()
-        if primary_file_name.lower().endswith(".pdf")
-        else build_pyodide_light_service(primary_file_name)
+    if smoke_mode:
+        # This historical smoke corpus contains a deliberately minimal pseudo-PDF
+        # understood by pdf-primary, not a conforming PDF for the shared extractor.
+        # Keep its golden baseline explicit; production PDFs require Doc-Lineage.
+        service = (
+            build_legacy_pdf_fixture_service()
+            if primary_file_name.lower().endswith(".pdf")
+            else build_pyodide_light_service(primary_file_name)
+        )
+    else:
+        # Missing extra -> MissingExtractionDependencyError; a transitive
+        # ModuleNotFoundError (broken install) propagates unchanged.
+        service = build_pyodide_light_service(primary_file_name, require_doc_lineage=True)
+    fallback_name, fallback_extractor = (
+        ("fixture-fallback", _fixture_id_only_extractor)
+        if smoke_mode
+        else (INCOMPLETE_EXTRACTION_DISPOSITION, _incomplete_extraction_extractor)
     )
     orchestrator = ExtractionOrchestrator(
         primary_name=service.backend_name,
-        fallback_name="fixture-fallback",
-        fallback_extractor=lambda payload: {"document_id": payload["document_id"]},
+        fallback_name=fallback_name,
+        fallback_extractor=fallback_extractor,
         primary_extractor=extraction_service_extractor(service),
         tracer=tracer,
     )
@@ -690,7 +733,15 @@ def _run_extraction_smoke(
         },
         trace_context=trace_context,
     )
-    if not result.resolved or result.provider_used != service.backend_name or result.data is None:
+    if not result.resolved:
+        payload = result.escalation_payload or {}
+        raise ExtractionReviewRequiredError(
+            file_name=primary_file_name,
+            escalation_route=result.escalation_route,
+            escalation_reason=result.escalation_reason,
+            errors=tuple(str(error) for error in payload.get("errors", ())),
+        )
+    if result.provider_used != service.backend_name or result.data is None:
         raise ValueError(f"primary document extraction unavailable for {primary_file_name!r}")
     extracted = result.data.get("result")
     if not isinstance(extracted, ExtractedDocumentResult):
@@ -698,6 +749,18 @@ def _run_extraction_smoke(
             f"primary document extraction returned no result for {primary_file_name!r}"
         )
     return extracted
+
+
+def _fixture_id_only_extractor(payload: dict[str, Any]) -> dict[str, object]:
+    # Smoke-only stand-in; _run_extraction_smoke rejects it via the provider_used check.
+    return {"document_id": payload["document_id"]}
+
+
+def _incomplete_extraction_extractor(payload: dict[str, Any]) -> dict[str, object]:
+    raise ValueError(
+        f"no production fallback extractor for {payload['document_id']!r}; "
+        "route to extraction review"
+    )
 
 
 def _run_secondary_extraction_boundary_smoke(

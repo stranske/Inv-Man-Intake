@@ -1,0 +1,12 @@
+{
+  "confidence": 0.82,
+  "evidence_id": "evidence:sha256:666913c9dc25a1112db9c7a835805db6b96af5029f8422332efc01640de387a7",
+  "excerpt": "Key Person Risk: one senior PM departure pending",
+  "fact_ref": "team.key_person_risk",
+  "locator": {
+    "page": 4
+  },
+  "method": "text",
+  "schema_version": "evidence-object/v1",
+  "source_id": "pkg_pdf_mixed_001:doc:0"
+}
