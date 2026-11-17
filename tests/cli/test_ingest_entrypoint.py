@@ -204,6 +204,9 @@ _EVIDENCE_CLASS_TO_SUMMARY = {
     "intentional production path (post-#1019 seam)": "production path ok / shared policy",
     "intentional shared policy": "production path ok / shared policy",
     "confirmed production gap": "confirmed gaps → product review (no auto-file)",
+    "partially repaired by #1084 (benchmark gap remains)": (
+        "confirmed gaps → product review (no auto-file)"
+    ),
     "production path repaired by #1018 / #1034": "production path ok / shared policy",
     "architectural seam": "architectural / mixed / unknown",
     "intentional / prevention": "prevention assertions (tests must hold)",
@@ -376,9 +379,9 @@ def test_production_smoke_audit_classifies_boundaries_with_existing_tests() -> N
     classified: dict[str, set[str]] = {label: set() for label in _CLASSIFICATION_SUMMARY}
     for boundary_id, row in rows.items():
         evidence_class = row["evidence_class"].lower()
-        assert (
-            evidence_class in _EVIDENCE_CLASS_TO_SUMMARY
-        ), f"{boundary_id} has unknown evidence class {row['evidence_class']!r}"
+        assert evidence_class in _EVIDENCE_CLASS_TO_SUMMARY, (
+            f"{boundary_id} has unknown evidence class {row['evidence_class']!r}"
+        )
         summary_label = _EVIDENCE_CLASS_TO_SUMMARY[evidence_class]
         classified[summary_label].add(boundary_id)
 
@@ -388,13 +391,22 @@ def test_production_smoke_audit_classifies_boundaries_with_existing_tests() -> N
         assert row["production_contract"].strip(), f"{boundary_id} missing production contract"
         assert disposition.strip(), f"{boundary_id} missing disposition"
 
-        if evidence_class == "confirmed production gap":
+        if evidence_class in {
+            "confirmed production gap",
+            "partially repaired by #1084 (benchmark gap remains)",
+        }:
             assert "no auto-filed" in disposition or "return for human" in disposition
 
         _assert_audit_test_evidence(boundary_id, evidence, entrypoint_tests, engine_tests)
 
     for label, expected_ids in _CLASSIFICATION_SUMMARY.items():
         assert classified[label] == expected_ids, f"summary drift for {label}"
+    # #1084: B11's deck comparison is repaired; only the benchmark gap stays with a human.
+    assert rows["B11"]["evidence_class"] == "partially repaired by #1084 (benchmark gap remains)"
+    assert (
+        "test_production_conflict_over_5pct_emits_performance_conflict_queue_item"
+        in rows["B11"]["classification_evidence"]
+    )
 
     human_section = audit.split("## Uncovered items returned for human review", maxsplit=1)[1]
     assert "No automatic follow-up issues are created" in human_section
@@ -444,9 +456,9 @@ def test_run_pipeline_disables_remote_tracing(
 
 
 def _assert_production_performance_source(run: dict) -> None:
-    assert (
-        run["performance"]["source"] == "submitted_workbook"
-    ), "production performance must use the submitted workbook"
+    assert run["performance"]["source"] == "submitted_workbook", (
+        "production performance must use the submitted workbook"
+    )
 
 
 def test_production_performance_source_deliberate_smoke_fixture_fails(
@@ -1533,3 +1545,153 @@ def test_ingest_queue_replay_preserves_saved_review_by_requiring_new_output(
     # A new run directory remains usable without discarding the previous review.
     assert main([str(bundle), "--out", str(tmp_path / "new-output")]) == 0
     assert load_validation_queue(queue_file) == (reviewed,)
+
+
+_CONFLICT_MONTHS = [
+    date(2023 + (index // 12), index % 12 + 1, 28).isoformat() for index in range(20)
+]
+_CONFLICT_WORKBOOK_VALUES = [round(0.004 + 0.001 * index, 6) for index in range(20)]
+
+
+def _monthly_return_lines(conflicts: int) -> list[str]:
+    values = list(_CONFLICT_WORKBOOK_VALUES)
+    for index in range(conflicts):
+        values[index * 7] = round(values[index * 7] + 0.02, 6)
+    return [
+        f"MONTHLY_RETURN as_of={as_of} value={value} frequency=monthly"
+        for as_of, value in zip(_CONFLICT_MONTHS, values, strict=True)
+    ]
+
+
+def _write_pptx_with_slide_lines(source: Path, target: Path, lines: list[str]) -> None:
+    import zipfile
+    from xml.sax.saxutils import escape
+
+    paragraphs = "".join(f"<a:p><a:r><a:t>{escape(line)}</a:t></a:r></a:p>" for line in lines)
+    slide = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+        'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">'
+        "<p:cSld><p:spTree><p:sp><p:txBody><a:bodyPr/>"
+        f"{paragraphs}</p:txBody></p:sp></p:spTree></p:cSld></p:sld>"
+    )
+    with zipfile.ZipFile(source) as original, zipfile.ZipFile(target, "w") as updated:
+        for info in original.infolist():
+            updated.writestr(info, original.read(info.filename))
+        updated.writestr("ppt/slides/slide3.xml", slide)
+
+
+@pytest.mark.parametrize(
+    ("lines", "expected_status", "expected_reason", "expected_conflicts"),
+    [
+        (_monthly_return_lines(2), "comparable", None, 2),
+        (_monthly_return_lines(1), "comparable", None, 1),
+        (None, "unavailable", "unsupported_document_format", None),
+        ([], "unavailable", "no_document_monthly_rows", None),
+        (
+            _monthly_return_lines(0)[:19]
+            + [f"MONTHLY_RETURN as_of={_CONFLICT_MONTHS[19]} value=2%"],
+            "unavailable",
+            "unsupported_document_rows",
+            None,
+        ),
+        (
+            _monthly_return_lines(0)
+            + ["MONTHLY_RETURN as_of=2023-01-05 value=0.5 frequency=monthly"],
+            "non_comparable",
+            "ambiguous_document_rows",
+            None,
+        ),
+        (
+            ["MONTHLY_RETURN as_of=2019-01-31 value=0.01 frequency=monthly"],
+            "non_comparable",
+            "no_overlapping_periods",
+            None,
+        ),
+    ],
+    ids=[
+        "2-of-20-escalates",
+        "1-of-20-at-threshold",
+        "pdf-primary-unavailable",
+        "no-rows-unavailable",
+        "malformed-row-unavailable",
+        "ambiguous-month-non-comparable",
+        "nonoverlapping-non-comparable",
+    ],
+)
+def test_production_conflict_over_5pct_emits_performance_conflict_queue_item(
+    tmp_path: Path,
+    lines: list[str] | None,
+    expected_status: str,
+    expected_reason: str | None,
+    expected_conflicts: int | None,
+) -> None:
+    """#1084: submitted deck returns reach the resolver and >5% conflicts reach the queue."""
+    from inv_man_intake.workflow_validation import load_validation_queue
+
+    bundle_path = _write_external_layout_bundle(tmp_path / "bundle")
+    payload = json.loads(bundle_path.read_text())
+    primary_entry = next(
+        entry for entry in payload["files"] if entry["role"] != "performance_track_record"
+    )
+    if lines is not None:
+        (bundle_path.parent / primary_entry["file_name"]).unlink()
+        primary_entry["file_name"] = "submitted-deck.pptx"
+        _write_pptx_with_slide_lines(
+            _FIXTURE_EXTRACTION / "harborline_strategy_review.pptx",
+            bundle_path.parent / primary_entry["file_name"],
+            lines,
+        )
+    bundle_path.write_text(json.dumps(payload))
+    workbook_name = "summit_arc_track_record.xlsx"
+    _write_performance_workbook(
+        bundle_path.parent / workbook_name,
+        list(zip(_CONFLICT_MONTHS, _CONFLICT_WORKBOOK_VALUES, strict=True)),
+    )
+
+    output = tmp_path / "out"
+    assert main([str(bundle_path), "--out", str(output)]) == 0
+    run = json.loads((output / "run.json").read_text())
+    performance = run["performance"]
+    comparison = performance["comparison"]
+    queue = {
+        item.escalation_reason: item
+        for item in load_validation_queue(output / "validation-queue.json")
+    }
+
+    # Workbook precedence: the resolved series is the workbook's, whatever the deck says.
+    assert [point["value"] for point in performance["monthly"]] == _CONFLICT_WORKBOOK_VALUES
+    assert comparison["status"] == expected_status
+    assert comparison["reason"] == expected_reason
+    assert comparison["threshold_percent"] == 5.0
+    assert comparison["workbook_source"]["file_name"] == workbook_name
+    assert comparison["document_source"]["file_name"] == primary_entry["file_name"]
+    primary_id = comparison["document_source"]["document_id"]
+    assert primary_id in run["inputs"]["document_ids"]
+
+    if expected_conflicts is None:
+        assert performance["comparison_available"] is False
+        assert comparison["overlap_count"] == comparison["conflict_count"] == 0
+        assert comparison["escalate"] is False and comparison["audit"] == []
+        assert "performance_conflict" not in queue
+        return
+
+    assert performance["comparison_available"] is True
+    assert comparison["overlap_count"] == 20
+    assert comparison["conflict_count"] == expected_conflicts
+    assert comparison["conflict_percentage"] == pytest.approx(expected_conflicts * 5.0)
+    assert comparison["escalate"] is (expected_conflicts * 5.0 > 5.0)
+    assert len(comparison["audit"]) == 20
+    conflicts = [row for row in comparison["audit"] if row["is_conflict"]]
+    assert len(conflicts) == expected_conflicts
+    for row in comparison["audit"]:
+        evidence = row["document_evidence"]
+        assert evidence["source_doc_id"] == primary_id
+        assert evidence["source_page"] == 3
+        assert evidence["snippet"].startswith(f"MONTHLY_RETURN as_of={evidence['document_as_of']}")
+    if comparison["escalate"]:
+        item = queue["performance_conflict"]
+        assert item.state == "pending_triage" and item.owner_id is None
+        assert item.details == comparison
+    else:
+        assert "performance_conflict" not in queue

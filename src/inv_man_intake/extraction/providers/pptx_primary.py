@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import io
+import math
 import re
 import zipfile
+from dataclasses import dataclass
 from xml.etree import ElementTree as ET
 
 from inv_man_intake.extraction.providers.base import (
@@ -19,6 +21,35 @@ from inv_man_intake.extraction.providers.pdf_primary import UnsupportedDocumentF
 _DRAWINGML_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
 _TEXT_TAG = f"{{{_DRAWINGML_NS}}}t"
 _SLIDE_NAME_PATTERN = re.compile(r"^ppt/slides/slide(?P<index>[1-9][0-9]*)\.xml$")
+_MONTHLY_RETURN_PREFIX = "MONTHLY_RETURN"
+_MONTHLY_RETURN_PATTERN = re.compile(
+    r"^MONTHLY_RETURN as_of=(?P<as_of>[0-9]{4}-[0-9]{2}-[0-9]{2})"
+    r" value=(?P<value>[-+]?[0-9]+(?:\.[0-9]+)?) frequency=monthly$"
+)
+
+
+@dataclass(frozen=True)
+class MonthlyReturnRow:
+    """One canonical ``MONTHLY_RETURN`` slide row with its document evidence."""
+
+    as_of: str
+    value: float
+    source_doc_id: str
+    source_page: int
+    snippet: str
+
+    def as_timeseries_row(self) -> dict[str, object]:
+        """Return the row shape accepted by ``load_document_timeseries``."""
+
+        return {"frequency": "monthly", "as_of": self.as_of, "value": self.value}
+
+
+@dataclass(frozen=True)
+class MonthlyReturnRows:
+    """Canonical monthly-return rows plus ``MONTHLY_RETURN`` lines that did not match."""
+
+    rows: tuple[MonthlyReturnRow, ...]
+    unsupported_lines: tuple[str, ...]
 
 
 class PptxPrimaryExtractionProvider:
@@ -84,6 +115,37 @@ class PptxPrimaryExtractionProvider:
         )
         validate_extracted_document_result(result)
         return result
+
+    def monthly_return_rows(self, source_doc_id: str, content: bytes) -> MonthlyReturnRows:
+        """Read explicit ``MONTHLY_RETURN as_of=YYYY-MM-DD value=<decimal> frequency=monthly`` rows.
+
+        Only whole slide text lines in exactly that form are rows. Any other line
+        starting with ``MONTHLY_RETURN`` is reported as unsupported rather than
+        guessed at; values are decimal returns, never percentages.
+        """
+
+        rows: list[MonthlyReturnRow] = []
+        unsupported: list[str] = []
+        for slide_index, text in self._slide_texts(content):
+            for raw_line in text.splitlines():
+                line = raw_line.strip()
+                if not line.startswith(_MONTHLY_RETURN_PREFIX):
+                    continue
+                match = _MONTHLY_RETURN_PATTERN.match(line)
+                value = float(match.group("value")) if match else math.nan
+                if match is None or not math.isfinite(value):
+                    unsupported.append(line)
+                    continue
+                rows.append(
+                    MonthlyReturnRow(
+                        as_of=match.group("as_of"),
+                        value=value,
+                        source_doc_id=source_doc_id,
+                        source_page=slide_index,
+                        snippet=line,
+                    )
+                )
+        return MonthlyReturnRows(rows=tuple(rows), unsupported_lines=tuple(unsupported))
 
     @classmethod
     def _slide_texts(cls, content: bytes) -> list[tuple[int, str]]:
