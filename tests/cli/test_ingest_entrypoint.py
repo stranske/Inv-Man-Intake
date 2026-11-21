@@ -6,6 +6,8 @@ import ast
 import json
 import re
 import shutil
+import subprocess
+import sys
 from calendar import monthrange
 from collections import Counter
 from datetime import UTC, date, datetime
@@ -13,8 +15,11 @@ from itertools import permutations
 from pathlib import Path
 
 import pytest
+from scripts.validate_run_contract import main as validate_shared_run_contract
 
 from inv_man_intake.cli.ingest import main
+from inv_man_intake.emit.identity_refs import normalize_legacy_identity_refs
+from inv_man_intake.run_manifest import build_manifest
 
 _BUNDLE = "tests/fixtures/intake/pdf_primary_mixed_bundle.json"
 _FIXTURE_EXTRACTION = Path("tests/fixtures/extraction")
@@ -95,6 +100,141 @@ def test_ingest_entrypoint_writes_run_and_named_artifacts(tmp_path: Path) -> Non
     assert exit_code == 0
     for name in _ARTIFACT_FILES:
         assert (output_dir / name).is_file(), f"missing artifact on disk: {name}"
+
+
+@pytest.mark.parametrize(
+    ("explicit_ids", "include_workbook"),
+    [
+        pytest.param(False, False, id="derived-ids"),
+        pytest.param(True, False, id="explicit-ids"),
+        pytest.param(False, True, id="pptx-with-track-record"),
+    ],
+)
+def test_production_run_emits_canonical_identity_refs(
+    tmp_path: Path, explicit_ids: bool, include_workbook: bool, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bundle = json.loads(
+        Path("tests/fixtures/intake/pptx_primary_mixed_bundle.json").read_text(encoding="utf-8")
+    )
+    deck_name = "harborline_strategy_review.pptx"
+    bundle["files"] = [
+        entry
+        for entry in bundle["files"]
+        if entry["file_name"] == deck_name
+        or (include_workbook and entry["role"] == "performance_track_record")
+    ]
+    if include_workbook:
+        workbook_name = "harborline_performance_snapshot.xlsx"
+        _write_performance_workbook(tmp_path / workbook_name, list(_SCORE_ROWS))
+    if explicit_ids:
+        firm_id, fund_id = "Harborline Partners / USA", "fund:lei_5493001kjtiigc8y1r12"
+        bundle["metadata"].update(firm_id=firm_id, fund_id=fund_id)
+        expected_entities = ["manager:harborline_partners_usa", "fund:lei_5493001kjtiigc8y1r12"]
+        legacy_refs = ["firm:Harborline Partners / USA", "fund:fund:lei_5493001kjtiigc8y1r12"]
+    else:
+        firm_id, fund_id = "firm_harborline_partners", "fund_harborline_fund_ii"
+        expected_entities = ["manager:harborline_partners", "fund:harborline_fund_ii"]
+        legacy_refs = ["firm:firm_harborline_partners", "fund:fund_harborline_fund_ii"]
+    shutil.copyfile(_production_fixture(deck_name), tmp_path / deck_name)
+    bundle_path = tmp_path / "bundle.json"
+    bundle_path.write_text(json.dumps(bundle), encoding="utf-8")
+    output_dir = tmp_path / "out"
+
+    result = subprocess.run(
+        ["inv-man-ingest", str(bundle_path), "--out", str(output_dir)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    run_path = output_dir / "run.json"
+    manifest_path = output_dir / "manifest.json"
+    run = json.loads(run_path.read_text(encoding="utf-8"))
+    assert run["identity_refs"] == [*expected_entities, "strategy:credit_long_short"]
+    assert (run["inputs"]["firm_id"], run["inputs"]["fund_id"]) == (firm_id, fund_id)
+    fields = {field["key"]: field["value"] for field in run["fields"]}
+    assert fields["strategy.asset_class"] == "credit"
+    if include_workbook:
+        assert run["inputs"]["file_count"] == 2
+        assert run["performance"]["monthly"] == [
+            {"as_of": as_of, "value": value} for as_of, value in _SCORE_ROWS
+        ]
+
+    repo = "stranske/Inv-Man-Intake"
+    registry_path = tmp_path / "registry.json"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "participants": [
+                    {
+                        "repo": repo,
+                        "role": "producer",
+                        "status": "conformant",
+                        "required_sections": ["identity_refs", "evidence_refs", "latency"],
+                        "emitted_evidence_policy": "manifest-evidence-closure/v1",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    validator_args = [
+        "--registry",
+        str(registry_path),
+        "--schema-dir",
+        "docs/contracts/schemas",
+        "--repo",
+        repo,
+    ]
+
+    def validate_consumed_run(*args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, "-m", "inv_man_intake.emit.validate_evidence", *args],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    canonical_args = [str(run_path), "--manifest", str(manifest_path), *validator_args]
+    assert validate_shared_run_contract(canonical_args) == 0
+    result = validate_consumed_run(*canonical_args)
+    assert result.returncode == 0, result.stderr
+
+    legacy_dir = tmp_path / "legacy-out"
+    shutil.copytree(output_dir, legacy_dir)
+    # These aliases were emitted by 3812996 for the same bundles and intake metadata.
+    legacy_run = {**run, "identity_refs": legacy_refs}
+    legacy_path = legacy_dir / "run.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    legacy_manifest_path = legacy_dir / "manifest.json"
+
+    def write_legacy_control(envelope: dict[str, object]) -> None:
+        legacy_path.write_text(json.dumps(envelope), encoding="utf-8")
+        legacy_manifest = build_manifest(
+            manifest["run_id"],
+            manifest["trace_id"],
+            (legacy_dir / artifact["path"] for artifact in manifest["artifacts"]),
+        )
+        legacy_manifest_path.write_text(json.dumps(legacy_manifest), encoding="utf-8")
+
+    write_legacy_control(legacy_run)
+    legacy_args = [str(legacy_path), "--manifest", str(legacy_manifest_path), *validator_args]
+
+    assert normalize_legacy_identity_refs(legacy_run)["identity_refs"] == expected_entities
+    result = validate_consumed_run(*legacy_args)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(legacy_path.read_text(encoding="utf-8")) == legacy_run
+
+    if explicit_ids:
+        assert validate_shared_run_contract(legacy_args) == 1
+        assert "[identity_refs/0]" in capsys.readouterr().err
+        # A malformed alias for a different firm must still fail validation.
+        write_legacy_control(
+            {**legacy_run, "identity_refs": ["firm:Other Firm / USA", legacy_refs[1]]}
+        )
+        result = validate_consumed_run(*legacy_args)
+        assert result.returncode == 1, result.stderr
+        assert "[identity_refs/0]" in result.stderr
 
 
 @pytest.mark.parametrize("toggle", ["false", "true", None])

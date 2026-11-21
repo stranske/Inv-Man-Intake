@@ -32,6 +32,7 @@ from inv_man_intake.emit.evidence_objects import (
     build_evidence_objects,
     evidence_object_filename,
 )
+from inv_man_intake.emit.identity_refs import entity_identity_refs
 from inv_man_intake.extraction.confidence import ThresholdDecision, load_threshold_config
 from inv_man_intake.extraction.providers.base import SnippetMetadata, SourceLocation
 from inv_man_intake.intake.integration import IntakeRegistrationResult
@@ -39,6 +40,7 @@ from inv_man_intake.intake.models import IngestRecord
 from inv_man_intake.observability.tracing import TraceContext
 from inv_man_intake.run_manifest import MANIFEST_NAME, build_manifest
 from inv_man_intake.scoring.contracts import ScoreResult
+from inv_man_intake.scoring.weights import normalize_asset_class
 from inv_man_intake.v1_smoke import V1SmokeArtifacts, _pipeline_latency_ms, _run_pipeline_core
 from inv_man_intake.workflow_validation import load_validation_queue, write_validation_queue
 
@@ -83,6 +85,19 @@ class RunResult:
     def to_json(self) -> dict[str, Any]:
         """Return the run record as a JSON-serializable dictionary."""
 
+        identity_refs = list(entity_identity_refs(self.inputs["firm_id"], self.inputs["fund_id"]))
+        asset_class = next(
+            (field["value"] for field in self.fields if field["key"] == "strategy.asset_class"),
+            None,
+        )
+        if isinstance(asset_class, str):
+            try:
+                strategy = normalize_asset_class(asset_class)
+            except ValueError:
+                pass  # Only registry-backed strategies are canonical.
+            else:
+                identity_refs.append(f"strategy:{strategy}")
+
         return {
             "schema_version": "run-contract/v1",
             "repo": "stranske/Inv-Man-Intake",
@@ -122,10 +137,7 @@ class RunResult:
             "evidence_refs": sorted(
                 str(evidence["evidence_id"]) for evidence in self.evidence_objects
             ),
-            "identity_refs": [
-                f"firm:{self.inputs['firm_id']}",
-                f"fund:{self.inputs['fund_id']}",
-            ],
+            "identity_refs": identity_refs,
             "latency_ms": self.latency_ms,
             "latency": {"wall_ms": self.latency_ms or 0},
             "provenance": self.provenance,
