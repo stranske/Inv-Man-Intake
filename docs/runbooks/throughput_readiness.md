@@ -20,4 +20,20 @@ The report fields map to the v1 targets:
 
 The default output path is ignored by git. Treat it as an operator artifact, not source material.
 
-To obtain a realistic live capacity figure, run a real-cost batch after the real-bytes intake path and production extractor are available. That follow-up should time the same stage boundaries against real package bytes instead of the deterministic fixture-only smoke path.
+## Production real-byte batch mode
+
+The smoke report above stays the default (`"mode": "fixture_smoke"`). A separate, measured mode runs a small bundled real-byte corpus (the checked-in conforming Doc-Lineage PDF and XLSX track record from `tests/fixtures/extraction`, staged as two packages) through the production `run_pipeline` entry point, including its output artifact writes:
+
+```bash
+python -m inv_man_intake.readiness.throughput --mode production-batch --output reports/readiness/throughput_production_batch.json
+```
+
+The report carries `"mode": "production_real_bytes"` and `synthetic_lower_bound: false`. It does not reuse smoke stage timings. Fields:
+
+- `elapsed_seconds`: wall-clock time around the production entry point for the whole batch (staging copies excluded).
+- `outcome_counts`: `auto_pass`, `escalated` and `failed` package counts.
+- `measured_packages_per_hour` / `measured_packages_per_business_day`: throughput derived from `elapsed_seconds`, not projected from synthetic spans.
+- `production_extractor_verified` / `extraction_methods`: derived from emitted field methods (`doc-lineage:*`), proving the production extractor ran rather than the legacy fixture parser.
+- `verified_outputs`: every artifact listed in each `run.json` plus `manifest.json` exists and is non-empty.
+
+The command requires the `extraction-doc-lineage` extra; a missing or broken install raises instead of falling back. The corpus is tiny, so treat the figure as a measured floor for per-package overhead on small inputs, not a capacity guarantee for large real packages.
