@@ -99,7 +99,9 @@ def test_throughput_readiness_cli_returns_success(tmp_path: Path, capsys) -> Non
     captured = capsys.readouterr()
     assert exit_code == 0
     assert output_path.exists()
-    assert '"status": "pass"' in captured.out
+    payload = json.loads(captured.out)
+    assert payload["status"] == "pass"
+    assert payload["mode"] == "fixture_smoke"
 
 
 def _trace_event(
@@ -131,6 +133,11 @@ def test_throughput_measures_production_real_byte_batch(
     external-layout packages and run through the supported ``run_pipeline`` entry point.
     Control: the fixture smoke check keeps its own mode, synthetic label and stage reporting.
     """
+
+    pytest.importorskip(
+        "doc_lineage.extract",
+        reason="requires optional extra 'extraction-doc-lineage'",
+    )
 
     from inv_man_intake import v1_smoke
     from inv_man_intake.readiness import throughput
@@ -213,6 +220,11 @@ def test_throughput_measures_production_real_byte_batch(
 
 
 def test_production_batch_cli_mode_keeps_smoke_default(tmp_path: Path, capsys) -> None:
+    pytest.importorskip(
+        "doc_lineage.extract",
+        reason="requires optional extra 'extraction-doc-lineage'",
+    )
+
     smoke_path = tmp_path / "smoke.json"
     assert main(["--output", str(smoke_path)]) == 0
     assert json.loads(capsys.readouterr().out)["mode"] == "fixture_smoke"
@@ -223,3 +235,249 @@ def test_production_batch_cli_mode_keeps_smoke_default(tmp_path: Path, capsys) -
     assert exit_code == 0
     assert json.loads(capsys.readouterr().out)["mode"] == "production_real_bytes"
     assert json.loads(batch_path.read_text(encoding="utf-8"))["status"] == "pass"
+
+
+def _write_fake_production_outputs(
+    output_dir: Path,
+    *,
+    package_id: str,
+    methods: tuple[str, ...] = ("doc-lineage:text_layer", "threshold-summary"),
+    escalated: bool = False,
+) -> object:
+    from types import SimpleNamespace
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    artifacts = ("run.json", "metadata.json", "threshold-summary.json")
+    for name in artifacts[1:]:
+        (output_dir / name).write_text('{"ok": true}\n', encoding="utf-8")
+    (output_dir / "run.json").write_text(
+        json.dumps(
+            {
+                "inputs": {"package_id": package_id},
+                "artifact_refs": list(artifacts),
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (output_dir / "manifest.json").write_text('{"manifest": true}\n', encoding="utf-8")
+    return SimpleNamespace(
+        escalation_state={"escalate": escalated},
+        inputs={"document_ids": [f"{package_id}:doc:0", f"{package_id}:doc:1"]},
+        fields=[{"method": method} for method in methods],
+    )
+
+
+@pytest.mark.parametrize(
+    ("exc_factory", "expected_prefix"),
+    [
+        (lambda: ValueError("malformed intake bundle"), "ValueError: malformed intake bundle"),
+        (lambda: OSError("cannot write output artifact"), "OSError: cannot write output artifact"),
+    ],
+)
+def test_production_batch_records_data_errors_and_continues_remaining_packages(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    exc_factory,
+    expected_prefix: str,
+) -> None:
+    from inv_man_intake.readiness import throughput
+
+    seen_packages: list[str] = []
+
+    def fake_run_pipeline(bundle_path: Path, *, output_dir: Path) -> object:
+        package_id = json.loads(bundle_path.read_text(encoding="utf-8"))["package_id"]
+        seen_packages.append(package_id)
+        if len(seen_packages) == 1:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            (output_dir / "partial-metadata.json").write_text("{}\n", encoding="utf-8")
+            (output_dir / "partial-queue.json").write_text("{}\n", encoding="utf-8")
+            raise exc_factory()
+        return _write_fake_production_outputs(output_dir, package_id=package_id)
+
+    monkeypatch.setattr(throughput, "run_pipeline", fake_run_pipeline)
+    output_path = tmp_path / "failed_batch.json"
+    work_dir = tmp_path / "work"
+
+    report = throughput.run_production_batch_check(output_path=output_path, work_dir=work_dir)
+
+    assert seen_packages == ["pkg_readiness_real_001", "pkg_readiness_real_002"]
+    assert report.passed is False
+    assert report.status == "fail"
+    assert report.outcome_counts == {"auto_pass": 1, "escalated": 0, "failed": 1}
+    assert report.document_count == 2
+    assert report.production_extractor_verified is False
+    assert report.verified_outputs is False
+
+    failed_pkg, passed_pkg = report.packages
+    assert failed_pkg.package_id == "pkg_readiness_real_001"
+    assert failed_pkg.outcome == "failed"
+    assert failed_pkg.document_count == 0
+    assert failed_pkg.output_files == 2
+    assert failed_pkg.extraction_methods == []
+    assert failed_pkg.error == expected_prefix
+
+    assert passed_pkg.package_id == "pkg_readiness_real_002"
+    assert passed_pkg.outcome == "auto_pass"
+    assert passed_pkg.document_count == 2
+    assert passed_pkg.output_files == 4
+    assert passed_pkg.extraction_methods == ["doc-lineage:text_layer", "threshold-summary"]
+    assert passed_pkg.error is None
+
+    assert "1 package(s) failed production ingest" in report.bottleneck_warnings
+    assert f"pkg_readiness_real_001: {expected_prefix}" in report.bottleneck_warnings
+    assert json.loads(output_path.read_text(encoding="utf-8"))["status"] == "fail"
+
+
+@pytest.mark.parametrize(
+    ("exc_factory", "expected_type"),
+    [
+        (lambda: RuntimeError("unexpected extractor failure"), RuntimeError),
+        (lambda: ModuleNotFoundError("No module named 'pypdf'", name="pypdf"), ModuleNotFoundError),
+    ],
+)
+def test_production_batch_propagates_runtime_and_dependency_errors(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    exc_factory,
+    expected_type: type[BaseException],
+) -> None:
+    from inv_man_intake.readiness import throughput
+
+    calls: list[Path] = []
+
+    def failing_run_pipeline(bundle_path: Path, *, output_dir: Path) -> object:
+        _ = output_dir
+        calls.append(bundle_path)
+        raise exc_factory()
+
+    monkeypatch.setattr(throughput, "run_pipeline", failing_run_pipeline)
+
+    with pytest.raises(expected_type):
+        throughput.run_production_batch_check(
+            output_path=tmp_path / "out.json",
+            work_dir=tmp_path / "work",
+        )
+
+    assert len(calls) == 1
+
+
+def test_production_batch_propagates_missing_extraction_dependency_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from inv_man_intake.extraction.service import MissingExtractionDependencyError
+    from inv_man_intake.readiness import throughput
+
+    def missing_dep_pipeline(bundle_path: Path, *, output_dir: Path) -> object:
+        _ = bundle_path, output_dir
+        raise MissingExtractionDependencyError(
+            package="doc_lineage",
+            extra="extraction-doc-lineage",
+            file_name="summit_arc_investment_update_conforming.pdf",
+        )
+
+    monkeypatch.setattr(throughput, "run_pipeline", missing_dep_pipeline)
+
+    with pytest.raises(MissingExtractionDependencyError, match="extraction-doc-lineage"):
+        throughput.run_production_batch_check(
+            output_path=tmp_path / "out.json",
+            work_dir=tmp_path / "work",
+        )
+
+
+def test_production_batch_reports_escalated_outcomes_and_cli_fail_exit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from inv_man_intake.readiness import throughput
+
+    def mixed_run_pipeline(bundle_path: Path, *, output_dir: Path) -> object:
+        package_id = json.loads(bundle_path.read_text(encoding="utf-8"))["package_id"]
+        return _write_fake_production_outputs(
+            output_dir,
+            package_id=package_id,
+            escalated=package_id == "pkg_readiness_real_002",
+        )
+
+    monkeypatch.setattr(throughput, "run_pipeline", mixed_run_pipeline)
+    ok_path = tmp_path / "mixed.json"
+    report = throughput.run_production_batch_check(output_path=ok_path, work_dir=tmp_path / "work")
+
+    assert report.passed is True
+    assert report.outcome_counts == {"auto_pass": 1, "escalated": 1, "failed": 0}
+    assert report.production_extractor_verified is True
+    assert report.verified_outputs is True
+    assert report.bottleneck_warnings == []
+
+    def unverified_run_pipeline(bundle_path: Path, *, output_dir: Path) -> object:
+        package_id = json.loads(bundle_path.read_text(encoding="utf-8"))["package_id"]
+        return _write_fake_production_outputs(
+            output_dir,
+            package_id=package_id,
+            methods=("pdf-primary",),
+        )
+
+    monkeypatch.setattr(throughput, "run_pipeline", unverified_run_pipeline)
+    fail_path = tmp_path / "fail_cli.json"
+    exit_code = main(["--mode", "production-batch", "--output", str(fail_path)])
+
+    assert exit_code == 1
+    cli_payload = json.loads(capsys.readouterr().out)
+    assert cli_payload["status"] == "fail"
+    assert cli_payload["production_extractor_verified"] is False
+    assert (
+        "production extractor output could not be verified from emitted artifacts"
+        in cli_payload["bottleneck_warnings"]
+    )
+
+
+def test_production_batch_output_verification_and_warning_helpers(tmp_path: Path) -> None:
+    from inv_man_intake.readiness import throughput
+
+    missing_dir = tmp_path / "does_not_exist"
+    assert throughput._count_files(missing_dir) == 0
+    assert throughput._outputs_are_verified(missing_dir) is False
+
+    bad_json_dir = tmp_path / "bad_json"
+    bad_json_dir.mkdir()
+    (bad_json_dir / "run.json").write_text("{not-json", encoding="utf-8")
+    assert throughput._outputs_are_verified(bad_json_dir) is False
+
+    non_dict_dir = tmp_path / "non_dict"
+    non_dict_dir.mkdir()
+    (non_dict_dir / "run.json").write_text("[]\n", encoding="utf-8")
+    assert throughput._outputs_are_verified(non_dict_dir) is False
+
+    empty_refs_dir = tmp_path / "empty_refs"
+    empty_refs_dir.mkdir()
+    (empty_refs_dir / "run.json").write_text('{"artifact_refs": []}\n', encoding="utf-8")
+    assert throughput._outputs_are_verified(empty_refs_dir) is False
+
+    bad_ref_type_dir = tmp_path / "bad_ref_type"
+    bad_ref_type_dir.mkdir()
+    (bad_ref_type_dir / "run.json").write_text('{"artifact_refs": [123]}\n', encoding="utf-8")
+    assert throughput._outputs_are_verified(bad_ref_type_dir) is False
+
+    empty_file_dir = tmp_path / "empty_file"
+    empty_file_dir.mkdir()
+    (empty_file_dir / "run.json").write_text(
+        '{"artifact_refs": ["run.json", "metadata.json"]}\n', encoding="utf-8"
+    )
+    (empty_file_dir / "metadata.json").write_text("", encoding="utf-8")
+    (empty_file_dir / "manifest.json").write_text("{}\n", encoding="utf-8")
+    assert throughput._outputs_are_verified(empty_file_dir) is False
+
+    warnings = throughput._production_batch_warnings(
+        outcome_counts={"auto_pass": 0, "escalated": 0, "failed": 0},
+        elapsed_seconds=0.0,
+        production_verified=False,
+        verified_outputs=False,
+        packages_per_business_day=1.0,
+        errors=[],
+    )
+    assert "production batch produced no measurable elapsed time" in warnings
+    assert "production extractor output could not be verified from emitted artifacts" in warnings
+    assert "production output artifacts could not be verified on disk" in warnings
+    assert "measured weekly capacity is below 10 packages/week target" in warnings

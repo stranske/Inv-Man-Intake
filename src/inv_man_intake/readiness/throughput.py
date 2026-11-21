@@ -398,8 +398,14 @@ def _outputs_are_verified(output_dir: Path) -> bool:
         run = json.loads((output_dir / ARTIFACT_RUN).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return False
+    if not isinstance(run, dict):
+        return False
     refs = run.get("artifact_refs")
-    if not isinstance(refs, list) or not refs:
+    if (
+        not isinstance(refs, list)
+        or not refs
+        or not all(isinstance(name, str) and name for name in refs)
+    ):
         return False
     expected = [*refs, ARTIFACT_MANIFEST]
     return all(
