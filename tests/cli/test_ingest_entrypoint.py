@@ -7,6 +7,7 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 from calendar import monthrange
 from collections import Counter
 from datetime import UTC, date, datetime
@@ -18,7 +19,6 @@ from scripts.validate_run_contract import main as validate_shared_run_contract
 
 from inv_man_intake.cli.ingest import main
 from inv_man_intake.emit.identity_refs import normalize_legacy_identity_refs
-from inv_man_intake.emit.validate_evidence import main as validate_consumed_run
 from inv_man_intake.run_manifest import build_manifest
 
 _BUNDLE = "tests/fixtures/intake/pdf_primary_mixed_bundle.json"
@@ -102,15 +102,30 @@ def test_ingest_entrypoint_writes_run_and_named_artifacts(tmp_path: Path) -> Non
         assert (output_dir / name).is_file(), f"missing artifact on disk: {name}"
 
 
-@pytest.mark.parametrize("explicit_ids", [False, True], ids=["derived-ids", "explicit-ids"])
+@pytest.mark.parametrize(
+    ("explicit_ids", "include_workbook"),
+    [
+        pytest.param(False, False, id="derived-ids"),
+        pytest.param(True, False, id="explicit-ids"),
+        pytest.param(False, True, id="pptx-with-track-record"),
+    ],
+)
 def test_production_run_emits_canonical_identity_refs(
-    tmp_path: Path, explicit_ids: bool, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, explicit_ids: bool, include_workbook: bool, capsys: pytest.CaptureFixture[str]
 ) -> None:
     bundle = json.loads(
         Path("tests/fixtures/intake/pptx_primary_mixed_bundle.json").read_text(encoding="utf-8")
     )
     deck_name = "harborline_strategy_review.pptx"
-    bundle["files"] = [entry for entry in bundle["files"] if entry["file_name"] == deck_name]
+    bundle["files"] = [
+        entry
+        for entry in bundle["files"]
+        if entry["file_name"] == deck_name
+        or (include_workbook and entry["role"] == "performance_track_record")
+    ]
+    if include_workbook:
+        workbook_name = "harborline_performance_snapshot.xlsx"
+        _write_performance_workbook(tmp_path / workbook_name, list(_SCORE_ROWS))
     if explicit_ids:
         firm_id, fund_id = "Harborline Partners / USA", "fund:lei_5493001kjtiigc8y1r12"
         bundle["metadata"].update(firm_id=firm_id, fund_id=fund_id)
@@ -139,6 +154,11 @@ def test_production_run_emits_canonical_identity_refs(
     assert (run["inputs"]["firm_id"], run["inputs"]["fund_id"]) == (firm_id, fund_id)
     fields = {field["key"]: field["value"] for field in run["fields"]}
     assert fields["strategy.asset_class"] == "credit"
+    if include_workbook:
+        assert run["inputs"]["file_count"] == 2
+        assert run["performance"]["monthly"] == [
+            {"as_of": as_of, "value": value} for as_of, value in _SCORE_ROWS
+        ]
 
     repo = "stranske/Inv-Man-Intake"
     registry_path = tmp_path / "registry.json"
@@ -166,20 +186,23 @@ def test_production_run_emits_canonical_identity_refs(
         "--repo",
         repo,
     ]
-    assert (
-        validate_shared_run_contract(
-            [str(run_path), "--manifest", str(manifest_path), *validator_args]
+
+    def validate_consumed_run(*args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, "-m", "inv_man_intake.emit.validate_evidence", *args],
+            capture_output=True,
+            text=True,
+            check=False,
         )
-        == 0
-    )
-    assert (
-        validate_consumed_run([str(run_path), "--manifest", str(manifest_path), *validator_args])
-        == 0
-    )
+
+    canonical_args = [str(run_path), "--manifest", str(manifest_path), *validator_args]
+    assert validate_shared_run_contract(canonical_args) == 0
+    result = validate_consumed_run(*canonical_args)
+    assert result.returncode == 0, result.stderr
 
     legacy_dir = tmp_path / "legacy-out"
     shutil.copytree(output_dir, legacy_dir)
-    # These aliases were emitted by 3812996 for the same deck and intake metadata.
+    # These aliases were emitted by 3812996 for the same bundles and intake metadata.
     legacy_run = {**run, "identity_refs": legacy_refs}
     legacy_path = legacy_dir / "run.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -198,7 +221,8 @@ def test_production_run_emits_canonical_identity_refs(
     legacy_args = [str(legacy_path), "--manifest", str(legacy_manifest_path), *validator_args]
 
     assert normalize_legacy_identity_refs(legacy_run)["identity_refs"] == expected_entities
-    assert validate_consumed_run(legacy_args) == 0
+    result = validate_consumed_run(*legacy_args)
+    assert result.returncode == 0, result.stderr
     assert json.loads(legacy_path.read_text(encoding="utf-8")) == legacy_run
 
     if explicit_ids:
@@ -208,8 +232,9 @@ def test_production_run_emits_canonical_identity_refs(
         write_legacy_control(
             {**legacy_run, "identity_refs": ["firm:Other Firm / USA", legacy_refs[1]]}
         )
-        assert validate_consumed_run(legacy_args) == 1
-        assert "[identity_refs/0]" in capsys.readouterr().err
+        result = validate_consumed_run(*legacy_args)
+        assert result.returncode == 1, result.stderr
+        assert "[identity_refs/0]" in result.stderr
 
 
 @pytest.mark.parametrize("toggle", ["false", "true", None])
