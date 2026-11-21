@@ -6,6 +6,8 @@ import ast
 import json
 import re
 import shutil
+import subprocess
+import sys
 from calendar import monthrange
 from collections import Counter
 from datetime import UTC, date, datetime
@@ -102,7 +104,9 @@ def test_ingest_entrypoint_writes_run_and_named_artifacts(tmp_path: Path) -> Non
 
 
 @pytest.mark.parametrize("explicit_ids", [False, True], ids=["derived-ids", "explicit-ids"])
-def test_production_run_emits_canonical_identity_refs(tmp_path: Path, explicit_ids: bool) -> None:
+def test_production_run_emits_canonical_identity_refs(
+    tmp_path: Path, explicit_ids: bool, capsys: pytest.CaptureFixture[str]
+) -> None:
     bundle = json.loads(
         Path("tests/fixtures/intake/pptx_primary_mixed_bundle.json").read_text(encoding="utf-8")
     )
@@ -112,15 +116,30 @@ def test_production_run_emits_canonical_identity_refs(tmp_path: Path, explicit_i
         firm_id, fund_id = "Harborline Partners / USA", "fund:lei_5493001kjtiigc8y1r12"
         bundle["metadata"].update(firm_id=firm_id, fund_id=fund_id)
         expected_entities = ["manager:harborline_partners_usa", "fund:lei_5493001kjtiigc8y1r12"]
+        legacy_refs = ["firm:Harborline Partners / USA", "fund:fund:lei_5493001kjtiigc8y1r12"]
     else:
         firm_id, fund_id = "firm_harborline_partners", "fund_harborline_fund_ii"
         expected_entities = ["manager:harborline_partners", "fund:harborline_fund_ii"]
+        legacy_refs = ["firm:firm_harborline_partners", "fund:fund_harborline_fund_ii"]
     shutil.copyfile(_production_fixture(deck_name), tmp_path / deck_name)
     bundle_path = tmp_path / "bundle.json"
     bundle_path.write_text(json.dumps(bundle), encoding="utf-8")
     output_dir = tmp_path / "out"
 
-    assert main([str(bundle_path), "--out", str(output_dir)]) == 0
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "inv_man_intake.cli.ingest",
+            str(bundle_path),
+            "--out",
+            str(output_dir),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
     run_path = output_dir / "run.json"
     manifest_path = output_dir / "manifest.json"
     run = json.loads(run_path.read_text(encoding="utf-8"))
@@ -168,7 +187,8 @@ def test_production_run_emits_canonical_identity_refs(tmp_path: Path, explicit_i
 
     legacy_dir = tmp_path / "legacy-out"
     shutil.copytree(output_dir, legacy_dir)
-    legacy_run = {**run, "identity_refs": [f"firm:{firm_id}", f"fund:{fund_id}"]}
+    # These aliases were emitted by 3812996 for the same deck and intake metadata.
+    legacy_run = {**run, "identity_refs": legacy_refs}
     legacy_path = legacy_dir / "run.json"
     legacy_path.write_text(json.dumps(legacy_run), encoding="utf-8")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -179,14 +199,13 @@ def test_production_run_emits_canonical_identity_refs(tmp_path: Path, explicit_i
     )
     legacy_manifest_path = legacy_dir / "manifest.json"
     legacy_manifest_path.write_text(json.dumps(legacy_manifest), encoding="utf-8")
+    legacy_args = [str(legacy_path), "--manifest", str(legacy_manifest_path), *validator_args]
 
+    if explicit_ids:
+        assert validate_shared_run_contract(legacy_args) == 1
+        assert "[identity_refs/0]" in capsys.readouterr().err
     assert normalize_legacy_identity_refs(legacy_run)["identity_refs"] == expected_entities
-    assert (
-        validate_consumed_run(
-            [str(legacy_path), "--manifest", str(legacy_manifest_path), *validator_args]
-        )
-        == 0
-    )
+    assert validate_consumed_run(legacy_args) == 0
     assert json.loads(legacy_path.read_text(encoding="utf-8")) == legacy_run
 
 
