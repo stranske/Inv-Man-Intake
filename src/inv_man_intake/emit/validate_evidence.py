@@ -11,7 +11,9 @@ import importlib
 import json
 import sys
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
+
+from inv_man_intake.emit.identity_refs import normalize_legacy_identity_refs
 
 # The synchronized Workflows script is a runtime dependency, not an Inv-Man
 # type-check target. Importing it statically makes mypy inspect fleet-owned code
@@ -19,7 +21,6 @@ from typing import Any, cast
 _shared_validator = importlib.import_module("scripts.validate_run_contract")
 Draft202012Validator = importlib.import_module("jsonschema").Draft202012Validator
 Report = _shared_validator.Report
-validate_shared_run_contract = _shared_validator.main
 validate_shared_envelope = _shared_validator.validate_envelope
 
 
@@ -60,14 +61,16 @@ def validate_envelope(
     repo: str,
     manifest: dict[str, Any] | None,
     evidence_objects: list[dict[str, Any]] | None = None,
+    run_json: Path | None = None,
 ) -> Any:
     """Apply shared validation, then Inv-Man's emitted evidence closure rule."""
     report = validate_shared_envelope(
-        envelope=envelope,
+        envelope=normalize_legacy_identity_refs(envelope),
         schema_dir=schema_dir,
         registry=registry,
         repo=repo,
         manifest=manifest,
+        run_json=run_json,
     )
     if report.skipped or evidence_objects is None:
         return report
@@ -130,6 +133,7 @@ def main(argv: list[str] | None = None) -> int:
             repo=args.repo,
             manifest=manifest,
             evidence_objects=evidence_objects,
+            run_json=args.run_json,
         )
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
         print(f"ERROR: cannot load emitted evidence objects: {exc}", file=sys.stderr)
@@ -138,7 +142,11 @@ def main(argv: list[str] | None = None) -> int:
         for violation in report.violations:
             print(f"[{violation.path}] {violation.message}", file=sys.stderr)
         return 1
-    return cast(int, validate_shared_run_contract(argv))
+    if report.skipped:
+        print(f"{args.repo}: not a (yet-emitting) backplane participant (opt-in); skipping")
+    else:
+        print(f"{args.repo}: run envelope conforms to run-contract/v1")
+    return 0
 
 
 if __name__ == "__main__":

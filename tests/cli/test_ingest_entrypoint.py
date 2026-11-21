@@ -13,8 +13,12 @@ from itertools import permutations
 from pathlib import Path
 
 import pytest
+from scripts.validate_run_contract import main as validate_shared_run_contract
 
 from inv_man_intake.cli.ingest import main
+from inv_man_intake.emit.identity_refs import normalize_legacy_identity_refs
+from inv_man_intake.emit.validate_evidence import main as validate_consumed_run
+from inv_man_intake.run_manifest import build_manifest
 
 _BUNDLE = "tests/fixtures/intake/pdf_primary_mixed_bundle.json"
 _FIXTURE_EXTRACTION = Path("tests/fixtures/extraction")
@@ -95,6 +99,95 @@ def test_ingest_entrypoint_writes_run_and_named_artifacts(tmp_path: Path) -> Non
     assert exit_code == 0
     for name in _ARTIFACT_FILES:
         assert (output_dir / name).is_file(), f"missing artifact on disk: {name}"
+
+
+@pytest.mark.parametrize("explicit_ids", [False, True], ids=["derived-ids", "explicit-ids"])
+def test_production_run_emits_canonical_identity_refs(tmp_path: Path, explicit_ids: bool) -> None:
+    bundle = json.loads(
+        Path("tests/fixtures/intake/pptx_primary_mixed_bundle.json").read_text(encoding="utf-8")
+    )
+    deck_name = "harborline_strategy_review.pptx"
+    bundle["files"] = [entry for entry in bundle["files"] if entry["file_name"] == deck_name]
+    if explicit_ids:
+        firm_id, fund_id = "Harborline Partners / USA", "fund:lei_5493001kjtiigc8y1r12"
+        bundle["metadata"].update(firm_id=firm_id, fund_id=fund_id)
+        expected_entities = ["manager:harborline_partners_usa", "fund:lei_5493001kjtiigc8y1r12"]
+    else:
+        firm_id, fund_id = "firm_harborline_partners", "fund_harborline_fund_ii"
+        expected_entities = ["manager:harborline_partners", "fund:harborline_fund_ii"]
+    shutil.copyfile(_production_fixture(deck_name), tmp_path / deck_name)
+    bundle_path = tmp_path / "bundle.json"
+    bundle_path.write_text(json.dumps(bundle), encoding="utf-8")
+    output_dir = tmp_path / "out"
+
+    assert main([str(bundle_path), "--out", str(output_dir)]) == 0
+    run_path = output_dir / "run.json"
+    manifest_path = output_dir / "manifest.json"
+    run = json.loads(run_path.read_text(encoding="utf-8"))
+    assert run["identity_refs"] == [*expected_entities, "strategy:credit_long_short"]
+    assert (run["inputs"]["firm_id"], run["inputs"]["fund_id"]) == (firm_id, fund_id)
+    fields = {field["key"]: field["value"] for field in run["fields"]}
+    assert fields["strategy.asset_class"] == "credit"
+
+    repo = "stranske/Inv-Man-Intake"
+    registry_path = tmp_path / "registry.json"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "participants": [
+                    {
+                        "repo": repo,
+                        "role": "producer",
+                        "status": "conformant",
+                        "required_sections": ["identity_refs", "evidence_refs", "latency"],
+                        "emitted_evidence_policy": "manifest-evidence-closure/v1",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    validator_args = [
+        "--registry",
+        str(registry_path),
+        "--schema-dir",
+        "docs/contracts/schemas",
+        "--repo",
+        repo,
+    ]
+    assert (
+        validate_shared_run_contract(
+            [str(run_path), "--manifest", str(manifest_path), *validator_args]
+        )
+        == 0
+    )
+    assert (
+        validate_consumed_run([str(run_path), "--manifest", str(manifest_path), *validator_args])
+        == 0
+    )
+
+    legacy_dir = tmp_path / "legacy-out"
+    shutil.copytree(output_dir, legacy_dir)
+    legacy_run = {**run, "identity_refs": [f"firm:{firm_id}", f"fund:{fund_id}"]}
+    legacy_path = legacy_dir / "run.json"
+    legacy_path.write_text(json.dumps(legacy_run), encoding="utf-8")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    legacy_manifest = build_manifest(
+        manifest["run_id"],
+        manifest["trace_id"],
+        (legacy_dir / artifact["path"] for artifact in manifest["artifacts"]),
+    )
+    legacy_manifest_path = legacy_dir / "manifest.json"
+    legacy_manifest_path.write_text(json.dumps(legacy_manifest), encoding="utf-8")
+
+    assert normalize_legacy_identity_refs(legacy_run)["identity_refs"] == expected_entities
+    assert (
+        validate_consumed_run(
+            [str(legacy_path), "--manifest", str(legacy_manifest_path), *validator_args]
+        )
+        == 0
+    )
+    assert json.loads(legacy_path.read_text(encoding="utf-8")) == legacy_run
 
 
 @pytest.mark.parametrize("toggle", ["false", "true", None])
