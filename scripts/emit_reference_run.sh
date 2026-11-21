@@ -6,6 +6,12 @@ mkdir -p "${out_dir}"
 
 export PYTHONPATH="${PWD}/src${PYTHONPATH:+:${PYTHONPATH}}"
 
+# Backplane conformance workflow is synced from stranske/Workflows and installs
+# only `-e .`, while production PDF ingestion requires the Doc-Lineage extra.
+if [ "${CI:-}" = "true" ] && ! python -c "import doc_lineage.extract" 2>/dev/null; then
+  python -m pip install -e ".[extraction-doc-lineage]"
+fi
+
 staging_dir="$(mktemp -d)"
 trap 'rm -rf "${staging_dir}"' EXIT
 
