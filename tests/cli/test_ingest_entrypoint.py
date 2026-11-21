@@ -7,7 +7,6 @@ import json
 import re
 import shutil
 import subprocess
-import sys
 from calendar import monthrange
 from collections import Counter
 from datetime import UTC, date, datetime
@@ -127,14 +126,7 @@ def test_production_run_emits_canonical_identity_refs(
     output_dir = tmp_path / "out"
 
     result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "inv_man_intake.cli.ingest",
-            str(bundle_path),
-            "--out",
-            str(output_dir),
-        ],
+        ["inv-man-ingest", str(bundle_path), "--out", str(output_dir)],
         capture_output=True,
         text=True,
         check=False,
@@ -190,23 +182,34 @@ def test_production_run_emits_canonical_identity_refs(
     # These aliases were emitted by 3812996 for the same deck and intake metadata.
     legacy_run = {**run, "identity_refs": legacy_refs}
     legacy_path = legacy_dir / "run.json"
-    legacy_path.write_text(json.dumps(legacy_run), encoding="utf-8")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    legacy_manifest = build_manifest(
-        manifest["run_id"],
-        manifest["trace_id"],
-        (legacy_dir / artifact["path"] for artifact in manifest["artifacts"]),
-    )
     legacy_manifest_path = legacy_dir / "manifest.json"
-    legacy_manifest_path.write_text(json.dumps(legacy_manifest), encoding="utf-8")
+
+    def write_legacy_control(envelope: dict[str, object]) -> None:
+        legacy_path.write_text(json.dumps(envelope), encoding="utf-8")
+        legacy_manifest = build_manifest(
+            manifest["run_id"],
+            manifest["trace_id"],
+            (legacy_dir / artifact["path"] for artifact in manifest["artifacts"]),
+        )
+        legacy_manifest_path.write_text(json.dumps(legacy_manifest), encoding="utf-8")
+
+    write_legacy_control(legacy_run)
     legacy_args = [str(legacy_path), "--manifest", str(legacy_manifest_path), *validator_args]
+
+    assert normalize_legacy_identity_refs(legacy_run)["identity_refs"] == expected_entities
+    assert validate_consumed_run(legacy_args) == 0
+    assert json.loads(legacy_path.read_text(encoding="utf-8")) == legacy_run
 
     if explicit_ids:
         assert validate_shared_run_contract(legacy_args) == 1
         assert "[identity_refs/0]" in capsys.readouterr().err
-    assert normalize_legacy_identity_refs(legacy_run)["identity_refs"] == expected_entities
-    assert validate_consumed_run(legacy_args) == 0
-    assert json.loads(legacy_path.read_text(encoding="utf-8")) == legacy_run
+        # A malformed alias for a different firm must still fail validation.
+        write_legacy_control(
+            {**legacy_run, "identity_refs": ["firm:Other Firm / USA", legacy_refs[1]]}
+        )
+        assert validate_consumed_run(legacy_args) == 1
+        assert "[identity_refs/0]" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("toggle", ["false", "true", None])
